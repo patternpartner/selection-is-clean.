@@ -25626,3 +25626,30 @@ worktree of `cos/sticky-robust`, on seeds 401-403 (where c055 "re-confirmed"), a
     better than drift. c055 just does not do it better than plain chance.
 - **Caveat:** 100k, not 450k, and one replicate per arm. That is enough to retire c055's GO, which rested on the old rule,
   but not a full re-run of the sticky line.
+
+**#290 result — FAILS every pre-registered rule. Task worlds plateau completely, with or without function-keyed
+parasites.** Arms t (TASKS, TASK_RATE 0.2, TASK_SCALE 1) and tv (the same plus VIRUS), seeds 1-3 (the trial seeds; see
+#291), 1,200,000 ticks, 30,000-tick windows. Active means at least 1% of task income and at least 100 per sample. The
+second 600,000 ticks ran after a container restart, from the exact chunk-1 saves (task-world resume re-checked exact,
+24/24) and on the speedup-ported core (identical on both task configurations, #291).
+
+| arm, seed | new active functions, last 10 windows | ever active at the end of Q1 / Q2 / Q3 / Q4 | hardest active (NAND formula size), Q2 / Q4 | sticky S, income only |
+|---|---|---|---|---|
+| t 1 | 0/10 | 34 / 35 / 35 / 35 | 6 / 5 | 0 |
+| t 2 | 0/10 | 34 / 34 / 37 / 37 | 5 / 6 | 0 |
+| t 3 | 0/10 | 29 / 43 / 43 / 43 | 5 / 6 | 0 |
+| tv 1 | 0/10 | 45 / 49 / 49 / 49 | 6 / 6 | 0 |
+| tv 2 | 0/10 | 40 / 40 / 40 / 40 | 6 / 6 | 0 |
+| tv 3 | 0/10 | 27 / 27 / 30 / 30 | 5 / 6 | 0 |
+
+**The rules:**
+1. **Sustained: FAIL.** tv has 0 windows with a new function on every seed, and so does t.
+2. **No deceleration: FAIL.** tv's Q2 growth was 4/0/0 and its Q4 growth 0/0/0.
+3. **Climbing: FAIL.** tv's hardest function holds at 5-6 and is never above t's.
+4. **The causal replay** was not run: rules 1 and 2 decide.
+
+**What happened.** Once a lineage computes NOT, a burst of 30-50 functions arrives within about 100,000 ticks, all of NAND
+formula size 6 or less. Then nothing new arrives for the remaining 700,000-1,000,000 ticks. Function-keyed parasites add
+some functions early on two seeds, but no lasting turnover and no climb in difficulty. **Zaman et al.'s result does not
+reproduce in this world at this horizon.** This is the same shape as every world in #285-#290: a burst of real
+adaptation, then a plateau.
