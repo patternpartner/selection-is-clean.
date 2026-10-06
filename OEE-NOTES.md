@@ -25711,6 +25711,13 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
 - **The adoption lag is about the gap between modules.** BROTH took off about 100,000 ticks after arriving in G, and in the
   all-at-once control (A3: modules 1-3 at tick 0) it took off at 80,000-120,000 ticks too. A module is judged by the next
   report while it may still be on its way in.
+- **The all-at-once control (A3: modules 1-3 at tick 0, with its own inert twin A3I, to tick 400,000) disagrees with G on
+  TANK.** In A3, BROTH took off on the same lag (52.6% against the twin's 12.9% at 121k-160k), fell to its twin's level or
+  below at 201k-320k, then came back; TANK was carried above its twin in seven of ten windows (30.6% against 7.5%, 19.9% against
+  6.6%), where in G it was purged. So arrival order may matter, but this cannot be read yet: **one twin is not a null band.**
+  Twin carrier shares swing from 3% to 29% by drift alone (PIPE's twin: 3.6%-29.3%), the #249b lesson exactly. A deciding run
+  needs several inert replicates per arm (the same disarmed world on different draws) and calls a module adopted only when it
+  is above every one of them.
 - **Z cannot exist here.** Every module after BROTH reads an earlier one, so the chain allows one order (recorded in
   PROTOCOL.md; S, the same schedule on another seed, replaces it).
 - **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
