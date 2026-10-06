@@ -119,6 +119,9 @@ def camera(s):
         return (190, 418), 1.45
     if s < 43.58:
         return (195, 425), 1.45 * math.exp(1.3 * max(0.0, s - 41.9))
+    if 43.58 <= s < 51.58:                               # underwater: drifting in on him, not holding still
+        u = ramp(s, 43.58, 51.58)
+        return (200 + 14 * math.sin(s * 0.8), 360 + 10 * math.sin(s * 1.1)), 1.0 + 0.32 * u
     if s < 59.58:
         return (200, 368), 1.0
     if s < 64.0:
@@ -466,6 +469,12 @@ def frame(clips, t):
             x = W / 2 + ((j * 131) % 300 - 150) + 14 * math.sin(s * 2 + j)
             add_glow(acc3, x, y, 2 + j % 4, [255, 240, 200], 0.55)
         out += acc3
+    if 47.34 <= s < 48.6:                                    # "golden": the water catches
+        age = s - 47.34
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        d = np.sqrt((xx - W / 2) ** 2 + (yy - H * 0.42) ** 2)
+        R = age * 900
+        out += (np.exp(-((d - R) ** 2) / (2 * 30 ** 2)) * 0.8 * (1 - age / 1.26))[..., None] * GOLD
     if 55.25 <= s < 55.58:                                   # it rushes up out of the deep
         out += 255 * ramp(s, 55.25, 55.58)
     if 55.58 <= s < 56.0:
