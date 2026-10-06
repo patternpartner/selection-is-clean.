@@ -16,7 +16,8 @@
 //        baseline draws) and disarmed (its own knockout draws). Both start from G's population as it is, with the same carriers,
 //        so a gap is selection acting now, not two histories drifting apart as G and its twin I do. SELECTED when every armed
 //        draw ends above every disarmed one; PURGED when every armed draw ends below. Runs every module (KO_FROM=k to skip
-//        the knockouts of modules before k when only the later ones are wanted).
+//        the knockouts of modules before k, KO_TO=k after k, so a long analysis can be split over
+//        processes; SAVE=<file> reads a snapshot instead of G's live save).
 'use strict';
 const fs=require('fs'), path=require('path'); const {World}=require('./oee-core.js');
 const E=process.env, RUN=E.RUN||'pilot', RUNDIR=E.RUNDIR||path.join(__dirname,'loop',RUN), HEAVY=E.HEAVY||path.join(RUNDIR,'heavy'), WIN=+(E.WIN||50);
@@ -35,13 +36,13 @@ if(!E.KO){ const ARM=E.ARM||'G', TW=ARM==='G'?'I':fs.existsSync(path.join(HEAVY,
       return `${name}: carried ${(car*100).toFixed(1)}% (${twin} ${(cI*100).toFixed(1)}%), ${(sh*100).toFixed(1)}% of income${net}, ${ex.toFixed(0)} execs`; });
     const N=W.reduce((a,r)=>a+r.N,0)/W.length, NI=WI.length?WI.reduce((a,r)=>a+r.N,0)/WI.length:NaN;
     console.log(`  t${t0}-${t1} N ${N.toFixed(0)} (${twin} ${NI.toFixed(0)}) | ${per.join(' | ')||'-'}`); } }
-else { const T=+(E.T||20000), REPS=+(E.REPS||3), FLOOR=+(E.FLOOR||50), save=fs.readFileSync(path.join(HEAVY,'G.json'),'utf8'), w0=World.load(save), mods=w0.mods||[];
+else { const T=+(E.T||20000), REPS=+(E.REPS||3), FLOOR=+(E.FLOOR||50), save=fs.readFileSync(E.SAVE||path.join(HEAVY,'G.json'),'utf8'), w0=World.load(save), mods=w0.mods||[];
   if(mods.length<2){ console.log('fewer than two modules: nothing to knock out against'); process.exit(0); }
   const inc=(ko,rep)=>{ const w=World.load(save); w.rnd.s=(w.rnd.s^Math.imul(rep+1,0x9e3779b1))|0; if(ko>=0)w.mods[ko].disarmed=true; const tot=new Float64Array(w.mods.length), car=new Float64Array(w.mods.length); let nn=0, ns=0, nc=0;
     for(let s=1;s<=T;s++){ w.step(); if(s%1000===0){ const r=w.sample(); for(const x of r.mods.list)tot[x.id]+=x.inc; nn+=r.N; ns++; if(s>T-5000){ for(const x of r.mods.list)car[x.id]+=x.carriers; nc++; } } } tot.N=Math.round(nn/ns); tot.car=car.map(v=>v/nc); return tot; };
   const base=[...Array(REPS).keys()].map(r=>inc(-1,r)); console.log(`== knockouts from tick ${w0.tick}, ${T} ticks, ${REPS} draws; baseline income per module: ${mods.map((m,i)=>m.name+' '+(base.reduce((a,b)=>a+b[i],0)/REPS).toFixed(0)).join(', ')}`);
   const dep=mods.map(()=>mods.map(()=>null)), N0=base.map(b=>b.N);
-  for(let j=+(E.KO_FROM||1)-1;j<mods.length;j++){ const ko=[...Array(REPS).keys()].map(r=>inc(j,r));
+  for(let j=+(E.KO_FROM||1)-1;j<Math.min(mods.length,+(E.KO_TO||mods.length));j++){ const ko=[...Array(REPS).keys()].map(r=>inc(j,r));
     const cb=base.map(b=>b.car[j]), ck=ko.map(x=>x.car[j]), sel=Math.min(...cb)>Math.max(...ck)?'  => SELECTED (armed above every disarmed draw)':Math.max(...cb)<Math.min(...ck)?'  => PURGED (armed below every disarmed draw)':'';
     console.log(`  without ${mods[j].name}: alive ${ko.map((x,r)=>x.N+'/'+N0[r]).join(' ')} | its carriers at the end, armed ${cb.map(v=>(v*100).toFixed(1)).join(' ')} vs disarmed ${ck.map(v=>(v*100).toFixed(1)).join(' ')}${sel}`);
     for(let k=0;k<mods.length;k++){ if(k===j)continue; const ratios=ko.map((x,r)=>base[r][k]>0?x[k]/base[r][k]:NaN), lo=Math.min(...base.map(b=>b[k])), rate=base.reduce((a,b)=>a+b[k],0)/REPS/T*1000;
