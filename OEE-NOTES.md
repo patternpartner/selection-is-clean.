@@ -25518,3 +25518,90 @@ virion infects a host that computed its function this life). Seeds 1-3, 1,200,00
 4. **Causal**, if 1 and 2 hold: the in-world replay (virus on/off) from tv's 1,200,000-tick saves.
 
 Rules 1 and 2 decide "sustained"; rule 3 decides "climbing complexity" (Zaman's claim).
+
+### #291 — REVIEW of the cos/* rounds (1-6 October): what holds, the metric that drift gamed, and corrections to #287-#289
+
+**What happened.** While #290 ran, the user's other agent ran 17 `cos/*` branches (about 95 commits) on top of this
+branch. All are pre-registered, use fresh seed blocks (201-206, 301-303, 401-403, 501-503, 701-706, 801-803), are
+byte-checked and resume exactly. Every round ended NO-GO or NOT SHOWN:
+- niche construction (three versions) and skin;
+- autocatalysis, scarcity, heritable body chemistry, pathway fusion, cross-feeding;
+- a meta-search over capture rules;
+- a heavy-tailed "chance engine";
+- local food renewal (stopped at its tuning gate);
+- a 25-knob sticky-novelty search, its long run and nudge map, and a robustness search.
+
+The write-ups are in `lab/cos/` with an index (`lab/cos/README.md`). The code and data stay on the branches; none of their
+switches is in main.
+
+**What holds and is worth keeping:**
+- **The disturbance-matched null for #287 (`lab/cos/RESULT-random-lysis.md`, unseen seeds 4-6, 600k).**
+  - The virus beat random lysis matched to its own death toll on 3/3 seeds, narrowly: 3 v 2, 9 v 3, 9 v 1 new active
+    reactions late.
+  - Its clearest effect is diversity: the dominant reaction is carried by 42-60% of organisms with the virus, against
+    86-95% under matched random deaths (about what no virus gives).
+  - A non-mutating virus with random-key immigrants beat the evolving one on 3/3 seeds.
+  - #287's own pre-registered one-off control (all keys seeded once, then nothing) left nothing lasting: late novelty 0-1,
+    the same as chemistry alone.
+- **Why random capture beats directed capture (`lab/cos/CHANCE-ENGINE.md`).**
+  - Capturing a catalyst for what the parent just made re-samples about 50-60 substrates, and 82-90% of the catalysts it
+    captures already exist somewhere.
+  - Random capture makes 3.3-3.5x as many genuinely new ones. Selection then filters them.
+- **The speedup** (`lab/cos/SPEEDUP.md`), now in main (below).
+
+**What does not hold: the "used novelty" metric those rounds steered by.**
+- **Carrying counted as using.** Lu and S counted a trick as used when its mean income share was at least 1% *or* when 1%
+  of organisms carried it, so hitchhikers that earn nothing scored as inventions. That is the #286 lesson again: carrying a
+  METAB instruction is not using it.
+- **The no-selection twin beat the design.** In nearly every round it scored HIGHER than the design:
+  - in the chance-engine round, Lu 77-120 against 15-51;
+  - on c055's re-confirmation seeds, S 20.3/16.1/17.2 against the design's 12.8/13.9/14.2.
+- **The bar let that through.** It compared the design's gain over a reference (X - D) with the twin's gain over its
+  reference (DR - DRIFT), and never asked the design to beat its twin outright.
+- **c055** (the one "GO") was one of about 70 configurations under that metric. It then:
+  - failed on seeds 501-503 (1/3);
+  - faded by 1.5M ticks (late S 6.38 against middle S 7.77);
+  - passed 5 of 12 nudges;
+  - and the robustness search found no robust neighbour.
+
+The agent has stopped its searches until the metric is fixed.
+
+**The fix: `lab/used-novelty.js`.** It is a shared scoring module that reads body, chemistry or task income readouts.
+- **Use by income only:** a trick is used when its mean share of income is at least 1%. Carrier share is never read.
+- **Every null must be beaten outright,** the no-selection twin included, on at least 2/3 of seeds and by 10% in the mean
+  (on S+1).
+- **Under BODY_DRIFT the body income is the would-be income of shadow bodies,** so the twin is measured the same way
+  without selection. Whether a design can pass this bar, or the twin's richer untouched molecule pools make it
+  unpassable, is an empirical question: #291b answers it for c055.
+
+**The speedup port (`lab/speed-ident.txt`).** Six of cos/speedup's seven changes were ported into main's core:
+- the 64x64 diffusion without remainders, and per-species live flags;
+- the neighbour table;
+- the bit-count table for template and kin matching;
+- loop locals;
+- the hoisted decay multiplier.
+Body-income accumulation stays on the branch. Old core against ported core, log and state digests both identical on all
+nine configurations: plain, CHEM, CHEM+VIRUS, CHEM_BIG, CHEM_BIG+VIRUS, TASKS, rich TASKS+VIRUS, a 48x40 grid (the general
+diffusion loop) and ATT_POW 1 (the Math.pow path). 1.4-2.3x faster on a loaded box. The task world's save and resume were
+re-checked exact (24/24 rows, TASKS+VIRUS).
+
+**Corrections to my own entries, from the audit (`lab/cos/AUDIT-cos.md`), accepted:**
+1. **#289's "1 win per 4 replays per quarter to 14,000 generations" had no data entry.** It came from ONE seed. Here is the
+   entry:
+   - **Seed 1's full chain** (2.4M ticks, 40 windows of 60,000, 4 replays per quarter, `lab/core-assay.js`) had 1, 1, 0
+     and 1 wins per quarter (strict 1, 1, 0, 0), with 2, 1, 1 and 2 losses.
+   - **Ticks 1.2M-2.4M alone, seeds 1 and 3:** one win each, but most replays had no stored representative (they are
+     written once per world, in earlier chunks).
+   - So the figure is seed 1 only, not three seeds.
+2. **#288 changed three things at once** (network size, network-local virus mutation, and the immigrants' targeting), so
+   "size was never the limit" is confounded.
+3. **#287's pre-registered one-off control was never run by me.** The agent ran it (above): nothing lasting.
+4. **#287/#289's "2-5x the novelty; diversity held" was measured against no virus,** not a disturbance-matched null. With
+   that null, the agent's suggested wording stands: *enemy pressure that can reach any route holds metabolic diversity and
+   adds some turnover beyond matched random deaths. That pressure does not need to evolve, and it runs inside a finite
+   network that still plateaus (#287d).*
+5. **Every lab claim from #273 to #290 used seeds 1-3,** and #290's deciding runs are on its own trial seeds. #290 is
+   being finished as pre-registered so the record is complete, but it cannot be its own confirmation.
+6. **On save/load:** main's core resumes exactly for every option it has (CHEM, VIRUS, CHEM_BIG and TASKS re-checked).
+   The gap the agent worked around (`fullsave.js`) is in the body and renewal state, which exists only on the cos
+   branches; it should be fixed there before those switches are used again.

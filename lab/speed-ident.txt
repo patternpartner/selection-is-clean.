@@ -1,0 +1,10 @@
+# lab/speed-ident.txt - the cos/speedup port (#291): old core vs ported core, lab/speed-bench.js log and state digests, run on a loaded 4-core box (timings are a check, not a benchmark)
+plain              seed 1 ticks 20000 | log identical | state identical | old 34.1s new 15.1s
+chem               seed 110 ticks 20000 | log identical | state identical | old 22.7s new 13.2s
+chem+virus         seed 4 ticks 30000 | log identical | state identical | old 40.7s new 20.6s
+big                seed 6 ticks 8000 | log identical | state identical | old 6.4s new 4.2s
+big+virus          seed 6 ticks 25000 | log identical | state identical | old 27.7s new 18.6s
+tasks              seed 3 ticks 15000 | log identical | state identical | old 21.3s new 11.3s
+tasks-rich+virus   seed 2 ticks 25000 | log identical | state identical | old 41.0s new 22.5s
+odd-grid-chem      seed 2 ticks 10000 | log identical | state identical | old 7.3s new 3.9s
+attpow1            seed 1 ticks 10000 | log identical | state identical | old 4.9s new 3.5s
