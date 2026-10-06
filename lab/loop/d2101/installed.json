@@ -9,6 +9,13 @@
    "name": "GUT",
    "op": 32,
    "tick": 100000
+  },
+  {
+   "k": 2,
+   "file": "2-bite.js",
+   "name": "BITE",
+   "op": 33,
+   "tick": 200000
   }
  ]
 }

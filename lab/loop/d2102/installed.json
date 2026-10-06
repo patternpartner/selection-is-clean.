@@ -9,6 +9,13 @@
    "name": "FAT",
    "op": 32,
    "tick": 100000
+  },
+  {
+   "k": 2,
+   "file": "2-gut.js",
+   "name": "GUT",
+   "op": 33,
+   "tick": 200000
   }
  ]
 }
