@@ -25764,6 +25764,15 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
 - **Composition depth stayed at 1.** Chains offered (TANK-PIPE on BROTH) were live but never in use.
 - **The generator responded to the world, and it showed:** GUT was designed from report 10's diagnosis of the collapse, and
   it is the only module whose adoption the assay confirms. Whether responding mattered is what the all-at-once control tests.
+- **The all-at-once control answers what sequence did (A: all ten modules armed at tick 0, same seed, with its inert twin AI,
+  to tick 1,100,000).** GUT took over at once and held 74-91% of the living (against its twin's 6-28%) for the whole run, at
+  12-27% of all income, and **nothing else was clearly taken up in 1.1 million ticks**: BROTH never started (GUT reaches the
+  same corpses privately) and TENDRIL had nothing to drink. The fitness assay at 1,100,000 agrees: GUT SELECTED (+0.26,
+  t 6.2), nothing else. G, given the same physics one piece at a time, went through a succession instead (BROTH for 500,000
+  ticks, TENDRIL, CARRION, then GUT), and ended with the same single adoption. **Offered everything at once, the world takes
+  the best physics immediately and then stands still; the novelty kept arriving in G because the supply kept arriving.**
+  That is the expected answer and the honest one: the timeline of adoption is the generator's, and what the world adds is
+  the judging and the history (BROTH and TENDRIL existed only because GUT did not yet).
 - **Z cannot exist here.** Every module after BROTH reads an earlier one, so the chain allows one order (recorded in
   PROTOCOL.md; S, the same schedule on another seed, replaces it).
 - **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
