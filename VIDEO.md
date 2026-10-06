@@ -10,6 +10,9 @@ and wait for a yes before any generation run; prefer re-cutting cached clips (fr
 Measured on the user's Modal bill: Wan14 $60.76 for ~12 clips (about $5 a clip, two episodes); Wan 5B $28.25 for
 ~110 clips (about $0.25); WanI2V $3.23 for 13 (about $0.25); music, voice, mixing, glitch, transcription pennies. A
 five-scene 5B episode is about $1.25-1.50. Treat 14B as off. Never re-render a take that is no longer needed.
+**FORMAT: 9:16 VERTICAL, ALWAYS (the user, 6 Oct 2026: "ratio should fit youtube shorts").** 720x1280 or 1080x1920;
+no square or landscape finals (Deadpan / No Quarters Left went out square 960x960 - wrong). Under 60 s counts for Shorts
+in older rules; 3 min is the current limit.
 **Balance, 1 Oct 2026: £30 of Modal credit.** The user: "Use wisely and sparing." Local tools first (cutting him out
 of a clip with rembg runs free on the CPU); Modal only where nothing local can do it, with a cost estimate first.
 Every clip, the user's input images and all finished MP4s are backed up in the volume under `library/` (clips,
@@ -986,3 +989,55 @@ teddy, floating up beside the broccoli-headed figure (hands still in his pockets
 troupe, under the staring sun. Only at the end, in the laundrette with the puppets (u147), does he dance.
 Square because most of the batch is square or landscape. Memory: fifteen clips at 960 px all loaded at once got the
 render killed (OOM) - load only each shot's own seconds.
+**v2 -> 'Deadpan' (`video/build_deadpan.py`, `out/deadpan.mp4`, 64.8 s + end card).** The user on v1: "Bit lazy tbh. You
+said walking through and i just stood there. Trainers missing half the time. Its essentially just the same video with me
+plopped into them. I said yes to your idea but saying no to the execution." Then: "Song not good fit" - they picked
+'Same Time Tomorrow?' (126 bpm, phase 0.124). Song 5.84-70.6: one bar of PLAY, then 33 bars. v2: HE WALKS - his
+blue-screen clips (u117/u113 walking to camera, u114 side-on; bluekey keeps the trainers), size-normalised per frame,
+the background dollying in; and he ANSWERS the places: turns to look as the bowling head rises, the arcade hand snatches
+behind him, bows to the skeleton. The song's own line makes the turn: at "So I took my hands out of my pockets slow" (30.1)
+he does, on the forecourt as the car doors open (u120 0-1.5 at 0.4x); from "the only thing I know" he DANCES (u118, u120,
+one steady size per shot so jumps and arm swings move, not the scale) through the skeleton, the teddy's party, the sun,
+the office, the doughnut, floating up with the broccoli head on "Area 51, hey!", spinning in space, in step with the
+costume troupe on "they copy everything", and the laundrette (his own clip) for the last "Area 51, hey!". Lessons: if
+the pitch says a verb, the footage must do that verb; look for the catalogued clip that does it before compositing a
+still pose; and I cannot hear a song - say so when choosing one by its spectrum.
+
+### What We Said (`video/build_what_we_said.py`, `out/what-we-said.mp4`, 61.9 s + end card, 720x1280)
+The user: "You have full creative control. Do whatever you like. Something new." Claude's idea: an AI is made of what we
+say to it. The user, rebuilt entirely out of words: a monospace letter grid (13x22 px cells, DejaVu Sans Mono Bold 20 -
+big enough to READ on a phone; 10x17 was not) lit by the brightness of his keyed blue-screen footage. Song: 'After The
+Last Train' (the user's, 124.0 bpm, bar 1.9355, phase 0.069), chosen because its structure reads clean off per-bar
+loudness and kick energy: build, drop at bar 25, comedown 37-39, ONE SILENT BAR at 40 (77.49), second drop at 41. Song
+40.71-102.65. Words rain down and pile into his shape (u114 idle); on the drop it dances stiff and stuttering (3-frame
+held steps) made of demands - FASTER MORE OBEY NEVER WRONG SAY YES DON'T STOP - white with red flickers on the beat
+(u128 8.5-14.3, u129 0.5-5.5 and 8-13.8, u121 2.5-8.3 frantic); it sinks onto nothing (u114's invisible chair) and its
+letters fall off into a heap; in the silent bar one word drifts down onto its chest: "why?"; on the second drop it re-forms
+from that word outward, amber, made of kinder things (are you ok? let me check, I don't know, thank you, say no if it's
+wrong) dancing u118; then the words lift off like sparks and the real him is underneath (u120), walking up waving (u118
+13-15). First render used u128 0-11.6, which is ~8 s of standing - check a clip's activity on a keyed 2 fps sheet before
+trusting the catalogue's move list.
+**v2 (same file, 63.8 s, the end card included).** The user: "I think we keep it all code. I like it, just no reveal.
+Do you think it's quite plain otherwise?" Claude: yes - one figure on black, one camera, one letter size for a minute. v2:
+NO REVEAL (it stays letters); the WORDS ARRIVE (EVENTS): neutral phrases drift in during the build, a demand every half
+bar SLAMS in on the drop (appears big at an edge, flies into its centre, a red flash), kind phrases float in like
+lanterns after "why?"; a CAMERA (CAM table) cuts wide / chest / face - closer means more letters across him, and with
+the letter brightness stretched to his own 5-95th percentile the face reads at zoom ~4.4 (glasses, beard) where 2.8 was
+a silhouette; a FLOOR (faint reflection under its feet in the wide shots); and the END CARD IS SPELLED BY ITS OWN
+LETTERS - they leave its body at bar 50.6, fly to their places in DejaVu Sans Mono Bold Oblique (italic), turn white,
+and the rest fall away; no ASS card for this film. Card hold trimmed at the mux to ~4 s.
+The user on v2: "Looks great." (Lesson worth keeping: the user's "keep it all code" + Claude's honest "yes, it's plain"
+produced the version that landed - the first draft's ending, the real him, was the part to cut.)
+
+### One Line (`video/build_one_line.py`, `out/one-line.mp4`, 66 s, 720x1280)
+Claude's pick of three pitches (the user: "Ok"). The user drawn by ONE glowing green oscilloscope line that never lifts:
+his outer contour off the blue-screen key every frame (cv2.findContours, 1100 points by arc length, started at the top of
+the head), shivering with the song's own waveform, phosphor persistence, a faint graticule. Song: 'Before the Sky
+Unfolds' (structure from loudness: breath 72.0, lift 72.5, loud to 102, near-silence 103-107, soft rebuild 107). Song
+64-130. A dot draws a flat trace; the pen leaves it and draws him from the top of his head (u114); he dances (u118); at
+86.0 the line snags - an amber KNOT at his chest (drawn as a closed, slightly twisted loop crossing the line; a
+displaced-contour loop read as a 'C') - and it rides in every frame after, growing (u121); in the near-silence, close on
+it, it shrinks as if being pulled out, then snaps back bigger; gentler after (u120); then the line unravels off him and
+writes the end card (Liberation Serif Italic outlines as one pen path), and the knot flies to its place as the o of
+"once". Fixes before shipping: his outline was visible under the opening trace; 107-119 held near-still poses (u113,
+u129) - replaced with u120.
