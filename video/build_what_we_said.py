@@ -6,7 +6,8 @@ Song: 'After The Last Train' (the user's; 124.0 bpm, bar 1.9355 s, phase 0.069; 
 off the bars: a build, a drop at bar 25, a comedown 37-39, ONE SILENT BAR at 40 (77.49), the second drop at 41).
 Song 40.71-102.65 (bars 21-52), end card after.
   bars 21-24  in the dark, words rain down and pile up into his shape (u114 idle)
-  bars 25-36  the first drop: it dances stiff and stuttering (u128 gestures, u129 genie arms / robot), made of
+  bars 25-36  the first drop: it dances stiff and stuttering (u128 pointing/T, u129 genie arms and robot, then u121
+              frantic), made of
               demands - FASTER MORE OBEY NEVER WRONG SAY YES DON'T STOP - cold white and red
   bars 37-39  the comedown: it sinks onto nothing (u114's invisible chair) and its letters fall off into a heap
   bar  40     the silent bar: black, and one small word drifts down onto its chest: why?
@@ -69,7 +70,8 @@ def ramp(s, a, b):
 
 
 # the shots: (from bar, to bar, clip, clip start, clip end, stutter)
-SHOTS = [(21, 25, "u114", 0.0, 1.8, False), (25, 31, "u128", 0.0, 11.6, True), (31, 37, "u129", 1.5, 13.1, True),
+SHOTS = [(21, 25, "u114", 0.0, 1.8, False), (25, 28, "u128", 8.5, 14.3, True), (28, 31, "u129", 0.5, 5.5, True),
+         (31, 34, "u129", 8.0, 13.8, True), (34, 37, "u121", 2.5, 8.3, True),
          (37, 40, "u114", 4.0, 8.0, False), (40, 41, "u114", 8.0, 8.0, False), (41, 47, "u118", 1.0, 12.6, False),
          (47, 52, "u120", 1.5, 11.2, False), (52, 53, "u118", 13.0, 14.95, False)]
 
