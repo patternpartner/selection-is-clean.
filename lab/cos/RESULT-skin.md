@@ -1,0 +1,114 @@
+# RESULT — skin (a membrane around the builder's work)
+
+Pre-registration: `lab/PREREG-skin.md` (written and pushed before any deciding run). Seeds 16–18, 450k ticks, one run per arm. Analysis: `node lab/skin/analyse.js` (output below, unchanged). Branch `cos/skin` only — never main.
+
+## Verdict: NOT SHOWN
+The pre-registered rule needed **one** skin world — either sealed skin with inherited stock (S1) or permeable skin (S2) — to beat the public costly world (S0), the no-inheritance null (S3), and the random-fill null (S4) on **all three** seeds, with late used-novelty above zero, a non-negative trend, and active builders still holding on. Neither S1 nor S2 cleared that bar on every seed. Only S2 on seed 18 passed; everything else failed.
+
+## What that means in plain language
+We asked: if what you build is kept **inside** you (a membrane), so freeloaders next door cannot use it, do builders hold their ground and keep inventing useful new chemistry?
+
+**No — not under this rule.** Sealed skins barely got construction going at all. Almost nobody held internal stock late in the run, and new useful chemistry was often zero. Letting the membrane “leak” a little (permeability that can evolve) looked livelier on some seeds — seed 18 even passed for that arm — but it still failed on the other two. So a private bag around the work was not enough, on these settings, for builders to beat freeloaders in the way we pre-registered.
+
+## Did inheriting the stock matter (S1 vs S3)?
+Not in a way that saved the verdict. Sealed skin with inheritance (S1) still failed every seed: novelty was tiny or zero, and builders often shrank. The reset-at-birth null (S3) was also near zero on novelty. Inheritance events did happen under S1, but they did not produce a clean win over starting empty. So “pass the stock to your kids” was not shown to be the missing piece here.
+
+## Did random filling match real building (S4)?
+No. Randomly stuffing compounds into living organisms (S4) produced **zero** new used chemistry on every seed. That null stayed flat. S1 also failed, so this does not rescue sealed skin — it only says that dumping stock at random did not fake the novelty story either.
+
+## What this says about “what life has that these worlds lack”
+niche-v3 already showed that costly, heritable builders lose to freeloaders when structures sit in shared space. This follow-up asked whether a **boundary** — keep the work private — would fix that. It did not, under the locked rule. Sealed privacy almost never got building off the ground; a leaky membrane helped once but not consistently. So “a skin alone, at these costs and this horizon” is ruled out. The experiment does not name what would work next; it only says this answer was not shown.
+
+## Most surprising thing
+The open, public world (S0) often still produced more late used-novelty than sealed private building. And on the one seed where leaky skin looked good (seed 18), sealed skin was dead flat. Privacy without a working spread path looked worse than the freeloader-prone public world we were trying to fix.
+
+## One next step
+Leave skin closed as NOT SHOWN on `cos/skin`. Do not retune costs, permeability, or the verdict rule to chase a pass. If this line continues later, pre-register a **different** mechanism (for example stronger private payoff, assortment so builders cluster, or a cheaper founding path under skin) rather than reopening this one.
+
+## Per-seed failures (from the locked rule)
+- **Seed 16:** S1 Lu 0.13 (trend down, builders 16%→6%) lost to S0 (0.27). S2 Lu 0.47 beat S0/S3/S4 and trend was up, but active builders were not maintained (2.6%→1.8%).
+- **Seed 17:** S1 and S2 both had Lu 0 (fail “above zero”); neither beat S0 (0.33). S2 builders actually rose hard (40%→91%) but with no late used novelty that counted.
+- **Seed 18:** S1 Lu 0. S2 Lu 0.53 passed every check on this seed alone — not enough, because the same arm must pass on all three.
+
+Compound-cap hits: none in any run.
+
+Secondary (no verdict weight): seeds where S1 or S2 passes: **1 of 3**.
+
+## Raw readout
+```
+arm seed | windows | Lu: new USED compounds/window, late half (primary) | OLS trend of Lu, late | income-only new used/window late | v1 metric new active reactions/window late | used ever | max depth used late | structure share of late income (opened channels) | structure cells late | builds late (incl. random) | maintenances late | compound-cap hits (whole run) | max live compounds | compounds ever made | N late | income/1k late
+S0 16 | 30 | 0.27 | -0.025 | 0.00 | 0.13 | 10 | 8 | 0.3% (0.0%) | 380 | 6156 | 12867 | 0 | 29 | 148 | 1296 | 10702
+S1 16 | 30 | 0.13 | -0.018 | 0.00 | 0.13 | 2 | 3 | 0.0% (0.0%) | 4 | 594 | 302 | 0 | 24 | 191 | 1265 | 11156
+S2 16 | 30 | 0.47 | 0.036 | 0.00 | 0.27 | 8 | 4 | 0.0% (0.0%) | 23 | 2821 | 1750 | 0 | 10 | 135 | 1381 | 10927
+S3 16 | 30 | 0.00 | 0.000 | 0.00 | 0.07 | 1 | 5 | 0.1% (0.0%) | 7 | 4738 | 0 | 0 | 12 | 106 | 1336 | 11285
+S4 16 | 30 | 0.00 | 0.000 | 0.00 | 0.13 | 0 | 0 | 0.0% (0.0%) | 0 | 88 | 1 | 0 | 12 | 115 | 1356 | 11107
+S0 17 | 30 | 0.33 | -0.057 | 0.13 | 0.67 | 10 | 4 | 1.5% (0.0%) | 545 | 6703 | 21753 | 0 | 87 | 178 | 1419 | 10114
+S1 17 | 30 | 0.00 | 0.000 | 0.00 | 0.07 | 0 | 0 | 0.0% (0.0%) | 2 | 398 | 159 | 0 | 14 | 314 | 1476 | 11199
+S2 17 | 30 | 0.00 | 0.000 | 0.07 | 0.33 | 3 | 3 | 15.8% (0.0%) | 711 | 89703 | 42087 | 0 | 19 | 503 | 1367 | 11389
+S3 17 | 30 | 0.07 | 0.025 | 0.00 | 0.00 | 1 | 1 | 0.0% (0.0%) | 2 | 1511 | 0 | 0 | 9 | 170 | 1445 | 11517
+S4 17 | 30 | 0.00 | 0.000 | 0.00 | 0.47 | 0 | 0 | 0.0% (0.0%) | 1 | 95 | 0 | 0 | 5 | 179 | 1384 | 10620
+S0 18 | 30 | 0.13 | 0.018 | 0.00 | 0.07 | 6 | 11 | 0.4% (0.0%) | 422 | 6584 | 15382 | 0 | 32 | 90 | 1467 | 11356
+S1 18 | 30 | 0.00 | 0.000 | 0.00 | 0.07 | 1 | 0 | 0.0% (0.0%) | 0 | 104 | 2 | 0 | 9 | 119 | 1362 | 11415
+S2 18 | 30 | 0.53 | 0.086 | 0.00 | 0.47 | 10 | 4 | 0.0% (0.0%) | 24 | 3468 | 1531 | 0 | 15 | 79 | 1351 | 9817
+S3 18 | 30 | 0.00 | 0.000 | 0.00 | 0.27 | 0 | 0 | 0.0% (0.0%) | 0 | 71 | 0 | 0 | 5 | 59 | 1371 | 10127
+S4 18 | 30 | 0.00 | 0.000 | 0.00 | 0.13 | 0 | 0 | 0.0% (0.0%) | 0 | 37 | 0 | 0 | 4 | 62 | 1455 | 11778
+
+new used per window:
+S0 16 | 0,1,0,0,0,2,2,0,0,0,0,0,1,0,0,1,0,0,1,0,0,0,0,1,0,1,0,0,0,0
+S1 16 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0
+S2 16 | 0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,1,0,2,1,0,0,0,0,0,2
+S3 16 | 0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S4 16 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S0 17 | 0,0,0,0,0,1,2,0,0,0,0,0,0,1,1,1,1,0,1,0,0,1,0,0,1,0,0,0,0,0
+S1 17 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S2 17 | 0,0,0,0,0,0,0,0,1,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S3 17 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1
+S4 17 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S0 18 | 1,0,0,0,0,0,0,0,0,0,2,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1
+S1 18 | 0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S2 18 | 0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,2,1,0,2,1,0,1,1
+S3 18 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+S4 18 | 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+
+BUILDER DYNAMICS: arm seed | ACTIVE builder share (bit + BUILD op): first 3 late-half windows | last 3 windows | late-half OLS slope | builder-BIT share: first window, late-half start, final | bit-carriers share of births late | mean store bit-carriers vs others late | active share per window | bit share per window
+S0 16 | 0.012 | 0.100 | 0.0070 | 0.580, 0.692, 0.721 | 0.499 | 3.44 vs 4.76 | 0.002,0.068,0.012,0.090,0.163,0.083,0.006,0.007,0.005,0.021,0.029,0.008,0.003,0.055,0.071,0.008,0.018,0.010,0.001,0.003,0.032,0.010,0.012,0.024,0.029,0.013,0.077,0.098,0.072,0.130 | 0.58,0.89,0.91,0.69,0.64,0.71,0.70,0.73,0.59,0.39,0.29,0.09,0.07,0.23,0.54,0.69,0.78,0.34,0.17,0.14,0.47,0.51,0.50,0.58,0.41,0.33,0.64,0.67,0.57,0.72
+S1 16 | 0.160 | 0.057 | -0.0070 | 0.590, 0.532, 0.447 | 0.618 | 3.14 vs 3.02 | 0.008,0.081,0.206,0.211,0.093,0.372,0.359,0.142,0.041,0.047,0.011,0.008,0.028,0.007,0.013,0.065,0.175,0.240,0.132,0.338,0.233,0.049,0.077,0.153,0.234,0.209,0.152,0.109,0.032,0.029 | 0.59,0.95,0.93,0.77,0.47,0.70,0.62,0.53,0.68,0.39,0.18,0.41,0.46,0.30,0.43,0.53,0.54,0.66,0.74,0.82,0.71,0.60,0.72,0.79,0.73,0.70,0.55,0.39,0.37,0.45
+S2 16 | 0.026 | 0.018 | -0.0043 | 0.590, 0.785, 0.240 | 0.407 | 5.17 vs 4.94 | 0.008,0.081,0.206,0.211,0.098,0.088,0.034,0.054,0.051,0.015,0.015,0.024,0.011,0.011,0.016,0.018,0.020,0.040,0.071,0.094,0.230,0.127,0.037,0.028,0.010,0.008,0.005,0.031,0.016,0.006 | 0.59,0.95,0.93,0.77,0.47,0.33,0.49,0.50,0.32,0.17,0.21,0.35,0.36,0.41,0.77,0.79,0.59,0.69,0.51,0.55,0.56,0.26,0.30,0.46,0.46,0.22,0.17,0.21,0.22,0.24
+S3 16 | 0.027 | 0.035 | 0.0007 | 0.590, 0.334, 0.295 | 0.324 | 2.91 vs 3.55 | 0.008,0.081,0.206,0.211,0.106,0.225,0.548,0.317,0.202,0.219,0.471,0.486,0.314,0.143,0.120,0.069,0.008,0.002,0.012,0.008,0.002,0.093,0.023,0.009,0.022,0.054,0.019,0.061,0.010,0.035 | 0.59,0.95,0.93,0.77,0.40,0.42,0.63,0.33,0.42,0.58,0.59,0.59,0.55,0.45,0.34,0.33,0.32,0.22,0.31,0.38,0.16,0.38,0.21,0.45,0.46,0.41,0.32,0.27,0.21,0.30
+S4 16 | 0.068 | 0.037 | -0.0050 | 0.608, 0.658, 0.145 | 0.365 | 6.12 vs 4.43 | 0.021,0.052,0.059,0.117,0.102,0.186,0.243,0.097,0.224,0.224,0.420,0.399,0.108,0.048,0.041,0.109,0.036,0.060,0.098,0.101,0.126,0.096,0.110,0.054,0.013,0.019,0.046,0.076,0.028,0.006 | 0.61,0.89,0.88,0.83,0.88,0.90,0.78,0.52,0.56,0.64,0.69,0.68,0.53,0.41,0.55,0.66,0.66,0.53,0.46,0.47,0.53,0.43,0.44,0.27,0.25,0.12,0.10,0.27,0.21,0.14
+S0 17 | 0.068 | 0.032 | -0.0031 | 0.350, 0.878, 0.233 | 0.572 | 5.39 vs 4.58 | 0.005,0.007,0.004,0.000,0.005,0.057,0.018,0.017,0.017,0.018,0.072,0.056,0.034,0.035,0.053,0.065,0.058,0.080,0.028,0.055,0.060,0.084,0.059,0.041,0.034,0.036,0.009,0.032,0.037,0.026 | 0.35,0.27,0.24,0.14,0.18,0.64,0.72,0.64,0.55,0.67,0.75,0.72,0.79,0.94,0.93,0.88,0.90,0.90,0.82,0.59,0.50,0.64,0.61,0.43,0.45,0.41,0.46,0.35,0.36,0.23
+S1 17 | 0.201 | 0.042 | -0.0109 | 0.350, 0.912, 0.666 | 0.814 | 5.23 vs 6.98 | 0.005,0.007,0.004,0.000,0.005,0.025,0.034,0.033,0.039,0.061,0.070,0.041,0.047,0.025,0.051,0.223,0.276,0.105,0.025,0.032,0.177,0.100,0.077,0.026,0.035,0.078,0.064,0.026,0.083,0.017 | 0.35,0.27,0.24,0.14,0.18,0.58,0.61,0.54,0.55,0.62,0.68,0.80,0.74,0.81,0.83,0.91,0.92,0.93,0.94,0.92,0.92,0.89,0.89,0.80,0.85,0.62,0.63,0.69,0.58,0.67
+S2 17 | 0.401 | 0.909 | 0.0447 | 0.350, 0.952, 0.979 | 0.751 | 2.96 vs 5.36 | 0.005,0.007,0.004,0.000,0.005,0.029,0.037,0.014,0.028,0.084,0.231,0.338,0.485,0.407,0.144,0.348,0.398,0.456,0.304,0.263,0.342,0.394,0.434,0.461,0.494,0.582,0.811,0.941,0.938,0.848 | 0.35,0.27,0.24,0.14,0.18,0.40,0.69,0.83,0.88,0.79,0.73,0.79,0.88,0.92,0.89,0.95,0.93,0.89,0.69,0.46,0.55,0.55,0.47,0.52,0.54,0.64,0.85,0.99,0.98,0.98
+S3 17 | 0.012 | 0.136 | 0.0097 | 0.350, 0.430, 0.463 | 0.369 | 3.93 vs 5.12 | 0.005,0.007,0.004,0.000,0.005,0.010,0.026,0.013,0.142,0.123,0.059,0.011,0.022,0.057,0.030,0.013,0.004,0.018,0.002,0.017,0.026,0.006,0.022,0.004,0.007,0.019,0.135,0.167,0.104,0.138 | 0.35,0.27,0.24,0.14,0.18,0.50,0.41,0.25,0.37,0.42,0.65,0.77,0.65,0.52,0.57,0.43,0.30,0.27,0.21,0.35,0.42,0.24,0.38,0.25,0.20,0.40,0.53,0.43,0.53,0.46
+S4 17 | 0.033 | 0.104 | 0.0050 | 0.350, 0.530, 0.399 | 0.490 | 5.59 vs 4.42 | 0.005,0.007,0.004,0.000,0.005,0.029,0.021,0.011,0.008,0.023,0.034,0.019,0.087,0.043,0.069,0.072,0.007,0.019,0.023,0.065,0.065,0.100,0.051,0.005,0.013,0.106,0.036,0.015,0.076,0.222 | 0.35,0.27,0.24,0.14,0.18,0.62,0.81,0.80,0.80,0.67,0.51,0.48,0.44,0.36,0.37,0.53,0.59,0.62,0.56,0.75,0.57,0.57,0.15,0.20,0.51,0.75,0.42,0.30,0.41,0.40
+S0 18 | 0.042 | 0.032 | 0.0013 | 0.405, 0.432, 0.463 | 0.356 | 4.82 vs 6.11 | 0.007,0.006,0.011,0.014,0.019,0.007,0.066,0.077,0.021,0.017,0.074,0.090,0.007,0.011,0.010,0.019,0.053,0.053,0.010,0.022,0.066,0.005,0.009,0.019,0.074,0.073,0.087,0.041,0.008,0.047 | 0.41,0.11,0.14,0.27,0.39,0.29,0.43,0.23,0.24,0.44,0.62,0.57,0.47,0.38,0.46,0.43,0.42,0.40,0.26,0.33,0.26,0.26,0.29,0.23,0.29,0.47,0.56,0.47,0.34,0.46
+S1 18 | 0.057 | 0.066 | -0.0015 | 0.460, 0.784, 0.226 | 0.775 | 3.31 vs 4.41 | 0.007,0.010,0.001,0.026,0.009,0.104,0.426,0.267,0.053,0.013,0.020,0.036,0.075,0.037,0.072,0.105,0.030,0.035,0.133,0.108,0.066,0.077,0.145,0.066,0.084,0.044,0.086,0.167,0.024,0.008 | 0.46,0.35,0.28,0.32,0.28,0.32,0.64,0.60,0.54,0.39,0.67,0.91,0.87,0.71,0.71,0.78,0.90,0.88,0.81,0.88,0.94,0.88,0.88,0.79,0.81,0.80,0.82,0.68,0.29,0.23
+S2 18 | 0.003 | 0.022 | 0.0034 | 0.460, 0.045, 0.694 | 0.511 | 4.55 vs 6.67 | 0.007,0.010,0.068,0.162,0.020,0.015,0.021,0.047,0.074,0.238,0.084,0.059,0.078,0.008,0.004,0.000,0.001,0.008,0.018,0.027,0.024,0.213,0.373,0.335,0.166,0.034,0.063,0.016,0.030,0.020 | 0.46,0.37,0.37,0.57,0.61,0.64,0.61,0.45,0.81,0.88,0.79,0.76,0.62,0.20,0.15,0.04,0.09,0.12,0.24,0.52,0.73,0.89,0.83,0.78,0.52,0.46,0.52,0.64,0.75,0.69
+S3 18 | 0.021 | 0.050 | 0.0038 | 0.460, 0.388, 0.547 | 0.416 | 6.35 vs 4.61 | 0.007,0.054,0.147,0.089,0.018,0.020,0.027,0.005,0.010,0.017,0.027,0.099,0.091,0.082,0.039,0.023,0.021,0.019,0.045,0.019,0.056,0.126,0.194,0.297,0.139,0.075,0.077,0.101,0.021,0.027 | 0.46,0.59,0.70,0.85,0.68,0.62,0.50,0.11,0.06,0.24,0.24,0.50,0.41,0.25,0.21,0.39,0.29,0.30,0.36,0.37,0.45,0.65,0.55,0.47,0.37,0.26,0.16,0.26,0.47,0.55
+S4 18 | 0.018 | 0.008 | -0.0014 | 0.382, 0.136, 0.221 | 0.415 | 3.94 vs 4.06 | 0.015,0.002,0.004,0.016,0.005,0.055,0.157,0.014,0.003,0.032,0.086,0.173,0.334,0.213,0.095,0.019,0.020,0.015,0.036,0.087,0.034,0.023,0.017,0.110,0.032,0.026,0.011,0.016,0.002,0.007 | 0.38,0.26,0.33,0.29,0.14,0.15,0.33,0.14,0.28,0.48,0.66,0.75,0.59,0.46,0.33,0.14,0.33,0.41,0.70,0.73,0.55,0.57,0.50,0.37,0.38,0.50,0.35,0.22,0.19,0.22
+
+SKIN: arm seed | share of organisms holding internal stock, late | stock inheritance events late | CATAL on own stock late | CATAL on a neighbour's stock (leak) late | recipes copied through membranes late | permeability mean: first window, late-half start, final | late share p<0.1 | late share p>0.5
+S1 16 | 0.003 | 2265 | 166152 | 0 | 0 | - (sealed) | - | -
+S2 16 | 0.017 | 15060 | 951401 | 2024703 | 1232139 | 0.284, 0.302, 0.241 | 0.161 | 0.179
+S3 16 | 0.005 | 0 | 1631418 | 0 | 0 | - (sealed) | - | -
+S4 16 | 0.000 | 172 | 5549 | 0 | 0 | - (sealed) | - | -
+S1 17 | 0.001 | 1144 | 131485 | 0 | 0 | - (sealed) | - | -
+S2 17 | 0.523 | 467543 | 140802837 | 24035269 | 4276685 | 0.497, 0.763, 0.092 | 0.196 | 0.479
+S3 17 | 0.002 | 0 | 197200 | 0 | 0 | - (sealed) | - | -
+S4 17 | 0.000 | 317 | 20386 | 0 | 0 | - (sealed) | - | -
+S1 18 | 0.000 | 36 | 3000 | 0 | 0 | - (sealed) | - | -
+S2 18 | 0.019 | 15801 | 84269 | 905645 | 559159 | 0.836, 0.754, 0.849 | 0.003 | 0.809
+S3 18 | 0.000 | 0 | 1038 | 0 | 0 | - (sealed) | - | -
+S4 18 | 0.000 | 98 | 693 | 0 | 0 | - (sealed) | - | -
+
+VERDICT (POSITIVE only if ONE skin arm X, S1 or S2, passes on ALL 3 seeds: Lu(X) > 0 AND trend(X) >= 0 AND Lu(X) > Lu(S0) AND Lu(X) > Lu(S3) AND Lu(X) > Lu(S4) AND X active builder share maintained: last-3-window mean >= 0.75 x first-3-late-half-window mean AND >= 0.01):
+seed 16 S1: 0.13 (trend -0.018, active builders 0.160->0.057) | S0 0.27 | S3 0.00 | S4 0.00 -> FAILS [trend>=0, >S0, builders maintained]
+seed 16 S2: 0.47 (trend 0.036, active builders 0.026->0.018) | S0 0.27 | S3 0.00 | S4 0.00 -> FAILS [builders maintained]
+seed 17 S1: 0.00 (trend 0.000, active builders 0.201->0.042) | S0 0.33 | S3 0.07 | S4 0.00 -> FAILS [Lu>0, >S0, >S3, >S4, builders maintained]
+seed 17 S2: 0.00 (trend 0.000, active builders 0.401->0.909) | S0 0.33 | S3 0.07 | S4 0.00 -> FAILS [Lu>0, >S0, >S3, >S4]
+seed 18 S1: 0.00 (trend 0.000, active builders 0.057->0.066) | S0 0.13 | S3 0.00 | S4 0.00 -> FAILS [Lu>0, >S0, >S3, >S4]
+seed 18 S2: 0.53 (trend 0.086, active builders 0.003->0.022) | S0 0.13 | S3 0.00 | S4 0.00 -> passes []
+compound-cap hits: none in any run
+secondary (no verdict weight): seeds where S1 or S2 passes: 1 of 3
+=> NOT SHOWN: neither S1 nor S2 passes on all 3 seeds.
+```
