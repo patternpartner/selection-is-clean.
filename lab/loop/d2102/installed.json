@@ -58,6 +58,13 @@
    "name": "SPINES",
    "op": 39,
    "tick": 800000
+  },
+  {
+   "k": 9,
+   "file": "9-fang.js",
+   "name": "FANG",
+   "op": 40,
+   "tick": 900000
   }
  ]
 }
