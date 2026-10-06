@@ -320,11 +320,13 @@ class World{
       spend:(c,amt)=>{ if(!(amt>0)||!w.alive[c])return 0; w.E[c]-=amt; m.out+=amt; return amt; },
       diffuse:(k,D)=>{ if(owner(k)[0]!==m)throw new Error(m.name+': only its own fields diffuse: '+k); const A=info(k), t=new Float32Array(C), W=P.W, H=P.H; for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const c=y*W+x, v=A[c]; t[c]=v+D*((A[y*W+(x+W-1)%W]+A[y*W+(x+1)%W]+A[((y+H-1)%H)*W+x]+A[((y+1)%H)*W+x])/4-v); } A.set(t); },
       decay:(k,f)=>{ const [o]=owner(k); if(o!==m)throw new Error(m.name+': only its own fields decay: '+k); const A=info(k); for(let c=0;c<C;c++)A[c]*=1-f; } }; }
-  modSample(ev){ if(!this.mods)return null; let tot=(ev.eatLight||0)+(ev.eatCorpse||0)+(ev.attackTake||0)*this.p.ATT_EFF+(ev.metab||0);   // ev: this sample's counters (sample() has already reset the live ones) for(const m of this.mods)tot+=m.inc;
+  // ev: this sample's counters (sample() has already reset the live ones). Shares are over ALL income, modules included (den:'all');
+  // until this was fixed the module term sat inside the comment on this line, so older rows hold shares of base income only.
+  modSample(ev){ if(!this.mods)return null; let tot=(ev.eatLight||0)+(ev.eatCorpse||0)+(ev.attackTake||0)*this.p.ATT_EFF+(ev.metab||0); for(const m of this.mods)tot+=m.inc;
     const L=this.p.MAXLEN*2, carriers=new Map(); let n=0; for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; n++; const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=NOPS)seen.add(op); } for(const op of seen)carriers.set(op,(carriers.get(op)||0)+1); }
     const list=this.mods.map(m=>{ let fe=0; for(const [k,A] of Object.entries(m.fields)) if(m.energyField[k]) for(let c=0;c<this.C;c++)fe+=A[c];
       const r={id:m.id,name:m.name,op:m.op,disarmed:m.disarmed,at:m.at,execs:m.execs,inc:+m.inc.toFixed(2),out:+m.out.toFixed(2),carriers:n?+((carriers.get(m.op)||0)/n).toFixed(4):0,fieldEnergy:+fe.toFixed(2)}; m.execs=0; m.inc=0; m.out=0; return r; });
-    return {nops:this.nops,list,flux:list.filter(r=>r.inc>0).map(r=>[r.id,tot>0?+(r.inc/tot).toFixed(4):0])}; }
+    return {nops:this.nops,den:'all',list,flux:list.filter(r=>r.inc>0).map(r=>[r.id,tot>0?+(r.inc/tot).toFixed(4):0])}; }
   count(){ let n=0; for(let c=0;c<this.C;c++)n+=this.alive[c]; return n; }
   reseed(){ const anc=[[OP.EAT_LIGHT,0],[OP.DIVIDE,0],[OP.TURN,1]]; this.reseeds=(this.reseeds||0)+1;
     for(let k=0;k<this.C/16;k++){ const c=(this.rnd()*this.C)|0; if(!this.alive[c]){ this.place(c,anc,1.0,(this.rnd()*65536)|0,(this.rnd()*65536)|0,0); this.ns.push(0); this.fs.push(0); } } }
