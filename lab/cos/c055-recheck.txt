@@ -1,0 +1,14 @@
+# c055 re-checked under the fixed metric (#291b), 6 Oct 2026
+# Arms built exactly as lab/sticky/search.js (cos/sticky-robust cd98fcd), run from a worktree of that branch:
+#   base = CHEM 1, HBODY 1, BODY_F 0.05, BODY_MAX 16, BODY_FUSE 0.02
+#   X  = base + BODY_RCAP 1 + RENEW 1, RN_CAP 18.1 + BODY_MUT 0.02, BODY_CAP 0.0456, BODY_DEL 0.00319, BODY_MQ 0.255, CH_LEN 2.77
+#   R  = base + RENEW 1, RN_CAP 18.1 + BODY_RCAP 1          (plain random capture in the same world)
+#   SH = X + BODY_SHUF 1                                     (inheritance null)
+#   DR = X + BODY_DRIFT 1                                    (no selection: shadow bodies, would-be income logged)
+# Seeds 401-403 (where c055 "re-confirmed"), 100,000 ticks, sampled every 1,000, S on 5-sample windows (the search length),
+# late third. OLD = the cos/sticky rule (used = income share >= 1% OR carrier share >= 1%); NEW = lab/used-novelty.js (income only).
+seed | OLD: X R SH DR | X beats all? || NEW: X R SH DR | X beats all?
+401 | 18.33 15.33 22.67 28.83 | no (lost to SH,DR) || 0.67 2.17 1.17 0.17 | no (lost to R,SH)
+402 | 30.50 15.67 5.67 30.17 | yes || 1.50 1.83 1.17 0.67 | no (lost to R)
+403 | 20.50 18.00 11.50 34.83 | no (lost to DR) || 1.00 0.83 1.83 0.83 | no (lost to SH)
+NEW bar over seeds 401-403: FAIL | seeds beating every null 0/3 | relative stickiness 0.787 | means X 1.06, R 1.61, SH 1.39, DR 0.56

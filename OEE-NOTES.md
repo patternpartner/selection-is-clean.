@@ -25605,3 +25605,24 @@ re-checked exact (24/24 rows, TASKS+VIRUS).
 6. **On save/load:** main's core resumes exactly for every option it has (CHEM, VIRUS, CHEM_BIG and TASKS re-checked).
    The gap the agent worked around (`fullsave.js`) is in the body and renewal state, which exists only on the cos
    branches; it should be fixed there before those switches are used again.
+
+**#291b — c055 under the fixed metric: it beats no null on any seed. Counted by income, the no-selection twin is the
+LOWEST arm, not the highest.** The c055 arms were rebuilt exactly as `lab/sticky/search.js` builds them and run from a
+worktree of `cos/sticky-robust`, on seeds 401-403 (where c055 "re-confirmed"), at 100,000 ticks with 5,000-tick windows
+(the search's length; the re-confirmation was at 450k). Each run was scored twice (`lab/cos/c055-recheck.txt`):
+
+| seed | old rule (income OR carriers): X / R / SH / DR | new rule (income only): X / R / SH / DR | X beats every null, new rule |
+|---|---|---|---|
+| 401 | 18.3 / 15.3 / 22.7 / 28.8 | 0.67 / 2.17 / 1.17 / 0.17 | no (loses to R, SH) |
+| 402 | 30.5 / 15.7 / 5.7 / 30.2 | 1.50 / 1.83 / 1.17 / 0.67 | no (loses to R) |
+| 403 | 20.5 / 18.0 / 11.5 / 34.8 | 1.00 / 0.83 / 1.83 / 0.83 | no (loses to SH) |
+
+- **About 95% of the old count was carriers alone.** Counted by income, sticky novelty is 0.2-2.2 per window, not 6-35.
+- **New bar: FAIL.** 0/3 seeds beat every null, and relative stickiness is 0.79: c055's mean 1.06 is below plain random
+  capture (1.61) and the shuffled-inheritance null (1.39).
+- **The design beats its no-selection twin on all three seeds** (0.67 v 0.17, 1.50 v 0.67, 1.00 v 0.83). The twin's old
+  lead was carriers: shadow bodies spread tricks that earn nothing.
+  - **So the concern in #291 is answered.** The fixed bar is passable; selection does make income-earning tricks stick
+    better than drift. c055 just does not do it better than plain chance.
+- **Caveat:** 100k, not 450k, and one replicate per arm. That is enough to retire c055's GO, which rested on the old rule,
+  but not a full re-run of the sticky line.
