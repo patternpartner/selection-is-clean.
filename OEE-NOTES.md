@@ -25936,4 +25936,28 @@ the three (25-29% of children functionally changed, against 9% plain), so length
 **Fixed:** the mind and both controls now only substitute (no length change), and a proposal always changes the
 instruction, so all three arms add exactly the same change and differ only in what they write.
 
-**Pilot v2 (seeds 2201 and 2202; plain, mind, frozen, uniform; to 400,000 ticks).** Running.
+**Pilot v2 (seeds 2201 and 2202; plain, mind, frozen, uniform; to 400,000 ticks; variation matched).**
+
+| arm | adaptive functional genotypes ever (2201 / 2202) | first-time adaptive, last three of ten windows (2201 / 2202) |
+|---|---|---|
+| plain | 43 / 51 | 10 / 12 |
+| mind (learns) | 113 / 171 | 44 / 43 |
+| frozen (random network) | 143 / 204 | 55 / 42 |
+| uniform (random instruction) | 244 / 236 | 69 / 87 |
+
+- **Extra variation of any kind keeps first-time adaptive genotypes arriving late** (plain tapers to 2-5 a window). Part
+  of that is the bar: more change splinters the neutral population and its bar falls (0.001-0.003 against about 0.01), so
+  plain against the rest is only partly fair; among the three matched arms the bar is the same.
+- **Among the matched arms the learning mind is the least inventive** on both seeds: below uniform randomness, level with
+  the frozen network.
+- **What it does instead is exploit.** Over the last 100,000 ticks the mind world catches the most light (27.3k and 27.4k
+  per 1,000 ticks against 26.1-27.0k) and takes the most by attack (17.7k and 15.8k against 10.9-13.8k for the controls),
+  with fewer operations in common use (17 and 20 against 21-22). Its loss settles at 2.1-2.3 on operations (uniform 3.5)
+  and 2.7 on arguments (uniform 5.5).
+- **Why:** it learns from every program that divides, which is nearly every adult, so it learns what the population is,
+  and writes more of it. A learner trained on its world's past compresses that past.
+
+**Next (v3): learn from changes that worked, not from programs that exist.** Each child remembers where it was changed (by
+random mutation or by the mind); each time that child divides, the change and its context become a training example. The
+mind then learns which edits succeed in which context, and can carry a successful edit from one lineage into another.
+Still nothing but the system as data.
