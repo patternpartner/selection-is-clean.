@@ -26216,3 +26216,48 @@ R1: NOT MET
   keeps (#295, 4 runs of 4), measured within each run against a drift twin rather than across runs.
 - For any next mind experiment: a band of at least four runs per arm per world from the start, and a measure or a horizon
   whose spread is smaller than the effect looked for. At this spread an effect of +30 needs about ten runs per arm per world.
+
+### #296 — THE MIND IN THE REAL ENGINE (the user: "until it's actually in the system and ran for real we don't actually know")
+
+Everything in #293-#295 ran in `lab/oee-core.js`, a simplified world. This moves the mind into `engine.html`, the universe
+the field runs, and switches it on from the field.
+- **What it is:** #293's v2 mind (`EngineMind`, beside `inheritProg`): learns from the running program of the parent at
+  every parented birth, and with odds P rewrites one instruction of the child (operation and registers; the constant kept)
+  with one it samples from what it expects there. Instructions here are `[op, dst, src, k]`, so a token pair is the
+  operation (vocabulary `OPCODE_DRAW`) and the two registers as one token (dst and src mod 12, as every mutation operator
+  here draws them). K=6, D=16, H=64, SGD every 50 ticks on 100 positions of the last 1,024 parents, as in the lab.
+- **Where:** both reproduction chokepoints, `addParticle` and `addCompound`, right after the child's program is made (two
+  sites, asserted when patched); training at the top of `loop()`. Liveness names `mind.see`, `mind.propose`, `mind.train`
+  are declared, so a run without the mind reports them never fired.
+- **Switches:** rigs `MIND=<percent>` (in `harness-env.js` KNOBS), `MIND_MODE=1` frozen / `2` uniform, `MIND_SEED`. The
+  field: `index.html#mind` (20%), `#mind=40`, `#mind,mindmode=uniform`. The field writes the token into every hash it
+  gives a universe (surface, layers, grown, and the ones that relight a face), and the engine latches it at its first tick.
+  Each universe's `__field.stat()` now carries `mind` (its counters), read, not drawn.
+- **Off is the old engine, byte for byte**: `harness-oee.js` seeds 1 and 2, 600 ticks, whole metric series identical
+  against the pre-change engine. `substrate-test.js` 264 passed, 0 failed at TICKS=900, the default, TICKS=40 and FOUND=0.
+  With the mind off nothing is drawn; switched on without `MIND_SEED`, it takes one `Math.random` for its seed (so a
+  field's universes do not share one stream).
+- **On, in the real field** (`mind-test.js`, Chromium, two universes and the collective, 60 seconds each): every universe
+  had a learning mind that had seen 298-402 parents and written 57-87 children by tick ~1,500, prediction loss 3.32-3.53
+  against uniform's 6.06; `#mind=40,mindmode=uniform` ran at 0.4 with no learning; with no token, every universe reported
+  no mind.
+- Not saved with a universe: a reload starts a newborn mind. Off by default; nothing about saved worlds changes.
+
+### #296b — DECIDING RUN, pre-registered (written and committed before the first decision run)
+
+**Question.** In the real engine, does the mind (MIND=20) change the world's diversity, and which way, beyond what
+chance does? The retire-or-prove template, as #272 ran it.
+- **Seeds:** 301, 302, 303 (unseen). 20,000 ticks, `harness-oee.js` with ESTABLISH=250, from a frozen worktree of the
+  commit carrying this entry.
+- **Arms per seed:** null0 (mind off), null1-3 (mind off, NULLSHIFT 1, 2, 3), M (MIND=20, MIND_SEED=1), U (MIND=20,
+  MIND_MODE=2, MIND_SEED=1: uniformly random rewrites at the same rate).
+- **Executed first:** a seed counts only if the arm's mind wrote children (`mind.uses` > 0) and its series differs from null0.
+- **Measures, against EVERY null on the seed:** centredEntropyRatio (0.05), spread_late (10%), establishment estFrac (25%),
+  program entropy sigH_late (10%); crash (alive late under 5 with every null over 20); sweep (effN late 25% under).
+- **Verdict on M:** fewer than 3 counted, INCONCLUSIVE. WORSE on two-thirds of counted seeds: DELETE (or DORMANT with a
+  named follow-up). BETTER on two-thirds and not WORSE: KEEP, claimed only at the rung measured (diversity, not selection,
+  not invention). Better on one measure and worse on another on two-thirds: SPLIT, stays an off-by-default switch.
+  Otherwise KEEP as an off-by-default switch. The default does not change in any case: making the mind part of every
+  universe changes the artwork, and that is the user's call.
+- **U** is scored the same way and reported beside M, to say whether learning matters or only the extra rewrites.
+- Scored by `score-296b.js`, committed with this entry.

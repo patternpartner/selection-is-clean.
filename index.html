@@ -236,7 +236,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|mind=\\d+|mindmode=frozen|mindmode=uniform)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -254,7 +254,7 @@
     try{ history.replaceState(null,'',location.pathname||' '); }catch(e){}
     raw=raw.replace(/(^|,)reset(?=,|$)/,'').replace(/^,/,'');
   }
-  var n, clean=false, prune=false, passHash='', wantCollective=false;
+  var n, clean=false, prune=false, passHash='', wantCollective=false, MINDTOK='';
   if(isOptions){
     // ANCHOR IT. `n=` unanchored matches inside other options: `turn=0` contains "n=0", so
     // /#turn=0 silently built a FOUR-universe field (n=0 -> the !(n>=1) fallback) and /#turn=600
@@ -275,10 +275,16 @@
     // #253: #prune hands every universe its switchboard (engine.html, MECH_DECLARED). Passed down in each
     // universe's own hash beside cleanart, because the engine reads it there; without it nothing changes.
     prune = /(^|,)prune(,|$)/.test(raw);
+    // #296: #mind (or #mind=<percent>, with mindmode=frozen|uniform for the controls) puts the primitive mind into
+    // every universe of the field. The engine latches it from its own hash at its first tick, so every hash this field
+    // writes into a universe carries the token (withMind below), including the ones that relight a face.
+    var _mi=raw.match(/(?:^|,)(mind(?:=\d+)?)(?:,|$)/), _mm=raw.match(/(?:^|,)mindmode=(frozen|uniform)(?:,|$)/);
+    if(_mi) MINDTOK=_mi[1]+(_mm?',mindmode='+_mm[1]:'');
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }
   var total=n+(wantCollective?1:0);
+  function withMind(h){ if(!MINDTOK)return h; return h ? h+','+MINDTOK : '#'+MINDTOK; }
 
   // ═══ #162 — HOW MANY WORKERS ═══════════════════════════════════════════════════════════════
   // The field has TWO ceilings and they pull in opposite directions. Memory is per-ISOLATE: nine
@@ -393,7 +399,7 @@
     // general case rather than a special one.
     f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
          +'&slot='+(isColl?'collective':('u'+i))
-         +(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
+         +withMind(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);
@@ -423,7 +429,7 @@
         // universe shares (#162) and which STORAGE key holds its lineage (#170).
         var poolSlot=(cells.length+(L-1)*total+k)%pool;
         d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k
-             +'#cleanart,dark,pace='+(DEEPPACE*L);
+             +withMind('#cleanart,dark,pace='+(DEEPPACE*L));
         d.title='Layer '+L+', universe '+(k+1);
         deepFrag.appendChild(d); deep.push(d);
       }
@@ -532,7 +538,7 @@
     // Parked past the layers, on the same off-screen row.
     g.style.left = ((LAYERS*total) + grown.length) * (cw+4) + 'px';
     g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot
-          + '#cleanart,dark,pace='+DEEPPACE;
+          + withMind('#cleanart,dark,pace='+DEEPPACE);
     g.title = 'Grown universe '+slot;
     below.appendChild(g);
     grown.push(g);
@@ -585,7 +591,7 @@
       f.classList.toggle('face',on);
       var w=f.contentWindow, a=w&&w.__field;
       // #dark rides the hash (the engine re-reads it on hashchange); pace goes through the API.
-      var h='#cleanart'+(on?'':',dark,pace='+(DEEPPACE*L));
+      var h=withMind('#cleanart'+(on?'':',dark,pace='+(DEEPPACE*L)));
       if((w.location.hash||'')!==h) w.location.hash=h;
       if(a&&a.pace) a.pace(on?0:DEEPPACE*L);
     }catch(e){}
@@ -605,7 +611,7 @@
   // moving one. Whenever the field changes one of these flags, every flag it cares about goes in the
   // hash — the API call after it is then only there to make it immediate.
   function lightSurface(on){
-    var h='#cleanart'+(on?'':',dark,pace='+DEEPPACE);
+    var h=withMind('#cleanart'+(on?'':',dark,pace='+DEEPPACE));
     for(var i=0;i<cells.length;i++){
       try{
         var w=cells[i].firstChild.contentWindow, a=w&&w.__field;
@@ -838,7 +844,7 @@
   // localStorage slot, which by then holds some other universe's genome.
   var openCell=null;
   function setFrameHash(cell,h){
-    var w=cell.firstChild.contentWindow;
+    h=withMind(h); var w=cell.firstChild.contentWindow;
     try{ if((w.location.hash||'')!==h) w.location.hash=h; }catch(e){}
   }
   // #154: the controls come WITH the universe. In the grid a cell is a tab and nothing else — the
