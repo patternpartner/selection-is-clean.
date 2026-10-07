@@ -26126,3 +26126,23 @@ the world breeds cautious minds (NOVEL at or below its shadow).
   growth: scale the learning rate by the starting size over the current size, and keep new units only if they help
   (compared on the same examples with the new units switched off).
 - The grow arm's novelty (76 and 32 against 44 and 43) is one seed up and one down: nothing to read.
+
+**#294 pilot result (worlds 2201-2204, 400,000 ticks, one run per arm per world; exploratory, no null band).**
+
+| arm | adaptive ever (2201 / 2202 / 2203 / 2204) | total | first-time adaptive, last three windows | total |
+|---|---|---|---|---|
+| alone (each world its own mind) | 113 / 171 / 137 / 129 | 550 | 44 / 43 / 28 / 40 | 155 |
+| **pairs (communicate: hear one partner)** | **181 / 183 / 163 / 146** | **673** | 68 / 40 / 47 / 20 | 175 |
+| all (broadcast: hear everyone) | 140 / 206 / 97 / 117 | 560 | 41 / 46 / 29 / 32 | 148 |
+| uniform random | 244 / 236 / 141 / 136 | 757 | 69 / 87 / 43 / 39 | 238 |
+
+- **Hearing one partner beat learning alone on all four worlds** in adaptive genotypes ever (by 68, 12, 26 and 17), and
+  beat uniform randomness on 2203 and 2204 (163 against 141, 146 against 136); late, it was ahead of alone on two worlds of
+  four. **Broadcast did not**: ahead of alone on two worlds, behind on two, total 560 against 550.
+- **Broadcast pulled the worlds together a little, as feared**: the cosine between worlds' operation shares stayed 0.96-0.98
+  through the run under broadcast against 0.93-0.96 alone and 0.93-0.95 in pairs. No arm made worlds share functional
+  genotypes after the start (Jaccard 0.000-0.004 from 80,000 ticks); partners in pairs shared the most (0.002-0.004).
+- Read with care: one run per arm per world, the worlds differ a lot among themselves (uniform: 244 on 2201, 136 on 2204),
+  and nothing here measures the run-to-run spread of a single arm. Pairs ahead of alone on four of four is the first mind
+  result in this project that points the same way on every world it was run on. The deciding run would be pairs against
+  alone and uniform, with MIND_SEED replicates for a null band, on unseen worlds, with the rule written first.
