@@ -25976,3 +25976,31 @@ randomness at the same rate. What a learned proposer adds is concentration on wh
 by breadth. The one thing every extra-variation arm shares, and plain lacks, is more variation: whether this world's
 plateau is mostly a variation-rate plateau is a question in its own right (and the neutral bar falls with variation, so it
 needs a measure that does not).
+
+**Pilot v4 and v5: the curious mind, and all three drives at once (the user's suggestions; same two seeds, 400,000 ticks,
+same proposal rate).** v4 tests two kinds of curiosity: NOVEL (`MIND_NOVEL=0.5`: from its model of what exists, write
+what it does NOT expect, p^-0.5) and UNSURE (`MIND_WHERE=uncertain` on v3's data: change where it is least able to predict
+what works). v5 (`MIND_MIX`) is one mind with all three drives (exploit, the unexpected, unsure) and two networks (what
+exists, what works), one drive per proposal.
+
+| arm | first-time adaptive, last three windows (2201 / 2202) | adaptive ever (2201 / 2202) |
+|---|---|---|
+| plain | 10 / 12 | 43 / 51 |
+| exploit (v2) | 44 / 43 | 113 / 171 |
+| learn from changes (v3) | 42 / 52 | 125 / 157 |
+| **seek the unexpected (v4 NOVEL)** | 56 / **98** | 172 / 208 |
+| explore where unsure (v4 UNSURE) | 52 / 51 | 160 / 197 |
+| all three at once (v5) | 62 / 54 | 184 / 164 |
+| frozen network | 55 / 42 | 143 / 204 |
+| uniform random | **69** / 87 | 244 / 236 |
+
+- **Seeking the unexpected is the best mind, and the first to beat uniform randomness on a seed** (98 against 87 on 2202;
+  56 against 69 on 2201). One run per arm per seed cannot tell them apart: that needs a null band.
+- **Exploring where unsure is no better than the frozen network.** Uncertainty about what works points at places, not at
+  new instructions, and the replacement still comes from the model's expectations.
+- **All three at once lands at about the average of its three drives** (62 and 54), as a mixture taking a third each
+  would: the exploiting third dilutes the curious two-thirds rather than combining with them.
+- Over the last 100,000 ticks the curious minds are as broad as the controls (functional genotypes 505-549, operations in
+  common use 19-23) and none is the narrow exploiter v2 was.
+- **So far: no mind out-invents randomness at the same rate, and the one that comes close is the one that writes what it
+  has not seen.** Learned concentration costs novelty; learned avoidance of the familiar recovers it, and only that.
