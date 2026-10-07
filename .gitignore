@@ -20,3 +20,5 @@ out/
 __pycache__/
 lab/loop/*/heavy/
 lab/loop/*/state.json
+# #293 mind runs: per-1,000-tick samples and saves are large; summaries are committed beside them
+lab/mindrun/heavy/
