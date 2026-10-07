@@ -26004,3 +26004,19 @@ exists, what works), one drive per proposal.
   common use 19-23) and none is the narrow exploiter v2 was.
 - **So far: no mind out-invents randomness at the same rate, and the one that comes close is the one that writes what it
   has not seen.** Learned concentration costs novelty; learned avoidance of the familiar recovers it, and only that.
+
+**Pilot v6: the world decides the mix (`MIND_ADAPT`, the user's suggestion; same seeds, 400,000 ticks).** Each child the
+combined mind writes carries the drive that wrote it; each of its divisions credits that drive; the mind picks drives by
+Thompson sampling on each drive's children's divisions per proposal, with evidence fading over about 20,000 ticks.
+- **The world chose the exploiter, within the first 40,000 ticks, and kept it for the whole run.** Share of proposals per
+  40,000-tick window (exploit / the unexpected / unsure): 93-99% / 0-1% / 1-7% on 2201, 76-96% / 0-2% / 4-24% on 2202.
+  Children's divisions per proposal: exploit 0.88-0.92, unsure 0.75-0.90, the unexpected 0.42-0.76.
+- **And with it, the least novelty of any mind:** first-time adaptive genotypes in the last three windows 34 and 36, below
+  the fixed mix (62 and 54) and the pure exploiter (44 and 43). Over the last 100,000 ticks the world is the exploiter's
+  again: the most light and attack (27.3k and 18.1k on 2201), fewer genotypes (475 and 492), 20 operations in common use.
+- **Why:** the world's judgment of a change is its children. An unexpected instruction usually breaks something, so its
+  children reproduce less, and the drive that writes it loses. The judgment is right about the children and blind to what
+  novelty is for: the rare unexpected change that founds a lineage. **Short-run success, given the choice, buys
+  conservatism.** A longer horizon (credit for the whole lineage a change founds) would still judge by the average change,
+  which for unexpected ones is harmful; what novelty pays out is in the upper tail (the few lineages that spread), and a
+  judge has to look there to keep it.
