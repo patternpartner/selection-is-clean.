@@ -26146,3 +26146,26 @@ the world breeds cautious minds (NOVEL at or below its shadow).
   and nothing here measures the run-to-run spread of a single arm. Pairs ahead of alone on four of four is the first mind
   result in this project that points the same way on every world it was run on. The deciding run would be pairs against
   alone and uniform, with MIND_SEED replicates for a null band, on unseen worlds, with the rule written first.
+
+**#295b rerun with growth fixed (learning rate scaled to size, units kept only if they help; d24dbe6; same seeds).**
+
+| arm | first-time adaptive, last three windows | adaptive ever | the AI's loss at 400k, size, growths kept / tried |
+|---|---|---|---|
+| v2 mind (64 units) | 44 / 43 | 113 / 171 | 5.06 / 4.78 |
+| grow2 (the AI grows) | 19 / 47 | 100 / 140 | 4.04 at 72 units, 1 / 70 · 4.98 at 64, 0 / 71 |
+| breed2 (births + growth) | 41 / 19 | 155 / 113 | 4.01 at 80, 2 / 70 · 4.71 at 64, 0 / 73 |
+
+- **Given a fair test, the mind almost never wants to be bigger.** About 70 tries each over 400,000 ticks, kept 1, 0, 2
+  and 0 times: in each trial the loss with the new units on was no lower than with them switched off. Capacity is not
+  what limits this mind; its error rises because the world changes faster than a 1,024-example memory can follow.
+- **The world breeds cautious minds again**: carrier-weighted curiosity below its shadow in 356 of 378 samples on 2201
+  (mean 0.004 against the shadow's 0.119) and 301 of 356 on 2202 (0.004 against 0.030). That is now four runs of four.
+  Learning rate: no selection on 2201 (174 below, 204 above, both 0.050), below its shadow on 2202 (294 against 85). In
+  the faulty run it was below on both, which is what a world compensating for too-jumpy grown minds would do.
+- **Neither growth nor births raised novelty** (grow2 19 and 47 late, 100 and 140 ever; breed2 41 and 19, 155 and 113;
+  against the fixed mind's 44 and 43, 113 and 171): one seed up and one down every time, as noise does.
+- **So #295's answer:** minds that are born, inherit and grow are a working population (3,355 and 3,541 born, up to 9
+  generations deep), and the world shapes them, but toward caution, and their novelty is the lone mind's. What a
+  mind would need to keep up with this world is memory, not size; and what keeps it curious is not anything the world
+  rewards. Of everything tried in #293-#295, the one result pointing the same way on every world is #294's: minds that
+  learn from one partner world.
