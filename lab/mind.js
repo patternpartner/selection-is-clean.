@@ -31,6 +31,12 @@ class Mind{
     // instead of p, what it does; WHERE='uncertain' picks the place to change in proportion to the square of its own
     // uncertainty there (the entropy of what it predicts), instead of anywhere at random.
     this.NOVEL=o.NOVEL||0; this.WHERE=o.WHERE||'random';
+    // GROWTH (#295), off by default: GROW=g adds g hidden units whenever the world outgrows it, that is when its loss
+    // (operations plus arguments) has risen TOL above the lowest it reached since it last grew, up to HMAX units. New units
+    // start with random input weights and zero output weights, so growing changes nothing it predicts until it learns to
+    // use them. PER (#295), off by default: train PER steps per example seen since the last training (at most STEPS)
+    // instead of STEPS always, so a mind that sees one lineage's few divisions does not train its handful of memories to death.
+    this.GROW=o.GROW||0; this.HMAX=o.HMAX||128; this.TOL=o.TOL||0.1; this.lossMin=Infinity; this.grown=0; this.PER=o.PER||0; this.seen=0;
     this.rnd=mulberry32(((seed>>>0)||1)^0x6d696e64);   // its own random stream: it never draws from the world's
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,s)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*s; return a; };
     this.emb=init(VOCAB*D,0.1); this.W1=init(K*D*H,1/Math.sqrt(K*D)); this.b1=new Float32Array(H);
@@ -68,14 +74,36 @@ class Mind{
   // the world tells it about a parent that divided. With at (an instruction position) it is a CHANGE that worked: the
   // parent carries a change at that position, made when it was born, and it has just had a child (DATA 'changes', v3).
   // Without, it is the whole program (DATA 'parents', v2): any position may be learned from.
-  see(prog,at){ const e={p:prog.map(x=>[x[0],x[1]]),at:at===undefined?-1:at}; if(this.buf.length<this.BUF)this.buf.push(e); else { this.buf[this.bufAt]=e; this.bufAt=(this.bufAt+1)%this.BUF; } }
+  see(prog,at){ this.seen++; const e={p:prog.map(x=>[x[0],x[1]]),at:at===undefined?-1:at}; if(this.buf.length<this.BUF)this.buf.push(e); else { this.buf[this.bufAt]=e; this.bufAt=(this.bufAt+1)%this.BUF; } }
 
   // learning, every EVERY ticks: STEPS random token positions from the buffer
-  train(nops){ if(this.MODE!=='learn'||this.buf.length<16)return; let lo=0, la=0, no=0, na=0;
-    for(let s=0;s<this.STEPS;s++){ const e=this.buf[(this.rnd()*this.buf.length)|0], pr=e.p; if(!pr.length)continue;
+  train(nops){ const steps=this.PER?Math.min(this.STEPS,Math.round(this.PER*this.seen)):this.STEPS; this.seen=0;
+    if(this.MODE!=='learn'||this.buf.length<16||!steps)return; let lo=0, la=0, no=0, na=0;
+    for(let s=0;s<steps;s++){ const e=this.buf[(this.rnd()*this.buf.length)|0], pr=e.p; if(!pr.length)continue;
       const j=e.at>=0&&e.at<pr.length?2*e.at+(this.rnd()<0.5?0:1):(this.rnd()*pr.length*2)|0, arg=(j&1)===1;
       const tgt=arg?pr[j>>1][1]:pr[j>>1][0]; if(!arg&&tgt>=nops)continue; const l=this.learn(this.ctx(pr,j),tgt,arg,nops); if(arg){ la+=l; na++; } else { lo+=l; no++; } }
-    const a=0.98; if(no)this.lossO=this.nTrain?a*this.lossO+(1-a)*lo/no:lo/no; if(na)this.lossA=this.nTrain?a*this.lossA+(1-a)*la/na:la/na; this.nTrain++; }
+    const a=0.98; if(no)this.lossO=this.nTrain?a*this.lossO+(1-a)*lo/no:lo/no; if(na)this.lossA=this.nTrain?a*this.lossA+(1-a)*la/na:la/na; this.nTrain++;
+    if(this.GROW&&this.nTrain>40){ const l=this.lossO+this.lossA; if(l<this.lossMin)this.lossMin=l; else if(l>this.lossMin+this.TOL&&this.H<this.HMAX){ this.grow(Math.min(this.GROW,this.HMAX-this.H)); this.lossMin=l; } } }
+
+  // dh more hidden units (#295): every old weight kept, the new units' input weights random, their output weights zero
+  grow(dh){ const K=this.K, D=this.D, H=this.H, H2=H+dh, I=K*D, r=this.rnd, sc=1/Math.sqrt(I), W1=new Float32Array(I*H2);
+    for(let i=0;i<I;i++){ for(let u=0;u<H;u++)W1[i*H2+u]=this.W1[i*H+u]; for(let u=H;u<H2;u++)W1[i*H2+u]=(r()*2-1)*sc; }
+    const b1=new Float32Array(H2), Wo=new Float32Array(H2*MAXOPS), Wa=new Float32Array(H2*NARG); b1.set(this.b1); Wo.set(this.Wo); Wa.set(this.Wa);   // the output weights are unit-major: rows past H are the new units, zero
+    this.W1=W1; this.b1=b1; this.Wo=Wo; this.Wa=Wa; this.H=H2; this.h=new Float32Array(H2); this.dh=new Float32Array(H2); this.grown++; }
+
+  // a child mind (#295): its parent's knowledge (weights and memories), its own random stream, and its heritable settings
+  // changed a little, each with even odds: curiosity NOVEL by up to 0.2 (kept in 0-2), learning rate LR by up to half again
+  // either way (kept in 0.005-0.3), and with odds 1 in 5 GROW more hidden units if it grows at all. Draws from the parent's stream.
+  // Each also carries a SHADOW of NOVEL and LR (sNOVEL, sLR): inherited and mutated by exactly the same rule, never used. A
+  // bounded walk drifts away from its bound (from NOVEL 0 half the changes are lost to the floor, so curiosity creeps up by
+  // drift alone), and the shadow is that drift: only a setting that moves away from its shadow among the minds the world
+  // keeps has been selected.
+  child(){ const r=this.rnd, o=this.save(); o.rnd=(r()*4294967296)|0; const m=Mind.load(o); m.uses=0;
+    const nov=v=>Math.max(0,Math.min(2,v+(r()*2-1)*0.2)), lr=v=>Math.max(0.005,Math.min(0.3,v*Math.exp((r()*2-1)*0.4)));
+    if(this.sNOVEL===undefined){ m.sNOVEL=this.NOVEL; m.sLR=this.LR; }
+    if(r()<0.5)m.NOVEL=nov(m.NOVEL); if(r()<0.5)m.LR=lr(m.LR); if(r()<0.5)m.sNOVEL=nov(m.sNOVEL); if(r()<0.5)m.sLR=lr(m.sLR);
+    if(m.GROW&&m.H<m.HMAX&&r()<0.2)m.grow(Math.min(m.GROW,m.HMAX-m.H));
+    return m; }
 
   // the mind writes into a child about to be born: it replaces one instruction at a random place with one it samples, and
   // the new instruction always differs from the old (resampled until it does). Substitution only, so the mind never
@@ -93,17 +121,19 @@ class Mind{
     if(op===old[0]&&arg===old[1]){ arg=(arg+1+((this.rnd()*255)|0))&255; }   // sixteen draws gave back the same: change the argument
     src[i]=[op,arg]; return true; }
 
-  report(nops){ return {mode:this.MODE,p:this.P,uses:this.uses,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossArg:+this.lossA.toFixed(3),uniformOp:+Math.log(nops).toFixed(3),uniformArg:+Math.log(256).toFixed(3),buf:this.buf.length}; }
+  report(nops){ return {mode:this.MODE,p:this.P,uses:this.uses,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossArg:+this.lossA.toFixed(3),uniformOp:+Math.log(nops).toFixed(3),uniformArg:+Math.log(256).toFixed(3),buf:this.buf.length,...(this.GROW?{H:this.H,grown:this.grown}:{})}; }
 
   save(){ const b=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength).toString('base64');
     return {K:this.K,D:this.D,H:this.H,LR:this.LR,P:this.P,MODE:this.MODE,BUF:this.BUF,EVERY:this.EVERY,STEPS:this.STEPS,NOVEL:this.NOVEL,WHERE:this.WHERE,rnd:this.rnd.s,emb:b(this.emb),W1:b(this.W1),b1:b(this.b1),Wo:b(this.Wo),bo:b(this.bo),Wa:b(this.Wa),ba:b(this.ba),
-      buf:this.buf.map(e=>[e.p.map(x=>x[0].toString(16).padStart(2,'0')+x[1].toString(16).padStart(2,'0')).join(''),e.at]),bufAt:this.bufAt,lossO:this.lossO,lossA:this.lossA,nTrain:this.nTrain,uses:this.uses}; }
+      buf:this.buf.map(e=>[e.p.map(x=>x[0].toString(16).padStart(2,'0')+x[1].toString(16).padStart(2,'0')).join(''),e.at]),bufAt:this.bufAt,lossO:this.lossO,lossA:this.lossA,nTrain:this.nTrain,uses:this.uses,
+      ...(this.GROW?{GROW:this.GROW,HMAX:this.HMAX,TOL:this.TOL,lossMin:isFinite(this.lossMin)?this.lossMin:null,grown:this.grown}:{}),...(this.PER?{PER:this.PER,seen:this.seen}:{}),...(this.sNOVEL!==undefined?{sNOVEL:this.sNOVEL,sLR:this.sLR}:{})}; }
   static load(o){ const m=new Mind(1,o); m.rnd.s=o.rnd; const f=(k)=>{ const t=Buffer.from(o[k],'base64'); new Uint8Array(m[k].buffer).set(t); };
     for(const k of ['emb','W1','b1','Wo','bo','Wa','ba'])f(k);
     const dec=s=>{ const p=[]; for(let i=0;i<s.length;i+=4)p.push([parseInt(s.slice(i,i+2),16),parseInt(s.slice(i+2,i+4),16)]); return p; };
     // older saves held whole programs only
     m.buf=o.buf.map(x=>Array.isArray(x)?{p:dec(x[0]),at:x[1]}:{p:dec(x),at:-1});
-    m.bufAt=o.bufAt; m.lossO=o.lossO; m.lossA=o.lossA; m.nTrain=o.nTrain; m.uses=o.uses; return m; }
+    m.bufAt=o.bufAt; m.lossO=o.lossO; m.lossA=o.lossA; m.nTrain=o.nTrain; m.uses=o.uses;
+    m.lossMin=o.lossMin==null?Infinity:o.lossMin; m.grown=o.grown||0; m.seen=o.seen||0; if(o.sNOVEL!==undefined){ m.sNOVEL=o.sNOVEL; m.sLR=o.sLR; } return m; }
 }
 // MIX (v5, the user's suggestion: "there is nothing to stop it being all three"). One mind with all three drives at once:
 // two networks, one learning WHAT EXISTS (the programs of parents, as v2) and one learning WHAT WORKS (changes that went on
@@ -112,41 +142,20 @@ class Mind{
 //   the unexpected - from what exists, what it does NOT expect (p^-NOVEL)
 //   unsure        - from what works, at the place it is least able to predict (WHERE uncertain)
 // The total rate is still P, one instruction per proposal, so it adds exactly as much change as every other arm.
-// ADAPT (v6, "let the world decide the mix"): the drive for each proposal is no longer a third each. Every child a drive
-// writes carries the drive's mark (a body field the world keeps); each time that child divides, the drive is credited.
-// The mind picks a drive by Thompson sampling on each drive's children's divisions per proposal (a normal approximation
-// to its posterior), so the drive whose children reproduce more is used more and the others are still tried. Old
-// evidence fades (both counts multiplied by FADE every EVERY ticks: half-life about 20,000 ticks), so the mix can move
-// as the world does. The only judge is the world's: whether the children it wrote had children.
-// ADAPT 'lineage' (v7): the same, but judged by lasting success instead of by children. Every child a drive writes founds
-// a lineage (an id its descendants inherit until the mind writes one of them again); every CENSUS ticks the world counts
-// each lineage's living members, and the first time a lineage reaches THRESH of them its founding drive is credited once.
-// v6's judge (children) punished the unexpected drive for its typical child; this one looks at the upper tail, the few
-// changes whose lineages spread, which is where novelty pays.
+// v6 and v7 (MIND_ADAPT: the world chose the drive for each proposal by Thompson sampling, judged by the divisions of each
+// drive's children, or by how many lineages each founded reached 10 living members) were measured on two seeds and deleted:
+// both times the world chose the exploiter and novelty was the lowest of any mind (OEE-NOTES #293). They are in 9a763cd.
 class MixMind{
   constructor(seed,o){ o=o||{}; this.kind='mix'; this.P=o.P??0.2; this.EVERY=o.EVERY||50; this.NOVEL=o.NOVEL||0.5;
     this.exists=new Mind(seed,{...o,P:1,NOVEL:0,WHERE:'random',MODE:'learn'}); this.works=new Mind(((seed>>>0)^0x0bad5eed)>>>0,{...o,P:1,NOVEL:0,WHERE:'uncertain',MODE:'learn'});
-    this.rnd=mulberry32(((seed>>>0)||1)^0x6d697821); this.uses=[0,0,0];
-    this.ADAPT=!!o.ADAPT; this.FADE=o.FADE||0.9983; this.n=[0,0,0]; this.s=[0,0,0]; this.last=-1;
-    this.LINEAGE=o.ADAPT==='lineage'; this.THRESH=o.THRESH||10; this.lines=new Map(); this.nextLine=1; this.founded=[0,0,0]; this.spread=[0,0,0]; }
-  // v7: a child drive k wrote founds a lineage; returns its id
-  found(k){ const id=this.nextLine++; this.lines.set(id,{k,done:false}); this.founded[k]++; return id; }
-  // v7: the world's count of each lineage's living members (lin: the lineage id of every cell's organism)
-  census(lin,alive,C){ const cnt=new Map(); for(let c=0;c<C;c++) if(alive[c]&&lin[c]>0)cnt.set(lin[c],(cnt.get(lin[c])||0)+1);
-    for(const [id,e] of this.lines){ const n=cnt.get(id)||0; if(!n){ this.lines.delete(id); continue; } if(!e.done&&n>=this.THRESH){ e.done=true; this.s[e.k]+=1; this.spread[e.k]++; } } }
-  // the world reports that a child written by drive k has just divided
-  credit(k){ this.s[k]+=1; }
-  gauss(){ const u=Math.max(1e-12,this.rnd()), v=this.rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
-  choose(){ if(!this.ADAPT)return (this.rnd()*3)|0;
-    let best=0, bv=-Infinity; for(let k=0;k<3;k++){ const n=this.n[k]+1, m=(this.s[k]+1)/n, v=m+Math.sqrt((this.s[k]+1))/n*this.gauss(); if(v>bv){ bv=v; best=k; } } return best; }
+    this.rnd=mulberry32(((seed>>>0)||1)^0x6d697821); this.uses=[0,0,0]; }
   see(prog,at){ this.exists.see(prog); if(at!==undefined&&at>=0)this.works.see(prog,at); }
-  train(nops){ this.exists.train(nops); this.works.train(nops); if(this.ADAPT) for(let k=0;k<3;k++){ this.n[k]*=this.FADE; this.s[k]*=this.FADE; } }
-  propose(src,nops,maxlen){ this.last=-1; if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; const k=this.choose(); this.uses[k]++; this.last=k; if(this.ADAPT)this.n[k]+=1;
+  train(nops){ this.exists.train(nops); this.works.train(nops); }
+  propose(src,nops,maxlen){ if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; const k=(this.rnd()*3)|0; this.uses[k]++;
     if(k===2)return this.works.propose(src,nops,maxlen);
     this.exists.NOVEL=k===1?this.NOVEL:0; const r=this.exists.propose(src,nops,maxlen); this.exists.NOVEL=0; return r; }
-  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,...(this.ADAPT?{rate:this.s.map((x,k)=>+((x+1)/(this.n[k]+1)).toFixed(this.LINEAGE?5:3)),weight:this.n.map(x=>+x.toFixed(0))}:{}),...(this.LINEAGE?{founded:this.founded,spread:this.spread,lines:this.lines.size}:{}),lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
-  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,...(this.ADAPT?{ADAPT:this.LINEAGE?'lineage':1,FADE:this.FADE,n:this.n,s:this.s}:{}),...(this.LINEAGE?{THRESH:this.THRESH,nextLine:this.nextLine,founded:this.founded,spread:this.spread,lines:[...this.lines].map(([id,e])=>[id,e.k,e.done?1:0])}:{}),exists:this.exists.save(),works:this.works.save()}; }
-  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.ADAPT=!!o.ADAPT; m.FADE=o.FADE||0.9983; m.n=o.n?o.n.slice():[0,0,0]; m.s=o.s?o.s.slice():[0,0,0]; m.last=-1;
-    m.LINEAGE=o.ADAPT==='lineage'; m.THRESH=o.THRESH||10; m.nextLine=o.nextLine||1; m.founded=o.founded?o.founded.slice():[0,0,0]; m.spread=o.spread?o.spread.slice():[0,0,0]; m.lines=new Map((o.lines||[]).map(([id,k,d])=>[id,{k,done:!!d}])); m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
+  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
+  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,exists:this.exists.save(),works:this.works.save()}; }
+  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
 }
 module.exports={Mind,MixMind};

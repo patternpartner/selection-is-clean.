@@ -33,16 +33,20 @@ ok(a.join()===b.join(),'save and load is exact (the same proposals afterwards)')
   ok(x.exists.nTrain>0&&x.works.nTrain>0,'both networks learn');
   const y=MixMind.load(JSON.parse(JSON.stringify(x.save()))); const a=[],b=[]; for(let k=0;k<20;k++){ const p1=[[17,0],[20,5],[15,1]], p2=[[17,0],[20,5],[15,1]]; x.propose(p1,nops,64); y.propose(p2,nops,64); a.push(JSON.stringify(p1)); b.push(JSON.stringify(p2)); }
   ok(a.join()===b.join(),'the combined mind saves and loads exactly'); }
-// the world decides the mix (v6): a drive whose children divide is chosen more; with no evidence the drives are tried evenly
-{ const {MixMind}=require('./mind.js'); const z=new MixMind(7,{P:1,ADAPT:1}); for(let i=0;i<300;i++)z.see(prog(),1); for(let t=0;t<50;t++)z.train(nops);
-  for(let k=0;k<3000;k++){ const s=prog(); if(z.propose(s,nops,64)&&z.last===1){ z.credit(1); z.credit(1); } }   // only the unexpected's children have children
-  const u=z.uses; ok(u[1]>4*u[0]&&u[1]>4*u[2],'the drive whose children reproduce takes over the mix ('+u.join(', ')+')');
-  const e=new MixMind(7,{P:1,ADAPT:1}); for(let k=0;k<600;k++)e.propose(prog(),nops,64); ok(e.uses.every(x=>x>100),'with no credit at all every drive keeps being tried ('+e.uses.join(', ')+')');
-  const y=MixMind.load(JSON.parse(JSON.stringify(z.save()))); ok(y.ADAPT&&y.s[1]===z.s[1]&&y.n[0]===z.n[0],'the mix and its evidence survive save and load'); }
-// judged by lasting success (v7): a lineage that reaches THRESH living members credits its founding drive once; dead ones go
-{ const {MixMind}=require('./mind.js'); const g=new MixMind(7,{P:1,ADAPT:'lineage',THRESH:10}); const a=g.found(1), b=g.found(0), C=40;
-  const lin=new Float64Array(C), alive=new Uint8Array(C).fill(1); for(let c=0;c<12;c++)lin[c]=a; for(let c=12;c<15;c++)lin[c]=b;
-  g.census(lin,alive,C); g.census(lin,alive,C); ok(g.s[1]===1&&g.s[0]===0&&g.spread[1]===1,'a lineage of 12 credits its drive once; one of 3 does not ('+g.s.join(', ')+')');
-  for(let c=12;c<15;c++)alive[c]=0; g.census(lin,alive,C); ok(!g.lines.has(b)&&g.lines.has(a),'a lineage with no one left is forgotten');
-  const y=MixMind.load(JSON.parse(JSON.stringify(g.save()))); ok(y.LINEAGE&&y.lines.size===1&&y.s[1]===1&&y.nextLine===g.nextLine,'lineages and their credit survive save and load'); }
+// growth (#295): growing keeps every prediction, a mind grows when its world changes under it, and a child inherits
+{ const pr=(m,c,arg)=>{ m.forward(c,arg,nops); return Array.from(m.p.slice(0,arg?256:nops)); }, close=(a,b)=>a.every((x,i)=>Math.abs(x-b[i])<1e-5);
+  const g=new Mind(7,{P:1,GROW:8,HMAX:96}); for(let i=0;i<300;i++)g.see(prog()); for(let t=0;t<100;t++)g.train(nops);
+  const c=g.ctx([[17,0],[20,5]],4), before=[pr(g,c,false),pr(g,g.ctx([[17,0],[20,5]],4,15),true)]; g.grow(8);
+  ok(g.H===72&&close(before[0],pr(g,c,false))&&close(before[1],pr(g,g.ctx([[17,0],[20,5]],4,15),true)),'growing 8 units changes nothing it predicts (H '+g.H+')');
+  const h=Mind.load(JSON.parse(JSON.stringify(g.save()))); ok(h.H===72&&close(pr(h,c,false),pr(g,c,false)),'a grown mind saves and loads at its new size');
+  const H0=g.H, other=[[3,77],[9,200],[11,4],[2,90]], prog2=()=>{ const p=[]; const n=4+((Math.random()*3)|0); for(let i=0;i<n;i++)p.push(other[i%4].slice()); return p; };
+  for(let t=0;t<300;t++)g.train(nops); for(let i=0;i<1100;i++)g.see(prog2()); for(let t=0;t<30;t++)g.train(nops);
+  ok(g.H>H0,'when the world changes under it, it grows ('+H0+' -> '+g.H+' units, grown '+g.grown+' times)');
+  const k=g.child(); ok(close(pr(k,c,false),pr(g,c,false))||k.H>g.H,'a child predicts what its parent does (it inherits the weights)');
+  ok(k.buf.length===g.buf.length&&k.rnd.s!==g.rnd.s,'and its memories, with a random stream of its own');
+  g.NOVEL=0.5; let nov=0, lr=0, gr=0, sh=0; for(let i=0;i<200;i++){ const q=g.child(); if(q.NOVEL!==g.NOVEL)nov++; if(q.LR!==g.LR)lr++; if(q.H>g.H)gr++; if(q.sNOVEL!==0.5)sh++; }
+  ok(nov>60&&nov<140&&lr>60&&lr<140&&gr>15&&gr<70,'its curiosity and learning rate change about half the time ('+nov+', '+lr+' of 200), its size now and then ('+gr+')');
+  ok(sh>60&&sh<140,'and the shadow of its curiosity changes by the same rule, independently ('+sh+' of 200)');
+  { let a=g.child(); for(let i=0;i<5;i++)a=a.child(); const b=Mind.load(JSON.parse(JSON.stringify(a.save()))); ok(b.sNOVEL===a.sNOVEL&&b.sLR===a.sLR&&b.NOVEL===a.NOVEL,'the shadow is inherited and survives save and load'); }
+  const e=new Mind(7,{P:1,PER:0.5}); for(let i=0;i<300;i++)e.see(prog()); e.train(nops); const n1=e.nTrain; e.train(nops); ok(n1===1&&e.nTrain===1,'PER: with nothing new seen it does not train'); }
 console.log(fails?fails+' FAILED':'all passed'); process.exit(fails?1:0);
