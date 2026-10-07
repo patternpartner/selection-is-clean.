@@ -113,9 +113,10 @@ class World{
     const P=this.p, C=P.W*P.H;
     this.rnd=mulberry32((seed>>>0)||1); this.C=C; this.tick=0; this.seed0=(seed>>>0)||1;
     const mseed=P.MIND_SEED?((this.seed0+Math.imul(P.MIND_SEED|0,0x9e3779b1))>>>0)||1:this.seed0;   // MIND_SEED reseeds only the mind's own random stream: replicates of an arm for a null band
-    if(P.MIND>0)this.mind=new (P.MIND_MIX?MixMind:Mind)(mseed,{P:P.MIND,MODE:P.MIND_MODE,LR:P.MIND_LR,K:P.MIND_K,H:P.MIND_H,EVERY:P.MIND_EVERY,STEPS:P.MIND_STEPS,NOVEL:P.MIND_NOVEL,WHERE:P.MIND_WHERE,ADAPT:P.MIND_ADAPT});
+    if(P.MIND>0)this.mind=new (P.MIND_MIX?MixMind:Mind)(mseed,{P:P.MIND,MODE:P.MIND_MODE,LR:P.MIND_LR,K:P.MIND_K,H:P.MIND_H,EVERY:P.MIND_EVERY,STEPS:P.MIND_STEPS,NOVEL:P.MIND_NOVEL,WHERE:P.MIND_WHERE,ADAPT:P.MIND_ADAPT,THRESH:P.MIND_THRESH});
     if(this.mind&&(P.MIND_DATA==='changes'||P.MIND_MIX)){ this.mindPos=new Float32Array(C); (this.bodyF=this.bodyF||[]).push({A:this.mindPos,energy:false}); }
-    if(this.mind&&P.MIND_MIX&&P.MIND_ADAPT){ this.mindDrive=new Float32Array(C); this.bodyF.push({A:this.mindDrive,energy:false}); }   // v6: which drive wrote each organism (1+drive, 0 none), so its divisions credit that drive   // v3: where each organism differs from its parent (1+position, 0 none), carried with it like a body field   // MIND (#293), not in DEF so a world without it saves exactly as before: the chance it writes an instruction of each child; MIND_MODE learn | frozen | uniform
+    if(this.mind&&P.MIND_MIX&&P.MIND_ADAPT&&P.MIND_ADAPT!=='lineage'){ this.mindDrive=new Float32Array(C); this.bodyF.push({A:this.mindDrive,energy:false}); }
+    if(this.mind&&P.MIND_MIX&&P.MIND_ADAPT==='lineage'){ this.mindLine=new Float64Array(C); this.bodyF.push({A:this.mindLine,energy:false}); }   // v7: the lineage each organism belongs to (the id of the last change the mind wrote into its ancestry, 0 none)   // v6: which drive wrote each organism (1+drive, 0 none), so its divisions credit that drive   // v3: where each organism differs from its parent (1+position, 0 none), carried with it like a body field   // MIND (#293), not in DEF so a world without it saves exactly as before: the chance it writes an instruction of each child; MIND_MODE learn | frozen | uniform
     this.alive=new Uint8Array(C); this.E=new Float32Array(C); this.age=new Int32Array(C);
     this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=(opts&&opts.TASKS)?new Float64Array(C*4):new Float32Array(C*4);   // TASKS needs registers that hold a 32-bit word exactly
     this.len=new Uint8Array(C); this.prog=new Uint8Array(C*P.MAXLEN*2);
@@ -186,7 +187,7 @@ class World{
     const half=(this.E[c]-P.BODY)/2; this.E[c]=half;
     let changed=src.length!==n; if(!changed) for(let i=0;i<n;i++){ if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ changed=true; break; } } this.tickBirths.push(changed?1:0); this.tickBirthsF.push(changed&&fnHashList(src,this.n0)!==fnHash(this.prog,o,n,this.n0)?1:0);
     this.place(t,src,half,tg,tm,this.gen[c]+1,ssrc); this.ev.births++;
-    if(this.mindPos){ let d=-1; const m=Math.min(n,src.length); for(let i=0;i<m;i++) if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ d=i; break; } if(d<0&&src.length>n)d=n; this.mindPos[t]=d+1; if(this.mindDrive)this.mindDrive[t]=this.mind.last+1; }   // the child's first difference from its parent, by any route; and which drive wrote it
+    if(this.mindPos){ let d=-1; const m=Math.min(n,src.length); for(let i=0;i<m;i++) if(src[i][0]!==this.prog[o+i*2]||src[i][1]!==this.prog[o+i*2+1]){ d=i; break; } if(d<0&&src.length>n)d=n; this.mindPos[t]=d+1; if(this.mindDrive)this.mindDrive[t]=this.mind.last+1; if(this.mindLine)this.mindLine[t]=this.mind.last>=0?this.mind.found(this.mind.last):this.mindLine[c]; }   // the child's first difference from its parent, by any route; and which drive wrote it
     return true; }
   matchP(a,b){ const s=(16-POP16[(this.tmpl[a]^this.tag[b])&0xffff])/16, p=this.p.ATT_POW; if(p===4) return ((s*s)*s)*s; return Math.pow(s,p); }
   kinSim(a,b){ return (16-POP16[(this.tag[a]^this.tag[b])&0xffff])/16; }
@@ -236,6 +237,7 @@ class World{
   }
   step(){ const P=this.p, C=this.C; this.tick++;
     if(this.mind&&this.tick%this.mind.EVERY===0)this.mind.train(this.nops||NOPS);
+    if(this.mindLine&&this.tick%500===0)this.mind.census(this.mindLine,this.alive,C);   // v7: the world counts each lineage's living members
     if(this.tick%10===0)this.updateCap();
     if(P.CHEM&&this.tick%P.CHEM_EVERY===0)this.chemStep();
     if(P.TASKS){ const tr=this.tres, cp=this.tcap; for(let T=0;T<256;T++)tr[T]+=P.TASK_RATE*(cp[T]-tr[T]); }   // each function's pool regrows toward its cap
@@ -394,7 +396,7 @@ class World{
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
 const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'];
-World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.mindDrive?{mindDrive:Buffer.from(this.mindDrive.buffer).toString('base64')}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
+World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.mindDrive?{mindDrive:Buffer.from(this.mindDrive.buffer).toString('base64')}:{}),...(this.mindLine?{mindLine:Buffer.from(this.mindLine.buffer).toString('base64')}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
   for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
@@ -404,6 +406,7 @@ World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.t
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
   if(o.mindPos&&w.mindPos)new Uint8Array(w.mindPos.buffer).set(Buffer.from(o.mindPos,'base64'));
   if(o.mindDrive&&w.mindDrive)new Uint8Array(w.mindDrive.buffer).set(Buffer.from(o.mindDrive,'base64'));
+  if(o.mindLine&&w.mindLine)new Uint8Array(w.mindLine.buffer).set(Buffer.from(o.mindLine,'base64'));
   if(o.mods) for(const d of o.mods){ const m=w.installMod(d.src,{disarmed:d.disarmed,noInit:true}); m.at=d.at; m.rnd.s=d.rnd; for(const [k,b] of Object.entries(d.fields)) new Uint8Array(m.fields[k].buffer).set(Buffer.from(b,'base64')); }   // modules re-installed in order, so each gets its old opcode
   if(w.molLive){ const S=w.p.CHEM_S, C=w.C, m=w.mol, live=w.molLive; for(let q=0;q<S;q++){ const b=q*C; let on=0; for(let c=0;c<C;c++) if(m[b+c]>0){ on=1; break; } live[q]=on; } }   // rebuilt from the restored molecules, so a resume skips nothing that is present
   return w; };

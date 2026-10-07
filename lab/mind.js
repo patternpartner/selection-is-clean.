@@ -118,11 +118,22 @@ class Mind{
 // to its posterior), so the drive whose children reproduce more is used more and the others are still tried. Old
 // evidence fades (both counts multiplied by FADE every EVERY ticks: half-life about 20,000 ticks), so the mix can move
 // as the world does. The only judge is the world's: whether the children it wrote had children.
+// ADAPT 'lineage' (v7): the same, but judged by lasting success instead of by children. Every child a drive writes founds
+// a lineage (an id its descendants inherit until the mind writes one of them again); every CENSUS ticks the world counts
+// each lineage's living members, and the first time a lineage reaches THRESH of them its founding drive is credited once.
+// v6's judge (children) punished the unexpected drive for its typical child; this one looks at the upper tail, the few
+// changes whose lineages spread, which is where novelty pays.
 class MixMind{
   constructor(seed,o){ o=o||{}; this.kind='mix'; this.P=o.P??0.2; this.EVERY=o.EVERY||50; this.NOVEL=o.NOVEL||0.5;
     this.exists=new Mind(seed,{...o,P:1,NOVEL:0,WHERE:'random',MODE:'learn'}); this.works=new Mind(((seed>>>0)^0x0bad5eed)>>>0,{...o,P:1,NOVEL:0,WHERE:'uncertain',MODE:'learn'});
     this.rnd=mulberry32(((seed>>>0)||1)^0x6d697821); this.uses=[0,0,0];
-    this.ADAPT=!!o.ADAPT; this.FADE=o.FADE||0.9983; this.n=[0,0,0]; this.s=[0,0,0]; this.last=-1; }
+    this.ADAPT=!!o.ADAPT; this.FADE=o.FADE||0.9983; this.n=[0,0,0]; this.s=[0,0,0]; this.last=-1;
+    this.LINEAGE=o.ADAPT==='lineage'; this.THRESH=o.THRESH||10; this.lines=new Map(); this.nextLine=1; this.founded=[0,0,0]; this.spread=[0,0,0]; }
+  // v7: a child drive k wrote founds a lineage; returns its id
+  found(k){ const id=this.nextLine++; this.lines.set(id,{k,done:false}); this.founded[k]++; return id; }
+  // v7: the world's count of each lineage's living members (lin: the lineage id of every cell's organism)
+  census(lin,alive,C){ const cnt=new Map(); for(let c=0;c<C;c++) if(alive[c]&&lin[c]>0)cnt.set(lin[c],(cnt.get(lin[c])||0)+1);
+    for(const [id,e] of this.lines){ const n=cnt.get(id)||0; if(!n){ this.lines.delete(id); continue; } if(!e.done&&n>=this.THRESH){ e.done=true; this.s[e.k]+=1; this.spread[e.k]++; } } }
   // the world reports that a child written by drive k has just divided
   credit(k){ this.s[k]+=1; }
   gauss(){ const u=Math.max(1e-12,this.rnd()), v=this.rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
@@ -133,8 +144,9 @@ class MixMind{
   propose(src,nops,maxlen){ this.last=-1; if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; const k=this.choose(); this.uses[k]++; this.last=k; if(this.ADAPT)this.n[k]+=1;
     if(k===2)return this.works.propose(src,nops,maxlen);
     this.exists.NOVEL=k===1?this.NOVEL:0; const r=this.exists.propose(src,nops,maxlen); this.exists.NOVEL=0; return r; }
-  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,...(this.ADAPT?{rate:this.s.map((x,k)=>+((x+1)/(this.n[k]+1)).toFixed(3)),weight:this.n.map(x=>+x.toFixed(0))}:{}),lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
-  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,...(this.ADAPT?{ADAPT:1,FADE:this.FADE,n:this.n,s:this.s}:{}),exists:this.exists.save(),works:this.works.save()}; }
-  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.ADAPT=!!o.ADAPT; m.FADE=o.FADE||0.9983; m.n=o.n?o.n.slice():[0,0,0]; m.s=o.s?o.s.slice():[0,0,0]; m.last=-1; m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
+  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,...(this.ADAPT?{rate:this.s.map((x,k)=>+((x+1)/(this.n[k]+1)).toFixed(this.LINEAGE?5:3)),weight:this.n.map(x=>+x.toFixed(0))}:{}),...(this.LINEAGE?{founded:this.founded,spread:this.spread,lines:this.lines.size}:{}),lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
+  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,...(this.ADAPT?{ADAPT:this.LINEAGE?'lineage':1,FADE:this.FADE,n:this.n,s:this.s}:{}),...(this.LINEAGE?{THRESH:this.THRESH,nextLine:this.nextLine,founded:this.founded,spread:this.spread,lines:[...this.lines].map(([id,e])=>[id,e.k,e.done?1:0])}:{}),exists:this.exists.save(),works:this.works.save()}; }
+  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.ADAPT=!!o.ADAPT; m.FADE=o.FADE||0.9983; m.n=o.n?o.n.slice():[0,0,0]; m.s=o.s?o.s.slice():[0,0,0]; m.last=-1;
+    m.LINEAGE=o.ADAPT==='lineage'; m.THRESH=o.THRESH||10; m.nextLine=o.nextLine||1; m.founded=o.founded?o.founded.slice():[0,0,0]; m.spread=o.spread?o.spread.slice():[0,0,0]; m.lines=new Map((o.lines||[]).map(([id,k,d])=>[id,{k,done:!!d}])); m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
 }
 module.exports={Mind,MixMind};

@@ -39,4 +39,10 @@ ok(a.join()===b.join(),'save and load is exact (the same proposals afterwards)')
   const u=z.uses; ok(u[1]>4*u[0]&&u[1]>4*u[2],'the drive whose children reproduce takes over the mix ('+u.join(', ')+')');
   const e=new MixMind(7,{P:1,ADAPT:1}); for(let k=0;k<600;k++)e.propose(prog(),nops,64); ok(e.uses.every(x=>x>100),'with no credit at all every drive keeps being tried ('+e.uses.join(', ')+')');
   const y=MixMind.load(JSON.parse(JSON.stringify(z.save()))); ok(y.ADAPT&&y.s[1]===z.s[1]&&y.n[0]===z.n[0],'the mix and its evidence survive save and load'); }
+// judged by lasting success (v7): a lineage that reaches THRESH living members credits its founding drive once; dead ones go
+{ const {MixMind}=require('./mind.js'); const g=new MixMind(7,{P:1,ADAPT:'lineage',THRESH:10}); const a=g.found(1), b=g.found(0), C=40;
+  const lin=new Float64Array(C), alive=new Uint8Array(C).fill(1); for(let c=0;c<12;c++)lin[c]=a; for(let c=12;c<15;c++)lin[c]=b;
+  g.census(lin,alive,C); g.census(lin,alive,C); ok(g.s[1]===1&&g.s[0]===0&&g.spread[1]===1,'a lineage of 12 credits its drive once; one of 3 does not ('+g.s.join(', ')+')');
+  for(let c=12;c<15;c++)alive[c]=0; g.census(lin,alive,C); ok(!g.lines.has(b)&&g.lines.has(a),'a lineage with no one left is forgotten');
+  const y=MixMind.load(JSON.parse(JSON.stringify(g.save()))); ok(y.LINEAGE&&y.lines.size===1&&y.s[1]===1&&y.nextLine===g.nextLine,'lineages and their credit survive save and load'); }
 console.log(fails?fails+' FAILED':'all passed'); process.exit(fails?1:0);
