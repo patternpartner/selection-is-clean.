@@ -10693,7 +10693,11 @@ class EngineMind{
     this.emb=init(this.V*D,0.1); this.W1=init(K*D*H,1/Math.sqrt(K*D)); this.b1=new Float32Array(H);
     this.Wo=init(H*this.NOPS,1/Math.sqrt(H)); this.bo=new Float32Array(this.NOPS); this.Wr=init(H*this.NREG,1/Math.sqrt(H)); this.br=new Float32Array(this.NREG);
     this.x=new Float32Array(K*D); this.h=new Float32Array(H); this.p=new Float32Array(Math.max(this.NOPS,this.NREG)); this.dh=new Float32Array(H);
-    this.buf=[]; this.bufAt=0; this.lossO=0; this.lossR=0; this.nTrain=0; this.uses=0; this.seen=0; }
+    this.buf=[]; this.bufAt=0; this.lossO=0; this.lossR=0; this.nTrain=0; this.uses=0; this.seen=0;
+    // WHAT IT IS DOING, for the readout: children born [ordinary, written by the mind], the children those two kinds of
+    // creature went on to have, and which operations it writes. A mind whose children have fewer children than ordinary
+    // ones is costing its world; more, and it is helping. Kept across saves.
+    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS); }
   // an instruction as [operation token, register token]; an operation it cannot write (a migrant's, past OPCODE_DRAW) is -1
   tok(ins){ const op=ins[0]|0, d=((ins[1]|0)%12+12)%12, s=((ins[2]|0)%12+12)%12; return [op>=0&&op<this.NOPS?op:-1, d*12+s]; }
   // the K tokens before token position j of a tokenised program, padded with BOS (which also stands in for a -1)
@@ -10729,9 +10733,33 @@ class EngineMind{
       else { this.forward(this.ctx(t,2*i),false); op=this.sample(false); this.forward(this.ctx(t,2*i,op),true); rg=this.sample(true); } }
     if(op===o0&&rg===r0)rg=(rg+1+((this.rnd()*(this.NREG-1))|0))%this.NREG;
     if(op<0)op=(this.rnd()*this.NOPS)|0;
-    prog[i]=[op,(rg/12)|0,rg%12,+((prog[i]||[0,0,0,0])[3])||0]; fired('mind.propose'); return true; }
-  report(){ return {mode:this.MODE,p:this.P,uses:this.uses,seen:this.seen,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossReg:+this.lossR.toFixed(3),
-    uniformOp:+Math.log(this.NOPS).toFixed(3),uniformReg:+Math.log(this.NREG).toFixed(3),buf:this.buf.length}; }
+    prog[i]=[op,(rg/12)|0,rg%12,+((prog[i]||[0,0,0,0])[3])||0]; this.wroteOp[op]++; fired('mind.propose'); return true; }
+  // children per child: of the creatures the mind wrote, against ordinary ones (1 = no difference; null until there are enough)
+  success(){ const [b0,b1]=this.born, [k0,k1]=this.kids; return (b0>=50&&b1>=20&&k0>0)?(k1/b1)/(k0/b0):null; }
+  topOps(n){ const o=[]; for(let v=0;v<this.NOPS;v++) if(this.wroteOp[v])o.push([v,this.wroteOp[v]]); o.sort((a,b)=>b[1]-a[1]); return o.slice(0,n); }
+  report(){ const sc=this.success();
+    return {mode:this.MODE,p:this.P,uses:this.uses,seen:this.seen,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossReg:+this.lossR.toFixed(3),
+    uniformOp:+Math.log(this.NOPS).toFixed(3),uniformReg:+Math.log(this.NREG).toFixed(3),buf:this.buf.length,
+    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
+  // SAVED WITH THE UNIVERSE (the user: "if we save the field we should also save the mind at the same time. No resets").
+  // Everything it has learned (every weight, quantised to 8 bits per weight with one scale per array: about 70 KB, so
+  // eighteen of them fit beside the field's genomes in one origin's storage), its counters and its random stream. Not
+  // its memory of the last 1,024 parents: that refills within minutes of any reload.
+  serialize(){ const q=a=>{ let mx=0; for(let i=0;i<a.length;i++){ const v=Math.abs(a[i]); if(v>mx)mx=v; } const sc=mx>0?mx/127:1, b=new Int8Array(a.length);
+      for(let i=0;i<a.length;i++)b[i]=Math.max(-127,Math.min(127,Math.round(a[i]/sc))); let str=''; const u=new Uint8Array(b.buffer);
+      for(let i=0;i<u.length;i+=8192)str+=String.fromCharCode.apply(null,u.subarray(i,i+8192)); return [sc,btoa(str)]; };
+    const w={}; for(const k of ['emb','W1','b1','Wo','bo','Wr','br'])w[k]=q(this[k]);
+    return JSON.stringify({v:1,NOPS:this.NOPS,NREG:this.NREG,K:this.K,D:this.D,H:this.H,LR:this.LR,rnd:this.rnd.s|0,uses:this.uses,seen:this.seen,nTrain:this.nTrain,
+      lossO:this.lossO,lossR:this.lossR,born:this.born,kids:this.kids,wroteOp:Array.from(this.wroteOp),w}); }
+  // back from a save: only into a mind of the same shape (the same operations and registers); otherwise null, and a new one is born
+  static restore(txt,o){ try{ const d=JSON.parse(txt); const m=new EngineMind(o);
+      if(!d||d.v!==1||d.NOPS!==m.NOPS||d.NREG!==m.NREG||d.K!==m.K||d.D!==m.D||d.H!==m.H)return null;
+      for(const k of ['emb','W1','b1','Wo','bo','Wr','br']){ const [sc,b64]=d.w[k], bin=atob(b64), a=m[k]; if(bin.length!==a.length)return null;
+        for(let i=0;i<a.length;i++){ let x=bin.charCodeAt(i); if(x>127)x-=256; a[i]=x*sc; } }
+      m.rnd.s=d.rnd|0; m.uses=d.uses|0; m.seen=d.seen|0; m.nTrain=d.nTrain|0; m.lossO=+d.lossO||0; m.lossR=+d.lossR||0;
+      if(Array.isArray(d.born))m.born=[d.born[0]|0,d.born[1]|0]; if(Array.isArray(d.kids))m.kids=[d.kids[0]|0,d.kids[1]|0];
+      if(Array.isArray(d.wroteOp)&&d.wroteOp.length===m.NOPS)m.wroteOp=Int32Array.from(d.wroteOp);
+      m.restored=true; return m; }catch(_){ return null; } }
 }
 let __mindLatch=null, __mind=null;
 function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis:{}; let p=g.__MIND|0, mode=g.__MIND_MODE|0; const seed=g.__MIND_SEED|0;
@@ -10740,10 +10768,25 @@ function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis
   if(/(^|[#,])nomind(,|$)/.test(h)||g.__MIND===0||(m&&m[3]==='0'))p=0; else if(!m&&g.__MIND===undefined&&!node)p=20;   // the browser default
   const mm=h.match(/(^|[#,])mindmode=(frozen|uniform)(,|$)/); if(mm&&!mode)mode=mm[2]==='frozen'?1:2;
   return p>0?{P:Math.min(100,p)/100,mode,seed:seed||(((Math.random()*4294967296)>>>0)||1)}:null; }catch(_){ return null; } }
-function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false; if(__mindLatch)__mind=new EngineMind(__mindLatch); } return __mind; }
+function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false;
+    if(__mindLatch){ let sv=null; try{ sv=localStorage.getItem('selection_mind'); }catch(_){}   // this universe's own mind, saved beside its genome
+      __mind=(sv&&EngineMind.restore(sv,__mindLatch))||new EngineMind(__mindLatch); } }
+  return __mind; }
+// saved at the same moments as the genome (the autosave, and an extinction's rebirth), into this universe's own slot
+function mindPersist(){ if(!__mind)return; try{ __mind.savedAt=genome.totalTicks|0; localStorage.setItem('selection_mind',__mind.serialize()); }catch(_){} }
+function mindSerialize(){ const M=mindOn(); return M?M.serialize():null; }
+// a mind arriving in a universe file (the universe's load button): taken if it fits this engine, and saved at once
+function mindImport(txt){ if(!txt||!__mindLatch)return false; const m=EngineMind.restore(txt,__mindLatch); if(!m)return false; __mind=m; mindPersist(); return true; }
+// one line for the HUD: what the mind has done, and whether its children do better or worse than ordinary ones
+function mindHud(){ const M=__mind; if(!M)return ''; const sc=M.success();
+  return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+')')+': learned from '+M.seen+' · wrote '+M.uses+' children'+
+    (M.MODE==='learn'&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
+    (sc===null?'':' · its children have '+sc.toFixed(2)+'x the children of ordinary ones'); }
+const pMindW=new Uint8Array(CAP);   // 2: born carrying an instruction the mind wrote; 1: born ordinary while the mind watched; 0: a founder (not compared). Moves with it in compact
 function mindReport(){ const M=mindOn(); return M?M.report():{mode:'off'}; }
 // the birth hook, called from both reproduction chokepoints (addParticle and addCompound) after the child's program is made
-function mindBirth(i,parentA){ const M=mindOn(); if(!M)return; M.see(pProg[parentA]); M.propose(pGenome[i].vmProgram); }
+function mindBirth(i,parentA){ const M=mindOn(); if(!M)return; M.see(pProg[parentA]); const w=M.propose(pGenome[i].vmProgram)?1:0;
+  M.born[w]++; const f=pMindW[parentA]; if(f)M.kids[f-1]++; pMindW[i]=w?2:1; }   // only parents born under the mind are compared
 function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child = copy of parent's program + birth mutation (rate from the self's genes)
   const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=inheritedCap||(genome.vmMaxInstructions||16);
@@ -14193,6 +14236,7 @@ function loadGenome(){
   const h=location.hash.slice(1);
   if(h==='reset'){
     try{localStorage.removeItem('selection_genome')}catch(e){}
+    try{localStorage.removeItem('selection_mind')}catch(e){}   // #296: a fresh universe gets a newborn mind
     try{history.replaceState(null,'',location.pathname||' ')}catch(e){}
     return false;
   }
@@ -20911,6 +20955,7 @@ function archiveGenome(){
   if(genomeArchive.length>ARCHIVE_SIZE)genomeArchive.shift();
   // PERSIST TO LOCALSTORAGE — survives page close
   try{const g=trimGenomeToBudget();if(g&&g.length<SAVE_BUDGET)localStorage.setItem('selection_genome',g)}catch(e){}   // #146: trim to fit rather than silently skip
+  mindPersist();   // #296: and the mind with it
 }
 
 function checkExtinction(){
@@ -20945,6 +20990,7 @@ function checkExtinction(){
 
     genome.generation++;
     try{const g2=trimGenomeToBudget();if(g2&&g2.length<SAVE_BUDGET)localStorage.setItem('selection_genome',g2)}catch(e){}   // #146
+    mindPersist();   // #296
     N=0;
     const n=Math.min(300,(W*H/3000)|0);
 
@@ -21476,7 +21522,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
-  if(parentA>=0&&parentA<N&&__mindLatch!==false)mindBirth(i,parentA);   // #296: the mind sees the parent and may write one instruction of the child
+  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
@@ -21579,7 +21625,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
-  if(parentA>=0&&parentA<N&&__mindLatch!==false)mindBirth(i,parentA);   // #296: the mind sees the parent and may write one instruction of the child
+  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
@@ -25955,7 +26001,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -29401,6 +29447,7 @@ function loop(){
     _hud+=`${f2pi127Tag}${ssi128Tag}${ssmi131Tag}${mfupi132Tag}${mf2upi133Tag}${fupmomi134Tag}`;
     _hud+=`${f2upmomi135Tag}${gri136Tag}${chmi137Tag}${aimi138Tag}${fcmi139Tag}${f2cmi140Tag}`;
     _hud+=`${fpmi141Tag}${f2pmi142Tag}${pcfmi143Tag}${dissTag}`;
+    { const _mh=mindHud(); if(_mh)_hud=_mh.slice(3)+' | '+_hud; }   // #296: the mind's line goes FIRST - on a phone the HUD is 2,900 characters and its tail is never seen
     // Pe144: constraint satisfaction HUD tag
 
     // #144: MAKE #cleanart MEAN WHAT IT SAYS. It gated the metabolism panel and the diary and left the

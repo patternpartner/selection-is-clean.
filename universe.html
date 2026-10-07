@@ -83,6 +83,10 @@
   var SLOT = (function(){ try { var m=(location.search||'').match(/[?&]slot=([A-Za-z0-9_]{1,24})/);
                                 return m?m[1]:null; } catch(e){ return null; } })();
   var GKEY = SLOT ? ('selection_'+SLOT) : 'selection_genome';
+  // #296: this universe's MIND is saved beside its genome, under a key of its own OUTSIDE the selection_ namespace
+  // (every rig and the field read each selection_ key as a genome). The field's #reset and load clear mind_ keys too.
+  var MKEY = SLOT ? ('mind_'+SLOT) : 'mind_genome';
+  var storedMind = null; try { storedMind = localStorage.getItem(MKEY); } catch(e){}
 
   // ── load any saved genome BEFORE the worker boots, so the sim's synchronous boot read finds it ──
   var stored = null;
@@ -138,6 +142,7 @@
   worker.postMessage({
     type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1,
     genome: (stored && stored.length>10) ? stored : null,
+    mind: (storedMind && storedMind.length>10) ? storedMind : null,
     hash: location.hash || '', src:'engine.html'
   }, [off]);
 
@@ -217,7 +222,7 @@
     if (d.type === 'persist'){
       // #170: the engine only ever names its own key. Redirect that one to this universe's slot;
       // anything else it might store passes through untouched.
-      var k = (d.key === 'selection_genome') ? GKEY : d.key;
+      var k = (d.key === 'selection_genome') ? GKEY : (d.key === 'selection_mind') ? MKEY : d.key;
       try { if (d.value === null) localStorage.removeItem(k); else localStorage.setItem(k, d.value); } catch(ex){}
       return;
     }

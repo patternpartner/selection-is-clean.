@@ -16,7 +16,7 @@ pass=0; fail=0; failed=()
 
 # oee-meter-test.js asserts the #131 meter semantics; the rest step the sim directly. harness-ablate/-ablate-bank shell out to harness-oee and
 # harness-coupling-worker is a worker module, so all three are covered transitively.
-RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js chain-test.js voice-test.js grammar-test.js substrate-test.js reach-test.js idle-test.js wire-test.js meter-test.js autosave-test.js codec-test.js browser-test.js collective-test.js pool-test.js pace-test.js layers-test.js slot-test.js mind-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
+RIGS=(oee-meter-test.js verb-test.js attention-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js chain-test.js voice-test.js grammar-test.js substrate-test.js reach-test.js idle-test.js wire-test.js meter-test.js autosave-test.js codec-test.js browser-test.js collective-test.js pool-test.js pace-test.js layers-test.js slot-test.js mind-test.js mind-persist-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
@@ -72,7 +72,8 @@ extra_env_for() {
 timeout_for() {
   case "$1" in
     slot-test.js) echo 360 ;;
-    mind-test.js) echo 300 ;;   # three fields of 45 seconds each, plus boot and the stat round trips
+    mind-test.js) echo 300 ;;
+    mind-persist-test.js) echo 600 ;;   # waits for a universe's first autosave (tick 1,800), reloads twice, opens one universe   # three fields of 45 seconds each, plus boot and the stat round trips
     # grammar-test.js ignores TICKS. The live section is 6,000 engine ticks (LV.ran>=6000,
     # operators authored by the run itself) plus the descriptor sweep. Passing TICKS=40 does
     # not shorten it, and 180s kills a rig that passes. Alone on this machine: 325s, 79/0.

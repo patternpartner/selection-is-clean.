@@ -26283,3 +26283,27 @@ stays OFF unless a rig sets MIND**, so every rig keeps measuring the world it al
 600 ticks, whole series identical to the pre-#296 engine, mind reported off), and #296b's mind-off nulls are what they
 were pre-registered to be. `mind-test.js` now asks the default field (no token) for minds in all nine of its universes,
 and `#nomind` for none: 10/10 in Chromium.
+
+**#296: the mind is saved with its universe, and you can see what it is doing** (the user: "we need to see what the mind
+is doing. If we save the field we should also save the mind at the same time. No resets").
+- **Saved:** at every autosave of the genome (and at an extinction's rebirth) the mind writes itself beside it: every
+  weight at 8 bits with one scale per array, its counters and its random stream; about 71 KB, so eighteen fit in one
+  origin's storage beside the genomes. Not its memory of the last 1,024 parents, which refills within minutes. Key: the
+  universe's slot with `mind_` in place of `selection_` (`mind_u3`, `mind_collective`, `mind_L1_0`, `mind_g0`;
+  `mind_genome` for a universe opened by itself), OUTSIDE the selection_ namespace because every rig and the field read
+  each selection_ key as a genome. A reload restores it (only into a mind of the same shape; otherwise a new one is born).
+  A universe's save file carries it (`mind` beside `genome`) and its load button takes it back; the field's harvest
+  carries every universe's mind and its live readout (`mind`, `mindNow`), and loading a harvest gives each universe its own
+  mind back. `#reset` and the field's "new" clear every mind with the genomes.
+- **Seen:** an opened universe's HUD now STARTS with its mind's line, because on a phone the HUD is 2,900 characters and
+  its tail is never seen: "mind: learned from 475 · wrote 86 children · knows 58% · its children have 0.87x the children
+  of ordinary ones". The field shows the sum over every universe, every ten seconds, top left (hidden while a universe is
+  open): "18 minds · learned from … parents · wrote … children · their children have …x the children of ordinary ones".
+  "Knows" is 1 - loss/log(operations): how far from blind guessing its predictions of the next operation are.
+- **The comparison is only between creatures born under the mind**: each carries a mark (2 written by the mind, 1 born
+  ordinary while it watched, 0 a founder), moved with it by compact(). The first version counted founders as ordinary
+  parents and read 0.37x on the same run that reads 1.96x without them: the readout is a description of one world's
+  recent births, early numbers are small, and it is not a verdict on the mind (that is #296b's job).
+- Tested: `mind-persist-test.js` 10/10 in Chromium (saved at the autosave, 71 KB per mind, field line, save file, reload
+  restores and keeps counting, HUD line first, harvest round trip, #reset clears); added to `smoke.sh`. Under node the mind
+  stays off and the engine is identical to pre-#296 (harness-oee seed 1); substrate-test 264/0 at TICKS=40 and 900.
