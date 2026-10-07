@@ -26190,3 +26190,29 @@ more than chance moves a lone mind's world? #294's pilot said yes on 4 of 4 worl
   band of its own it gets NO verdict here: whether learning beats randomness is not decided by this run.
 - **Scored by** `lab/score-294b.js`, committed with this entry. Nothing in the default world changes either way; the
   result decides whether partner-learning is built on (next: a longer memory) or dropped.
+
+**#294b RESULT: R1 NOT MET.** All four worlds counted (each pairs mind took in 1.59-1.76 million foreign examples).
+`node lab/score-294b.js DIR=lab/mindrun/heavy/d294`:
+```
+2301: counted (pairs took in 1647440 foreign examples) | ever: pairs 202, alone band 147/172/143/102 -> BETTER | late: pairs 64, band 38/72/26/36 -> inside | uniform (one run, no band) ever 148 late 57
+2302: counted (pairs took in 1684990 foreign examples) | ever: pairs 163, alone band 60/176/160/85 -> inside | late: pairs 46, band 6/56/68/18 -> inside | uniform (one run, no band) ever 235 late 80
+2303: counted (pairs took in 1757037 foreign examples) | ever: pairs 200, alone band 178/152/162/66 -> BETTER | late: pairs 57, band 32/23/45/12 -> BETTER | uniform (one run, no band) ever 156 late 28
+2304: counted (pairs took in 1592222 foreign examples) | ever: pairs 107, alone band 70/130/45/126 -> inside | late: pairs 28, band 6/52/4/34 -> inside | uniform (one run, no band) ever 118 late 34
+counted 4; needed 3. Primary (adaptive ever): NOT DIFFERENT (BETTER on 2, WORSE on 0). Secondary (late): NOT DIFFERENT (BETTER on 1, WORSE on 0).
+R1: NOT MET
+```
+- **Pairs was BETTER on 2 of 4 worlds (needed 3), inside the band on the other two, WORSE on none.** By the rule written
+  first, partner-learning is not shown to beat learning alone.
+- **The null band is the finding.** The same world, the same rules, only the lone mind's own random stream changed:
+  adaptive genotypes ever ranged 102-172, 60-176, 66-178 and 45-130. Chance alone moves this measure by a factor of two to
+  three on one world. The pilot's "4 of 4" came from differences of 12-68, every one smaller than these bands.
+- Described, not ruled on: pairs ranked 1st, 2nd, 1st and 3rd of five on the four worlds (rank sum 7 against chance's 12;
+  if the five runs were exchangeable a sum this low would come 35 times in 625, p = 0.056). Suggestive, and nothing more.
+  Uniform randomness (one run each, no band) was 148, 235, 156, 118: inside or above the lone band, level with pairs.
+- **What this does to #293-#295.** Every comparison between minds in those pilots was one run per arm per world, and
+  every difference there (curious against exploiting, mix against single drives, grown against fixed, births against
+  none) is smaller than the band measured here. None of them was resolvable; they are recorded, not results. The one
+  #293-#295 result that survives is of a different kind: curiosity below its own neutral shadow among the minds the world
+  keeps (#295, 4 runs of 4), measured within each run against a drift twin rather than across runs.
+- For any next mind experiment: a band of at least four runs per arm per world from the start, and a measure or a horizon
+  whose spread is smaller than the effect looked for. At this spread an effect of +30 needs about ten runs per arm per world.
