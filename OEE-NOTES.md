@@ -25928,4 +25928,12 @@ the neutral population (`lab/core-geno.js`): every closed world so far shows fir
 Does the world with a mind keep producing them into the last quarter, beyond the same world with the same amount of random
 variation (uniform) and of uninformed structure (frozen)?
 
-**Pilot (exploratory, seed 2201, four arms to 400,000 ticks: plain, mind, frozen, uniform).** Running.
+**Pilot v1 (seed 2201, four arms to 400,000 ticks) - a design fault found, not a result.** Adaptive functional genotypes
+ever: plain 43, mind 83, frozen 205, uniform 164; new in the last three of ten windows: plain 3/5/2, mind 1/9/5, frozen
+24/26/21, uniform 12/9/13. Not readable, because the proposals inserted (40%) with no matching deletion and every arm with
+proposals bloated: mean program length 9 plain, 22 uniform, 31 frozen, **39 mind**. Effective variation was similar across
+the three (25-29% of children functionally changed, against 9% plain), so length, not the rate, was the confound.
+**Fixed:** the mind and both controls now only substitute (no length change), and a proposal always changes the
+instruction, so all three arms add exactly the same change and differ only in what they write.
+
+**Pilot v2 (seeds 2201 and 2202; plain, mind, frozen, uniform; to 400,000 ticks).** Running.

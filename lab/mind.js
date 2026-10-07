@@ -5,8 +5,8 @@
 // else, ever: no human data, no goal, no reward signal beyond "this program just had a child". Programs that reproduce
 // more appear in its data more often, so it learns the statistics of what reproduces here.
 //
-// What it does: when an organism divides, with probability P the mind writes one instruction of the child (a substitution
-// or an insertion at a random position), sampled from what it has learned to expect after the instructions before it.
+// What it does: when an organism divides, with probability P the mind rewrites one instruction of the child at a random
+// position, sampled from what it has learned to expect after the instructions before it (always a different instruction).
 // Random mutation still happens as before; the mind is an extra, learned variation process. The world's selection still
 // decides everything: a child the mind wrote lives or dies like any other.
 //
@@ -65,13 +65,18 @@ class Mind{
       const tgt=arg?pr[j>>1][1]:pr[j>>1][0]; if(!arg&&tgt>=nops)continue; const l=this.learn(this.ctx(pr,j),tgt,arg,nops); if(arg){ la+=l; na++; } else { lo+=l; no++; } }
     const a=0.98; if(no)this.lossO=this.nTrain?a*this.lossO+(1-a)*lo/no:lo/no; if(na)this.lossA=this.nTrain?a*this.lossA+(1-a)*la/na:la/na; this.nTrain++; }
 
-  // the mind writes into a child about to be born: returns true when it changed it
-  propose(src,nops,maxlen){ if(!(this.P>0)||this.rnd()>=this.P)return false; this.uses++;
-    const ins=src.length<maxlen&&(src.length===0||this.rnd()<0.4), i=(this.rnd()*(ins?src.length+1:src.length))|0;
-    let op, arg;
-    if(this.MODE==='uniform'){ op=(this.rnd()*nops)|0; arg=(this.rnd()*256)|0; }
-    else { const c=this.ctx(src,2*i); this.forward(c,false,nops); op=this.sample(false,nops); this.forward(this.ctx(src,2*i,op),true,nops); arg=this.sample(true,nops); }
-    if(ins)src.splice(i,0,[op,arg]); else src[i]=[op,arg]; return true; }
+  // the mind writes into a child about to be born: it replaces one instruction at a random place with one it samples, and
+  // the new instruction always differs from the old (resampled until it does). Substitution only, so the mind never
+  // changes a program's length: in the first pilot it also inserted (40%) with no matching deletion, and every arm with
+  // proposals bloated (mean length 22-39 against 9), the learning one most. Every arm (learn, frozen, uniform) therefore
+  // adds exactly the same amount of change; only what it writes differs.
+  propose(src,nops,maxlen){ if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; this.uses++;
+    const i=(this.rnd()*src.length)|0, old=src[i]; let op=old[0], arg=old[1];
+    for(let tries=0;tries<16&&op===old[0]&&arg===old[1];tries++){
+      if(this.MODE==='uniform'){ op=(this.rnd()*nops)|0; arg=(this.rnd()*256)|0; }
+      else { this.forward(this.ctx(src,2*i),false,nops); op=this.sample(false,nops); this.forward(this.ctx(src,2*i,op),true,nops); arg=this.sample(true,nops); } }
+    if(op===old[0]&&arg===old[1]){ arg=(arg+1+((this.rnd()*255)|0))&255; }   // sixteen draws gave back the same: change the argument
+    src[i]=[op,arg]; return true; }
 
   report(nops){ return {mode:this.MODE,p:this.P,uses:this.uses,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossArg:+this.lossA.toFixed(3),uniformOp:+Math.log(nops).toFixed(3),uniformArg:+Math.log(256).toFixed(3),buf:this.buf.length}; }
 
