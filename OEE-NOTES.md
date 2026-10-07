@@ -26261,3 +26261,15 @@ chance does? The retire-or-prove template, as #272 ran it.
   universe changes the artwork, and that is the user's call.
 - **U** is scored the same way and reported beside M, to say whether learning matters or only the extra rewrites.
 - Scored by `score-296b.js`, committed with this entry.
+
+**#296 before push: `smoke.sh` 61 ok, 1 failing (`slot-test.js`), and it is the machine, measured three ways.** Standalone,
+slot-test failed twice on this commit (9 passed, 6 failed): none of the nine built universes reached the first autosave
+(tick 1,800) inside the 150-second window, and the five #201 rows failed with it because they borrow a germline from a
+built universe that has saved (`donorKey` = the first saved slot; with none saved the founding carries no genome and is
+refused). (1) The pre-#296 code (worktree at ab1b584) on the same box failed the same row, 2 of 9 saved, 14 passed.
+(2) Browser speed A/B, a four-universe field for 45 seconds, alternating order: old 4,655 and 4,546 ticks in total, new
+4,805 and 4,535. (3) With SECS=260 (the rig's own knob; the threshold is untouched) this commit passes 15 of 15,
+nine of nine saved and every #201 row green. The 150-second window is marginal on this box for old and new code alike;
+recorded, not retuned. `mind-test.js` now also reads the layers and grown universes: every one of them has its own mind
+(L1_*, L2_*, g0, g1 included); it asks for activity only from universes past 1,000 ticks, because the layers run paced
+and a grown universe can be seconds old. Added to `smoke.sh` (SECS=45).

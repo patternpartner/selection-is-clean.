@@ -21,13 +21,15 @@ const server = http.createServer((req, res) => {
     res.end(b); });
 });
 
-// every universe in the page (surface cells and the collective), with its mind report
+// every universe in the page (surface cells, the collective, the layers below and any grown one), with its mind report
 const minds = page => page.evaluate(async () => {
   const one = async el => { const m = (el.getAttribute('src') || '').match(/[?&]slot=([^&#]*)/), s = m ? m[1] : '?';
     try { const a = el.contentWindow && el.contentWindow.__field; if (!a) return [s, null];
       const r = await Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 8000))]);
       return [s, r ? (r.mind || null) : null, r ? (r.totalTicks | 0) : -1]; } catch (e) { return [s, null, -1]; } };
-  const o = []; for (const c of document.querySelectorAll('.cell')) o.push(await one(c.firstChild)); return o;
+  const o = []; for (const c of document.querySelectorAll('.cell')) o.push(await one(c.firstChild));
+  for (const d of document.querySelectorAll('#below .deep, #below .grown')) o.push(await one(d));   // the layers below and any grown universe
+  return o;
 });
 
 (async () => {
@@ -35,20 +37,23 @@ const minds = page => page.evaluate(async () => {
   const base = 'http://127.0.0.1:' + server.address().port;
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   try {
-    for (const [hash, want] of [['#n=2,mind', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2', 'off']]) {
+    for (const [hash, want] of [['#n=2,layers=1,mind', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2', 'off']]) {
       const ctx = await browser.newContext(), page = await ctx.newPage();
       await page.goto(base + '/index.html' + hash);
       await page.waitForTimeout(WARM * 1000);
       const ms = await minds(page);
       console.log('  ' + hash + ': ' + ms.map(([s, m, t]) => s + ' t' + t + ' ' + (m ? JSON.stringify({ mode: m.mode, p: m.p, seen: m.seen, wrote: m.uses, trained: m.trained }) : 'no report')).join(' | '));
-      ck(hash + ': every universe answered', ms.length >= 2 && ms.every(([, m]) => m), ms.length + ' universes');
+      ck(hash + ': every universe answered', ms.length >= (hash.includes('layers=1') ? 6 : 3) && ms.every(([, m]) => m), ms.length + ' universes');
       if (want === 'off') ck(hash + ': no universe has a mind', ms.every(([, m]) => m && m.mode === 'off'));
       else {
         ck(hash + ': every universe has a ' + want + ' mind', ms.every(([, m]) => m && m.mode === want));
-        ck(hash + ': and every one has seen parents and written children', ms.every(([, m]) => m && m.seen > 0 && m.uses > 0),
-           ms.map(([, m]) => m ? m.seen + '/' + m.uses : '-').join(' '));
-        if (want === 'learn') ck(hash + ': and is learning', ms.every(([, m]) => m && m.trained > 0 && m.lossOp > 0 && m.lossOp < m.uniformOp),
-           ms.map(([, m]) => m ? m.lossOp + '<' + m.uniformOp : '-').join(' '));
+        // activity only where there has been time for it: the layers run paced and a grown universe may be seconds old,
+        // so they can have had no birth yet. Every universe must HAVE the mind (above); the ones past 1,000 ticks must use it.
+        const ran = ms.filter(([, m, t]) => t >= 1000);
+        ck(hash + ': every universe past 1,000 ticks has seen parents and written children', ran.length >= 3 && ran.every(([, m]) => m && m.seen > 0 && m.uses > 0),
+           ran.map(([s, m]) => s + ' ' + (m ? m.seen + '/' + m.uses : '-')).join(' '));
+        if (want === 'learn') ck(hash + ': and is learning', ran.every(([, m]) => m && m.trained > 0 && m.lossOp > 0 && m.lossOp < m.uniformOp),
+           ran.map(([s, m]) => s + ' ' + (m ? m.lossOp + '<' + m.uniformOp : '-')).join(' '));
         if (hash.includes('mind=40')) ck(hash + ': at the rate the field asked for', ms.every(([, m]) => m && m.p === 0.4));
       }
       await ctx.close();
