@@ -56,12 +56,15 @@ class Mind{
 
   sample(arg,nops){ const r=this.rnd(), p=this.p, n=arg?NARG:nops; let a=0; for(let v=0;v<n;v++){ a+=p[v]; if(r<a)return v; } return n-1; }
 
-  // the world tells it about a parent that divided
-  see(prog){ const cp=prog.map(x=>[x[0],x[1]]); if(this.buf.length<this.BUF)this.buf.push(cp); else { this.buf[this.bufAt]=cp; this.bufAt=(this.bufAt+1)%this.BUF; } }
+  // the world tells it about a parent that divided. With at (an instruction position) it is a CHANGE that worked: the
+  // parent carries a change at that position, made when it was born, and it has just had a child (DATA 'changes', v3).
+  // Without, it is the whole program (DATA 'parents', v2): any position may be learned from.
+  see(prog,at){ const e={p:prog.map(x=>[x[0],x[1]]),at:at===undefined?-1:at}; if(this.buf.length<this.BUF)this.buf.push(e); else { this.buf[this.bufAt]=e; this.bufAt=(this.bufAt+1)%this.BUF; } }
 
   // learning, every EVERY ticks: STEPS random token positions from the buffer
   train(nops){ if(this.MODE!=='learn'||this.buf.length<16)return; let lo=0, la=0, no=0, na=0;
-    for(let s=0;s<this.STEPS;s++){ const pr=this.buf[(this.rnd()*this.buf.length)|0]; if(!pr.length)continue; const j=(this.rnd()*pr.length*2)|0, arg=(j&1)===1;
+    for(let s=0;s<this.STEPS;s++){ const e=this.buf[(this.rnd()*this.buf.length)|0], pr=e.p; if(!pr.length)continue;
+      const j=e.at>=0&&e.at<pr.length?2*e.at+(this.rnd()<0.5?0:1):(this.rnd()*pr.length*2)|0, arg=(j&1)===1;
       const tgt=arg?pr[j>>1][1]:pr[j>>1][0]; if(!arg&&tgt>=nops)continue; const l=this.learn(this.ctx(pr,j),tgt,arg,nops); if(arg){ la+=l; na++; } else { lo+=l; no++; } }
     const a=0.98; if(no)this.lossO=this.nTrain?a*this.lossO+(1-a)*lo/no:lo/no; if(na)this.lossA=this.nTrain?a*this.lossA+(1-a)*la/na:la/na; this.nTrain++; }
 
@@ -82,9 +85,12 @@ class Mind{
 
   save(){ const b=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength).toString('base64');
     return {K:this.K,D:this.D,H:this.H,LR:this.LR,P:this.P,MODE:this.MODE,BUF:this.BUF,EVERY:this.EVERY,STEPS:this.STEPS,rnd:this.rnd.s,emb:b(this.emb),W1:b(this.W1),b1:b(this.b1),Wo:b(this.Wo),bo:b(this.bo),Wa:b(this.Wa),ba:b(this.ba),
-      buf:this.buf.map(p=>p.map(x=>x[0].toString(16).padStart(2,'0')+x[1].toString(16).padStart(2,'0')).join('')),bufAt:this.bufAt,lossO:this.lossO,lossA:this.lossA,nTrain:this.nTrain,uses:this.uses}; }
+      buf:this.buf.map(e=>[e.p.map(x=>x[0].toString(16).padStart(2,'0')+x[1].toString(16).padStart(2,'0')).join(''),e.at]),bufAt:this.bufAt,lossO:this.lossO,lossA:this.lossA,nTrain:this.nTrain,uses:this.uses}; }
   static load(o){ const m=new Mind(1,o); m.rnd.s=o.rnd; const f=(k)=>{ const t=Buffer.from(o[k],'base64'); new Uint8Array(m[k].buffer).set(t); };
     for(const k of ['emb','W1','b1','Wo','bo','Wa','ba'])f(k);
-    m.buf=o.buf.map(s=>{ const p=[]; for(let i=0;i<s.length;i+=4)p.push([parseInt(s.slice(i,i+2),16),parseInt(s.slice(i+2,i+4),16)]); return p; }); m.bufAt=o.bufAt; m.lossO=o.lossO; m.lossA=o.lossA; m.nTrain=o.nTrain; m.uses=o.uses; return m; }
+    const dec=s=>{ const p=[]; for(let i=0;i<s.length;i+=4)p.push([parseInt(s.slice(i,i+2),16),parseInt(s.slice(i+2,i+4),16)]); return p; };
+    // older saves held whole programs only
+    m.buf=o.buf.map(x=>Array.isArray(x)?{p:dec(x[0]),at:x[1]}:{p:dec(x),at:-1});
+    m.bufAt=o.bufAt; m.lossO=o.lossO; m.lossA=o.lossA; m.nTrain=o.nTrain; m.uses=o.uses; return m; }
 }
 module.exports={Mind};
