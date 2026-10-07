@@ -27,6 +27,10 @@ class Mind{
   constructor(seed,o){ o=o||{};
     this.K=o.K||6; this.D=o.D||16; this.H=o.H||64; this.LR=o.LR||0.05; this.P=o.P??0.2; this.MODE=o.MODE||'learn';
     this.BUF=o.BUF||1024; this.EVERY=o.EVERY||50; this.STEPS=o.STEPS||100;
+    // CURIOSITY (v4), both off by default: NOVEL=b writes instructions in proportion to p^-b, what it does NOT expect (b>0),
+    // instead of p, what it does; WHERE='uncertain' picks the place to change in proportion to the square of its own
+    // uncertainty there (the entropy of what it predicts), instead of anywhere at random.
+    this.NOVEL=o.NOVEL||0; this.WHERE=o.WHERE||'random';
     this.rnd=mulberry32(((seed>>>0)||1)^0x6d696e64);   // its own random stream: it never draws from the world's
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,s)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*s; return a; };
     this.emb=init(VOCAB*D,0.1); this.W1=init(K*D*H,1/Math.sqrt(K*D)); this.b1=new Float32Array(H);
@@ -54,7 +58,12 @@ class Mind{
     for(let u=0;u<H;u++)this.b1[u]-=lr*dh[u];
     return loss; }
 
-  sample(arg,nops){ const r=this.rnd(), p=this.p, n=arg?NARG:nops; let a=0; for(let v=0;v<n;v++){ a+=p[v]; if(r<a)return v; } return n-1; }
+  sample(arg,nops){ const p=this.p, n=arg?NARG:nops;
+    if(this.NOVEL>0){ let z=0; for(let v=0;v<n;v++){ p[v]=Math.pow(Math.max(p[v],1e-6),-this.NOVEL); z+=p[v]; } for(let v=0;v<n;v++)p[v]/=z; }   // curious: the unexpected
+    const r=this.rnd(); let a=0; for(let v=0;v<n;v++){ a+=p[v]; if(r<a)return v; } return n-1; }
+  // entropy of what it predicts at instruction i of a program: its operation and, given the operation there, its argument
+  unsure(src,i,nops){ let h=0; const p=this.p; let n=this.forward(this.ctx(src,2*i),false,nops); for(let v=0;v<n;v++)if(p[v]>0)h-=p[v]*Math.log(p[v]);
+    n=this.forward(this.ctx(src,2*i,src[i][0]<nops?src[i][0]:0),true,nops); for(let v=0;v<n;v++)if(p[v]>0)h-=p[v]*Math.log(p[v]); return h; }
 
   // the world tells it about a parent that divided. With at (an instruction position) it is a CHANGE that worked: the
   // parent carries a change at that position, made when it was born, and it has just had a child (DATA 'changes', v3).
@@ -74,7 +83,10 @@ class Mind{
   // proposals bloated (mean length 22-39 against 9), the learning one most. Every arm (learn, frozen, uniform) therefore
   // adds exactly the same amount of change; only what it writes differs.
   propose(src,nops,maxlen){ if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; this.uses++;
-    const i=(this.rnd()*src.length)|0, old=src[i]; let op=old[0], arg=old[1];
+    let i;
+    if(this.WHERE==='uncertain'&&this.MODE==='learn'){ const w=src.map((x,k)=>{ const h=this.unsure(src,k,nops); return h*h; }); let z=0; for(const x of w)z+=x; let r=this.rnd()*z; i=src.length-1; for(let k=0;k<w.length;k++){ r-=w[k]; if(r<0){ i=k; break; } } }   // curious: where it is unsure
+    else i=(this.rnd()*src.length)|0;
+    const old=src[i]; let op=old[0], arg=old[1];
     for(let tries=0;tries<16&&op===old[0]&&arg===old[1];tries++){
       if(this.MODE==='uniform'){ op=(this.rnd()*nops)|0; arg=(this.rnd()*256)|0; }
       else { this.forward(this.ctx(src,2*i),false,nops); op=this.sample(false,nops); this.forward(this.ctx(src,2*i,op),true,nops); arg=this.sample(true,nops); } }
@@ -84,7 +96,7 @@ class Mind{
   report(nops){ return {mode:this.MODE,p:this.P,uses:this.uses,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossArg:+this.lossA.toFixed(3),uniformOp:+Math.log(nops).toFixed(3),uniformArg:+Math.log(256).toFixed(3),buf:this.buf.length}; }
 
   save(){ const b=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength).toString('base64');
-    return {K:this.K,D:this.D,H:this.H,LR:this.LR,P:this.P,MODE:this.MODE,BUF:this.BUF,EVERY:this.EVERY,STEPS:this.STEPS,rnd:this.rnd.s,emb:b(this.emb),W1:b(this.W1),b1:b(this.b1),Wo:b(this.Wo),bo:b(this.bo),Wa:b(this.Wa),ba:b(this.ba),
+    return {K:this.K,D:this.D,H:this.H,LR:this.LR,P:this.P,MODE:this.MODE,BUF:this.BUF,EVERY:this.EVERY,STEPS:this.STEPS,NOVEL:this.NOVEL,WHERE:this.WHERE,rnd:this.rnd.s,emb:b(this.emb),W1:b(this.W1),b1:b(this.b1),Wo:b(this.Wo),bo:b(this.bo),Wa:b(this.Wa),ba:b(this.ba),
       buf:this.buf.map(e=>[e.p.map(x=>x[0].toString(16).padStart(2,'0')+x[1].toString(16).padStart(2,'0')).join(''),e.at]),bufAt:this.bufAt,lossO:this.lossO,lossA:this.lossA,nTrain:this.nTrain,uses:this.uses}; }
   static load(o){ const m=new Mind(1,o); m.rnd.s=o.rnd; const f=(k)=>{ const t=Buffer.from(o[k],'base64'); new Uint8Array(m[k].buffer).set(t); };
     for(const k of ['emb','W1','b1','Wo','bo','Wa','ba'])f(k);

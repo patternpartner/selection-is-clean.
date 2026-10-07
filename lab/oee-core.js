@@ -112,7 +112,7 @@ class World{
     this.p=Object.assign({},DEF,opts||{});
     const P=this.p, C=P.W*P.H;
     this.rnd=mulberry32((seed>>>0)||1); this.C=C; this.tick=0; this.seed0=(seed>>>0)||1;
-    if(P.MIND>0)this.mind=new Mind(this.seed0,{P:P.MIND,MODE:P.MIND_MODE,LR:P.MIND_LR,K:P.MIND_K,H:P.MIND_H,EVERY:P.MIND_EVERY,STEPS:P.MIND_STEPS});
+    if(P.MIND>0)this.mind=new Mind(this.seed0,{P:P.MIND,MODE:P.MIND_MODE,LR:P.MIND_LR,K:P.MIND_K,H:P.MIND_H,EVERY:P.MIND_EVERY,STEPS:P.MIND_STEPS,NOVEL:P.MIND_NOVEL,WHERE:P.MIND_WHERE});
     if(this.mind&&P.MIND_DATA==='changes'){ this.mindPos=new Float32Array(C); (this.bodyF=this.bodyF||[]).push({A:this.mindPos,energy:false}); }   // v3: where each organism differs from its parent (1+position, 0 none), carried with it like a body field   // MIND (#293), not in DEF so a world without it saves exactly as before: the chance it writes an instruction of each child; MIND_MODE learn | frozen | uniform
     this.alive=new Uint8Array(C); this.E=new Float32Array(C); this.age=new Int32Array(C);
     this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=(opts&&opts.TASKS)?new Float64Array(C*4):new Float32Array(C*4);   // TASKS needs registers that hold a 32-bit word exactly

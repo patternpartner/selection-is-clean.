@@ -16,4 +16,14 @@ ok(hit>150,'after EAT_LIGHT DIVIDE it writes TURN(1) '+hit+' times in 200');
 const f=new Mind(7,{P:1,MODE:'frozen'}); for(let i=0;i<300;i++)f.see(prog()); for(let t=0;t<50;t++)f.train(nops); ok(f.nTrain===0,'a frozen mind never trains');
 const s=Mind.load(JSON.parse(JSON.stringify(m.save()))); const a=[],b=[]; for(let k=0;k<20;k++){ const p1=[[17,0],[20,5]], p2=[[17,0],[20,5]]; m.propose(p1,nops,64); s.propose(p2,nops,64); a.push(JSON.stringify(p1)); b.push(JSON.stringify(p2)); }
 ok(a.join()===b.join(),'save and load is exact (the same proposals afterwards)');
+// curiosity (v4): trained on the pattern, a NOVEL mind avoids what it expects, and WHERE='uncertain' changes where it is unsure
+{ const c=new Mind(7,{P:1,NOVEL:0.5}); for(let i=0;i<300;i++)c.see(prog()); for(let t=0;t<400;t++)c.train(nops);
+  let same=0; for(let k=0;k<200;k++){ const s=[[17,0],[20,5],[0,0]]; c.forward(c.ctx(s,4),false,nops); if(c.sample(false,nops)===15)same++; }
+  ok(same<20,'a NOVEL mind writes the expected TURN after EAT_LIGHT DIVIDE only '+same+' times in 200 (the plain mind: 200)');
+  const u=new Mind(7,{P:1,WHERE:'uncertain'}); for(let i=0;i<300;i++)u.see(prog()); for(let t=0;t<400;t++)u.train(nops);
+  const odd=[[17,0],[20,5],[15,1],[16,9],[3,77],[9,200],[17,0],[20,5]];   // a familiar start, then instructions it has never seen
+  const at=new Array(odd.length).fill(0); for(let k=0;k<400;k++){ const s=odd.map(x=>x.slice()); u.propose(s,nops,64); for(let q=0;q<s.length;q++) if(s[q][0]!==odd[q][0]||s[q][1]!==odd[q][1])at[q]++; }
+  const known=at[1]+at[2]+at[3], strange=at[5]+at[6]+at[7];
+  ok(strange>2*known,'WHERE=uncertain changes where it cannot predict (positions after the unseen part '+strange+', inside the familiar start '+known+')');
+  const r=Mind.load(JSON.parse(JSON.stringify(c.save()))); ok(r.NOVEL===0.5&&Mind.load(JSON.parse(JSON.stringify(u.save()))).WHERE==='uncertain','curiosity settings survive save and load'); }
 console.log(fails?fails+' FAILED':'all passed'); process.exit(fails?1:0);
