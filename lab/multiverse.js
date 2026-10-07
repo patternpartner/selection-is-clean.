@@ -13,10 +13,12 @@
 // on (a mind exports only what its own world showed it). Nothing but the worlds is ever data.
 // Deterministic, and a chunked run equals an unchunked one (TICKS must be a multiple of SYNC and of 1000). Logs OUT/<arm>-<seed>
 // .jsonl, one core sample per 1000 ticks, and saves OUT/<arm>-<seed>.json; when every save exists the run resumes from them.
+// A mind that hears anyone also logs abroad: the foreign examples it took in since the last sample, the proof that the
+// exchange ran. The one log field a chunk boundary changes: the examples taken in as a chunk saves are not counted.
 'use strict';
 const fs=require('fs'), path=require('path'), {Worker,isMainThread,parentPort,workerData}=require('worker_threads');
 
-if(!isMainThread){ const {World}=require('./oee-core.js'), {seed,opts,load,log}=workerData;
+if(!isMainThread){ const {World}=require('./oee-core.js'), {seed,opts,load,log,hears}=workerData;
   const w=load?World.load(fs.readFileSync(load,'utf8')):new World(seed,opts), m=w.mind;
   if(!m)throw new Error('multiverse: OPTS has no MIND');
   const see=m.see.bind(m); let home=[];   // what this world showed its mind since the last stop
@@ -24,12 +26,12 @@ if(!isMainThread){ const {World}=require('./oee-core.js'), {seed,opts,load,log}=
   if(load){ const L=fs.readFileSync(log,'utf8').split('\n').filter(x=>x), k=w.tick/1000;   // a killed chunk may have logged past its save
     if(L.length<k)throw new Error('multiverse: '+log+' has fewer lines than its save has ticks'); fs.writeFileSync(log,L.slice(0,k).map(x=>x+'\n').join('')); }
   else fs.writeFileSync(log,'');
-  const t0=Date.now(), fd=fs.openSync(log,'a');
+  const t0=Date.now(), fd=fs.openSync(log,'a'); let abroad=0;   // foreign examples taken in since the last sample (logged only by a mind that hears anyone)
   parentPort.on('message',msg=>{
-    for(const [p,at] of msg.inbox) see(p,at>=0?at:undefined);   // abroad, after home, before the next ticks
+    for(const [p,at] of msg.inbox) see(p,at>=0?at:undefined); abroad+=msg.inbox.length;   // abroad, after home, before the next ticks
     if(msg.save){ fs.closeSync(fd); fs.writeFileSync(msg.save,w.save()); parentPort.postMessage({saved:true}); return; }
     home=[];
-    for(let s=0;s<msg.n;s++){ w.step(); if(w.tick%1000===0){ const r=w.sample(); r.wallS=+((Date.now()-t0)/1000).toFixed(1); fs.writeSync(fd,JSON.stringify(r)+'\n'); } }
+    for(let s=0;s<msg.n;s++){ w.step(); if(w.tick%1000===0){ const r=w.sample(); if(hears){ r.abroad=abroad; abroad=0; } r.wallS=+((Date.now()-t0)/1000).toFixed(1); fs.writeSync(fd,JSON.stringify(r)+'\n'); } }
     parentPort.postMessage({home,tick:w.tick}); });
   return; }
 
@@ -51,7 +53,7 @@ if(require.main===module){ const E=process.env, ARM=E.ARM||'alone', SEEDS=(E.SEE
   if(T%SYNC||T%1000)throw new Error('multiverse: TICKS must be a multiple of SYNC and of 1000');
   const n=SEEDS.length, f=SEEDS.map(s=>path.join(OUT,`${E.NAME||ARM}-${s}`)), resume=f.every(x=>fs.existsSync(x+'.json'));
   if(!resume&&f.some(x=>fs.existsSync(x+'.json')))throw new Error('multiverse: some worlds of this run have saves and some do not');
-  const ws=SEEDS.map((seed,i)=>new Worker(__filename,{workerData:{seed,opts,load:resume?f[i]+'.json':null,log:f[i]+'.jsonl'}}));
+  const ws=SEEDS.map((seed,i)=>new Worker(__filename,{workerData:{seed,opts,load:resume?f[i]+'.json':null,log:f[i]+'.jsonl',hears:sources(ARM,i,n).length>0}}));
   for(const x of ws)x.on('error',e=>{ console.error(e); process.exit(1); });
   const ask=(i,msg)=>new Promise(ok=>{ ws[i].once('message',ok); ws[i].postMessage(msg); });
   (async()=>{ let boxes=SEEDS.map(()=>[]); const src=SEEDS.map((_,i)=>sources(ARM,i,n));

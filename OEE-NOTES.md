@@ -26169,3 +26169,24 @@ the world breeds cautious minds (NOVEL at or below its shadow).
   mind would need to keep up with this world is memory, not size; and what keeps it curious is not anything the world
   rewards. Of everything tried in #293-#295, the one result pointing the same way on every world is #294's: minds that
   learn from one partner world.
+
+### #294b — DECIDING RUN, pre-registered (written and committed before the first decision run)
+
+**Question.** Do minds that learn from one partner world (`pairs`) produce more novelty than minds that learn alone, by
+more than chance moves a lone mind's world? #294's pilot said yes on 4 of 4 worlds, with no null band.
+- **Worlds:** 2301, 2302, 2303, 2304 (unseen). Pairs: 2301 with 2302, 2303 with 2304. Horizon 400,000 ticks (at 200,000
+  the pilot was 3 of 4, so the horizon is the pilot's). Code: `lab/multiverse.js` with `{MIND:0.2}` (v2's mind), SYNC 50,
+  from a frozen worktree at the commit that carries this entry.
+- **Null band, per world:** the `alone` control and three replicates `null1-3` with `MIND_SEED` 1, 2, 3: the same world
+  and the same rules, a different draw of the mind's own random stream.
+- **Executed first:** a world counts only if its pairs mind took in foreign examples (`abroad`, logged) and every mind
+  made proposals. Fewer than 3 counted worlds: INCONCLUSIVE.
+- **Primary measure:** functional adaptive genotypes ever (`core-geno.js`, WIN=40, ten windows). Secondary: first-time
+  adaptive genotypes in the last three windows.
+- **Per world:** BETTER when pairs is above every one of the four alone runs; WORSE when below every one; otherwise inside.
+- **R1:** MET when pairs is BETTER on the primary measure on at least two-thirds of counted worlds (3 of 4). If it is
+  BETTER on one measure and WORSE on the other on two-thirds, SPLIT. Otherwise NOT MET.
+- **Uniform randomness:** one uniform run per world (`{MIND:0.2, MIND_MODE:'uniform'}`), reported beside the result. With no
+  band of its own it gets NO verdict here: whether learning beats randomness is not decided by this run.
+- **Scored by** `lab/score-294b.js`, committed with this entry. Nothing in the default world changes either way; the
+  result decides whether partner-learning is built on (next: a longer memory) or dropped.
