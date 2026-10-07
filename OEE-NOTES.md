@@ -26020,3 +26020,26 @@ Thompson sampling on each drive's children's divisions per proposal, with eviden
   conservatism.** A longer horizon (credit for the whole lineage a change founds) would still judge by the average change,
   which for unexpected ones is harmful; what novelty pays out is in the upper tail (the few lineages that spread), and a
   judge has to look there to keep it.
+
+**Pilot v7: judge each drive by the upper tail (`MIND_ADAPT=lineage`; same seeds, 400,000 ticks).** Every child the mind
+writes founds a lineage (body field `mindLine`, inherited); every 500 ticks the world counts each lineage's living members,
+and a drive is credited once when a lineage it founded first reaches 10. Thompson sampling as v6, evidence fading as v6.
+- **The world still chose the exploiter**: share per 40,000-tick window (exploit / the unexpected / unsure) 78-92% / 1-4%
+  / 5-20% on 2201, 73-93% / 1-4% / 5-25% on 2202. Unsure kept more than in v6; the unexpected did not.
+- **Because exploit's lineages ARE the upper tail.** Of all lineages founded, the share that reached 10 living members:
+  exploit 3.06% and 3.14%, unsure 2.44% and 2.67%, the unexpected 1.54% and 1.54% (2201 and 2202), and the same order in
+  every window. The expectation in v6 was wrong: the rare unexpected change that founds a large lineage is rarer than the
+  ordinary exploiting one that does. Spreading is not the same as being new.
+- **And the least novelty of any arm with extra variation**: first-time adaptive genotypes in the last three windows 22
+  and 24 (v6 34 and 36, the fixed mix 62 and 54); adaptive ever 97 and 109. The last 100,000 ticks look like v6's (light
+  27.2k and 27.0k, attack 17.3k and 14.4k, functional genotypes 498 and 525).
+- **What v6 and v7 together say:** when this world is given the choice of how to vary, by short-run success or by lasting
+  spread, it picks the variation that repeats what already works, and novelty falls. A judge that keeps novelty would have
+  to reward newness itself, and that is a judgement brought in from outside, not one the world makes.
+
+**Does a learning mind improve with time? (the user's question).** Not here. Its prediction error RISES over the run (the
+v2 mind: 1.45 nats on operations at 5,000 ticks, 2.30 at 400,000; uniform is 3.47), because programs grow more varied and
+its memory is the last 1,024 examples: it tracks the present and forgets the past. Its novelty as a fraction of uniform's,
+first half against second half: v2 0.39 -> 0.54 and 0.89 -> 0.60, NOVEL 0.70 -> 0.69 and 0.67 -> 1.06, v6 0.54 -> 0.45 and
+0.62 -> 0.61, and the FROZEN network, which never learns, 0.39 -> 0.79 and 1.07 -> 0.71: the changes are run-to-run noise.
+Nothing in the design accumulates, so nothing does.
