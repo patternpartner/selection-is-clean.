@@ -25897,3 +25897,35 @@ identity-checked off). The modules that failed are retired in the sense the prot
   gut to biter) held by selection for about 500,000 ticks, before the strong takers arrived and replaced it. The depth the
   loop produced existed only because the escalation had not arrived yet: it was a property of the order of supply, not
   something the world built and kept.
+
+### #293 — A PRIMITIVE MIND INSIDE THE WORLD: an AI whose only data, ever, is the world it lives in.
+
+**Why (the user's idea, after #292b).** #292b ended: "the open-ended part is still the generator", and the generator was an
+AI carrying human culture into the world from outside. The user: AI is the open-ended evolution, so put one in, but
+primitive, and let the only data it ever sees be the system itself. Then nothing comes from outside: whatever novelty
+arrives is made by the world and a learner trained on the world, each changing the other.
+
+**What the mind is (`lab/mind.js`, about 100 lines, no libraries).** A tiny neural language model over programs (the 2003
+Bengio design: the K=6 tokens before a position embedded, one tanh layer of 64 units, two softmax heads, one over operations
+and one over the 256 arguments; each instruction is two tokens). Random weights at the start.
+- **What it sees:** the program of every organism that divides, at the moment it divides. Programs that reproduce more are
+  in its data more often. Nothing else: no human data, no goal, no reward but "this program just had a child".
+- **What it does:** at each birth, with probability MIND, it writes one instruction of the child (a substitution or an
+  insertion at a random place), sampled from what it expects after the instructions before it. Random mutation still runs.
+  The world's selection decides everything.
+- **Why there and not in the physics:** a world makes thousands of births per 1,000 ticks, each a program with a fate;
+  new physics gives about ten data points a run, too few for a primitive learner. And it attacks #292's finding that
+  selection cannot see parts of a program in a world without recombination: a learner that has picked up which
+  instructions go together moves building blocks across lineages the way recombination would.
+- **Controls at the same proposal rate:** `MIND_MODE=frozen` (the same network, random weights, never trained: structured
+  but uninformed) and `uniform` (uniformly random instructions: extra random variation, no model).
+- **Checks:** `lab/test-mind.js` (it learns a pattern down to a loss of 0.001 from 3.5; a frozen mind never trains; save and
+  load exact). Worlds without it are byte-identical to before (five fresh configurations and a #292b save); resume with it
+  is exact. In a plain world it reaches an operation loss of 1.6 (uniform 3.5) within 3,000 ticks.
+
+**The question, at the rung this project has measured before (#285d).** Adaptive functional genotypes per window against
+the neutral population (`lab/core-geno.js`): every closed world so far shows first-time adaptive genotypes tapering off.
+Does the world with a mind keep producing them into the last quarter, beyond the same world with the same amount of random
+variation (uniform) and of uninformed structure (frozen)?
+
+**Pilot (exploratory, seed 2201, four arms to 400,000 ticks: plain, mind, frozen, uniform).** Running.
