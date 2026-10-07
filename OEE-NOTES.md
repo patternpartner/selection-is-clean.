@@ -25961,3 +25961,18 @@ instruction, so all three arms add exactly the same change and differ only in wh
 random mutation or by the mind); each time that child divides, the change and its context become a training example. The
 mind then learns which edits succeed in which context, and can carry a successful edit from one lineage into another.
 Still nothing but the system as data.
+
+**Pilot v3 (`MIND_DATA=changes`, same two seeds, to 400,000 ticks).** First-time adaptive genotypes in the last three
+windows: **42 and 52** (v2 44 and 43; frozen 55 and 42; uniform 69 and 87; plain 10 and 12). Learning from changes that
+worked removed v2's narrowing (functional genotypes 519 and 521, operations in common use 21 and 20, as the controls) and
+most of its exploitation (attack 15.5k and 14.4k), but it is no more inventive than a fixed random network, and uniform
+randomness at the same rate still beats it on both seeds. Its loss stays high (2.9 on operations, 3.8 on arguments):
+successful changes are hard to predict.
+
+**What the pilot says so far (two seeds, exploratory, no claim).** A primitive mind that learns only from its world does
+learn it, and does change it: taught by the programs that exist it becomes an exploiter (better at the dominant ways of
+living, narrower); taught by the changes that worked it becomes a neutral variation source. Neither out-invents plain
+randomness at the same rate. What a learned proposer adds is concentration on what it has seen, and novelty here is made
+by breadth. The one thing every extra-variation arm shares, and plain lacks, is more variation: whether this world's
+plateau is mostly a variation-rate plateau is a question in its own right (and the neutral bar falls with variation, so it
+needs a measure that does not).
