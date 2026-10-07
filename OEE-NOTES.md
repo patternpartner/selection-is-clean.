@@ -26327,3 +26327,35 @@ is doing. If we save the field we should also save the mind at the same time. No
   puts each back into its own slot.
 - Tested: `grown-test.js` 7/7 in Chromium (three daughters in storage, cap 2: g7 and g3 come back running, each with its
   own saved mind; g0 untouched; no new slot; a grown universe saves genome and mind); added to `smoke.sh`.
+
+**#296b RESULT: KEEP (not WORSE).** All three seeds counted (the mind wrote 412-430 children per run). `node
+score-296b.js <dir>`:
+```
+== M: the mind, MIND=20
+  301 nulls [cE, spread, est, progH, effN, alive] [[0.22,0.213,0.0033,5.134,197.21,369],[0.15,0.2089,0.0025,4.542,166.27,377],[0.18,0.1787,0.0046,4.456,159.64,366],[0.14,0.2138,0.0053,4.432,141.87,360]]
+  301 M [0.26,0.2187,0.0045,4.53,159.47,377] mind wrote 416 | counted true better [] worse []
+  302 nulls [cE, spread, est, progH, effN, alive] [[1.34,0.4755,0.0179,5.299,135.8,369],[0.25,0.2289,0.0046,4.146,218.12,334],[0.16,0.1685,0.0057,5.134,163.29,362],[0.45,0.3062,0.0024,4.977,178.2,369]]
+  302 M [0.13,0.1775,0.0044,4.441,137.16,369] mind wrote 430 | counted true better [] worse []
+  303 nulls [cE, spread, est, progH, effN, alive] [[0.82,0.3872,0.0069,4.988,140.8,391],[0.25,0.2277,0.0032,4.618,191.41,369],[0.4,0.2424,0.0198,5.086,42.54,388],[1.12,0.4756,0.0059,5.198,184.7,375]]
+  303 M [1.49,0.5766,0.0051,4.492,189.51,354] mind wrote 412 | counted true better ["centredEntropyRatio","spread"] worse []
+VERDICT M: KEEP (not WORSE)
+== U: uniform random rewrites at the same rate (reported, no ruling)
+  301 nulls [cE, spread, est, progH, effN, alive] [[0.22,0.213,0.0033,5.134,197.21,369],[0.15,0.2089,0.0025,4.542,166.27,377],[0.18,0.1787,0.0046,4.456,159.64,366],[0.14,0.2138,0.0053,4.432,141.87,360]]
+  301 U [0.26,0.2397,0.0085,6.059,148.03,367] mind wrote 494 | counted true better ["spread","establishment","programEntropy"] worse []
+  302 nulls [cE, spread, est, progH, effN, alive] [[1.34,0.4755,0.0179,5.299,135.8,369],[0.25,0.2289,0.0046,4.146,218.12,334],[0.16,0.1685,0.0057,5.134,163.29,362],[0.45,0.3062,0.0024,4.977,178.2,369]]
+  302 U [0.27,0.2136,0.0053,5.727,171.54,377] mind wrote 466 | counted true better [] worse []
+  303 nulls [cE, spread, est, progH, effN, alive] [[0.82,0.3872,0.0069,4.988,140.8,391],[0.25,0.2277,0.0032,4.618,191.41,369],[0.4,0.2424,0.0198,5.086,42.54,388],[1.12,0.4756,0.0059,5.198,184.7,375]]
+  303 U [0.23,0.2035,0.0044,5.712,158.11,365] mind wrote 482 | counted true better [] worse ["spread"]
+U: KEEP (not WORSE)
+```
+- **The mind did no measured harm in the real engine, and showed no consistent benefit**: BETTER on seed 303 only
+  (centredEntropyRatio 1.49 against a null band of 0.25-1.12; spread 0.577 against 0.228-0.476), inside the band on 301
+  and 302, WORSE on none. By the rule, KEEP; not BETTER (that needed two seeds of three).
+- **Program diversity tells the same story as the lab.** Program entropy (sigH late): the learning mind sat at the bottom
+  of the null band on every seed (4.53, 4.44, 4.49 against nulls 4.43-5.13, 4.15-5.30, 4.62-5.20); uniformly random
+  rewrites at the same rate sat above it on every seed (6.06, 5.73, 5.71). What the mind learns is what is common, and
+  writing it makes programs a little more alike; randomness makes them more varied. Neither moved trait-space diversity
+  outside the band on two seeds of three.
+- The null band is wide again: centredEntropyRatio 0.16-1.34 on seed 302 with only the draw order changed.
+- These runs predate the readout's success counters (b09babb), so they carry no children-per-child figure; the field on
+  the user's phone does.
