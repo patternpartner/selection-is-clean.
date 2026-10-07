@@ -44,9 +44,16 @@ ok(a.join()===b.join(),'save and load is exact (the same proposals afterwards)')
   ok(g.H>H0,'when the world changes under it, it grows ('+H0+' -> '+g.H+' units, grown '+g.grown+' times)');
   const k=g.child(); ok(close(pr(k,c,false),pr(g,c,false))||k.H>g.H,'a child predicts what its parent does (it inherits the weights)');
   ok(k.buf.length===g.buf.length&&k.rnd.s!==g.rnd.s,'and its memories, with a random stream of its own');
+  ok(!!g.trial,'a growth is on trial'); for(let t=0;t<g.TRIAL+1&&g.trial;t++){ for(let i=0;i<60;i++)g.see(prog2()); g.train(nops); }
+  ok(!g.trial&&(g.H===H0||g.H>H0),'and after its trial it is kept or removed (now '+g.H+' units, kept '+g.kept+' of '+g.grown+')');
   g.NOVEL=0.5; let nov=0, lr=0, gr=0, sh=0; for(let i=0;i<200;i++){ const q=g.child(); if(q.NOVEL!==g.NOVEL)nov++; if(q.LR!==g.LR)lr++; if(q.H>g.H)gr++; if(q.sNOVEL!==0.5)sh++; }
   ok(nov>60&&nov<140&&lr>60&&lr<140&&gr>15&&gr<70,'its curiosity and learning rate change about half the time ('+nov+', '+lr+' of 200), its size now and then ('+gr+')');
   ok(sh>60&&sh<140,'and the shadow of its curiosity changes by the same rule, independently ('+sh+' of 200)');
   { let a=g.child(); for(let i=0;i<5;i++)a=a.child(); const b=Mind.load(JSON.parse(JSON.stringify(a.save()))); ok(b.sNOVEL===a.sNOVEL&&b.sLR===a.sLR&&b.NOVEL===a.NOVEL,'the shadow is inherited and survives save and load'); }
+  // a mind too small for its world keeps the units it tries; the learning rate is scaled down as it grows
+  { const rich=()=>{ const p=[]; for(let i=0;i<8;i++)p.push([(i*5+3)%nops,(i*37+11)&255]); return p; };
+    const t=new Mind(9,{P:1,H:2,GROW:8,HMAX:64}); for(let i=0;i<400;i++)t.see(rich()); for(let k=0;k<200;k++)t.train(nops);
+    t.tryGrow(); for(let k=0;k<t.TRIAL;k++)t.train(nops); ok(t.H===10&&t.kept===1,'a 2-unit mind keeps the 8 units it tries ('+t.H+' units, kept '+t.kept+')');
+    ok(t.H0===2&&Mind.load(JSON.parse(JSON.stringify(t.save()))).H0===2,'its starting size is kept, so its learning rate is scaled by 2/'+t.H); }
   const e=new Mind(7,{P:1,PER:0.5}); for(let i=0;i<300;i++)e.see(prog()); e.train(nops); const n1=e.nTrain; e.train(nops); ok(n1===1&&e.nTrain===1,'PER: with nothing new seen it does not train'); }
 console.log(fails?fails+' FAILED':'all passed'); process.exit(fails?1:0);

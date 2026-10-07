@@ -31,12 +31,17 @@ class Mind{
     // instead of p, what it does; WHERE='uncertain' picks the place to change in proportion to the square of its own
     // uncertainty there (the entropy of what it predicts), instead of anywhere at random.
     this.NOVEL=o.NOVEL||0; this.WHERE=o.WHERE||'random';
-    // GROWTH (#295), off by default: GROW=g adds g hidden units whenever the world outgrows it, that is when its loss
-    // (operations plus arguments) has risen TOL above the lowest it reached since it last grew, up to HMAX units. New units
-    // start with random input weights and zero output weights, so growing changes nothing it predicts until it learns to
-    // use them. PER (#295), off by default: train PER steps per example seen since the last training (at most STEPS)
-    // instead of STEPS always, so a mind that sees one lineage's few divisions does not train its handful of memories to death.
-    this.GROW=o.GROW||0; this.HMAX=o.HMAX||128; this.TOL=o.TOL||0.1; this.lossMin=Infinity; this.grown=0; this.PER=o.PER||0; this.seen=0;
+    // GROWTH (#295b), off by default: GROW=g TRIES g more hidden units whenever the world outgrows it, that is when its loss
+    // (operations plus arguments) has risen TOL above the lowest it reached since it last tried, up to HMAX units. New units
+    // start with random input weights and zero output weights, so growing changes nothing it predicts until it learns to use
+    // them. The learning rate is scaled by H0/H (H0 the size it started at): an SGD step moves the output in proportion to
+    // the number of hidden units, so without this a mind twice as big learns twice as jumpily (#295's first version did
+    // that, got worse with every unit, and grew itself to the cap). A try is a TRIAL of TRIAL trainings: on every example
+    // the loss is also taken with the new units switched off, and at the end the new units are KEPT only if the loss with
+    // them is lower, otherwise removed. PER (#295), off by default: train PER steps per example seen since the last
+    // training (at most STEPS) instead of STEPS always, so a mind that sees one lineage's few divisions does not train its
+    // handful of memories to death.
+    this.GROW=o.GROW||0; this.HMAX=o.HMAX||128; this.TOL=o.TOL||0.1; this.TRIAL=o.TRIAL||40; this.H0=o.H0||this.H; this.lossMin=Infinity; this.grown=0; this.kept=0; this.trial=null; this.PER=o.PER||0; this.seen=0;
     this.rnd=mulberry32(((seed>>>0)||1)^0x6d696e64);   // its own random stream: it never draws from the world's
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,s)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*s; return a; };
     this.emb=init(VOCAB*D,0.1); this.W1=init(K*D*H,1/Math.sqrt(K*D)); this.b1=new Float32Array(H);
@@ -48,15 +53,15 @@ class Mind{
   ctx(prog,j,extra){ const K=this.K, c=new Array(K); for(let q=0;q<K;q++){ const t=j-K+q; c[q]=t<0?BOS:(t&1?MAXOPS+prog[t>>1][1]:prog[t>>1][0]); } if(extra!==undefined){ c.shift(); c.push(extra); } return c; }
 
   // forward pass to one head (arg=false: operations, the first nops of them; arg=true: arguments); fills this.p
-  forward(c,arg,nops){ const K=this.K, D=this.D, H=this.H, x=this.x, h=this.h;
+  forward(c,arg,nops,upto){ const K=this.K, D=this.D, H=this.H, x=this.x, h=this.h, U=upto||H;   // upto: read out only the first upto units (a growth trial's switched-off comparison)
     for(let q=0;q<K;q++){ const e=c[q]*D; for(let d=0;d<D;d++)x[q*D+d]=this.emb[e+d]; }
     for(let u=0;u<H;u++){ let s=this.b1[u]; for(let i=0;i<K*D;i++)s+=x[i]*this.W1[i*H+u]; h[u]=Math.tanh(s); }
     const W=arg?this.Wa:this.Wo, b=arg?this.ba:this.bo, n=arg?NARG:nops, M=arg?NARG:MAXOPS, p=this.p; let mx=-Infinity;
-    for(let v=0;v<n;v++){ let s=b[v]; for(let u=0;u<H;u++)s+=h[u]*W[u*M+v]; p[v]=s; if(s>mx)mx=s; }
+    for(let v=0;v<n;v++){ let s=b[v]; for(let u=0;u<U;u++)s+=h[u]*W[u*M+v]; p[v]=s; if(s>mx)mx=s; }
     let z=0; for(let v=0;v<n;v++){ p[v]=Math.exp(p[v]-mx); z+=p[v]; } for(let v=0;v<n;v++)p[v]/=z; return n; }
 
   // one SGD step on predicting target (an operation, or an argument when arg) after context c; returns the loss
-  learn(c,target,arg,nops){ const K=this.K, D=this.D, H=this.H, n=this.forward(c,arg,nops), p=this.p, h=this.h, x=this.x, lr=this.LR;
+  learn(c,target,arg,nops){ const K=this.K, D=this.D, H=this.H, n=this.forward(c,arg,nops), p=this.p, h=this.h, x=this.x, lr=H===this.H0?this.LR:this.LR*this.H0/H;
     const W=arg?this.Wa:this.Wo, b=arg?this.ba:this.bo, M=arg?NARG:MAXOPS, dh=this.dh; dh.fill(0); const loss=-Math.log(Math.max(1e-9,p[target]));
     for(let v=0;v<n;v++){ const g=p[v]-(v===target?1:0); b[v]-=lr*g; for(let u=0;u<H;u++){ dh[u]+=g*W[u*M+v]; W[u*M+v]-=lr*g*h[u]; } }
     for(let u=0;u<H;u++)dh[u]*=1-h[u]*h[u];
@@ -81,9 +86,17 @@ class Mind{
     if(this.MODE!=='learn'||this.buf.length<16||!steps)return; let lo=0, la=0, no=0, na=0;
     for(let s=0;s<steps;s++){ const e=this.buf[(this.rnd()*this.buf.length)|0], pr=e.p; if(!pr.length)continue;
       const j=e.at>=0&&e.at<pr.length?2*e.at+(this.rnd()<0.5?0:1):(this.rnd()*pr.length*2)|0, arg=(j&1)===1;
-      const tgt=arg?pr[j>>1][1]:pr[j>>1][0]; if(!arg&&tgt>=nops)continue; const l=this.learn(this.ctx(pr,j),tgt,arg,nops); if(arg){ la+=l; na++; } else { lo+=l; no++; } }
+      const tgt=arg?pr[j>>1][1]:pr[j>>1][0]; if(!arg&&tgt>=nops)continue; const cx=this.ctx(pr,j), T=this.trial;
+      if(T){ this.forward(cx,arg,nops,T.from); T.off-=Math.log(Math.max(1e-9,this.p[tgt])); }
+      const l=this.learn(cx,tgt,arg,nops); if(T){ T.on+=l; T.k++; } if(arg){ la+=l; na++; } else { lo+=l; no++; } }
     const a=0.98; if(no)this.lossO=this.nTrain?a*this.lossO+(1-a)*lo/no:lo/no; if(na)this.lossA=this.nTrain?a*this.lossA+(1-a)*la/na:la/na; this.nTrain++;
-    if(this.GROW&&this.nTrain>40){ const l=this.lossO+this.lossA; if(l<this.lossMin)this.lossMin=l; else if(l>this.lossMin+this.TOL&&this.H<this.HMAX){ this.grow(Math.min(this.GROW,this.HMAX-this.H)); this.lossMin=l; } } }
+    if(this.GROW&&this.trial&&++this.trial.n>=this.TRIAL){ const T=this.trial; this.trial=null; if(T.on<T.off)this.kept++; else this.shrink(T.from); this.lossMin=this.lossO+this.lossA; }
+    else if(this.GROW&&!this.trial&&this.nTrain>40){ const l=this.lossO+this.lossA; if(l<this.lossMin)this.lossMin=l; else if(l>this.lossMin+this.TOL&&this.H<this.HMAX)this.tryGrow(); } }
+
+  tryGrow(){ const from=this.H; this.grow(Math.min(this.GROW,this.HMAX-this.H)); this.trial={from,n:0,k:0,on:0,off:0}; }
+  // back to its first `to` hidden units: the growth did not help
+  shrink(to){ const H=this.H, I=this.K*this.D, W1=new Float32Array(I*to); for(let i=0;i<I;i++)for(let u=0;u<to;u++)W1[i*to+u]=this.W1[i*H+u];
+    this.W1=W1; this.b1=this.b1.slice(0,to); this.Wo=this.Wo.slice(0,to*MAXOPS); this.Wa=this.Wa.slice(0,to*NARG); this.H=to; this.h=new Float32Array(to); this.dh=new Float32Array(to); }
 
   // dh more hidden units (#295): every old weight kept, the new units' input weights random, their output weights zero
   grow(dh){ const K=this.K, D=this.D, H=this.H, H2=H+dh, I=K*D, r=this.rnd, sc=1/Math.sqrt(I), W1=new Float32Array(I*H2);
@@ -102,7 +115,7 @@ class Mind{
     const nov=v=>Math.max(0,Math.min(2,v+(r()*2-1)*0.2)), lr=v=>Math.max(0.005,Math.min(0.3,v*Math.exp((r()*2-1)*0.4)));
     if(this.sNOVEL===undefined){ m.sNOVEL=this.NOVEL; m.sLR=this.LR; }
     if(r()<0.5)m.NOVEL=nov(m.NOVEL); if(r()<0.5)m.LR=lr(m.LR); if(r()<0.5)m.sNOVEL=nov(m.sNOVEL); if(r()<0.5)m.sLR=lr(m.sLR);
-    if(m.GROW&&m.H<m.HMAX&&r()<0.2)m.grow(Math.min(m.GROW,m.HMAX-m.H));
+    if(m.GROW&&!m.trial&&m.H<m.HMAX&&r()<0.2)m.tryGrow();   // born bigger, on trial like any growth
     return m; }
 
   // the mind writes into a child about to be born: it replaces one instruction at a random place with one it samples, and
@@ -121,19 +134,19 @@ class Mind{
     if(op===old[0]&&arg===old[1]){ arg=(arg+1+((this.rnd()*255)|0))&255; }   // sixteen draws gave back the same: change the argument
     src[i]=[op,arg]; return true; }
 
-  report(nops){ return {mode:this.MODE,p:this.P,uses:this.uses,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossArg:+this.lossA.toFixed(3),uniformOp:+Math.log(nops).toFixed(3),uniformArg:+Math.log(256).toFixed(3),buf:this.buf.length,...(this.GROW?{H:this.H,grown:this.grown}:{})}; }
+  report(nops){ return {mode:this.MODE,p:this.P,uses:this.uses,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossArg:+this.lossA.toFixed(3),uniformOp:+Math.log(nops).toFixed(3),uniformArg:+Math.log(256).toFixed(3),buf:this.buf.length,...(this.GROW?{H:this.H,grown:this.grown,kept:this.kept,trial:!!this.trial}:{})}; }
 
   save(){ const b=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength).toString('base64');
     return {K:this.K,D:this.D,H:this.H,LR:this.LR,P:this.P,MODE:this.MODE,BUF:this.BUF,EVERY:this.EVERY,STEPS:this.STEPS,NOVEL:this.NOVEL,WHERE:this.WHERE,rnd:this.rnd.s,emb:b(this.emb),W1:b(this.W1),b1:b(this.b1),Wo:b(this.Wo),bo:b(this.bo),Wa:b(this.Wa),ba:b(this.ba),
       buf:this.buf.map(e=>[e.p.map(x=>x[0].toString(16).padStart(2,'0')+x[1].toString(16).padStart(2,'0')).join(''),e.at]),bufAt:this.bufAt,lossO:this.lossO,lossA:this.lossA,nTrain:this.nTrain,uses:this.uses,
-      ...(this.GROW?{GROW:this.GROW,HMAX:this.HMAX,TOL:this.TOL,lossMin:isFinite(this.lossMin)?this.lossMin:null,grown:this.grown}:{}),...(this.PER?{PER:this.PER,seen:this.seen}:{}),...(this.sNOVEL!==undefined?{sNOVEL:this.sNOVEL,sLR:this.sLR}:{})}; }
+      ...(this.GROW?{GROW:this.GROW,HMAX:this.HMAX,TOL:this.TOL,TRIAL:this.TRIAL,H0:this.H0,lossMin:isFinite(this.lossMin)?this.lossMin:null,grown:this.grown,kept:this.kept,trial:this.trial}:{}),...(this.PER?{PER:this.PER,seen:this.seen}:{}),...(this.sNOVEL!==undefined?{sNOVEL:this.sNOVEL,sLR:this.sLR}:{})}; }
   static load(o){ const m=new Mind(1,o); m.rnd.s=o.rnd; const f=(k)=>{ const t=Buffer.from(o[k],'base64'); new Uint8Array(m[k].buffer).set(t); };
     for(const k of ['emb','W1','b1','Wo','bo','Wa','ba'])f(k);
     const dec=s=>{ const p=[]; for(let i=0;i<s.length;i+=4)p.push([parseInt(s.slice(i,i+2),16),parseInt(s.slice(i+2,i+4),16)]); return p; };
     // older saves held whole programs only
     m.buf=o.buf.map(x=>Array.isArray(x)?{p:dec(x[0]),at:x[1]}:{p:dec(x),at:-1});
     m.bufAt=o.bufAt; m.lossO=o.lossO; m.lossA=o.lossA; m.nTrain=o.nTrain; m.uses=o.uses;
-    m.lossMin=o.lossMin==null?Infinity:o.lossMin; m.grown=o.grown||0; m.seen=o.seen||0; if(o.sNOVEL!==undefined){ m.sNOVEL=o.sNOVEL; m.sLR=o.sLR; } return m; }
+    m.lossMin=o.lossMin==null?Infinity:o.lossMin; m.grown=o.grown||0; m.kept=o.kept||0; m.trial=o.trial?{...o.trial}:null; m.seen=o.seen||0; if(o.sNOVEL!==undefined){ m.sNOVEL=o.sNOVEL; m.sLR=o.sLR; } return m; }
 }
 // MIX (v5, the user's suggestion: "there is nothing to stop it being all three"). One mind with all three drives at once:
 // two networks, one learning WHAT EXISTS (the programs of parents, as v2) and one learning WHAT WORKS (changes that went on
