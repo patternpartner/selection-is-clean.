@@ -26093,3 +26093,36 @@ first-time adaptive genotypes; share of organisms carrying a lineage mind; mind 
 against their shadows; brain sizes. A warning written down before the result: v6 and v7 showed this world rewards the
 variation that repeats what works, and minds here are selected by their lineages' spread, so the expected outcome is that
 the world breeds cautious minds (NOVEL at or below its shadow).
+
+**#295 pilot result (2201 and 2202, 400,000 ticks; exploratory, two seeds).**
+
+| arm | first-time adaptive, last three windows | adaptive ever | the AI's loss at 400k (ops + args) |
+|---|---|---|---|
+| v2 mind (64 units, fixed) | 44 / 43 | 113 / 171 | 5.06 / 4.78 |
+| grow (the AI grows, no births) | 76 / 32 | 189 / 174 | 6.55 / 7.39 |
+| breed (births, lineage minds, growth) | 28 / 39 | 112 / 149 | 7.13 / 7.63 |
+| uniform random | 69 / 87 | 244 / 236 | - |
+
+- **The world bred cautious minds, beyond what drift does.** Carrier-weighted curiosity among living minds, every sample
+  from 20,000 ticks: NOVEL below its shadow in 372 of 381 samples on 2201 (mean 0.002 against the shadow's 0.046) and 266
+  against 63 on 2202 (0.002 against 0.017). Learning rate below its shadow in 381 of 381 and 335 against 44 (geometric mean
+  0.028 against 0.051, and 0.039 against 0.046). The longest-lived minds at the end (28,000-136,000 ticks old, 200-490
+  carriers each, generations 4-7) all have NOVEL 0. As predicted before the run (v6 and v7 said the same by another route):
+  a mind is selected by its lineage's spread, and curiosity costs its lineage children.
+- **Births did not raise novelty**: 28 and 39 against the fixed mind's 44 and 43, ever 112 and 149 against 113 and 171.
+- **Mind-carrying lineages hold almost the whole world from about 80,000 ticks (carriers 0.6-1.0 of organisms). That is
+  NOT evidence that minds help.** Conversion is one-way: an ordinary birth gains a mind with odds 0.002, and a carrier
+  goes back to the AI only when its mind is replaced (34 and 45 times in the run), so after ~500 generations (mean
+  generation passes 750 by 128,000 ticks) the world is carriers whether or not carrying helps. Whether it helps needs the
+  carrier/non-carrier growth comparison of `loop-fitness.js`, not a share.
+- Population of minds: 3,296 and 3,521 born, almost all dead within a few thousand ticks (mean life 1,716 and 1,543 ticks;
+  replaced 34 and 45), 8-20 of the 24 places filled, at most 8 generations deep.
+- **Growth as built made the minds WORSE predictors, and that is a fault in the design, not a finding about growth.** Every
+  mind reached the 128-unit cap by 40,000-50,000 ticks, and the AI's loss then rose far above the fixed 64-unit mind's
+  (6.55-7.63 against 4.78-5.06). Two faults: (1) SGD's step on the output scales with the number of hidden units, so
+  doubling the units doubled the effective learning rate: the grown mind learns too jumpily in a world that never stops
+  changing (and in breed the world selected slower learners, which is what that fault predicts); (2) the trigger is
+  self-reinforcing: growing raised the loss, which triggered more growth, up to the cap. Fix before reading anything into
+  growth: scale the learning rate by the starting size over the current size, and keep new units only if they help
+  (compared on the same examples with the new units switched off).
+- The grow arm's novelty (76 and 32 against 44 and 43) is one seed up and one down: nothing to read.
