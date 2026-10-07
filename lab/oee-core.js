@@ -14,7 +14,7 @@
 'use strict';
 
 function mulberry32(a){ const f=function(){ f.s|=0; f.s=f.s+0x6D2B79F5|0; let t=Math.imul(f.s^f.s>>>15,1|f.s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; f.s=a|0; return f; }   // f.s is the state, so a run can be saved and resumed exactly
-const {Mind}=require('./mind.js');   // #293: a primitive mind inside the world, off unless MIND>0 (lab/mind.js)
+const {Mind,MixMind}=require('./mind.js');   // #293: a primitive mind inside the world, off unless MIND>0 (lab/mind.js)
 
 // ---- the instruction set: 24 that act, 8 that do nothing (the neutral shadow) ----
 const OPS=['NOP','LOADK','MOV','ADD','SUB','MUL','IFGT','IFLT','JMP','SENSE_E','SENSE_LIGHT','SENSE_CORPSE',
@@ -112,8 +112,9 @@ class World{
     this.p=Object.assign({},DEF,opts||{});
     const P=this.p, C=P.W*P.H;
     this.rnd=mulberry32((seed>>>0)||1); this.C=C; this.tick=0; this.seed0=(seed>>>0)||1;
-    if(P.MIND>0)this.mind=new Mind(this.seed0,{P:P.MIND,MODE:P.MIND_MODE,LR:P.MIND_LR,K:P.MIND_K,H:P.MIND_H,EVERY:P.MIND_EVERY,STEPS:P.MIND_STEPS,NOVEL:P.MIND_NOVEL,WHERE:P.MIND_WHERE});
-    if(this.mind&&P.MIND_DATA==='changes'){ this.mindPos=new Float32Array(C); (this.bodyF=this.bodyF||[]).push({A:this.mindPos,energy:false}); }   // v3: where each organism differs from its parent (1+position, 0 none), carried with it like a body field   // MIND (#293), not in DEF so a world without it saves exactly as before: the chance it writes an instruction of each child; MIND_MODE learn | frozen | uniform
+    const mseed=P.MIND_SEED?((this.seed0+Math.imul(P.MIND_SEED|0,0x9e3779b1))>>>0)||1:this.seed0;   // MIND_SEED reseeds only the mind's own random stream: replicates of an arm for a null band
+    if(P.MIND>0)this.mind=new (P.MIND_MIX?MixMind:Mind)(mseed,{P:P.MIND,MODE:P.MIND_MODE,LR:P.MIND_LR,K:P.MIND_K,H:P.MIND_H,EVERY:P.MIND_EVERY,STEPS:P.MIND_STEPS,NOVEL:P.MIND_NOVEL,WHERE:P.MIND_WHERE});
+    if(this.mind&&(P.MIND_DATA==='changes'||P.MIND_MIX)){ this.mindPos=new Float32Array(C); (this.bodyF=this.bodyF||[]).push({A:this.mindPos,energy:false}); }   // v3: where each organism differs from its parent (1+position, 0 none), carried with it like a body field   // MIND (#293), not in DEF so a world without it saves exactly as before: the chance it writes an instruction of each child; MIND_MODE learn | frozen | uniform
     this.alive=new Uint8Array(C); this.E=new Float32Array(C); this.age=new Int32Array(C);
     this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=(opts&&opts.TASKS)?new Float64Array(C*4):new Float32Array(C*4);   // TASKS needs registers that hold a 32-bit word exactly
     this.len=new Uint8Array(C); this.prog=new Uint8Array(C*P.MAXLEN*2);
@@ -177,7 +178,7 @@ class World{
     let t=-1; const f0=this.face[c]; for(let k=0;k<8;k++){ const n=this.ahead(c,f0+k); if(!this.alive[n]){ t=n; break; } } if(t<0)return false;   // no empty neighbour, no child (overwriting the neighbour made DIVIDE free predation: a kill-and-eat loop, about 200 births a tick)
     const o=c*P.MAXLEN*2, n=this.len[c], src=[]; for(let i=0;i<n;i++)src.push([this.prog[o+i*2],this.prog[o+i*2+1]]);
     const r=this.rnd;
-    if(this.mind){ if(this.mindPos){ const at=this.mindPos[c]; if(at>0)this.mind.see(src,at-1); } else this.mind.see(src); this.mind.propose(src,this.nops||NOPS,P.MAXLEN); }   // #293: it sees the parent that divided (v3: only the change this parent was born with), and may write one instruction of the child
+    if(this.mind){ if(this.mind.kind==='mix'){ const at=this.mindPos[c]; this.mind.see(src,at>0?at-1:undefined); } else if(this.mindPos){ const at=this.mindPos[c]; if(at>0)this.mind.see(src,at-1); } else this.mind.see(src); this.mind.propose(src,this.nops||NOPS,P.MAXLEN); }   // #293: it sees the parent that divided (v3: only the change this parent was born with), and may write one instruction of the child
     this.mutateInto(src,r);
     const sn=this.slen[c], ssrc=[]; for(let i=0;i<sn;i++)ssrc.push([this.sprog[o+i*2],this.sprog[o+i*2+1]]); this.mutateInto(ssrc,this.srnd);   // the shadow child: same birth, its own mutations
     let tg=this.tag[c], tm=this.tmpl[c]; for(let b=0;b<16;b++){ if(r()<P.MU_TAG)tg^=1<<b; if(r()<P.MU_TAG)tm^=1<<b; }
@@ -399,7 +400,7 @@ World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.t
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
   for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
-  if(o.mind)w.mind=Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
+  if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
   if(o.mindPos&&w.mindPos)new Uint8Array(w.mindPos.buffer).set(Buffer.from(o.mindPos,'base64'));
   if(o.mods) for(const d of o.mods){ const m=w.installMod(d.src,{disarmed:d.disarmed,noInit:true}); m.at=d.at; m.rnd.s=d.rnd; for(const [k,b] of Object.entries(d.fields)) new Uint8Array(m.fields[k].buffer).set(Buffer.from(b,'base64')); }   // modules re-installed in order, so each gets its old opcode
   if(w.molLive){ const S=w.p.CHEM_S, C=w.C, m=w.mol, live=w.molLive; for(let q=0;q<S;q++){ const b=q*C; let on=0; for(let c=0;c<C;c++) if(m[b+c]>0){ on=1; break; } live[q]=on; } }   // rebuilt from the restored molecules, so a resume skips nothing that is present

@@ -105,4 +105,24 @@ class Mind{
     m.buf=o.buf.map(x=>Array.isArray(x)?{p:dec(x[0]),at:x[1]}:{p:dec(x),at:-1});
     m.bufAt=o.bufAt; m.lossO=o.lossO; m.lossA=o.lossA; m.nTrain=o.nTrain; m.uses=o.uses; return m; }
 }
-module.exports={Mind};
+// MIX (v5, the user's suggestion: "there is nothing to stop it being all three"). One mind with all three drives at once:
+// two networks, one learning WHAT EXISTS (the programs of parents, as v2) and one learning WHAT WORKS (changes that went on
+// to reproduce, as v3), and three ways to write a child, one chosen at random for each proposal:
+//   exploit       - from what exists, what it expects (v2)
+//   the unexpected - from what exists, what it does NOT expect (p^-NOVEL)
+//   unsure        - from what works, at the place it is least able to predict (WHERE uncertain)
+// The total rate is still P, one instruction per proposal, so it adds exactly as much change as every other arm.
+class MixMind{
+  constructor(seed,o){ o=o||{}; this.kind='mix'; this.P=o.P??0.2; this.EVERY=o.EVERY||50; this.NOVEL=o.NOVEL||0.5;
+    this.exists=new Mind(seed,{...o,P:1,NOVEL:0,WHERE:'random',MODE:'learn'}); this.works=new Mind(((seed>>>0)^0x0bad5eed)>>>0,{...o,P:1,NOVEL:0,WHERE:'uncertain',MODE:'learn'});
+    this.rnd=mulberry32(((seed>>>0)||1)^0x6d697821); this.uses=[0,0,0]; }
+  see(prog,at){ this.exists.see(prog); if(at!==undefined&&at>=0)this.works.see(prog,at); }
+  train(nops){ this.exists.train(nops); this.works.train(nops); }
+  propose(src,nops,maxlen){ if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; const k=(this.rnd()*3)|0; this.uses[k]++;
+    if(k===2)return this.works.propose(src,nops,maxlen);
+    this.exists.NOVEL=k===1?this.NOVEL:0; const r=this.exists.propose(src,nops,maxlen); this.exists.NOVEL=0; return r; }
+  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
+  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,exists:this.exists.save(),works:this.works.save()}; }
+  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
+}
+module.exports={Mind,MixMind};

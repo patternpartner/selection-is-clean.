@@ -26,4 +26,11 @@ ok(a.join()===b.join(),'save and load is exact (the same proposals afterwards)')
   const known=at[1]+at[2]+at[3], strange=at[5]+at[6]+at[7];
   ok(strange>2*known,'WHERE=uncertain changes where it cannot predict (positions after the unseen part '+strange+', inside the familiar start '+known+')');
   const r=Mind.load(JSON.parse(JSON.stringify(c.save()))); ok(r.NOVEL===0.5&&Mind.load(JSON.parse(JSON.stringify(u.save()))).WHERE==='uncertain','curiosity settings survive save and load'); }
+// all three at once (v5): two networks, three drives, each used for about a third of the proposals; save and load exact
+{ const {MixMind}=require('./mind.js'); const x=new MixMind(7,{P:1}); for(let i=0;i<300;i++)x.see(prog(),1); for(let t=0;t<200;t++)x.train(nops);
+  for(let k=0;k<600;k++){ const s=prog(); x.propose(s,nops,64); }
+  ok(x.uses.every(u=>u>150&&u<250),'each drive takes about a third of the proposals ('+x.uses.join(', ')+')');
+  ok(x.exists.nTrain>0&&x.works.nTrain>0,'both networks learn');
+  const y=MixMind.load(JSON.parse(JSON.stringify(x.save()))); const a=[],b=[]; for(let k=0;k<20;k++){ const p1=[[17,0],[20,5],[15,1]], p2=[[17,0],[20,5],[15,1]]; x.propose(p1,nops,64); y.propose(p2,nops,64); a.push(JSON.stringify(p1)); b.push(JSON.stringify(p2)); }
+  ok(a.join()===b.join(),'the combined mind saves and loads exactly'); }
 console.log(fails?fails+' FAILED':'all passed'); process.exit(fails?1:0);
