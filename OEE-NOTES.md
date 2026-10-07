@@ -26273,3 +26273,13 @@ nine of nine saved and every #201 row green. The 150-second window is marginal o
 recorded, not retuned. `mind-test.js` now also reads the layers and grown universes: every one of them has its own mind
 (L1_*, L2_*, g0, g1 included); it asks for activity only from universes past 1,000 ticks, because the layers run paced
 and a grown universe can be seconds old. Added to `smoke.sh` (SECS=45).
+
+**#296: the mind is ON BY DEFAULT in the browser — the user's call** ("open pages in github and the mind to be added, no
+extra steps"). This changes the artwork and what every saved universe does after a reload (CLAUDE.md's rule 6), and the
+user asked for exactly that. Every universe a browser runs — the field's surface, the collective, every layer, every
+grown universe, and a universe opened by itself — has its own mind at 20% from its first tick, each with its own seed.
+`#nomind` (or `#mind=0`) switches it off; `#mind=<percent>` and `mindmode=frozen|uniform` still work. **Under node it
+stays OFF unless a rig sets MIND**, so every rig keeps measuring the world it always measured (re-checked: harness-oee seed 1,
+600 ticks, whole series identical to the pre-#296 engine, mind reported off), and #296b's mind-off nulls are what they
+were pre-registered to be. `mind-test.js` now asks the default field (no token) for minds in all nine of its universes,
+and `#nomind` for none: 10/10 in Chromium.

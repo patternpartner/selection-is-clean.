@@ -1,5 +1,5 @@
-// mind-test.js — #296: the primitive mind is really inside the field's universes when the field is opened with
-// #mind, and absent when it is not. Read from each universe's own stat() (its mind's counters: parents seen, children
+// mind-test.js — #296: the primitive mind is really inside every universe of a field opened with no token at all (it is
+// the browser default), at the rate and mode a field asks for, and absent when the field is opened with #nomind. Read from each universe's own stat() (its mind's counters: parents seen, children
 // written, training steps), not from the hash: a token in a URL that no engine ever latched would read like a mind.
 //   node mind-test.js            (SECS=<seconds> to warm each field, default 60)
 const { chromium } = require('playwright-core');
@@ -37,7 +37,8 @@ const minds = page => page.evaluate(async () => {
   const base = 'http://127.0.0.1:' + server.address().port;
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   try {
-    for (const [hash, want] of [['#n=2,layers=1,mind', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2', 'off']]) {
+    // the mind is the browser default (#296): a field opened with no token at all must have it; #nomind must not
+    for (const [hash, want] of [['#n=2,layers=1', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2,nomind', 'off']]) {
       const ctx = await browser.newContext(), page = await ctx.newPage();
       await page.goto(base + '/index.html' + hash);
       await page.waitForTimeout(WARM * 1000);

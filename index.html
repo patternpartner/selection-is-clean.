@@ -236,7 +236,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|mind=\\d+|mindmode=frozen|mindmode=uniform)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -275,11 +275,13 @@
     // #253: #prune hands every universe its switchboard (engine.html, MECH_DECLARED). Passed down in each
     // universe's own hash beside cleanart, because the engine reads it there; without it nothing changes.
     prune = /(^|,)prune(,|$)/.test(raw);
-    // #296: #mind (or #mind=<percent>, with mindmode=frozen|uniform for the controls) puts the primitive mind into
-    // every universe of the field. The engine latches it from its own hash at its first tick, so every hash this field
-    // writes into a universe carries the token (withMind below), including the ones that relight a face.
+    // #296: every universe in a browser has the primitive mind by default (engine.html, EngineMind). The field passes
+    // on only what changes it: #nomind (none), #mind=<percent>, mindmode=frozen|uniform (the controls). The engine
+    // latches it from its own hash at its first tick, so every hash this field writes into a universe carries the token
+    // (withMind below), including the ones that relight a face.
     var _mi=raw.match(/(?:^|,)(mind(?:=\d+)?)(?:,|$)/), _mm=raw.match(/(?:^|,)mindmode=(frozen|uniform)(?:,|$)/);
-    if(_mi) MINDTOK=_mi[1]+(_mm?',mindmode='+_mm[1]:'');
+    if(/(?:^|,)nomind(?:,|$)/.test(raw)) MINDTOK='nomind';
+    else if(_mi||_mm) MINDTOK=[_mi?_mi[1]:'',_mm?'mindmode='+_mm[1]:''].filter(Boolean).join(',');
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }

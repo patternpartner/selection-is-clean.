@@ -10671,8 +10671,10 @@ function cloneProg(p){
 // kept) with one it samples from what it has learned to expect after the instructions before it, always a different
 // one. Random mutation still happens exactly as before; the mind is an extra, learned variation process, and the world's
 // selection decides everything it always decided.
-// OFF unless switched on: MIND=<percent> (rigs, through harness-env KNOBS) or #mind / #mind=<percent> in the URL (the
-// field; 20 when no number is given). MIND_MODE=1 or #mindmode=frozen keeps its random weights and never learns;
+// ON BY DEFAULT IN A BROWSER, at 20% (the user: "open pages in github and the mind to be added, no extra steps"): the
+// field, every universe in it, and a universe opened by itself all have one. #nomind (or #mind=0) switches it off;
+// #mind=<percent> sets the rate. OFF BY DEFAULT UNDER NODE, so every rig keeps measuring the world it always measured;
+// a rig asks for it with MIND=<percent> (harness-env KNOBS), and MIND=0 is off either way. MIND_MODE=1 or #mindmode=frozen keeps its random weights and never learns;
 // MIND_MODE=2 or #mindmode=uniform writes uniformly random instructions with no model at all: the two controls, at the
 // same rate. MIND_SEED seeds its own random stream; without it, a mind that is switched on takes ONE Math.random draw
 // for its seed when it is born (so the universes of a field do not share one stream). Otherwise it never calls
@@ -10734,6 +10736,8 @@ class EngineMind{
 let __mindLatch=null, __mind=null;
 function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis:{}; let p=g.__MIND|0, mode=g.__MIND_MODE|0; const seed=g.__MIND_SEED|0;
   const h=(typeof location!=='undefined'&&location.hash)||''; const m=h.match(/(^|[#,])mind(=(\d+))?(,|$)/); if(m&&!p)p=m[3]?parseInt(m[3],10):20;
+  const node=(typeof process!=='undefined')&&!!(process.versions&&process.versions.node);   // a rig, not a page
+  if(/(^|[#,])nomind(,|$)/.test(h)||g.__MIND===0||(m&&m[3]==='0'))p=0; else if(!m&&g.__MIND===undefined&&!node)p=20;   // the browser default
   const mm=h.match(/(^|[#,])mindmode=(frozen|uniform)(,|$)/); if(mm&&!mode)mode=mm[2]==='frozen'?1:2;
   return p>0?{P:Math.min(100,p)/100,mode,seed:seed||(((Math.random()*4294967296)>>>0)||1)}:null; }catch(_){ return null; } }
 function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false; if(__mindLatch)__mind=new EngineMind(__mindLatch); } return __mind; }
