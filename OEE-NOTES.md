@@ -26307,3 +26307,23 @@ is doing. If we save the field we should also save the mind at the same time. No
 - Tested: `mind-persist-test.js` 10/10 in Chromium (saved at the autosave, 71 KB per mind, field line, save file, reload
   restores and keeps counting, HUD line first, harvest round trip, #reset clears); added to `smoke.sh`. Under node the mind
   stays off and the engine is identical to pre-#296 (harness-oee seed 1); substrate-test 264/0 at TICKS=40 and 900.
+
+### #297 — A GROWN UNIVERSE COMES BACK AFTER A RELOAD (reported by the user: "it always got to 2 grown quickly then stayed at that")
+
+- **Stopping at two is the design**: the shell's adoption cap is read from `navigator.deviceMemory` (8 GB or more: 4; 4 GB
+  or more: 2; unknown: 3; less: 0), and every founding after the cap is refused and counted. A phone reporting 4 GB grows
+  two and refuses the rest; the universes keep founding, the field declines.
+- **The fault**: nothing ever reopened a grown universe. At boot the page builds its built frames and `grown` starts
+  empty; the slots the last session's daughters lived in (`selection_g<n>`) were left in storage, running nowhere, and
+  since an index is never reused, the field then grew two NEW daughters into two NEW slots. So every reload dropped the
+  field's grown universes (a reset, for them) and stranded one lineage per daughter in storage. Present since #201 was
+  added (62f5a06, 18 September). It got worse with #296: a mind beside every genome makes each stranded daughter about
+  90 KB, against the 5.2 million characters one origin's storage holds (measured in Chromium); a full field with minds
+  uses about 1.8 million, so a dozen or two reloads would fill it, after which saves fail silently.
+- **The fix** (index.html): at boot, before anything can found, the newest grown slots are reopened, up to the cap, each
+  in its own frame on its own slot (so its own genome and its own `mind_g<n>`); they count against the cap, so a full field
+  grows nothing new and strands nothing. Older grown slots beyond the cap are left exactly as they are: they are lineages,
+  and deleting them is the user's call. The harvest now carries grown universes too (`grown/g<n>`), and loading a harvest
+  puts each back into its own slot.
+- Tested: `grown-test.js` 7/7 in Chromium (three daughters in storage, cap 2: g7 and g3 come back running, each with its
+  own saved mind; g0 untouched; no new slot; a grown universe saves genome and mind); added to `smoke.sh`.
