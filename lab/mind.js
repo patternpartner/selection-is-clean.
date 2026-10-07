@@ -112,17 +112,29 @@ class Mind{
 //   the unexpected - from what exists, what it does NOT expect (p^-NOVEL)
 //   unsure        - from what works, at the place it is least able to predict (WHERE uncertain)
 // The total rate is still P, one instruction per proposal, so it adds exactly as much change as every other arm.
+// ADAPT (v6, "let the world decide the mix"): the drive for each proposal is no longer a third each. Every child a drive
+// writes carries the drive's mark (a body field the world keeps); each time that child divides, the drive is credited.
+// The mind picks a drive by Thompson sampling on each drive's children's divisions per proposal (a normal approximation
+// to its posterior), so the drive whose children reproduce more is used more and the others are still tried. Old
+// evidence fades (both counts multiplied by FADE every EVERY ticks: half-life about 20,000 ticks), so the mix can move
+// as the world does. The only judge is the world's: whether the children it wrote had children.
 class MixMind{
   constructor(seed,o){ o=o||{}; this.kind='mix'; this.P=o.P??0.2; this.EVERY=o.EVERY||50; this.NOVEL=o.NOVEL||0.5;
     this.exists=new Mind(seed,{...o,P:1,NOVEL:0,WHERE:'random',MODE:'learn'}); this.works=new Mind(((seed>>>0)^0x0bad5eed)>>>0,{...o,P:1,NOVEL:0,WHERE:'uncertain',MODE:'learn'});
-    this.rnd=mulberry32(((seed>>>0)||1)^0x6d697821); this.uses=[0,0,0]; }
+    this.rnd=mulberry32(((seed>>>0)||1)^0x6d697821); this.uses=[0,0,0];
+    this.ADAPT=!!o.ADAPT; this.FADE=o.FADE||0.9983; this.n=[0,0,0]; this.s=[0,0,0]; this.last=-1; }
+  // the world reports that a child written by drive k has just divided
+  credit(k){ this.s[k]+=1; }
+  gauss(){ const u=Math.max(1e-12,this.rnd()), v=this.rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+  choose(){ if(!this.ADAPT)return (this.rnd()*3)|0;
+    let best=0, bv=-Infinity; for(let k=0;k<3;k++){ const n=this.n[k]+1, m=(this.s[k]+1)/n, v=m+Math.sqrt((this.s[k]+1))/n*this.gauss(); if(v>bv){ bv=v; best=k; } } return best; }
   see(prog,at){ this.exists.see(prog); if(at!==undefined&&at>=0)this.works.see(prog,at); }
-  train(nops){ this.exists.train(nops); this.works.train(nops); }
-  propose(src,nops,maxlen){ if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; const k=(this.rnd()*3)|0; this.uses[k]++;
+  train(nops){ this.exists.train(nops); this.works.train(nops); if(this.ADAPT) for(let k=0;k<3;k++){ this.n[k]*=this.FADE; this.s[k]*=this.FADE; } }
+  propose(src,nops,maxlen){ this.last=-1; if(!(this.P>0)||!src.length||this.rnd()>=this.P)return false; const k=this.choose(); this.uses[k]++; this.last=k; if(this.ADAPT)this.n[k]+=1;
     if(k===2)return this.works.propose(src,nops,maxlen);
     this.exists.NOVEL=k===1?this.NOVEL:0; const r=this.exists.propose(src,nops,maxlen); this.exists.NOVEL=0; return r; }
-  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
-  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,exists:this.exists.save(),works:this.works.save()}; }
-  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
+  report(nops){ const a=this.exists.report(nops), b=this.works.report(nops); return {mode:'mix',p:this.P,uses:this.uses,...(this.ADAPT?{rate:this.s.map((x,k)=>+((x+1)/(this.n[k]+1)).toFixed(3)),weight:this.n.map(x=>+x.toFixed(0))}:{}),lossOp:a.lossOp,lossArg:a.lossArg,worksLossOp:b.lossOp,worksLossArg:b.lossArg,uniformOp:a.uniformOp,uniformArg:a.uniformArg}; }
+  save(){ return {kind:'mix',P:this.P,EVERY:this.EVERY,NOVEL:this.NOVEL,rnd:this.rnd.s,uses:this.uses,...(this.ADAPT?{ADAPT:1,FADE:this.FADE,n:this.n,s:this.s}:{}),exists:this.exists.save(),works:this.works.save()}; }
+  static load(o){ const m=Object.create(MixMind.prototype); m.kind='mix'; m.P=o.P; m.EVERY=o.EVERY; m.NOVEL=o.NOVEL; m.rnd=mulberry32(1); m.rnd.s=o.rnd; m.uses=o.uses.slice(); m.ADAPT=!!o.ADAPT; m.FADE=o.FADE||0.9983; m.n=o.n?o.n.slice():[0,0,0]; m.s=o.s?o.s.slice():[0,0,0]; m.last=-1; m.exists=Mind.load(o.exists); m.works=Mind.load(o.works); return m; }
 }
 module.exports={Mind,MixMind};

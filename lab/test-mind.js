@@ -33,4 +33,10 @@ ok(a.join()===b.join(),'save and load is exact (the same proposals afterwards)')
   ok(x.exists.nTrain>0&&x.works.nTrain>0,'both networks learn');
   const y=MixMind.load(JSON.parse(JSON.stringify(x.save()))); const a=[],b=[]; for(let k=0;k<20;k++){ const p1=[[17,0],[20,5],[15,1]], p2=[[17,0],[20,5],[15,1]]; x.propose(p1,nops,64); y.propose(p2,nops,64); a.push(JSON.stringify(p1)); b.push(JSON.stringify(p2)); }
   ok(a.join()===b.join(),'the combined mind saves and loads exactly'); }
+// the world decides the mix (v6): a drive whose children divide is chosen more; with no evidence the drives are tried evenly
+{ const {MixMind}=require('./mind.js'); const z=new MixMind(7,{P:1,ADAPT:1}); for(let i=0;i<300;i++)z.see(prog(),1); for(let t=0;t<50;t++)z.train(nops);
+  for(let k=0;k<3000;k++){ const s=prog(); if(z.propose(s,nops,64)&&z.last===1){ z.credit(1); z.credit(1); } }   // only the unexpected's children have children
+  const u=z.uses; ok(u[1]>4*u[0]&&u[1]>4*u[2],'the drive whose children reproduce takes over the mix ('+u.join(', ')+')');
+  const e=new MixMind(7,{P:1,ADAPT:1}); for(let k=0;k<600;k++)e.propose(prog(),nops,64); ok(e.uses.every(x=>x>100),'with no credit at all every drive keeps being tried ('+e.uses.join(', ')+')');
+  const y=MixMind.load(JSON.parse(JSON.stringify(z.save()))); ok(y.ADAPT&&y.s[1]===z.s[1]&&y.n[0]===z.n[0],'the mix and its evidence survive save and load'); }
 console.log(fails?fails+' FAILED':'all passed'); process.exit(fails?1:0);
