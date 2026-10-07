@@ -26043,3 +26043,53 @@ its memory is the last 1,024 examples: it tracks the present and forgets the pas
 first half against second half: v2 0.39 -> 0.54 and 0.89 -> 0.60, NOVEL 0.70 -> 0.69 and 0.67 -> 1.06, v6 0.54 -> 0.45 and
 0.62 -> 0.61, and the FROZEN network, which never learns, 0.39 -> 0.79 and 1.07 -> 0.71: the changes are run-to-run noise.
 Nothing in the design accumulates, so nothing does.
+
+### #294 — MINDS IN SEVERAL WORLDS, learning from each other's worlds (the user's question: "if each universe has its own model and they communicate vs broadcast, are they not learning from varied worlds?")
+
+A lone mind knows only its own world's present, so what it writes is either familiar there or random. A mind that also
+learns from other worlds can write what is new to its world and has already worked somewhere else: novelty with a track
+record, which neither a lone mind nor randomness has. The risk is the reverse: minds that all hear everyone learn one
+shared average and pull every world toward it.
+
+`lab/multiverse.js`: worlds side by side (one worker thread each), each with its own mind (v2: learns from the programs of
+dividing parents). Every 50 ticks every world stops; each mind is given as many examples from abroad as its own world
+showed it in that time, split evenly between the worlds it hears, so a mind that hears anyone learns half from home and
+half from abroad whatever the arm. Foreign examples are never passed on. Arms: `alone` (the minds of #293), `pairs` (each
+world hears one partner: communicate), `all` (each hears every other: broadcast); `ring` exists for more worlds.
+Checked: `alone` is byte-identical to `core-run.js` (saves and logs); a chunked run equals an unchunked one.
+
+**Pilot (exploratory, no rule):** worlds 2201-2204, 400,000 ticks, `pairs` and `all`; `alone` and uniform on 2201-2204 (the
+2201/2202 runs of #293 are the same worlds, by the identity above). Read: first-time adaptive genotypes per world, and how
+far apart the worlds' programs drift (broadcast should pull them together).
+
+### #295 — MINDS THAT ARE BORN, GROW AND DIE (the user's idea: "a mind that grows, not a static tool"; "keep organisms but add AI births too")
+
+#293's answer to "does it improve with time" was no, because nothing in a mind accumulates: a fixed small network, a
+1,024-example memory, one mind. This makes knowledge and capacity heritable.
+- **The AI stays** (v2's mind): it learns from every division and writes into ordinary children at the same rate as before.
+- **AI births (`MIND_POOL=24`, `MIND_BIRTH=0.002`):** when a child is born, with those odds it is also given a new mind, a
+  child of the mind that wrote it: the parent's weights and memories, its own random stream, curiosity (NOVEL) and
+  learning rate each changed a little with even odds, and one time in five more hidden units.
+- **A mind lives in a lineage** (body field `mindId`, inherited): it writes into its own lineage's children instead of the
+  AI, learns only from its own lineage's divisions (half a training step per division it sees, as the AI does on the whole
+  world), and gives birth to minds of its own the same way. Every 500 ticks the world counts each mind's carriers; a mind
+  with none has died. When all 24 places are taken, a birth replaces the mind with the fewest carriers among those at least
+  2,000 ticks old, never its own parent; its carriers go back to the AI. So minds are selected by how far their lineages
+  spread.
+- **Minds grow (`MIND_GROW=8`, the AI too):** a mind adds 8 hidden units (up to 128) when its loss has risen 0.1 above the
+  lowest since it last grew, i.e. when the world outgrows it. New units start with zero output weights, so growing changes
+  nothing it predicts until it learns to use them (tested to 1e-5).
+- **Neutral shadows.** Curiosity starts at 0 and is kept in 0-2, so half its changes at 0 are lost to the floor and it
+  creeps up by drift alone. Each child mind carries shadows of NOVEL and LR, inherited and mutated by exactly the same rule
+  and never used. Curiosity (or learning rate) has been SELECTED only if, among the minds the world keeps (weighted by
+  carriers), it moves away from its shadow. Brain size has no shadow (it grows during life too); read it against the
+  growing-AI arm.
+- **Deleted in the same change:** v6 and v7's adaptive mix (`MIND_ADAPT`), measured worst on both pilot seeds; in 9a763cd.
+- Identity: saves and samples byte-identical to 9b2592e for `{}`, CHEM, TASKS and every remaining mind mode.
+
+**Pilot (exploratory, two seeds, no rule):** `breed` = `{MIND:0.2, MIND_POOL:24, MIND_GROW:8}` and `grow` = `{MIND:0.2,
+MIND_GROW:8}` (the AI grows, no births) on 2201 and 2202 to 400,000 ticks, against #293's v2 mind and uniform. Read:
+first-time adaptive genotypes; share of organisms carrying a lineage mind; mind generations; carrier-weighted NOVEL and LR
+against their shadows; brain sizes. A warning written down before the result: v6 and v7 showed this world rewards the
+variation that repeats what works, and minds here are selected by their lineages' spread, so the expected outcome is that
+the world breeds cautious minds (NOVEL at or below its shadow).
