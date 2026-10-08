@@ -17,6 +17,7 @@
   color-scheme: dark;
 }
 html, body { height: 100%; }
+[hidden] { display: none !important; }
 body {
   background: var(--night);
   color: var(--glass);
@@ -121,6 +122,21 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 .btns { display: flex; gap: 8px; }
 button.keep { background: var(--amber); color: var(--night); border-color: var(--amber); }
 button.keep.lit { box-shadow: 0 0 22px var(--amber); }
+.recpanel { pointer-events: auto; display: grid; gap: 10px; padding: 12px; border: 1px solid var(--amber-dim); border-radius: 10px; background: rgba(7,6,10,.86); }
+.rp-head { font-size: 12px; color: var(--glass); }
+.rp-head span, .rp-msg { color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+.rp-msg:empty { display: none; }
+.btns { flex-wrap: wrap; }
+#shelf { position: absolute; inset: 0; background: rgba(7,6,10,.94); overflow-y: auto; padding: 16px; padding-block: 16px; }
+.shelf-inner { max-width: 460px; margin: 0 auto; display: grid; gap: 14px; }
+.shelf-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.shelf-top h2 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 400; font-size: 34px; color: var(--glass); }
+.shelf-note { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-soft); }
+.shelf-list { display: grid; gap: 18px; }
+.rec-item { display: grid; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid rgba(233,225,214,.1); }
+.rec-item video { width: 100%; max-height: 60vh; background: #000; border-radius: 6px; }
+.rec-item .meta2 { font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.rec-item .rp-msg { min-height: 0; }
 button.recording { color: var(--night); background: var(--amber); border-color: var(--amber); font-variant-numeric: tabular-nums; }
 .pop-wrap { display: grid; gap: 6px; min-width: 0; }
 .pop { display: flex; align-items: flex-end; gap: 3px; height: 28px; }
@@ -142,18 +158,30 @@ button.recording { color: var(--night); background: var(--amber); border-color: 
         <h1>Selected by Ear</h1>
         <div class="meta" id="meta">18 panes · D minor · 80 bpm</div>
       </div>
-      <div class="btns"><button id="rec" type="button" hidden>Record</button><button id="pause" type="button" hidden>Pause</button></div>
+      <div class="btns"><button id="shelfBtn" type="button" hidden>Recordings</button><button id="rec" type="button" hidden>Record</button><button id="pause" type="button" hidden>Pause</button></div>
     </div>
     <div></div>
     <div style="display:grid;gap:6px">
       <div class="toast" id="toast" aria-live="polite"></div>
       <div class="tune" id="tune"><span class="lbl">the first tune</span></div>
+      <div class="recpanel" id="recpanel" hidden>
+        <div class="rp-head"><b>Your recording</b> <span id="rpInfo"></span></div>
+        <div class="btns"><button id="rpKeep" class="keep" type="button">Store in the window</button><button id="rpSave" type="button">Save to device</button><button id="rpDrop" type="button">Discard</button></div>
+        <div class="rp-msg" id="rpMsg" role="status"></div>
+      </div>
       <div class="verdict" id="verdict" hidden>
         <div class="pop-wrap"><div class="pop" id="pop" aria-label="The twelve living tunes, by how well each has done with you"></div><div class="count" id="count"></div></div>
         <div class="btns"><button id="skip" type="button" aria-keyshortcuts="s">Skip</button><button id="keep" class="keep" type="button" aria-keyshortcuts="k">Keep</button></div>
       </div>
     </div>
   </div>
+  </div>
+  <div id="shelf" hidden>
+    <div class="shelf-inner">
+      <div class="shelf-top"><h2>Recordings</h2><button id="shelfClose" type="button">Close</button></div>
+      <p class="shelf-note">Stored in the window: they stay with this page, play here, and Claude can open them too.</p>
+      <div id="shelfList" class="shelf-list"></div>
+    </div>
   </div>
   <div id="gate">
     <div class="gate-inner">
@@ -593,6 +621,7 @@ function schedule() {
       const form = arranger.beginTurn();
       turn = { ...breeder.nextTurn(form === "return"), form, t0, half: 0, sig: { keep: false, skip: false, touches: 0, left: false }, done: false };
       turns.push(turn); if (turns.length > 12) turns.shift();
+      if (rec) recTunes.add(turn.id);
     } else turn.half = 1;
     const ph = arranger.phrase(turn.genome, call);
     const q = { t0, ph, turn, voices: [] };
@@ -652,7 +681,7 @@ const dbReady = (async () => {
     const db = await window.claude?.use?.("db");
     if (!db) return null;
     const ref = db.doc("window/state"), snap = await ref.get();
-    return { ref, saved: snap.exists ? snap.data() : null };
+    return { db, ref, saved: snap.exists ? snap.data() : null };
   } catch (e) { return null; }
 })();
 async function queueSave() {
@@ -694,8 +723,11 @@ async function start() {
     document.getElementById("gate").hidden = true;
     for (const id of ["pause", "verdict"]) document.getElementById(id).hidden = false;
     renderPop(-1);
-    downloads = await Promise.race([downloadsReady, new Promise(r => setTimeout(() => r(null), 3000))]);
-    recBtn.hidden = !(downloads && recType() !== null && cv.captureStream && G.tap);
+    const wait = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
+    [downloads, assets] = await Promise.all([wait(downloadsReady, 3000), wait((async () => { try { return await window.claude?.use?.("assets"); } catch (e) { return null; } })(), 3000)]);
+    recDb = d ? d.db : null;
+    recBtn.hidden = !((downloads || (assets && recDb)) && recType() !== null && cv.captureStream && G.tap);
+    if (assets && recDb) recDb.collection("recordings").limit(1).get().then(q => { if (!q.empty) shelfBtn.hidden = false; }).catch(() => {});
     try { await navigator.wakeLock?.request("screen"); } catch (e) {}
   } catch (e) {
     btn.disabled = false; btn.textContent = "Play";
@@ -710,7 +742,8 @@ document.getElementById("pause").addEventListener("click", async e => {
 });
 // ---------- recording what it plays, picture and sound, to save as a video ----------
 const recBtn = document.getElementById("rec");
-let rec = null, recChunks = [], recT0 = 0, recTick = null, downloads = null;
+let rec = null, recChunks = [], recT0 = 0, recTick = null, downloads = null, recTunes = new Set(), assets = null, lastRec = null;
+const MAX_KEEP = 20 * 1024 * 1024;
 const downloadsReady = (async () => { try { return await window.claude?.use?.("downloads"); } catch (e) { return null; } })();
 function recType() {
   // a true H.264 mp4 where the browser makes one (it opens everywhere), else webm; a bare mp4 last, for Safari
@@ -721,9 +754,9 @@ function startRecording() {
   const type = recType();
   if (type === null || !cv.captureStream || !G.tap) { note("This browser cannot record the window."); return false; }
   const stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...G.tap.stream.getAudioTracks()]);
-  rec = new MediaRecorder(stream, { mimeType: type || undefined, videoBitsPerSecond: 5e6, audioBitsPerSecond: 192e3 });
+  rec = new MediaRecorder(stream, { mimeType: type || undefined, videoBitsPerSecond: 2.4e6, audioBitsPerSecond: 128e3 });
   recChunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
-  rec.start(1000); recT0 = performance.now();
+  rec.start(1000); recT0 = performance.now(); recTunes = new Set(); const tr = playingTurn(); if (tr) recTunes.add(tr.id);
   recBtn.classList.add("recording");
   const tick = () => { const s = Math.floor((performance.now() - recT0) / 1000); recBtn.textContent = `Stop ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   tick(); recTick = setInterval(tick, 500);
@@ -738,17 +771,87 @@ function stopRecording() {
     r.stop(); r.stream.getTracks().forEach(t => { if (t.kind === "video") t.stop(); });
   });
 }
+const rpPanel = document.getElementById("recpanel"), rpInfo = document.getElementById("rpInfo"), rpMsg = document.getElementById("rpMsg");
+const mb = n => (n / 1048576).toFixed(1) + " MB", mmss = s => `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, "0")}`;
+function explain(e, what) {
+  const c = e && e.code ? e.code : "unknown";
+  const m = { declined: "You cancelled the save.", rate_limited: "A save is already waiting for your answer.",
+    rejected_extension: "This view will not save this kind of file.", extension_not_enabled: "This view will not save this kind of file.",
+    too_large: what === "keep" ? "Too long to store in the window (about a minute and a half fits). Save it to your device instead." : "Too large to save here.",
+    quota_or_state: "The window's storage is full. Delete an old recording first.", store_unavailable: "Storage hiccup. Try again in a moment.",
+    upstream_auth: "Sign-in expired. Reload the page and try again." }[c];
+  return (m || (what === "keep" ? "This view cannot keep recordings." : "This view cannot save files to your device.")) + ` (${c})`;
+}
 recBtn.addEventListener("click", async () => {
-  if (!rec) { startRecording(); return; }
-  const blob = await stopRecording();
+  if (!rec) { if (startRecording()) { rpPanel.hidden = true; } return; }
+  const secs = (performance.now() - recT0) / 1000, blob = await stopRecording();
   if (!blob || !blob.size) { note("Nothing was recorded."); return; }
-  const ext = blob.type.includes("mp4") ? "mp4" : "webm", d = new Date();
-  const name = `selected-by-ear-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}.${ext}`;
-  try { await downloads.save({ filename: name, data: blob }); note(`Saved ${name}.`); }
-  catch (e) {
-    note(e && e.code === "declined" ? "Not saved. Record again whenever you like." : e && e.code === "rate_limited" ? "A save is already waiting for an answer." : "This view cannot save files.");
-  }
+  const ext = blob.type.includes("mp4") ? "mp4" : "webm", d = new Date(), p2 = n => String(n).padStart(2, "0");
+  const name = `selected-by-ear-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.${ext}`;
+  lastRec = { blob, name, secs, tunes: [...recTunes], at: Date.now() };
+  rpInfo.textContent = `${mmss(secs)} · ${mb(blob.size)} · ${ext.toUpperCase()}`;
+  rpMsg.textContent = "";
+  document.getElementById("rpKeep").hidden = !(assets && recDb);
+  document.getElementById("rpSave").hidden = !downloads;
+  if (!(assets && recDb) && !downloads) rpMsg.textContent = "This view can neither keep nor save files. Open the page in a browser where you are signed in to Claude.";
+  rpPanel.hidden = false;
 });
+async function saveBlob(blob, name, msgEl) {
+  // the save starts inside the tap itself, so the browser counts it as yours
+  try {
+    const r = await downloads.save({ filename: name, data: blob });
+    msgEl.textContent = r.status === "saved" ? `Saved ${name}. On a computer look in Downloads; on a phone, choose Save Video or Save to Files in the sheet.` : "Sent where you chose.";
+  } catch (e) { msgEl.textContent = explain(e, "save"); }
+}
+document.getElementById("rpSave").addEventListener("click", () => { if (lastRec) { rpMsg.textContent = "Waiting for you to confirm the save..."; saveBlob(lastRec.blob, lastRec.name, rpMsg); } });
+document.getElementById("rpDrop").addEventListener("click", () => { lastRec = null; rpPanel.hidden = true; });
+document.getElementById("rpKeep").addEventListener("click", async e => {
+  if (!lastRec) return;
+  if (lastRec.blob.size > MAX_KEEP) { rpMsg.textContent = "Too long to store in the window (about a minute and a half fits). Save it to your device instead."; return; }
+  const btn = e.currentTarget; btn.disabled = true; rpMsg.textContent = `Storing ${mb(lastRec.blob.size)} in the window...`;
+  try {
+    const up = await assets.upload(lastRec.blob, { type: lastRec.blob.type.split(";")[0] });
+    await recDb.collection("recordings").add({ asset: up.id, at: lastRec.at, secs: Math.round(lastRec.secs * 10) / 10, size: up.sizeBytes,
+      type: up.contentType, name: lastRec.name, tunes: lastRec.tunes.slice(0, 40) });
+    rpMsg.textContent = "Stored in the window. Find it under Recordings. Claude can open it too.";
+    shelfBtn.hidden = false;
+  } catch (err) { rpMsg.textContent = explain(err, "keep"); }
+  btn.disabled = false;
+});
+
+// ---------- the shelf of kept recordings ----------
+const shelf = document.getElementById("shelf"), shelfList = document.getElementById("shelfList"), shelfBtn = document.getElementById("shelfBtn");
+let recDb = null;
+async function openShelf() {
+  shelf.hidden = false; shelfList.textContent = "Loading...";
+  let docs = [];
+  try { docs = (await recDb.collection("recordings").orderBy("at", "desc").limit(60).get()).docs; }
+  catch (e) { shelfList.textContent = "The recordings could not be read just now. Try again in a moment."; return; }
+  if (!docs.length) { shelfList.textContent = "Nothing stored yet. Press Record, then Store in the window."; return; }
+  shelfList.textContent = "";
+  for (const d of docs) {
+    const r = d.data(), item = document.createElement("div"); item.className = "rec-item";
+    const v = document.createElement("video"); v.controls = true; v.playsInline = true; v.preload = "metadata"; v.src = "/_blob/" + r.asset;
+    const meta = document.createElement("div"); meta.className = "meta2";
+    meta.textContent = `${new Date(r.at).toLocaleString()} · ${mmss(r.secs || 0)} · ${mb(r.size || 0)} · tunes ${(r.tunes || []).map(t => "#" + t).join(" ")}`;
+    const row = document.createElement("div"), msg = document.createElement("div"); row.className = "btns"; msg.className = "rp-msg";
+    const sv = document.createElement("button"); sv.type = "button"; sv.textContent = "Save to device"; sv.hidden = !downloads;
+    let blob = null;
+    sv.addEventListener("click", async () => {
+      if (!blob) { msg.textContent = "Fetching the file..."; try { blob = await (await fetch("/_blob/" + r.asset)).blob(); } catch (e) { msg.textContent = "The file could not be fetched. Try again."; return; } }
+      msg.textContent = "Waiting for you to confirm the save..."; saveBlob(blob, r.name || `selected-by-ear.${(r.type || "").includes("mp4") ? "mp4" : "webm"}`, msg);
+    });
+    const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete"; let armed = 0;
+    del.addEventListener("click", async () => {
+      if (Date.now() - armed > 4000) { armed = Date.now(); del.textContent = "Tap again to delete"; setTimeout(() => del.textContent = "Delete", 4000); return; }
+      try { await recDb.collection("recordings").doc(d.id).delete(); await assets.delete(r.asset); item.remove(); }
+      catch (e) { msg.textContent = "It could not be deleted just now."; }
+    });
+    row.append(sv, del); item.append(v, meta, row, msg); shelfList.append(item);
+  }
+}
+shelfBtn.addEventListener("click", openShelf);
+document.getElementById("shelfClose").addEventListener("click", () => { shelf.hidden = true; for (const v of shelfList.querySelectorAll("video")) v.pause(); });
 const keepBtn = document.getElementById("keep");
 keepBtn.addEventListener("click", keep);
 document.getElementById("skip").addEventListener("click", skip);

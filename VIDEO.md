@@ -1160,3 +1160,14 @@ then offers the file through the `downloads` capability (the viewer confirms the
 can make one, else WebM, bare MP4 last (Safari). The overlaid words are not in the recording - only the glass and the
 light. Hidden where saving or recording is impossible. Tested in headless Chromium: 8 s -> picture + sound, -16.9 LUFS.
 Caught: open Chromium put VP9 inside an .mp4 (won't open on iPhones) when asked for bare "video/mp4" - reordered.
+RECORD, SECOND GO (8 Oct): the user: "Nope it doesnt save. If i hit record then stop there is no download option."
+Claude had called it working on a test that could not run the save step (headless Chromium has no `downloads`). Likely
+cause: save() ran after Stop's async processing, outside the tap. Now: Stop opens a panel with its own buttons - Save to
+device (the save starts inside that tap), Store in the window (uploads to the artifact's `assets`, 20 MiB per file, so
+~1.5 min at 2.4 Mbps; a `recordings` row in `db` holds the asset id, time, length, and the ids of the tunes heard), and
+Discard. Errors stay on screen with their code, so a failure on the user's device names itself. A Recordings shelf plays
+stored recordings and can save or delete them. Stored recordings are readable by Claude (Artifact read, path = asset
+id), so what the user records from the window can be cut into films. Tested with stand-in capabilities recording every
+call: upload, db row, save with the right file, shelf listing - 0 errors. Still untested on the user's own device.
+FIRST READ OF THE USER'S EAR (window/state, 8 Oct): 31 turns, 5 keeps, 12 skips. Favourite #7 (kept 2x, score 5.6):
+A4 D5 F5 E5 C5 D5 C5 D5 F5 - the busier tune that climbs back up at the end. Too few verdicts to call a taste.
