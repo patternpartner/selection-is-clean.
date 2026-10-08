@@ -1260,3 +1260,20 @@ mirrored) snapped to beats, local speed 0.58-1.5x, a monotone PCHIP curve throug
 the run at 1.0x looped at a matching stride; the leap's apex on the 3rd beat as #7 returns; slow moments blend frames.
 His face protected (glass .15 at the head, full by the chin). Window behind at 0.14 + lit by its notes. Same music.
 Known: Grok's own motion ghosting in u174 (arms smear ~12-15 s of film) is in the source and stays.
+
+### Intertwined (`video/build_intertwined.py`, `video/intertwined_stills.py`, `video/stories/intertwined.json`, `out/intertwined.mp4`, 64.6 s)
+The user on v2: "I think you can do better. You have modal credits. May as well use them here. Your story and mine
+intertwined." Cost stated first (5 Wan I2V clips ~$1.25, up to ~$2 with retakes); the user said "Yes". ALL FIVE TAKES
+KEPT FIRST TIME: ~$1.25 spent. Start images built locally from real frames of his clips (closed mouths: an open grin
+gets animated as talking), the amber light placed in each. Music: out/drawn/kept.wav unchanged - Claude's first tune
+crossing into the tunes his ear kept; one shot per 6 s phrase, cuts on the downbeat:
+ 0 the window alone, the light playing Claude's first tune (local) | 1 he takes a hand from his pocket and the light
+ settles in his open palm (Wan) | 2 close: the light in his cupped hands, he smiles down at it (Wan - the best shot) |
+ 3 he dances, himself, the light travelling over him on the beat (local v2) | 4 the light bursts into his chest and
+ glowing veins run down his arms into his hands (Wan: fire rather than stained glass - stronger) | 5-6 the jumps and the
+ run in glass (local v2) | 7 he leaps, a flash, and he is running into a vast stained-glass rose window opening around
+ him (Wan made 'the window bursts' into a portal) | 8 standing, the glass lets go (local) | 9 the light held in his
+ cupped hands (Wan: it did not rise to his face as asked; it stays with him) | card.
+Wan's 5.04 s stretched to the 6 s phrase with blended frames; build_kept2 gained NOBODY_UNTIL / GLASS_FROM / LETGO knobs
+(defaults = v2). Clips: out/clips/4bd6177d92ec8f22 (palm), cdef5f27144b7c0f (close), 7ce9a1dd090da603 (glass),
+e3adcc9ba38b656e (portal), 416b6a456ef4d2de (hands), backed up to library/clips.
