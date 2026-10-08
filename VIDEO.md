@@ -1187,3 +1187,19 @@ checked: none corrupted). Run 2 inconclusive (the measure averaged over arrivals
 Experiment 2, pre-registered, unseen seeds: the measure works (liking the familiar collapses to 0); curious ears are NO
 BETTER THAN DRIFT at keeping novelty arriving - they never collapse, and on every seed the ears evolve to hear melodic
 intervals with a two-note memory: they steer which novelty, not how much. Sound -14.0 LUFS, 87/87 at pitch, 0 clicks.
+
+### Looked At (`video/looked_at.html`, a live page, not a film)
+https://claude.ai/artifact/TvNTzbeJEwh7JWn4SffJKM (private; no capabilities, no Modal, zero cost). The user: "If you look at
+the video md. Im keen to see what inspires you. Create what you see." What Claude took from this file: the ones the user
+picked had no voiceover and one wordless image carrying the meaning, and the recurring image is two small lights, a door left
+open, "leave the light on" - wanting to be looked at.
+A dark room of ~110 pairs of light. Each pair picks what to look at by its own heritable taste (near, bright, same hue, wide
+eyes, and `pull`: lean toward what it watches or shy away). Every pair has one gaze to give, so total attention is fixed and
+being looked at is the only food: a looked-at pair brightens and splits into a mutated child, an unlooked one closes its
+eyes and goes out. A stranger (random genome) walks in every ~5.5 s, and at once if the room drops under 40. The visitor is one more pair of
+eyes: touch to look, press to look hard. Only text: lit now / ever lit / strangers.
+MEASURED (headless, 30,000 ticks, seeds 11/22/33, before the last visual tweak - CAP 150 then, 110 now): population holds
+near the cap, no errors. Mean same-colour preference (`hueAff`) rose from ~0 to 0.4-0.8 on all three seeds and the room split
+into colour tribes. NOT PROVEN to be selection: no null band (drift is not excluded), one trajectory per seed. Touch not
+tested on a phone. The glow radii and trail fade were cut after the first screenshot (blown-out, eyes unreadable); the
+published version has not been looked at.
