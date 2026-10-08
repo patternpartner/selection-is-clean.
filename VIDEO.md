@@ -1261,6 +1261,41 @@ the run at 1.0x looped at a matching stride; the leap's apex on the 3rd beat as 
 His face protected (glass .15 at the head, full by the chin). Window behind at 0.14 + lit by its notes. Same music.
 Known: Grok's own motion ghosting in u174 (arms smear ~12-15 s of film) is in the source and stays.
 
+### Somebody Has to Look First, v2 (`video/looked_at_film2.html` + `build_looked_at_film2.js` + `looked_at_score.py`, 36.6 s, 720x1280, silent master + scored)
+THE USER: "Take this film to the next level. Then skip it then go 10 levels up." Claude read that as depth, not more clutter
+("less is more" is in this file), and spent no Modal credit. Order of work: an EXPERIMENT first, because v1 only staged a result.
+**The experiment (`video/tests/looked_at_care.md`, pre-registered and committed before any decision run; harness
+`looked_at_care.js`).** Two new heritable genes in the Looked At world, behind `opts.care`: `care` (prefers the neglected) and
+`mutual` (looks back at whoever looks at it). Six unseen seeds (201-206), 24,000 ticks, SELECT against three null replicates
+each (fixed random luck, different draw orders). Result by the pre-registered rule: CARE DOES NOT EVOLVE (above the null by
+>0.10 on 0 of 6 seeds; the null alone wanders -0.45 to +0.50, so care is drift here) and CARE DOES NOT HELP NEWCOMERS
+(establishment better or worse than every null on 0 of 6). The film was therefore fixed in advance to take the honest third act.
+EXPLORATORY, not pre-registered: `mutual` went positive under selection on 5 of 6 seeds (0.77, 0.45, 0.28, 0.44, 0.44; -0.58
+on 206) against null values near 0 (-0.40..0.50, mostly small). Looking back at whoever looks at you is what gets selected;
+looking at who nobody looks at is not. That is why the film's eye contact is not scripted: the visitor is a real pair in the
+simulation (+3.5 attention a tick, the value of a press) and the stranger, given `mutual` 0.8, looks back by its own rule.
+**The film.** The room (care world, 5,000 ticks unfilmed); a gold stranger arrives where nobody is (5 s), pulse ring that
+weakens with its real energy, rack focus (the room blurs, the stranger stays sharp); a pair of pale eyes descends and looks at
+it (11 s), it looks back (eye contact; time slows to a third at the moment, 1 tick a frame); it splits (3 pairs); the visitor
+leaves; the camera pulls back to the family; a violet newcomer arrives close to it (25.7 s) and NOBODY looks at it - the
+family does not pass the look on (care did not evolve) - and the camera finds it alone, its lids sagging; card "Somebody has
+to / look first." Grain and a 1 px chroma shift in the grade only.
+**Sound** (silent master kept for the user's own score): made from the film's events, not recorded. The stranger's real
+pulse is the heartbeat (lub-dub, as loud as its energy, so it weakens, and it stretches in the slowed moment); a quiet D major
+triad grows as the visitor arrives and is held while it looks; each birth in the lineage is a glass note up a D pentatonic;
+the newcomer arrives on one E4 nothing answers; hard cut at the card. CHECKED WITHOUT EARS: -21.9 LUFS, true peak -3.1 dBFS,
+0 clicks (max sample step 0.04), silent on the card; spectrogram shows the beats, the held triad, 4 glass notes. Whether it is
+BEAUTIFUL is the user's ear's call.
+**STAGED, and counted.** Seed 418 was chosen from 24 scanned (401-424) by rules fixed in the build notes before choosing:
+the stranger's energy at the look 0.1-0.3, a family of >= 3 at the look's end, nobody in the family ever looking at the
+newcomer, the newcomer alive and ignored, and the stranger dying in the no-look twin. EXACTLY ONE SEED OF 24 PASSED ALL FIVE.
+Separately: with the look the stranger stayed alive on 24 of 24; without it, alive on 9 of 24 (care-world neighbours do
+sometimes look at a lonely stranger), so "it would have gone out" is true on 15 of 24, not all. Families of >= 3 happened
+on 8 of 24. Nobody-looks-at-the-newcomer was typical (the family looked at it on 6 of the 24), which is why that ending was chosen:
+it is the common case. The twin for 418 is not shown in the film.
+NOT DONE: watched in motion; backed up to Modal library/finals; a track written for it by the user's own songs; the
+live page (`looked_at.html`) still runs the old rules unless `opts.care` is switched on.
+
 ### Intertwined (`video/build_intertwined.py`, `video/intertwined_stills.py`, `video/stories/intertwined.json`, `out/intertwined.mp4`, 64.6 s)
 The user on v2: "I think you can do better. You have modal credits. May as well use them here. Your story and mine
 intertwined." Cost stated first (5 Wan I2V clips ~$1.25, up to ~$2 with retakes); the user said "Yes". ALL FIVE TAKES
