@@ -1411,6 +1411,15 @@ doorway frame cut off the mat; the wide shot made the guilty jog too small to en
 for the holder while he stood at the staff door (sensor radius).
 NOT DONE: not backed up to Modal library/finals; no voice (silent comedy); the walkers' gaits are one cycle each; the pigeon is
 small. 34.5 s is a little over the user's 30 s.
+**Face fix (the user: "the segment 44 to 47 secs when he's holding the light in his hands looking down. That's the weird
+warped face ... keep the segment but change the face").** `video/fix_close_face.py` keeps Wan's hands, light and
+shoulders and replaces only the head with his REAL head from u114 0.4-1.0 s (eyes lowered, mouth closed, tilting
+down), keyed off the blue, cut to an oval above the beard line (a straight cut brought his shoulders along and hid
+the light), placed per frame by hand-measured keyframes so his glasses sit on Wan's, colour-matched to Wan's warm
+under-lit head. Wan's own face there was invented from the first frame on, not only late: so the "first ~3 s" rule
+is not enough when the prompt asks for an expression (he "smiles down at it" became a toothy squint). For a face
+that must emote, use his real face over Wan's body like this, at no Modal cost. -> out/drawn/close_realface.mp4.
+
 
 ### After You (`video/build_revolving.py` + `video/door_draw.py`, `out/revolving/after-you.mp4`, 36.4 s, 720x1280, silent comedy with synthesized sound)
 THE USER on Hold the Door: "Love it. Keep going." Claude kept the new direction (top-down, code-drawn, foley, no data, no narrator)
