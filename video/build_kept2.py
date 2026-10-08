@@ -32,6 +32,7 @@ AMBER = np.array([255, 176, 88], np.float32)
 # panes); no glass on him before GLASS_FROM (it arrives with the transformation shot); LETGO is read at run time
 NOBODY_UNTIL = 0.0
 GLASS_FROM = 0.0
+FULLGLASS = bool(int(os.environ.get("FULLGLASS", "0")))   # he is all glass from the first frame
 
 
 # ---------- 1. time: film seconds -> (clip, clip seconds, mirror) ----------
@@ -175,7 +176,7 @@ BOX = {u: smooth_box(u) for u in MOT}
 
 
 def main():
-    voices = json.load(open("out/drawn/kept-voices.json"))
+    voices = json.load(open(os.environ.get("VOICES", "out/drawn/kept-voices.json")))   # another film can light him with its own notes
     first = {}
     for v in voices:
         first[v["n"]] = min(first.get(v["n"], 1e9), v["when"])
@@ -288,7 +289,7 @@ def main():
                     e = min(1.6, lit[n])
                     br = .5 + 1.15 * e ** .7
                     glass[Y0:Y1, X0:X1][m] = src[py, px] * br
-                    age = t - max(first.get(n, 1e9), GLASS_FROM)
+                    age = 99.0 if FULLGLASS else t - max(first.get(n, 1e9), GLASS_FROM)
                     gw[Y0:Y1, X0:X1][m] = np.clip(age / .5, 0, 1) * (1 - np.clip((t - LETGO) / 2.5, 0, 1))
             lum = col.mean(-1, keepdims=True) / 255
             facew = np.clip((yy[:, :1] - bx[1] - bh * .03) / (bh * .12), 0, 1) * .85 + .15   # his face stays his

@@ -1,0 +1,20 @@
+{
+ "title": "A History of Dreaming",
+ "about": "Six image-to-video shots (Wan 2.2 5B, one take each, ~$1.50) for the film to the user's song A History of Dreaming. Start images: video/history_stills.py (real frames of his clips, closed mouths). Face shots are used for their first ~3 s only (Wan drifts faces late in a clip).",
+ "voice": null,
+ "tail": 0.0,
+ "scenes": [
+  {"image": "../../out/inputs/hd_1_watch.png", "seed": 11101,
+   "prompt": "seen from behind, a man with grey hair in a grey t-shirt stands still and looks up at a huge glowing stained glass window in the dark; the dark lead lines of the window glow and slowly shift and redraw themselves, a small amber light moves along the lines; quiet, cinematic, slow camera push in"},
+  {"image": "../../out/inputs/hd_2_palm.png", "seed": 11202,
+   "prompt": "seen through a pane of glass, a man presses his open palm flat against the glass from the other side; warm amber light gathers and glows beneath his hand and spreads through the glass in fine glowing lines like circuitry; dark, cinematic, close"},
+  {"image": "../../out/inputs/hd_3_fall.png", "seed": 11303,
+   "prompt": "a man in a grey t-shirt and jeans with his arms raised falls slowly backward into a dark endless sky full of floating glowing shards of coloured glass, arms open wide, drifting as if flying, the shards turning slowly around him, dreamlike slow motion, cinematic"},
+  {"image": "../../out/inputs/hd_4_water.png", "seed": 11404,
+   "prompt": "a man in a grey t-shirt floats weightless deep underwater in dark blue water, light rays from above, bubbles rising, drifting slowly among glowing floating picture frames that turn gently in the water around him, his hair moving in the current, dreamlike, slow, cinematic"},
+  {"image": "../../out/inputs/hd_5_storm.png", "seed": 11505,
+   "prompt": "wide shot, a small figure of a man stands on a dark hill at night with a small glowing amber light beside him, while an enormous storm of light breaks across the sky above, lightning and glowing clouds of colour rolling overhead, epic, cinematic"},
+  {"image": "../../out/inputs/hd_6_eye.png", "seed": 11606,
+   "prompt": "close-up of a man with grey hair, glasses and a beard in a grey t-shirt; the small glowing amber light in front of his chest rises slowly up to his eye level and he turns his head and looks straight into it, calm, eye to eye, mouth closed, warm light on his face and glasses, dark background, cinematic"}
+ ]
+}
