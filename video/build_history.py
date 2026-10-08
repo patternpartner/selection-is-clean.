@@ -40,7 +40,7 @@ PANES, PANE = K.PANES, K.PANE
 
 # the Wan shots: this film's six, and the Intertwined five (face shots used for their first ~3 s only)
 HD = json.load(open("out/drawn/hd-clips.json")) if os.path.exists("out/drawn/hd-clips.json") else {}
-IW = {"palm": "out/clips/4bd6177d92ec8f22.mp4", "close": "out/clips/cdef5f27144b7c0f.mp4", "fire": "out/clips/7ce9a1dd090da603.mp4",
+IW = {"palm": "out/clips/4bd6177d92ec8f22.mp4", "close": "out/drawn/close_realface.mp4", "fire": "out/clips/7ce9a1dd090da603.mp4",
       "portal": "out/clips/e3adcc9ba38b656e.mp4", "hands": "out/clips/416b6a456ef4d2de.mp4"}
 UNI = "out/inputs/universe-run1/run1.webm"
 
