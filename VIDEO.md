@@ -1411,3 +1411,38 @@ doorway frame cut off the mat; the wide shot made the guilty jog too small to en
 for the holder while he stood at the staff door (sensor radius).
 NOT DONE: not backed up to Modal library/finals; no voice (silent comedy); the walkers' gaits are one cycle each; the pigeon is
 small. 34.5 s is a little over the user's 30 s.
+
+### After You (`video/build_revolving.py` + `video/door_draw.py`, `out/revolving/after-you.mp4`, 36.4 s, 720x1280, silent comedy with synthesized sound)
+THE USER on Hold the Door: "Love it. Keep going." Claude kept the new direction (top-down, code-drawn, foley, no data, no narrator)
+and made the next one harder: a sequel with the same two men, set at a REVOLVING DOOR, which seen from straight above is the most
+Tati image there is (a rotating cross in a circle). Zero Modal cost; ~3 min to render.
+THE JOKE. They reach the door together; each insists the other goes first ("after you", three rounds of sweeping hand-gestures,
+quicker each time, the second man still on his phone); then both step into the SAME compartment, shoulders overlapping. Neither
+will be first out, so they ride past the exit, lap after lap, looking at each other, gesturing toward the exit each time it
+passes, and the door speeds up as they argue (22 -> 255 degrees a second), heads lolling, bodies leaning into the spin. The man
+who led finally steps out into the lobby, dizzy. The other whizzes past the exit. The first, by reflex, HOLDS THE DOOR: in a
+revolving door that means stopping it, so the door hits dead, the second man is flung into the leaf and pinned against it, arms
+out; the first lets go, both hands up (sorry); the door starts again; they stand in the lobby for a stiff thank-you. A child
+walks in (an ice-cream cone in one hand), rides through at his own pace, and glides out past them without a glance while both men
+turn their heads to watch him. Then they slink off. (The callback: he is the same man who held the staff door in Hold the Door.)
+HOW IT IS BUILT. The door is a single number, its angle, from a velocity profile; every person is placed in polar coordinates
+in a compartment of that door (position = centre + r at angle, facing along the tangent, gait phase from the speed they must walk
+to keep up), so the cramped ride, the exit at the south, the stop and the fling fall out of the geometry. The stop and release
+times are SOLVED from the angle (the stop happens when the second man's leading leaf is at the south axis, so the first man's
+reach lands on a real leaf end), and the child's entry is solved from a compartment crossing the north. Camera: wide for the two
+approaching, a push-in on the mouth, a push into the drum, then it follows the drum, a wide at the end.
+THE SOUND IS THE MACHINE. The waltz is driven by the door's angle: a beat every 30 degrees, three a bar, so a bar is exactly one
+leaf passing; it therefore speeds up as the door does (the spectrogram shows the pulses packing closer from 9 s to 23 s) and
+STOPS DEAD when the door is stopped (a clean vertical cut at the stop). Oom-pah-pah is a plucked bass and chord stabs with an
+accordion-like melody on the chord tones (D, A, Bm, G ...), restarted slower after the release. A hum follows the door's speed; a
+whup each time a leaf passes an opening; every footstep from the people's gait phase; the stop is a hard thunk plus glass rattle,
+the splat a low "oof" glide and body thud, the motor taking up again; the child gets four plucked whistle notes. CHECKED WITHOUT EARS:
+-19.5 LUFS, peak -4.0 dBFS, two transients above 25x their neighbourhood. Whether it is FUNNY and whether the waltz is pleasant is
+the user's ear and eye to say; it has not been watched in motion.
+Caught while building: the first version of the actors' code was rushed and had leftover lines; rewritten with the geometry spelled
+out (angles clockwise, 0 east, 90 south, compartment centres, who leads). The red man's gesture toward the exit made an arm 100+
+units long: arms are now clamped to 46. A mistake in my own checks: the stills use absolute time (the title card is 1.4 s), so
+frames I labelled 22.35 were scene 20.95 until I noticed. The two men walked away before the child arrived (no contrast): the child now
+comes 2 s earlier and both men watch him pass. A first sound pass crashed on a 0.12 s vs 0.13 s array mismatch.
+NOT DONE: no pose sheet at full size for the splat (the figures are small in that shot); the two men are identical in gait; the
+child's whistle is four notes; not backed up to Modal library/finals.
