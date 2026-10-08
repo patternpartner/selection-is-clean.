@@ -1329,3 +1329,85 @@ a821302330a2a239, 5ec056dcbaa7dcd3, 5b77fc785f5637b8 (hd1..hd6; Modal printed th
 **WAN FACES DRIFT LATE IN A CLIP** (the user on Intertwined: "modal made the face weird at very end and just as he
 has the light in his hand"; hd3 here starts grinning oddly after ~3.3 s). Use the first ~3 s of any shot where the
 face is large; wide shots and backs are safe for the whole clip.
+
+### Nobody Asked It To (`video/doc_capture.js` -> `doc_voice.py` -> `build_doc.py`, 66 s, 720x1280, voiced, `out/doc/film/nobody-asked-it-to.mp4`)
+THE USER: "What I want is for you to push yourself. You're staying narrow in your vision. Which is ironic." Claude's honest
+account: five turns inside one idea (eyes, looking), deepening the same toy, never opening the actual artwork, and never asking
+what else was in the room. So it looked wide first: ran the REAL engine (`engine.html`, 30k lines) and looked at it. It is
+far richer than the toy (comet trails, colonies, a teal and magenta field). That changed the film. Zero Modal cost.
+**What the pictures are (read from the engine, `render()`):** the teal blocks are `field` (the shared writable environment),
+tinted toward a lineage's colour where a lineage owns the cell (`fieldOwnership`); the pink blocks are `field2`, a second
+channel; a block in a lineage's own colour is a cell it has claimed. The world also keeps `fieldMemory` (what lived where).
+**Method (The News v5's, which the user called the keeper):** footage FIRST, words written from what is on screen.
+`doc_capture.js` steps the real engine 3 ticks per frame at 704x1280 and saves every frame as a JPEG with the engine's own
+numbers (tick, alive, lineages begun, ended, field cells, clusters, hue groups) in one pass (the engine is not deterministic
+across stepping patterns, so frames and numbers must come from the same run). Three seeds (5, 6, 7), 8,000 ticks each,
+2,667 frames each (~15 min in parallel). ONLY SEED 5 GREW A FIELD (6: 0 teal cells until tick ~6,800 then 67; 7: none), so the
+film is seed 5, picked by looking. One run, not repeatable.
+**The film:** a calm voice (Kokoro `bf_emma`, the user's own pick, local CPU) reads ten lines straight over the real
+frames, with the engine's counters (TICK / ALIVE / BEGUN / ENDED) in the corner as the documentary's caption: "This is a
+world. It has three hundred and twenty-one inhabitants. None of them has been told what it is for." / "Within two hundred
+ticks, something pink appears. No one put it there." / "Some of the inhabitants stay near it. This is called a colony. It is
+also called a crowd." / "The pink one has moved. It does not say why." / "Then, at the top, a second thing arrives. It is
+teal. The pink does not appear to mind." / "The teal grows. It divides. It comes back together. Nobody has asked it to stop."
+/ "By tick fifty-seven hundred, the pink is, for practical purposes, gone. It did not say goodbye." / (held on screen as
+numbers) "2,541 lineages have begun. 2,307 have ended. 363 inhabitants remain, which is about where they started." / "In the
+middle of it, one square belongs to somebody. It is not clear that they know." (a ring is drawn on the claimed cell, held
+still from source frame 2,200 to 2,250) / "Nobody asked it to do any of this. It is still running." Card: "Somebody should
+look in." The number line is the project's own thesis said as a joke: 2,541 lineages begun, 2,307 ended, and the population
+(363) is about where it started (321).
+**Checked against the log, and one line CORRECTED:** the first draft said the pink was gone "by tick forty-five hundred";
+the counter at tick 4,573 still showed pink, and the engine's own count of second-channel cells is 81 at tick 4,204, 48 at
+4,504, 15 at 4,954 and 0 first at tick 5,659 (a stray cell or two flickers back later). The line now says fifty-seven hundred,
+"for practical purposes". The spoken numbers are read from the log at the frame they are shown (`doc_voice.py` builds the
+words from `log.jsonl`), and the big numbers are held at those values while the corner counter keeps ticking.
+**Score (made from the same log, not borrowed):** a low D drone; a warm chord while the pink is on screen, a cooler one when
+the teal arrives; and one soft pluck for every 100 lineages that end (29 of them, falling in pitch as the world ages), so
+the rhythm is the real extinction rate, faster where the footage is sped up. Cut to silence on the card.
+**Checks without ears:** -18.1 LUFS, true peak -2.7 dBFS, music sits 10 dB under the voice in the actual mix (-30.3 vs
+-20.0 RMS), no music transient above 0.016 of full scale, silent on the card. A first click scan flagged 2,419 steps; they
+were all speech (a step test with no local reference), and the right test (step vs its own neighbourhood) found 0 in the voice.
+Whether the voice and the score are GOOD is the user's ear's call.
+**STAGED / NOT CLAIMED:** "no one put it there" means no author placed it (it comes from what the inhabitants deposit); "stay
+near it" is read off the frames, not measured; "does not appear to mind" and "did not say goodbye" are jokes, not findings.
+The cut speeds the world up 0.4x to 4x. Not watched in motion. Not backed up to Modal library/finals. 66 s is long next to
+the user's 30 s preference; the first seconds are slow on purpose (321 specks) and the numbers line is 11.7 s.
+
+### Hold the Door (`video/build_door.py` + `video/door_draw.py`, `out/door/hold-the-door.mp4`, 34.5 s, 720x1280, silent comedy WITH synthesized sound)
+THE USER: "Let's keep going. Something new. Something bold. Take yourself out of your comfort zone." Claude's read of its own
+comfort zone: every piece so far was a simulation of selection, narrated or captioned, with an honesty note. So this one has no
+AI, no evolution, no data, no narrator and no claim to be true of anything: a joke about the most awkward thing a person can
+do, holding a door for someone who is far away, drawn in code and shot from straight above (Tati's Playtime, a cutaway
+building like a dollhouse). Zero Modal cost; ~4 min to render. THE FIRST CHARACTER ANIMATION IN THIS FILE'S RECORD that is not a
+glow: three people made of shoulders, a hat (the cap's brim and the nose bump say where they face), two hands and two feet,
+with props (a coffee cup, a phone), a pigeon, a swinging door and glass sliding doors. Top-down means no faces: all of the
+acting is in the head-turn, the shoulders dropping, the arms and the timing.
+THE JOKE (setup, escalation, twist, tag, callback). A man comes out of a staff-only door with a coffee and sees a stranger a long
+way off across the plaza, so he catches the door and holds it. The mat beside him says STAFF EXIT ONLY / NO RE-ENTRY (legible in
+the first shot; it is the setup for the lock-out). He waits: weight shifts, a foot tap, a sip, a glance, the held arm getting
+tired. The stranger, on his phone, looks up, understands someone is holding a door FOR HIM, and breaks into the guilty jog, stiff
+arms and a sorry-wave, while the holder cups the air with his coffee in the "no rush" pat. At the last second the stranger veers
+left, the automatic doors beside it open by themselves, he walks in without a glance. The holder's head follows him; his arm
+comes down; the door's closer shuts it with a click; he pushes it twice (it rattles) and reads the mat. He sulks along the wall
+to the automatic doors, which open for him, and stands in the doorway. A second stranger appears far away; the holder, without
+thinking, puts an arm out and holds the door that doesn't need holding. The stranger does the guilty jog, thanks him, goes in.
+He stands there alone in the lit doorway. Fade.
+CAMERA (real cuts, Playwright-style editing in code): tight on the door for the setup, a slow pull-out to a wide to reveal the
+distance, a cut to a close follow of the jogger, a cut to the holder's cup patting the air, a cut to both, a push-in on the two
+doors for the twist, a wide for the callback, a push-in on the doorway. The title (HOLD THE DOOR) is on black for the first 1.5 s.
+SOUND (all synthesized, from the animation's own events): every footstep is a contact in that person's gait phase, with the
+loudness following whichever person the camera is on; a hinge squeak that glides up as the door opens and down as the closer
+shuts it, the latch click, two rattles; the automatic doors' whoosh and a two-note chime taken from the model of the sensor, not
+timed by hand; a pigeon's coo and wing-flaps. Score: a pizzicato bass walking on the first stranger's steps; one high plink and
+a stop when he looks up; a rising ostinato and tremolo for the jog; three falling muted-trombone notes at the veer; sparse sad
+notes while he is locked out; a ukulele strum when the doors open for him; the same jog, brighter, for the second stranger; a
+warm chord at the end. CHECKED WITHOUT EARS: -19.5 LUFS, peak -4.2 dBFS, spectrogram shows the squeak glides, the foot rhythm,
+the jog build and the three falling notes. A first mix had the trombone notes far louder than the footsteps and the chord too
+hot; both turned down. Whether it is FUNNY and whether the timing works is for the user to say: it has not been watched in motion.
+Checked on frames: poses on a sheet (the first shadows were opaque black: ImageDraw on an RGBA canvas replaces alpha; RGB canvas
+with an RGBA draw blends), the whole film one frame a second, the cut sequence at half-second steps, and the second half. Caught
+and fixed: the first stranger stood still in the lobby for the last 14 s (he now walks off); the title overlapped the scene; the
+doorway frame cut off the mat; the wide shot made the guilty jog too small to enjoy (hence the cuts); the automatic doors opened
+for the holder while he stood at the staff door (sensor radius).
+NOT DONE: not backed up to Modal library/finals; no voice (silent comedy); the walkers' gaits are one cycle each; the pigeon is
+small. 34.5 s is a little over the user's 30 s.
