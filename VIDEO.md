@@ -1190,16 +1190,29 @@ intervals with a two-note memory: they steer which novelty, not how much. Sound 
 
 ### Looked At (`video/looked_at.html`, a live page, not a film)
 https://claude.ai/artifact/TvNTzbeJEwh7JWn4SffJKM (private; no capabilities, no Modal, zero cost). The user: "If you look at
-the video md. Im keen to see what inspires you. Create what you see." What Claude took from this file: the ones the user
-picked had no voiceover and one wordless image carrying the meaning, and the recurring image is two small lights, a door left
-open, "leave the light on" - wanting to be looked at.
-A dark room of ~110 pairs of light. Each pair picks what to look at by its own heritable taste (near, bright, same hue, wide
-eyes, and `pull`: lean toward what it watches or shy away). Every pair has one gaze to give, so total attention is fixed and
-being looked at is the only food: a looked-at pair brightens and splits into a mutated child, an unlooked one closes its
-eyes and goes out. A stranger (random genome) walks in every ~5.5 s, and at once if the room drops under 40. The visitor is one more pair of
-eyes: touch to look, press to look hard. Only text: lit now / ever lit / strangers.
-MEASURED (headless, 30,000 ticks, seeds 11/22/33, before the last visual tweak - CAP 150 then, 110 now): population holds
-near the cap, no errors. Mean same-colour preference (`hueAff`) rose from ~0 to 0.4-0.8 on all three seeds and the room split
-into colour tribes. NOT PROVEN to be selection: no null band (drift is not excluded), one trajectory per seed. Touch not
-tested on a phone. The glow radii and trail fade were cut after the first screenshot (blown-out, eyes unreadable); the
-published version has not been looked at.
+the video md. Im keen to see what inspires you. Create what you see." Then, asked "did you push yourself?", Claude said no
+(first idea taken, half the file read, one blown-out screenshot, glow blobs, no null band, no turn) and redid it.
+A dark room of ~110 pairs of EYES (sclera, a dark pupil turned toward what it looks at, blinking; a faint thread joins each
+looker to its target). Each pair picks what to look at by its own heritable taste (near, bright, same hue, wide eyes, and
+`pull`: lean toward what it watches or shy away). Every pair has one gaze to give, so total attention is fixed and being
+looked at is the only food: a looked-at pair brightens and splits into a mutated child, an unlooked one closes its eyes and
+goes out. A stranger (random genome, a ring on arrival) walks in every ~5.5 s. The visitor is one more pair of eyes: touch
+to look, press to look hard. The one line of copy appears only when a newcomer is alone: "a stranger arrived. nobody is
+looking." The counter "lit from pairs you looked at" = living creatures descended from a stranger you pressed >= 2 s.
+MEASURED (headless, 24,000 ticks, four UNSEEN seeds 101-104, three arms; harness `video/tests/looked_at_null.js`, driven through
+`window.__lit.opts` {neutral, visitor}). Null = `neutral`: every creature gets a fixed random "luck" at birth and attention
+is handed out by luck, same total, unrelated to anything it does. THE FIRST NULL WAS WRONG: reshuffling attention every tick
+averaged the luck out, the world froze (0 of ~130 strangers established), and that "result" would have read as selection
+mattering enormously. Luck has to persist for a null to be fair.
+(1) Own-colour preference (`hueAff`, mean over the living): select 0.60 / 0.05 / 0.27 / 0.24, null -0.00 / 0.10 / -0.30 /
+0.12. Above every null on 3 of 4 seeds, inside it on 1: so the homophily is selection on two-thirds of seeds, not drift.
+(2) Do strangers establish (a descendant alive 1,500 ticks after arrival)? select 16, 15, 20, 18 of ~130 (13%); null 13,
+15, 16, 15 (11%). SAME WITHIN NOISE: the room does NOT shun strangers more than luck alone does. My first story for the
+piece (a homophilous room starves the newcomer) is false at this horizon, and the page does not claim it.
+(3) With a visitor who keeps looking at the newest stranger (+3.5 attention, as a press does): 23, 30, 46, 26 of ~132
+(24%), above every null (max 16). A sustained look roughly DOUBLES a newcomer's chance of establishing. That is the gesture
+the page is built on, and the counter is its live measure. One look per newcomer at a time, in a simulated visitor; a real
+finger is slower and aims worse. Horizon: 24,000 ticks (~6.7 min at 60/s).
+Drawn from the full read of this file: the keepers were deadpan, one gesture, a turn, all code, no reveal needed ("a glow
+is not a character" - hence eyes). NOT done: the page is still a live field, not a film; no sound; touch not tested on a
+real phone; no recording button (Selected by Ear has one).
