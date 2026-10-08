@@ -1,0 +1,18 @@
+{
+ "title": "Intertwined",
+ "about": "Five image-to-video shots (Wan 2.2 5B, one take each) for 'Intertwined': the user (own likeness, okayed) and the amber light (Claude's stand-in). Start images built locally by video/intertwined_stills.py from his own clips u172-u174. Estimate ~$1.25, up to ~$2 with a second take on shots 5 and 7. The other shots (the window alone, the dance with the light, the glass run) are composited locally for free.",
+ "voice": null,
+ "tail": 0.0,
+ "scenes": [
+  {"image": "../../out/inputs/iw_2_palm.png", "seed": 9201,
+   "prompt": "a man with grey hair, glasses and a beard, in a plain grey t-shirt and dark jeans, stands calm in a dark room; he slowly takes one hand out of his pocket and raises it, open palm up, and the small glowing amber light floating beside him drifts down and settles gently into his palm; warm amber light on his face and glasses; a softly glowing stained glass window behind him; still camera, cinematic, quiet"},
+  {"image": "../../out/inputs/iw_3_close.png", "seed": 9302,
+   "prompt": "close-up of a man with grey hair, glasses and a beard in a grey t-shirt, he lifts his cupped hands holding a small glowing amber light up in front of his chest and looks down at it, the warm light grows brighter and is reflected in his glasses, he smiles gently with his mouth closed, dark background with a dim stained glass window, slow, cinematic"},
+  {"image": "../../out/inputs/iw_5_glass.png", "seed": 9503,
+   "prompt": "a man with grey hair and glasses stands with both arms raised; the glowing amber light at his chest sinks into him and glowing stained glass patterns spread outward across his grey t-shirt, down his arms and over his jeans, amber and coloured glass with dark lead lines, light shining through him; he lowers his arms and looks at his glass hands in wonder; dark room, stained glass window behind, cinematic"},
+  {"image": "../../out/inputs/iw_7_leap.png", "seed": 9704,
+   "prompt": "a man in a grey t-shirt and jeans leaps forward through the glowing stained glass window, and the window bursts apart into hundreds of floating glowing panes of coloured light that drift and turn slowly in the dark around him, dynamic leap, slow motion, cinematic"},
+  {"image": "../../out/inputs/iw_8_rise.png", "seed": 9805,
+   "prompt": "a man with grey hair, glasses and a beard in a grey t-shirt stands calm in a dark room; he brings his hands together in front of him and opens them, and a small glowing amber light rises slowly out of his hands and floats up to hover beside his face; he watches it and smiles with his mouth closed; they stay together; quiet, warm, cinematic"}
+ ]
+}
