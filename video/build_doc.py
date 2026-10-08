@@ -201,12 +201,17 @@ def build_audio():
             x = np.arange(int(1.4 * SR)) / SR
             ks = np.sin(2 * np.pi * f0 * x) * np.exp(-x / 0.45) + 0.4 * np.sin(2 * np.pi * 2 * f0 * x) * np.exp(-x / 0.2) + 0.15 * np.sin(2 * np.pi * 3.01 * f0 * x) * np.exp(-x / 0.1)
             add(ks * np.minimum(1, x / 0.004), tt, 0.09 * (0.6 + 0.4 * duck[min(n - 1, int(tt * SR))])); k += 1
+    if os.environ.get('STEMS'):
+        wavfile.write(OUT + '/stem_music.wav', SR, (out / (np.max(np.abs(out)) + 1e-9) * 0.7 * 32767).astype(np.int16)); wavfile.write(OUT + '/stem_voice.wav', SR, (voice * 0.9 * 32767).astype(np.int16))
+    print('mix rms dB: music %.1f voice %.1f' % (20 * np.log10(np.sqrt((out ** 2).mean()) + 1e-9), 20 * np.log10(np.sqrt(((voice * .95) ** 2).mean()) + 1e-9)))
     mix = out + voice * 0.95
     mix *= np.clip((PIC_END + 0.5 - t) / 0.5, 0, 1) * np.clip(t / 0.5, 0, 1)
-    pk = np.max(np.abs(mix)); mix = mix / pk * 0.8
+    pk = np.max(np.abs(mix)); mix = mix / pk * 0.72
     st = np.stack([mix, np.roll(mix, 11)], 1)
     wavfile.write(OUT + '/doc.wav', SR, (st * 32767).astype(np.int16)); print('plucks', k)
 
+if os.environ.get('AUDIO_ONLY'):
+    build_audio(); sys.exit()
 if STILLS is not None:
     for ts in STILLS:
         render(ts).save(f'{OUT}/still_{ts:06.2f}.png')

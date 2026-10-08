@@ -1312,3 +1312,46 @@ crossing into the tunes his ear kept; one shot per 6 s phrase, cuts on the downb
 Wan's 5.04 s stretched to the 6 s phrase with blended frames; build_kept2 gained NOBODY_UNTIL / GLASS_FROM / LETGO knobs
 (defaults = v2). Clips: out/clips/4bd6177d92ec8f22 (palm), cdef5f27144b7c0f (close), 7ce9a1dd090da603 (glass),
 e3adcc9ba38b656e (portal), 416b6a456ef4d2de (hands), backed up to library/clips.
+
+### Nobody Asked It To (`video/doc_capture.js` -> `doc_voice.py` -> `build_doc.py`, 66 s, 720x1280, voiced, `out/doc/film/nobody-asked-it-to.mp4`)
+THE USER: "What I want is for you to push yourself. You're staying narrow in your vision. Which is ironic." Claude's honest
+account: five turns inside one idea (eyes, looking), deepening the same toy, never opening the actual artwork, and never asking
+what else was in the room. So it looked wide first: ran the REAL engine (`engine.html`, 30k lines) and looked at it. It is
+far richer than the toy (comet trails, colonies, a teal and magenta field). That changed the film. Zero Modal cost.
+**What the pictures are (read from the engine, `render()`):** the teal blocks are `field` (the shared writable environment),
+tinted toward a lineage's colour where a lineage owns the cell (`fieldOwnership`); the pink blocks are `field2`, a second
+channel; a block in a lineage's own colour is a cell it has claimed. The world also keeps `fieldMemory` (what lived where).
+**Method (The News v5's, which the user called the keeper):** footage FIRST, words written from what is on screen.
+`doc_capture.js` steps the real engine 3 ticks per frame at 704x1280 and saves every frame as a JPEG with the engine's own
+numbers (tick, alive, lineages begun, ended, field cells, clusters, hue groups) in one pass (the engine is not deterministic
+across stepping patterns, so frames and numbers must come from the same run). Three seeds (5, 6, 7), 8,000 ticks each,
+2,667 frames each (~15 min in parallel). ONLY SEED 5 GREW A FIELD (6: 0 teal cells until tick ~6,800 then 67; 7: none), so the
+film is seed 5, picked by looking. One run, not repeatable.
+**The film:** a calm voice (Kokoro `bf_emma`, the user's own pick, local CPU) reads ten lines straight over the real
+frames, with the engine's counters (TICK / ALIVE / BEGUN / ENDED) in the corner as the documentary's caption: "This is a
+world. It has three hundred and twenty-one inhabitants. None of them has been told what it is for." / "Within two hundred
+ticks, something pink appears. No one put it there." / "Some of the inhabitants stay near it. This is called a colony. It is
+also called a crowd." / "The pink one has moved. It does not say why." / "Then, at the top, a second thing arrives. It is
+teal. The pink does not appear to mind." / "The teal grows. It divides. It comes back together. Nobody has asked it to stop."
+/ "By tick fifty-seven hundred, the pink is, for practical purposes, gone. It did not say goodbye." / (held on screen as
+numbers) "2,541 lineages have begun. 2,307 have ended. 363 inhabitants remain, which is about where they started." / "In the
+middle of it, one square belongs to somebody. It is not clear that they know." (a ring is drawn on the claimed cell, held
+still from source frame 2,200 to 2,250) / "Nobody asked it to do any of this. It is still running." Card: "Somebody should
+look in." The number line is the project's own thesis said as a joke: 2,541 lineages begun, 2,307 ended, and the population
+(363) is about where it started (321).
+**Checked against the log, and one line CORRECTED:** the first draft said the pink was gone "by tick forty-five hundred";
+the counter at tick 4,573 still showed pink, and the engine's own count of second-channel cells is 81 at tick 4,204, 48 at
+4,504, 15 at 4,954 and 0 first at tick 5,659 (a stray cell or two flickers back later). The line now says fifty-seven hundred,
+"for practical purposes". The spoken numbers are read from the log at the frame they are shown (`doc_voice.py` builds the
+words from `log.jsonl`), and the big numbers are held at those values while the corner counter keeps ticking.
+**Score (made from the same log, not borrowed):** a low D drone; a warm chord while the pink is on screen, a cooler one when
+the teal arrives; and one soft pluck for every 100 lineages that end (29 of them, falling in pitch as the world ages), so
+the rhythm is the real extinction rate, faster where the footage is sped up. Cut to silence on the card.
+**Checks without ears:** -18.1 LUFS, true peak -2.7 dBFS, music sits 10 dB under the voice in the actual mix (-30.3 vs
+-20.0 RMS), no music transient above 0.016 of full scale, silent on the card. A first click scan flagged 2,419 steps; they
+were all speech (a step test with no local reference), and the right test (step vs its own neighbourhood) found 0 in the voice.
+Whether the voice and the score are GOOD is the user's ear's call.
+**STAGED / NOT CLAIMED:** "no one put it there" means no author placed it (it comes from what the inhabitants deposit); "stay
+near it" is read off the frames, not measured; "does not appear to mind" and "did not say goodbye" are jokes, not findings.
+The cut speeds the world up 0.4x to 4x. Not watched in motion. Not backed up to Modal library/finals. 66 s is long next to
+the user's 30 s preference; the first seconds are slow on purpose (321 specks) and the numbers line is 11.7 s.
