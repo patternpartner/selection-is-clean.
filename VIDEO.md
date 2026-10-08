@@ -1249,3 +1249,14 @@ on the phrases: stand / arms rising / dancing slowed so it floats / the jumps on
 #39 / the leap, slow, while #7 returns / the glass lets go and he stands grinning, himself, before the card.
 Checks: 18/18 isolated notes at pitch, 0 clicks, -15.2 LUFS final. Fixed before render: the card faded in before the
 glass let go (no "himself again"); glass painted over his face; the leading stayed on him with no glass.
+V2 (`video/build_kept2.py`, `video/kept_motion.py` -> kept_motion.json, `out/the-one-you-kept-v2.mp4`). The user on v1:
+"You can do better." Claude's critique of v1: the glass was fixed to the SCREEN and he was a cut-out over it (a mask,
+not a man of glass); his moves ignored the music (phrase cuts, whole sections slowed to 0.19-0.63x, stutter); dark.
+V2: HE IS THE INSTRUMENT - 50 glass cells defined in his own (smoothed) bounding box, so they move and bend with him;
+pitch by height on his body like the window (D6 at his head, D4 at his hips, the four bass notes at legs/feet); a cell
+shows its note's clip and lights with that note; the amber light travels over HIM to the struck note's cell. TIME-WARPED
+TO THE BEAT: kinematic beats measured from the key (head-top extremes): 11 dance dips and 8 jump landings (5 + 3
+mirrored) snapped to beats, local speed 0.58-1.5x, a monotone PCHIP curve through the anchors so he eases, not lurches;
+the run at 1.0x looped at a matching stride; the leap's apex on the 3rd beat as #7 returns; slow moments blend frames.
+His face protected (glass .15 at the head, full by the chin). Window behind at 0.14 + lit by its notes. Same music.
+Known: Grok's own motion ghosting in u174 (arms smear ~12-15 s of film) is in the source and stays.
