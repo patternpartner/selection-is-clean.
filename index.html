@@ -144,6 +144,13 @@
         font:9px/1.3 ui-monospace,Menlo,monospace;color:#d9b;background:rgba(18,8,14,.78);
         border-radius:5px;padding:5px 7px;letter-spacing:.3px}
   #grown b{color:#fde;font-weight:normal}
+  /* #296 — WHAT THE MINDS ARE DOING, the whole field at once. A readout and nothing else: pointer-events:none for the
+     reason #grown gives, and hidden while a universe is open (that universe's own HUD carries its mind's line). */
+  #minds{position:fixed;left:8px;top:8px;z-index:9;display:none;pointer-events:none;max-width:calc(100% - 16px);
+        font:9px/1.35 ui-monospace,Menlo,monospace;color:#bcd;background:rgba(8,10,18,.78);
+        border-radius:5px;padding:5px 7px;letter-spacing:.3px}
+  #minds b{color:#eef;font-weight:normal}
+  #grid.open ~ #minds{display:none !important}
   /* #168 — HARVEST. The only way to compare a layer against the surface after a long run. */
   #harvest{position:fixed;left:8px;bottom:8px;z-index:9;cursor:pointer;display:none;
         font:10px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.86);
@@ -185,6 +192,7 @@
 <div id="below"></div>
 <div id="depth"></div>
 <div id="grown"></div>
+<div id="minds"></div>
 <div id="harvest">harvest</div>
 <div id="fload">load</div>
 <div id="fnew">new</div>
@@ -220,7 +228,7 @@
     if(_pend){
       localStorage.removeItem('fieldPendingLoad');
       var _h=JSON.parse(_pend), _doom=[];
-      for(var _i=0;_i<localStorage.length;_i++){ var _k=localStorage.key(_i); if(_k&&_k.indexOf('selection_')===0)_doom.push(_k); }
+      for(var _i=0;_i<localStorage.length;_i++){ var _k=localStorage.key(_i); if(_k&&(_k.indexOf('selection_')===0||_k.indexOf('mind_')===0))_doom.push(_k); }   // #296: minds too
       for(var _j=0;_j<_doom.length;_j++) localStorage.removeItem(_doom[_j]);
       var _us=(_h&&_h.universes)||[], _put=0;
       for(var _u=0;_u<_us.length;_u++){
@@ -229,14 +237,16 @@
         if(_e.at==='collective')_slot='collective';
         else if((_m=_e.at.match(/^surface\/(\d+)$/)))_slot='u'+_m[1];
         else if((_m=_e.at.match(/^layer(\d+)\/(\d+)$/)))_slot='L'+_m[1]+'_'+_m[2];
-        if(_slot){ try{ localStorage.setItem('selection_'+_slot,_e.genome); _put++; }catch(_x){} }
+        else if((_m=_e.at.match(/^grown\/(g\d+)$/)))_slot=_m[1];   // #297: a grown universe goes back into its own slot
+        if(_slot){ try{ localStorage.setItem('selection_'+_slot,_e.genome); _put++; }catch(_x){}
+          if(_e.mind){ try{ localStorage.setItem('mind_'+_slot,_e.mind); }catch(_x){} } }   // #296: each universe gets its own mind back
       }
       var _hh=String((_h&&_h.hash)||'').replace(/(^#|,)?reset(?=,|$)/,'');
       if(_hh&&_hh!==location.hash){ try{ history.replaceState(null,'',location.pathname+(_hh.charAt(0)==='#'?_hh:'#'+_hh)); }catch(_x){} raw=location.hash.replace(/^#/,''); }
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -245,7 +255,7 @@
       var doomed=[];
       for(var ri=0;ri<localStorage.length;ri++){
         var rk=localStorage.key(ri);
-        if(rk&&rk.indexOf('selection_')===0) doomed.push(rk);
+        if(rk&&(rk.indexOf('selection_')===0||rk.indexOf('mind_')===0)) doomed.push(rk);   // #296: and every universe's mind
       }
       for(var rj=0;rj<doomed.length;rj++) localStorage.removeItem(doomed[rj]);
     }catch(e){}
@@ -254,7 +264,7 @@
     try{ history.replaceState(null,'',location.pathname||' '); }catch(e){}
     raw=raw.replace(/(^|,)reset(?=,|$)/,'').replace(/^,/,'');
   }
-  var n, clean=false, prune=false, passHash='', wantCollective=false;
+  var n, clean=false, prune=false, passHash='', wantCollective=false, MINDTOK='';
   if(isOptions){
     // ANCHOR IT. `n=` unanchored matches inside other options: `turn=0` contains "n=0", so
     // /#turn=0 silently built a FOUR-universe field (n=0 -> the !(n>=1) fallback) and /#turn=600
@@ -275,10 +285,18 @@
     // #253: #prune hands every universe its switchboard (engine.html, MECH_DECLARED). Passed down in each
     // universe's own hash beside cleanart, because the engine reads it there; without it nothing changes.
     prune = /(^|,)prune(,|$)/.test(raw);
+    // #296: every universe in a browser has the primitive mind by default (engine.html, EngineMind). The field passes
+    // on only what changes it: #nomind (none), #mind=<percent>, mindmode=frozen|uniform (the controls). The engine
+    // latches it from its own hash at its first tick, so every hash this field writes into a universe carries the token
+    // (withMind below), including the ones that relight a face.
+    var _mi=raw.match(/(?:^|,)(mind(?:=\d+)?)(?:,|$)/), _mm=raw.match(/(?:^|,)mindmode=(frozen|uniform)(?:,|$)/);
+    if(/(?:^|,)nomind(?:,|$)/.test(raw)) MINDTOK='nomind';
+    else if(_mi||_mm) MINDTOK=[_mi?_mi[1]:'',_mm?'mindmode='+_mm[1]:''].filter(Boolean).join(',');
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }
   var total=n+(wantCollective?1:0);
+  function withMind(h){ if(!MINDTOK)return h; return h ? h+','+MINDTOK : '#'+MINDTOK; }
 
   // ═══ #162 — HOW MANY WORKERS ═══════════════════════════════════════════════════════════════
   // The field has TWO ceilings and they pull in opposite directions. Memory is per-ISOLATE: nine
@@ -393,7 +411,7 @@
     // general case rather than a special one.
     f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
          +'&slot='+(isColl?'collective':('u'+i))
-         +(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
+         +withMind(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);
@@ -423,7 +441,7 @@
         // universe shares (#162) and which STORAGE key holds its lineage (#170).
         var poolSlot=(cells.length+(L-1)*total+k)%pool;
         d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k
-             +'#cleanart,dark,pace='+(DEEPPACE*L);
+             +withMind('#cleanart,dark,pace='+(DEEPPACE*L));
         d.title='Layer '+L+', universe '+(k+1);
         deepFrag.appendChild(d); deep.push(d);
       }
@@ -486,7 +504,7 @@
   var grown = [], grownSeq = 0, grownLast = 0, grownRefused = 0, grownSeen = 0;
 
   function paintGrown(){
-    if(!grownSeen) return;
+    if(!grownSeen && !grown.length) return;
     grownEl.style.display='block';
     grownEl.innerHTML = '<b>'+grown.length+'</b> grown'
       + (grownRefused ? (' · '+grownRefused+' refused') : '')
@@ -526,18 +544,43 @@
     try { localStorage.setItem('selection_'+slot, blob); }
     catch(e){ grownRefused++; grownSeq--; paintGrown(); return; }
     grownLast = now;
+    openGrown(slot);
+    paintGrown();
+  }
+  // a grown universe's frame, on the slot that holds its lineage
+  function openGrown(slot){
     var g = document.createElement('iframe');
     g.className = 'grown';   // NOT 'deep' — see the CSS note; .deep means "a layer frame" to several rigs
     g.style.width = cw+'px'; g.style.height = ch+'px';
     // Parked past the layers, on the same off-screen row.
     g.style.left = ((LAYERS*total) + grown.length) * (cw+4) + 'px';
     g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot
-          + '#cleanart,dark,pace='+DEEPPACE;
+          + withMind('#cleanart,dark,pace='+DEEPPACE);
     g.title = 'Grown universe '+slot;
     below.appendChild(g);
     grown.push(g);
-    paintGrown();
   }
+
+  // ═══ #297 — A GROWN UNIVERSE COMES BACK AFTER A RELOAD ═══════════════════════════════════════
+  // Reported by the user: "it always got to 2 grown quickly then stayed at that". Stopping at two is the cap above (a
+  // phone that reports 4 GB gets 2). But nothing ever reopened a grown universe: the page builds its built frames at
+  // boot, `grown` started empty, and the slots the last session's daughters lived in were left in storage, running
+  // nowhere. So every reload dropped the field's grown universes and grew two NEW ones in two NEW slots (an index is
+  // never reused), and storage filled by one orphaned lineage per daughter per reload - about 90 KB each since #296
+  // saves a mind beside every genome, against the 5.2 million characters one origin holds (measured, Chromium).
+  // Present since #201 (62f5a06, 18 September). Now the newest grown slots are reopened at boot, up to the cap, before
+  // anything can found; they count against the cap, so a full field grows nothing new and leaks nothing. Older grown
+  // slots beyond the cap are left exactly where they are: they are lineages, and deleting one is the user's call.
+  var grownBack = 0;
+  (function(){
+    if (FOUND_CAP<=0) return;
+    var have = [];
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i), m = k && k.match(/^selection_g(\d+)$/);
+      if (m && (localStorage.getItem(k) || '').length > 10) have.push(+m[1]); } } catch (e) {}
+    have.sort(function(a,b){ return b-a; });   // newest first: the highest index is the latest daughter
+    for (var j = 0; j < have.length && grown.length < FOUND_CAP; j++) { openGrown('g'+have[j]); grownBack++; }
+    if (grownBack) paintGrown();
+  })();
 
   // One listener for the whole field. BroadcastChannel is multicast with no peer list, which is why
   // adding universes to it costs nothing and needs nobody's permission — the same property #201
@@ -585,7 +628,7 @@
       f.classList.toggle('face',on);
       var w=f.contentWindow, a=w&&w.__field;
       // #dark rides the hash (the engine re-reads it on hashchange); pace goes through the API.
-      var h='#cleanart'+(on?'':',dark,pace='+(DEEPPACE*L));
+      var h=withMind('#cleanart'+(on?'':',dark,pace='+(DEEPPACE*L)));
       if((w.location.hash||'')!==h) w.location.hash=h;
       if(a&&a.pace) a.pace(on?0:DEEPPACE*L);
     }catch(e){}
@@ -605,7 +648,7 @@
   // moving one. Whenever the field changes one of these flags, every flag it cares about goes in the
   // hash — the API call after it is then only there to make it immediate.
   function lightSurface(on){
-    var h='#cleanart'+(on?'':',dark,pace='+DEEPPACE);
+    var h=withMind('#cleanart'+(on?'':',dark,pace='+DEEPPACE));
     for(var i=0;i<cells.length;i++){
       try{
         var w=cells[i].firstChild.contentWindow, a=w&&w.__field;
@@ -703,7 +746,7 @@
           throw e;
         }).then(function(r){
           var txt=r[0], st=r[1]||{};
-          var g=null; try{ g=JSON.parse(txt).genome; }catch(e){ g=null; }
+          var g=null, mind=null; try{ var _p=JSON.parse(txt); g=_p.genome; mind=_p.mind||null; }catch(e){ g=null; }   // #296: the mind travels with the genome
           // #173: and what it has taken IN. "Are the tabs definitely communicating when I am not
           // clicking on them?" could not be answered from a harvest file — it recorded what each
           // universe WAS and nothing about the wire, so the only way to check was to decode every
@@ -713,7 +756,7 @@
                   atoms:st.atoms|0, pace:st.pace|0, dark:!!st.dark, fp:st.fp||'',
                   peers:st.peers|0, recv:st.recv|0, accepted:st.accepted|0,
                   migrantsIn:st.migrantAccepted|0, bad:st.bad|0, dropped:st.dropped|0,
-                  clockRefused:st.paced|0, errs:st.errs|0 }:null);
+                  clockRefused:st.paced|0, errs:st.errs|0, mind:mind, mindNow:st.mind||null }:null);
         }, function(){ fin(null); });
       }catch(e){ if(!why)why='threw: '+((e&&e.message)||String(e)).slice(0,120); fin(null); }
     });
@@ -729,6 +772,10 @@
     for(var j=0;j<deep.length;j++){
       frames.push(deep[j]);
       where.push('layer'+(Math.floor(j/total)+1)+'/'+(j%total));
+    }
+    for(var gq=0;gq<grown.length;gq++){   // #297: and the universes the field grew, so a harvest is the whole field
+      var gm=(grown[gq].getAttribute('src')||'').match(/[?&]slot=(g\d+)/);
+      if(gm){ frames.push(grown[gq]); where.push('grown/'+gm[1]); }
     }
     var out={ type:'selection-field', version:1, exportedAt:new Date().toISOString(),
               hash:location.hash||'', universes:[] }, got=0;
@@ -754,6 +801,32 @@
     harvestEl.style.display='block';
     harvestEl.addEventListener('click',function(e){ e.stopPropagation(); harvest(); });
   }
+  // ═══ #296 — WHAT THE MINDS ARE DOING ═══════════════════════════════════════════════════════
+  // Every universe in a browser has its own mind (engine.html, EngineMind). This adds them up, every ten seconds, from
+  // each universe's own stat(): how many minds, how many parents they have learned from, how many children they have
+  // written, and the number that matters: whether the children a mind wrote go on to have more children than ordinary
+  // ones (1.00x is no difference). Read, not drawn; a universe that does not answer is left out of that round.
+  (function(){
+    var el=document.getElementById('minds'); if(!el)return;
+    var k=function(x){ return x>=1e6?(x/1e6).toFixed(1)+'M':x>=1e4?Math.round(x/1e3)+'k':x>=1e3?(x/1e3).toFixed(1)+'k':String(x); };
+    var ask=function(f){ return new Promise(function(r){ var t=setTimeout(function(){ r(null); },4000);
+      try{ var a=f&&f.contentWindow&&f.contentWindow.__field; if(!a){ clearTimeout(t); r(null); return; }
+        a.stat().then(function(s){ clearTimeout(t); r(s&&s.mind&&s.mind.mode!=='off'?s.mind:null); },function(){ clearTimeout(t); r(null); }); }catch(e){ clearTimeout(t); r(null); } }); };
+    var round=async function(){
+      var fr=[]; for(var i=0;i<cells.length;i++)fr.push(cells[i].firstChild);
+      var bl=document.querySelectorAll('#below .deep, #below .grown'); for(var j=0;j<bl.length;j++)fr.push(bl[j]);
+      var ms=await Promise.all(fr.map(ask)), n=0, seen=0, wrote=0, b0=0, b1=0, k0=0, k1=0;
+      for(var q=0;q<ms.length;q++){ var m=ms[q]; if(!m)continue; n++; seen+=m.seen|0; wrote+=m.uses|0;
+        if(m.born){ b0+=m.born[0]|0; b1+=m.born[1]|0; } if(m.kids){ k0+=m.kids[0]|0; k1+=m.kids[1]|0; } }
+      if(!n){ el.style.display='none'; return; }
+      var sc=(b0>=50&&b1>=20&&k0>0)?(k1/b1)/(k0/b0):null;
+      el.innerHTML='<b>'+n+'</b> mind'+(n===1?'':'s')+' · learned from <b>'+k(seen)+'</b> parents · wrote <b>'+k(wrote)+'</b> children'
+        +(sc===null?'':' · their children have <b>'+sc.toFixed(2)+'x</b> the children of ordinary ones');
+      el.style.display='block';
+    };
+    setTimeout(round,4000); setInterval(round,10000);
+  })();
+
   // #230: load a harvest back / start a fresh field. Both replace what is running, so both ask first.
   (function(){
     var lb=document.getElementById('fload'), nb=document.getElementById('fnew'), fi=document.getElementById('floadfile');
@@ -838,7 +911,7 @@
   // localStorage slot, which by then holds some other universe's genome.
   var openCell=null;
   function setFrameHash(cell,h){
-    var w=cell.firstChild.contentWindow;
+    h=withMind(h); var w=cell.firstChild.contentWindow;
     try{ if((w.location.hash||'')!==h) w.location.hash=h; }catch(e){}
   }
   // #154: the controls come WITH the universe. In the grid a cell is a tab and nothing else — the

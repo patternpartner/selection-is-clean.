@@ -1,0 +1,77 @@
+{
+ "seed": 2102,
+ "opts": {},
+ "addEvery": 100000,
+ "installed": [
+  {
+   "k": 1,
+   "file": "1-fat.js",
+   "name": "FAT",
+   "op": 32,
+   "tick": 100000
+  },
+  {
+   "k": 2,
+   "file": "2-gut.js",
+   "name": "GUT",
+   "op": 33,
+   "tick": 200000
+  },
+  {
+   "k": 3,
+   "file": "3-bite.js",
+   "name": "BITE",
+   "op": 34,
+   "tick": 300000
+  },
+  {
+   "k": 4,
+   "file": "4-squeeze.js",
+   "name": "SQUEEZE",
+   "op": 35,
+   "tick": 400000
+  },
+  {
+   "k": 5,
+   "file": "5-leaf.js",
+   "name": "LEAF",
+   "op": 36,
+   "tick": 500000
+  },
+  {
+   "k": 6,
+   "file": "6-stretch.js",
+   "name": "STRETCH",
+   "op": 37,
+   "tick": 600000
+  },
+  {
+   "k": 7,
+   "file": "7-maul.js",
+   "name": "MAUL",
+   "op": 38,
+   "tick": 700000
+  },
+  {
+   "k": 8,
+   "file": "8-spines.js",
+   "name": "SPINES",
+   "op": 39,
+   "tick": 800000
+  },
+  {
+   "k": 9,
+   "file": "9-fang.js",
+   "name": "FANG",
+   "op": 40,
+   "tick": 900000
+  },
+  {
+   "k": 10,
+   "file": "10-snarl.js",
+   "name": "SNARL",
+   "op": 41,
+   "tick": 1000000
+  }
+ ]
+}

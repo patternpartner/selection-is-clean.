@@ -1,0 +1,11 @@
+== fitness assay from tick 1100000: 2000 ticks, 4 draws per arm; s = carriers' growth advantage per 1,000 ticks
+  GUT      carried 10.8% | s armed 0.15 0.10 0.04 0.12 | disarmed -0.30 -0.32 -0.34 0.11 | effect 0.31 t 2.9 | carriers' births 2369 | -
+  BITE     carried 0.2% | s armed -2.35 -1.17 -2.01 -2.35 | disarmed -1.92 -1.17 -1.30 -1.83 | effect -0.41 t -1.2 | carriers' births 20 | -
+  SQUEEZE  carried 0.3% | s armed -2.47 -1.63 -1.48 -2.09 | disarmed -2.47 -1.63 -0.14 -0.64 | effect -0.69 t -1.2 | carriers' births 15 | -
+  LEAF     carried 0.2% | s armed -2.44 -2.54 -2.31 -3.23 | disarmed -1.88 -0.83 -2.73 -0.66 | effect -1.11 t -2.1 | carriers' births 3 | -
+  GRAZE    carried 0.2% | s armed -2.40 -3.15 0.01 -0.78 | disarmed -2.40 -3.15 -1.58 -0.78 | effect 0.40 t 0.4 | carriers' births 41 | -
+  STRETCH  carried 96.3% | s armed 0.34 0.87 0.97 1.52 | disarmed -0.87 -1.10 -1.29 -1.14 | effect 2.02 t 7.8 | carriers' births 24979 | SELECTED
+  MAUL     carried 0.6% | s armed -0.24 -0.97 0.01 -1.86 | disarmed -1.07 -0.73 -1.64 -2.42 | effect 0.70 t 1.2 | carriers' births 94 | -
+  FAT      carried 2.5% | s armed 1.05 -0.54 -2.74 0.49 | disarmed -1.28 -0.88 -2.54 -0.94 | effect 0.98 t 1.1 | carriers' births 203 | -
+  FANG     carried 99.9% | s armed 0.51 NaN -0.01 2.50 | disarmed 0.16 -0.97 2.35 3.86 | effect NaN t NaN | carriers' births 25490 | -
+  SNARL    carried 13.1% | s armed -0.04 -0.10 -0.07 -0.11 | disarmed -0.12 -0.18 -0.21 -0.20 | effect 0.10 t 4.0 | carriers' births 2944 | SELECTED

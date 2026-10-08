@@ -66,8 +66,11 @@ function engineSource(url) {
 // global is exactly what a second universe in the same isolate breaks).
 const BRIDGE =
   '\n;try{__inst.api={};' +
-  '__inst.api.exportFile=function(){try{return {data:JSON.stringify({type:"selection-genome",version:2,exportedAt:new Date().toISOString(),genome:encodeGenome()},null,2),filename:"selection_gen"+genome.generation+"_t"+genome.totalTicks+".json"};}catch(e){return null;}};' +
-  '__inst.api.importFile=function(txt){try{if(decodeGenome(txt)){N=0;var n=Math.min(300,(W*H/3000)|0);for(var i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);saveGenome();return true;}}catch(e){}return false;};' +
+  '__inst.api.exportFile=function(){try{return {data:JSON.stringify({type:"selection-genome",version:2,exportedAt:new Date().toISOString(),genome:encodeGenome(),mind:(typeof mindSerialize==="function")?mindSerialize():null},null,2),filename:"selection_gen"+genome.generation+"_t"+genome.totalTicks+".json"};}catch(e){return null;}};' +
+  '__inst.api.importFile=function(txt){try{if(decodeGenome(txt)){' +
+    // #296: a universe file carries its mind beside its genome; taken if it fits this engine
+    'try{var _j=JSON.parse(txt);if(_j&&_j.mind&&typeof mindImport==="function")mindImport(_j.mind);}catch(_e){}' +
+    'N=0;var n=Math.min(300,(W*H/3000)|0);for(var i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);saveGenome();return true;}}catch(e){}return false;};' +
   // #153 — THE RELAY. Two calls, both of which the sim already makes to itself on the wire.
   // pullMigrant builds the SAME packet networkBroadcast would have sent (buildMigrantPacket,
   // one source of truth) and stamps the SAME envelope (netPacket: real TAB_ID, real tick), but
@@ -137,6 +140,8 @@ const BRIDGE =
     'peers:(typeof countPeers==="function"?countPeers():-1),' +
     // #253: whether this universe's switchboard is on (#prune), and its settings - read, not drawn.
     'swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState():null,' +
+    // #296: the primitive mind, if this universe has one (#mind) - its own counters, read, not drawn.
+    'mind:(typeof mindReport==="function")?mindReport():null,' +
     'recv:netStats.received,accepted:netStats.accepted,bad:netStats.bad,dropped:netStats.dropped,' +
     // #163: heritable packets refused because the sender's clock had run far ahead of ours. A
     // universe running at parity never sees this move; a paced one is meant to.
@@ -308,6 +313,7 @@ Universe.prototype.boot = async function (d) {
   this.canvas = d.canvas;
   // pre-load the saved genome so the sim's synchronous boot read finds it
   if (d.genome) this.lsStore['selection_genome'] = d.genome;
+  if (d.mind) this.lsStore['selection_mind'] = d.mind;   // #296: this universe's saved mind, read by the engine when its mind is born
   const env = this.buildEnv(d.hash, d.dpr);
   try {
     const src = await engineSource(d.src);

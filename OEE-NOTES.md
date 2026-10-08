@@ -25764,8 +25764,598 @@ in G against the inert twin I over 20,000-tick windows, with income share beside
 - **Composition depth stayed at 1.** Chains offered (TANK-PIPE on BROTH) were live but never in use.
 - **The generator responded to the world, and it showed:** GUT was designed from report 10's diagnosis of the collapse, and
   it is the only module whose adoption the assay confirms. Whether responding mattered is what the all-at-once control tests.
+- **The all-at-once control answers what sequence did (A: all ten modules armed at tick 0, same seed, with its inert twin AI,
+  to tick 1,100,000).** GUT took over at once and held 74-91% of the living (against its twin's 6-28%) for the whole run, at
+  12-27% of all income, and **nothing else was clearly taken up in 1.1 million ticks**: BROTH never started (GUT reaches the
+  same corpses privately) and TENDRIL had nothing to drink. The fitness assay at 1,100,000 agrees: GUT SELECTED (+0.26,
+  t 6.2), nothing else. G, given the same physics one piece at a time, went through a succession instead (BROTH for 500,000
+  ticks, TENDRIL, CARRION, then GUT), and ended with the same single adoption. **Offered everything at once, the world takes
+  the best physics immediately and then stands still; the novelty kept arriving in G because the supply kept arriving.**
+  That is the expected answer and the honest one: the timeline of adoption is the generator's, and what the world adds is
+  the judging and the history (BROTH and TENDRIL existed only because GUT did not yet).
 - **Z cannot exist here.** Every module after BROTH reads an earlier one, so the chain allows one order (recorded in
   PROTOCOL.md; S, the same schedule on another seed, replaces it).
 - **A metric bug, found and fixed during the pilot.** The loop that added module income to the income total sat inside a
   comment on the same line, so every share the pilot printed was over base income only. Rows now carry `den:'all'` and
   `loop-analyse` converts older ones; BROTH's best window is 20.1% of all income, not the 26.5% first read.
+
+### #292b — PRE-REGISTRATION: the generator in the loop, deciding run (committed before the first decision run).
+
+**Question.** In a world whose physics a generator extends every 100,000 ticks, responding to what the world does, does
+selection keep adopting new physics through the last quarter of a run of thousands of generations, on every seed? This is
+step 3's target ("new behaviours keep being adopted by selection, each proven with a control, through the last quarter of
+the run, on 3 of 3 seeds"), asked of the world-and-generator system. The novelty is supplied by the generator by design; what
+is tested is whether the world goes on taking it up, judged by its own selection, late as well as early.
+
+**Fixed in advance.**
+- **Worlds:** seeds 2101, 2102, 2103 (unseen), `lab/oee-core.js` defaults, body fields available. One module every 100,000
+  ticks, ten modules (installed at 100,000 ... 1,000,000), run to 1,100,000 ticks (about 5,500 generations in the pilot).
+  `RUN=d<seed> SEED=<seed> ASSAY=1 node lab/oee-loop.js`, inert twin I as in the pilot.
+- **Generator:** the agent writing this, under `lab/loop/PROTOCOL.md`, one module per pause per world, written from that
+  world's own report. **Declared bias:** the generator has seen the pilot, knows the measure, and knows what the pilot's
+  world kept (immediate, local, private payoffs). Responding to the world with that knowledge is the system under test.
+- **Adopted** (module k at pause p, p > k): in `assay-p.json`, every armed draw's s above every disarmed draw's (4 draws each,
+  2,000 ticks from the pause's state) **and** Welch t >= 2.2. The control is the same population with the module disarmed.
+- **R1, KEEPS ARRIVING (the target):** on **each of the three seeds**, at least one of modules 8, 9, 10 (installed at
+  800,000-1,000,000, the run's last quarter) is adopted at some pause after its install (pauses 9-11). Six tests per seed.
+  R1 on 3 of 3 seeds: target met for this system. Any seed without: not met.
+- **R2, COMPOSES:** on at least 2 of 3 seeds, a module adopted at a pause >= 9 DEPENDS on an earlier module that was
+  adopted at some pause: `lab/loop-analyse.js KO=1` from the pause-11 save (20,000 ticks, 3 draws), a declared read, every
+  knockout draw below half the lowest baseline draw, baseline income >= 50 per 1,000 ticks. Reported with depth.
+- **Reported, not ruled:** adoptions at every pause (the timeline of what the world took up and dropped); the all-at-once
+  control A per seed (all ten modules at tick 0, with its inert twin, assayed at 1,100,000), against G's adoptions at the
+  same tick. A is descriptive because one assay at one tick cannot carry a rule.
+- **Not changed after the first decision run:** any change to these rules is a new experiment and is written up as one.
+
+**#292b, a limit of the adoption measure, recorded at pause 7 (tick 700,000), before modules 8-10 exist.** The assay compares
+carriers with non-carriers, so it loses its power as a module nears fixation. STRETCH (module 6, all three worlds) went from
+nothing to 98-99% of the living within about 40,000 ticks; at pause 7 it is SELECTED in d2101 (t 2.7) and d2103 (t 2.4), and
+in d2102 it reads t 2.0 with 1.5% of the living left as non-carriers. A late module that sweeps to fixation before its first
+assay would be unmeasurable, so R1 is conservative against exactly the strongest adoptions. The rule is not changed. If it
+matters to the verdict it will be reported beside it, with the carriers and twins of each late module.
+
+### #292b — RESULT: R1 NOT MET (2 of 3 worlds), R2 NOT MET (0 of 3). The world took up new physics to the end; the measure could not confirm the last of it in one world; composition was real and then destroyed.
+
+**Verdict by the rules committed before the first run** (`node lab/loop-score.js`; knockouts in `lab/loop/d21*/ko-11.txt`):
+- **R1, keeps arriving: NOT MET, 2 of 3.** d2101 and d2102: FANG (module 9) adopted at pause 10 (+2.91, t 4.7; +1.96,
+  t 11.4). d2103: none of modules 8-10 adopted at pauses 9-11. FANG went from 0 to 100% of the living there within about
+  40,000 ticks, so at pauses 10 and 11 there was no non-carrier to compare (the limit recorded at pause 7, before modules 8-10
+  existed); SNARL (module 10) rose from 3% to 48% against its twin's 2-6% but read +0.07, t 1.8 at pause 11; FAT (module 8)
+  was never taken up. **Beside the verdict, not instead of it:** in d2103 both late modules spread far beyond their twins,
+  one of them to fixation, and the rule cannot see it. A measure built on comparing carriers with non-carriers cannot
+  confirm the strongest adoptions, and here that decided the verdict.
+- **R2, composes: NOT MET, 0 of 3.** The structure is absolute: without GUT, BITE's and SQUEEZE's income is 0.00 on every
+  draw in every world, and without LEAF, GRAZE's is 0.00 on every draw in d2101. But the rule needs the dependent module
+  adopted at pause 9 or later **and** earning at least 50 per 1,000 ticks at the end, and by tick 1,100,000 FANG had driven
+  BITE and SQUEEZE almost extinct (3-5 per 1,000 ticks). Composition held by selection was real from pause 4 to pause 9
+  (GUT and BITE both adopted at the same pause in all three worlds, GUT and SQUEEZE in two); it was over before the run ended.
+
+**The adoption matrices** (+ adopted, - selected against, . neither; columns are pauses 2-11, a pause every 100,000 ticks):
+```
+d2101                 2  3  4  5  6  7  8  9 10 11     d2103                 2  3  4  5  6  7  8  9 10 11
+ 1 GUT                +  .  +  +  +  +  +  +  +  .      1 GUT                +  +  +  .  +  +  +  .  .  +
+ 2 BITE (on GUT)         .  +  +  .  +  +  +  .  .      2 CARRION               .  .  .  .  .  .  .  .  .
+ 3 SQUEEZE (on GUT)         .  .  .  +  +  .  .  .      3 SQUEEZE (on GUT)         .  .  .  .  .  .  .  .
+ 4 LEAF                        .  .  .  +  +  +  +      4 LEAF                        -  -  -  -  -  -  -
+ 5 GRAZE (on LEAF)                .  .  .  .  -  .      5 BITE (on GUT)                  .  +  +  +  .  .
+ 6 STRETCH                           +  +  +  +  +      6 STRETCH                           +  +  +  +  .
+ 7 MAUL                                 +  .  .  .      7 MAUL                                 .  +  .  +
+ 8 FAT                                     .  .  -      8 FAT                                     .  .  .
+ 9 FANG                                       +  .      9 FANG                                       .  .
+10 SNARL                                         .     10 SNARL                                         .
+d2102: 1 FAT never; 2 GUT + at 3-8 and 11; 3 BITE (on GUT) + at 4, 6, 7; 4 SQUEEZE (on GUT) + at 5; 5 LEAF - throughout;
+       6 STRETCH + at 8, 9; 7 MAUL + at 8-10; 8 SPINES - throughout; 9 FANG + at 10; 10 SNARL swept to 98% (t 1.6 at 11).
+```
+
+**What the run showed (three seeds, one generator; the claims are at the rung measured).**
+- **The world kept taking up new physics to the last pause, late as readily as early.** Distinct modules adopted: 7, 6
+  and 4. Modules installed at 600,000-1,000,000 ticks spread as fast as any: STRETCH and FANG went from nothing to
+  nearly all of the living within about 40,000 ticks in every world, MAUL to half within 40,000-60,000, and SNARL to 98%
+  within 80,000 in d2102. There is no sign of entrenchment in any world.
+- **What is adopted is a new way to take.** Every module adopted reaches energy the organism could not reach before: the
+  dead ahead (GUT), what is in another's gut (BITE), its own gut at once (SQUEEZE), the light ahead (STRETCH), the store of
+  whoever is ahead (MAUL, FANG). Every defence (FAT four times, counting the pilot; SPINES), every sense (CARRION, SMELL)
+  and every investment that pays back slowly (LEAF in two worlds of three) was refused or selected against.
+- **Each new store invites a taker, and that is where composition came from.** GUT made guts; BITE and SQUEEZE, built on
+  them, were adopted beside GUT. LEAF made leaves; GRAZE was built on them (live: 0.00 without LEAF) though never adopted.
+- **The generator escalated, and escalation destroyed the web it had built.** MAUL (tear at anyone ahead, half lost) was
+  adopted and burnt about 10k per 1,000 ticks in every world; FANG (the same, a tenth lost) then swept all three worlds in
+  about 40,000 ticks and displaced GUT, BITE and MAUL (each down to 0-18% of the living); the living fell 25-30% below their
+  twins and carried less than half what one needs to divide. A better weapon is selected and makes the world poorer: each
+  module was a responsive, local, physical step, and the sequence was an arms race the generator itself supplied.
+- **SNARL, the kin-sparing tear, was the generator's answer to that**, and it swept d2102 (98%) and was rising in d2103
+  (48%) when the run ended; in d2101 it was not taken up.
+
+**What this says about the question (#292).** The world inside the loop stays open: given physics, it takes up what pays
+at any age, and its own selection sorts takers from refusers. But what it takes up is what lets an organism take more,
+and a generator that answers "what pays" supplies escalation: depth came from new stores and new takers, and the next
+taker destroyed the depth. **The open-ended part is still the generator; what the world adds is the judging, and it judges
+by one criterion.** A run that wants depth to persist needs physics whose stores cannot simply be taken by the next
+module, or a generator constrained against strict dominance; neither was in this experiment.
+
+**What the measure needs next (not a rule change; a new experiment if used).** Assay each module at a fixed short time
+after it arrives (say 20,000 ticks), while it is still polymorphic, as well as at the pauses; or replace the carrier
+comparison by an invasion assay (the module armed in a disarmed population and its increase measured), which works at any
+frequency. And the floor in R2 should be read against the history, not only the final state.
+
+**Every session removes or proves something: what this one proved and what it removed.** Proved, by the assay on unseen
+seeds: GUT (adopted on all four worlds that had it, pilot included), BITE, STRETCH and MAUL (all three), FANG (two of
+three, and at fixation in the third). Removed nothing from the engine or the lab core (the lab core gained modules and body fields, both
+identity-checked off). The modules that failed are retired in the sense the protocol allows: never edited, recorded here.
+
+**#292b, the all-at-once controls (reported, not ruled).** For each seed, a world with all ten of its modules armed from tick
+0, with an inert twin, to tick 1,100,000 (`lab/loop-control.js MODE=A`; assays in `lab/loop/d21*/A-assay-11.txt`):
+- **Every A world went straight to the end state.** FANG and STRETCH swept within the first 100,000 ticks (91-95% of the
+  living, then 99-100%; FANG about 70% of all income), the living sat about 25% below their twins from the start, and the
+  food web of guts and their takers never formed: GUT, BITE, SQUEEZE and MAUL stayed at or below their twins' levels for the
+  whole run. SNARL stayed polymorphic (50-87%) and fell late in two of three.
+- **The assay at 1,100,000:** STRETCH SELECTED in all three (t 7.8, 20.1, 5.3); FANG fixed and unmeasurable in all three;
+  SNARL SELECTED in d2101 (t 4.0); nothing else adopted. The sequential worlds (G) at the same tick: LEAF and STRETCH in
+  d2101, GUT in d2102, GUT and MAUL in d2103, with FANG fixed in all three.
+- **So the endpoint is the same and the history is not.** Given the same physics at once, each world takes the strongest
+  takers immediately and stands there; given it one piece at a time, each passed through a composed food web (corpse to
+  gut to biter) held by selection for about 500,000 ticks, before the strong takers arrived and replaced it. The depth the
+  loop produced existed only because the escalation had not arrived yet: it was a property of the order of supply, not
+  something the world built and kept.
+
+### #293 — A PRIMITIVE MIND INSIDE THE WORLD: an AI whose only data, ever, is the world it lives in.
+
+**Why (the user's idea, after #292b).** #292b ended: "the open-ended part is still the generator", and the generator was an
+AI carrying human culture into the world from outside. The user: AI is the open-ended evolution, so put one in, but
+primitive, and let the only data it ever sees be the system itself. Then nothing comes from outside: whatever novelty
+arrives is made by the world and a learner trained on the world, each changing the other.
+
+**What the mind is (`lab/mind.js`, about 100 lines, no libraries).** A tiny neural language model over programs (the 2003
+Bengio design: the K=6 tokens before a position embedded, one tanh layer of 64 units, two softmax heads, one over operations
+and one over the 256 arguments; each instruction is two tokens). Random weights at the start.
+- **What it sees:** the program of every organism that divides, at the moment it divides. Programs that reproduce more are
+  in its data more often. Nothing else: no human data, no goal, no reward but "this program just had a child".
+- **What it does:** at each birth, with probability MIND, it writes one instruction of the child (a substitution or an
+  insertion at a random place), sampled from what it expects after the instructions before it. Random mutation still runs.
+  The world's selection decides everything.
+- **Why there and not in the physics:** a world makes thousands of births per 1,000 ticks, each a program with a fate;
+  new physics gives about ten data points a run, too few for a primitive learner. And it attacks #292's finding that
+  selection cannot see parts of a program in a world without recombination: a learner that has picked up which
+  instructions go together moves building blocks across lineages the way recombination would.
+- **Controls at the same proposal rate:** `MIND_MODE=frozen` (the same network, random weights, never trained: structured
+  but uninformed) and `uniform` (uniformly random instructions: extra random variation, no model).
+- **Checks:** `lab/test-mind.js` (it learns a pattern down to a loss of 0.001 from 3.5; a frozen mind never trains; save and
+  load exact). Worlds without it are byte-identical to before (five fresh configurations and a #292b save); resume with it
+  is exact. In a plain world it reaches an operation loss of 1.6 (uniform 3.5) within 3,000 ticks.
+
+**The question, at the rung this project has measured before (#285d).** Adaptive functional genotypes per window against
+the neutral population (`lab/core-geno.js`): every closed world so far shows first-time adaptive genotypes tapering off.
+Does the world with a mind keep producing them into the last quarter, beyond the same world with the same amount of random
+variation (uniform) and of uninformed structure (frozen)?
+
+**Pilot v1 (seed 2201, four arms to 400,000 ticks) - a design fault found, not a result.** Adaptive functional genotypes
+ever: plain 43, mind 83, frozen 205, uniform 164; new in the last three of ten windows: plain 3/5/2, mind 1/9/5, frozen
+24/26/21, uniform 12/9/13. Not readable, because the proposals inserted (40%) with no matching deletion and every arm with
+proposals bloated: mean program length 9 plain, 22 uniform, 31 frozen, **39 mind**. Effective variation was similar across
+the three (25-29% of children functionally changed, against 9% plain), so length, not the rate, was the confound.
+**Fixed:** the mind and both controls now only substitute (no length change), and a proposal always changes the
+instruction, so all three arms add exactly the same change and differ only in what they write.
+
+**Pilot v2 (seeds 2201 and 2202; plain, mind, frozen, uniform; to 400,000 ticks; variation matched).**
+
+| arm | adaptive functional genotypes ever (2201 / 2202) | first-time adaptive, last three of ten windows (2201 / 2202) |
+|---|---|---|
+| plain | 43 / 51 | 10 / 12 |
+| mind (learns) | 113 / 171 | 44 / 43 |
+| frozen (random network) | 143 / 204 | 55 / 42 |
+| uniform (random instruction) | 244 / 236 | 69 / 87 |
+
+- **Extra variation of any kind keeps first-time adaptive genotypes arriving late** (plain tapers to 2-5 a window). Part
+  of that is the bar: more change splinters the neutral population and its bar falls (0.001-0.003 against about 0.01), so
+  plain against the rest is only partly fair; among the three matched arms the bar is the same.
+- **Among the matched arms the learning mind is the least inventive** on both seeds: below uniform randomness, level with
+  the frozen network.
+- **What it does instead is exploit.** Over the last 100,000 ticks the mind world catches the most light (27.3k and 27.4k
+  per 1,000 ticks against 26.1-27.0k) and takes the most by attack (17.7k and 15.8k against 10.9-13.8k for the controls),
+  with fewer operations in common use (17 and 20 against 21-22). Its loss settles at 2.1-2.3 on operations (uniform 3.5)
+  and 2.7 on arguments (uniform 5.5).
+- **Why:** it learns from every program that divides, which is nearly every adult, so it learns what the population is,
+  and writes more of it. A learner trained on its world's past compresses that past.
+
+**Next (v3): learn from changes that worked, not from programs that exist.** Each child remembers where it was changed (by
+random mutation or by the mind); each time that child divides, the change and its context become a training example. The
+mind then learns which edits succeed in which context, and can carry a successful edit from one lineage into another.
+Still nothing but the system as data.
+
+**Pilot v3 (`MIND_DATA=changes`, same two seeds, to 400,000 ticks).** First-time adaptive genotypes in the last three
+windows: **42 and 52** (v2 44 and 43; frozen 55 and 42; uniform 69 and 87; plain 10 and 12). Learning from changes that
+worked removed v2's narrowing (functional genotypes 519 and 521, operations in common use 21 and 20, as the controls) and
+most of its exploitation (attack 15.5k and 14.4k), but it is no more inventive than a fixed random network, and uniform
+randomness at the same rate still beats it on both seeds. Its loss stays high (2.9 on operations, 3.8 on arguments):
+successful changes are hard to predict.
+
+**What the pilot says so far (two seeds, exploratory, no claim).** A primitive mind that learns only from its world does
+learn it, and does change it: taught by the programs that exist it becomes an exploiter (better at the dominant ways of
+living, narrower); taught by the changes that worked it becomes a neutral variation source. Neither out-invents plain
+randomness at the same rate. What a learned proposer adds is concentration on what it has seen, and novelty here is made
+by breadth. The one thing every extra-variation arm shares, and plain lacks, is more variation: whether this world's
+plateau is mostly a variation-rate plateau is a question in its own right (and the neutral bar falls with variation, so it
+needs a measure that does not).
+
+**Pilot v4 and v5: the curious mind, and all three drives at once (the user's suggestions; same two seeds, 400,000 ticks,
+same proposal rate).** v4 tests two kinds of curiosity: NOVEL (`MIND_NOVEL=0.5`: from its model of what exists, write
+what it does NOT expect, p^-0.5) and UNSURE (`MIND_WHERE=uncertain` on v3's data: change where it is least able to predict
+what works). v5 (`MIND_MIX`) is one mind with all three drives (exploit, the unexpected, unsure) and two networks (what
+exists, what works), one drive per proposal.
+
+| arm | first-time adaptive, last three windows (2201 / 2202) | adaptive ever (2201 / 2202) |
+|---|---|---|
+| plain | 10 / 12 | 43 / 51 |
+| exploit (v2) | 44 / 43 | 113 / 171 |
+| learn from changes (v3) | 42 / 52 | 125 / 157 |
+| **seek the unexpected (v4 NOVEL)** | 56 / **98** | 172 / 208 |
+| explore where unsure (v4 UNSURE) | 52 / 51 | 160 / 197 |
+| all three at once (v5) | 62 / 54 | 184 / 164 |
+| frozen network | 55 / 42 | 143 / 204 |
+| uniform random | **69** / 87 | 244 / 236 |
+
+- **Seeking the unexpected is the best mind, and the first to beat uniform randomness on a seed** (98 against 87 on 2202;
+  56 against 69 on 2201). One run per arm per seed cannot tell them apart: that needs a null band.
+- **Exploring where unsure is no better than the frozen network.** Uncertainty about what works points at places, not at
+  new instructions, and the replacement still comes from the model's expectations.
+- **All three at once lands at about the average of its three drives** (62 and 54), as a mixture taking a third each
+  would: the exploiting third dilutes the curious two-thirds rather than combining with them.
+- Over the last 100,000 ticks the curious minds are as broad as the controls (functional genotypes 505-549, operations in
+  common use 19-23) and none is the narrow exploiter v2 was.
+- **So far: no mind out-invents randomness at the same rate, and the one that comes close is the one that writes what it
+  has not seen.** Learned concentration costs novelty; learned avoidance of the familiar recovers it, and only that.
+
+**Pilot v6: the world decides the mix (`MIND_ADAPT`, the user's suggestion; same seeds, 400,000 ticks).** Each child the
+combined mind writes carries the drive that wrote it; each of its divisions credits that drive; the mind picks drives by
+Thompson sampling on each drive's children's divisions per proposal, with evidence fading over about 20,000 ticks.
+- **The world chose the exploiter, within the first 40,000 ticks, and kept it for the whole run.** Share of proposals per
+  40,000-tick window (exploit / the unexpected / unsure): 93-99% / 0-1% / 1-7% on 2201, 76-96% / 0-2% / 4-24% on 2202.
+  Children's divisions per proposal: exploit 0.88-0.92, unsure 0.75-0.90, the unexpected 0.42-0.76.
+- **And with it, the least novelty of any mind:** first-time adaptive genotypes in the last three windows 34 and 36, below
+  the fixed mix (62 and 54) and the pure exploiter (44 and 43). Over the last 100,000 ticks the world is the exploiter's
+  again: the most light and attack (27.3k and 18.1k on 2201), fewer genotypes (475 and 492), 20 operations in common use.
+- **Why:** the world's judgment of a change is its children. An unexpected instruction usually breaks something, so its
+  children reproduce less, and the drive that writes it loses. The judgment is right about the children and blind to what
+  novelty is for: the rare unexpected change that founds a lineage. **Short-run success, given the choice, buys
+  conservatism.** A longer horizon (credit for the whole lineage a change founds) would still judge by the average change,
+  which for unexpected ones is harmful; what novelty pays out is in the upper tail (the few lineages that spread), and a
+  judge has to look there to keep it.
+
+**Pilot v7: judge each drive by the upper tail (`MIND_ADAPT=lineage`; same seeds, 400,000 ticks).** Every child the mind
+writes founds a lineage (body field `mindLine`, inherited); every 500 ticks the world counts each lineage's living members,
+and a drive is credited once when a lineage it founded first reaches 10. Thompson sampling as v6, evidence fading as v6.
+- **The world still chose the exploiter**: share per 40,000-tick window (exploit / the unexpected / unsure) 78-92% / 1-4%
+  / 5-20% on 2201, 73-93% / 1-4% / 5-25% on 2202. Unsure kept more than in v6; the unexpected did not.
+- **Because exploit's lineages ARE the upper tail.** Of all lineages founded, the share that reached 10 living members:
+  exploit 3.06% and 3.14%, unsure 2.44% and 2.67%, the unexpected 1.54% and 1.54% (2201 and 2202), and the same order in
+  every window. The expectation in v6 was wrong: the rare unexpected change that founds a large lineage is rarer than the
+  ordinary exploiting one that does. Spreading is not the same as being new.
+- **And the least novelty of any arm with extra variation**: first-time adaptive genotypes in the last three windows 22
+  and 24 (v6 34 and 36, the fixed mix 62 and 54); adaptive ever 97 and 109. The last 100,000 ticks look like v6's (light
+  27.2k and 27.0k, attack 17.3k and 14.4k, functional genotypes 498 and 525).
+- **What v6 and v7 together say:** when this world is given the choice of how to vary, by short-run success or by lasting
+  spread, it picks the variation that repeats what already works, and novelty falls. A judge that keeps novelty would have
+  to reward newness itself, and that is a judgement brought in from outside, not one the world makes.
+
+**Does a learning mind improve with time? (the user's question).** Not here. Its prediction error RISES over the run (the
+v2 mind: 1.45 nats on operations at 5,000 ticks, 2.30 at 400,000; uniform is 3.47), because programs grow more varied and
+its memory is the last 1,024 examples: it tracks the present and forgets the past. Its novelty as a fraction of uniform's,
+first half against second half: v2 0.39 -> 0.54 and 0.89 -> 0.60, NOVEL 0.70 -> 0.69 and 0.67 -> 1.06, v6 0.54 -> 0.45 and
+0.62 -> 0.61, and the FROZEN network, which never learns, 0.39 -> 0.79 and 1.07 -> 0.71: the changes are run-to-run noise.
+Nothing in the design accumulates, so nothing does.
+
+### #294 — MINDS IN SEVERAL WORLDS, learning from each other's worlds (the user's question: "if each universe has its own model and they communicate vs broadcast, are they not learning from varied worlds?")
+
+A lone mind knows only its own world's present, so what it writes is either familiar there or random. A mind that also
+learns from other worlds can write what is new to its world and has already worked somewhere else: novelty with a track
+record, which neither a lone mind nor randomness has. The risk is the reverse: minds that all hear everyone learn one
+shared average and pull every world toward it.
+
+`lab/multiverse.js`: worlds side by side (one worker thread each), each with its own mind (v2: learns from the programs of
+dividing parents). Every 50 ticks every world stops; each mind is given as many examples from abroad as its own world
+showed it in that time, split evenly between the worlds it hears, so a mind that hears anyone learns half from home and
+half from abroad whatever the arm. Foreign examples are never passed on. Arms: `alone` (the minds of #293), `pairs` (each
+world hears one partner: communicate), `all` (each hears every other: broadcast); `ring` exists for more worlds.
+Checked: `alone` is byte-identical to `core-run.js` (saves and logs); a chunked run equals an unchunked one.
+
+**Pilot (exploratory, no rule):** worlds 2201-2204, 400,000 ticks, `pairs` and `all`; `alone` and uniform on 2201-2204 (the
+2201/2202 runs of #293 are the same worlds, by the identity above). Read: first-time adaptive genotypes per world, and how
+far apart the worlds' programs drift (broadcast should pull them together).
+
+### #295 — MINDS THAT ARE BORN, GROW AND DIE (the user's idea: "a mind that grows, not a static tool"; "keep organisms but add AI births too")
+
+#293's answer to "does it improve with time" was no, because nothing in a mind accumulates: a fixed small network, a
+1,024-example memory, one mind. This makes knowledge and capacity heritable.
+- **The AI stays** (v2's mind): it learns from every division and writes into ordinary children at the same rate as before.
+- **AI births (`MIND_POOL=24`, `MIND_BIRTH=0.002`):** when a child is born, with those odds it is also given a new mind, a
+  child of the mind that wrote it: the parent's weights and memories, its own random stream, curiosity (NOVEL) and
+  learning rate each changed a little with even odds, and one time in five more hidden units.
+- **A mind lives in a lineage** (body field `mindId`, inherited): it writes into its own lineage's children instead of the
+  AI, learns only from its own lineage's divisions (half a training step per division it sees, as the AI does on the whole
+  world), and gives birth to minds of its own the same way. Every 500 ticks the world counts each mind's carriers; a mind
+  with none has died. When all 24 places are taken, a birth replaces the mind with the fewest carriers among those at least
+  2,000 ticks old, never its own parent; its carriers go back to the AI. So minds are selected by how far their lineages
+  spread.
+- **Minds grow (`MIND_GROW=8`, the AI too):** a mind adds 8 hidden units (up to 128) when its loss has risen 0.1 above the
+  lowest since it last grew, i.e. when the world outgrows it. New units start with zero output weights, so growing changes
+  nothing it predicts until it learns to use them (tested to 1e-5).
+- **Neutral shadows.** Curiosity starts at 0 and is kept in 0-2, so half its changes at 0 are lost to the floor and it
+  creeps up by drift alone. Each child mind carries shadows of NOVEL and LR, inherited and mutated by exactly the same rule
+  and never used. Curiosity (or learning rate) has been SELECTED only if, among the minds the world keeps (weighted by
+  carriers), it moves away from its shadow. Brain size has no shadow (it grows during life too); read it against the
+  growing-AI arm.
+- **Deleted in the same change:** v6 and v7's adaptive mix (`MIND_ADAPT`), measured worst on both pilot seeds; in 9a763cd.
+- Identity: saves and samples byte-identical to 9b2592e for `{}`, CHEM, TASKS and every remaining mind mode.
+
+**Pilot (exploratory, two seeds, no rule):** `breed` = `{MIND:0.2, MIND_POOL:24, MIND_GROW:8}` and `grow` = `{MIND:0.2,
+MIND_GROW:8}` (the AI grows, no births) on 2201 and 2202 to 400,000 ticks, against #293's v2 mind and uniform. Read:
+first-time adaptive genotypes; share of organisms carrying a lineage mind; mind generations; carrier-weighted NOVEL and LR
+against their shadows; brain sizes. A warning written down before the result: v6 and v7 showed this world rewards the
+variation that repeats what works, and minds here are selected by their lineages' spread, so the expected outcome is that
+the world breeds cautious minds (NOVEL at or below its shadow).
+
+**#295 pilot result (2201 and 2202, 400,000 ticks; exploratory, two seeds).**
+
+| arm | first-time adaptive, last three windows | adaptive ever | the AI's loss at 400k (ops + args) |
+|---|---|---|---|
+| v2 mind (64 units, fixed) | 44 / 43 | 113 / 171 | 5.06 / 4.78 |
+| grow (the AI grows, no births) | 76 / 32 | 189 / 174 | 6.55 / 7.39 |
+| breed (births, lineage minds, growth) | 28 / 39 | 112 / 149 | 7.13 / 7.63 |
+| uniform random | 69 / 87 | 244 / 236 | - |
+
+- **The world bred cautious minds, beyond what drift does.** Carrier-weighted curiosity among living minds, every sample
+  from 20,000 ticks: NOVEL below its shadow in 372 of 381 samples on 2201 (mean 0.002 against the shadow's 0.046) and 266
+  against 63 on 2202 (0.002 against 0.017). Learning rate below its shadow in 381 of 381 and 335 against 44 (geometric mean
+  0.028 against 0.051, and 0.039 against 0.046). The longest-lived minds at the end (28,000-136,000 ticks old, 200-490
+  carriers each, generations 4-7) all have NOVEL 0. As predicted before the run (v6 and v7 said the same by another route):
+  a mind is selected by its lineage's spread, and curiosity costs its lineage children.
+- **Births did not raise novelty**: 28 and 39 against the fixed mind's 44 and 43, ever 112 and 149 against 113 and 171.
+- **Mind-carrying lineages hold almost the whole world from about 80,000 ticks (carriers 0.6-1.0 of organisms). That is
+  NOT evidence that minds help.** Conversion is one-way: an ordinary birth gains a mind with odds 0.002, and a carrier
+  goes back to the AI only when its mind is replaced (34 and 45 times in the run), so after ~500 generations (mean
+  generation passes 750 by 128,000 ticks) the world is carriers whether or not carrying helps. Whether it helps needs the
+  carrier/non-carrier growth comparison of `loop-fitness.js`, not a share.
+- Population of minds: 3,296 and 3,521 born, almost all dead within a few thousand ticks (mean life 1,716 and 1,543 ticks;
+  replaced 34 and 45), 8-20 of the 24 places filled, at most 8 generations deep.
+- **Growth as built made the minds WORSE predictors, and that is a fault in the design, not a finding about growth.** Every
+  mind reached the 128-unit cap by 40,000-50,000 ticks, and the AI's loss then rose far above the fixed 64-unit mind's
+  (6.55-7.63 against 4.78-5.06). Two faults: (1) SGD's step on the output scales with the number of hidden units, so
+  doubling the units doubled the effective learning rate: the grown mind learns too jumpily in a world that never stops
+  changing (and in breed the world selected slower learners, which is what that fault predicts); (2) the trigger is
+  self-reinforcing: growing raised the loss, which triggered more growth, up to the cap. Fix before reading anything into
+  growth: scale the learning rate by the starting size over the current size, and keep new units only if they help
+  (compared on the same examples with the new units switched off).
+- The grow arm's novelty (76 and 32 against 44 and 43) is one seed up and one down: nothing to read.
+
+**#294 pilot result (worlds 2201-2204, 400,000 ticks, one run per arm per world; exploratory, no null band).**
+
+| arm | adaptive ever (2201 / 2202 / 2203 / 2204) | total | first-time adaptive, last three windows | total |
+|---|---|---|---|---|
+| alone (each world its own mind) | 113 / 171 / 137 / 129 | 550 | 44 / 43 / 28 / 40 | 155 |
+| **pairs (communicate: hear one partner)** | **181 / 183 / 163 / 146** | **673** | 68 / 40 / 47 / 20 | 175 |
+| all (broadcast: hear everyone) | 140 / 206 / 97 / 117 | 560 | 41 / 46 / 29 / 32 | 148 |
+| uniform random | 244 / 236 / 141 / 136 | 757 | 69 / 87 / 43 / 39 | 238 |
+
+- **Hearing one partner beat learning alone on all four worlds** in adaptive genotypes ever (by 68, 12, 26 and 17), and
+  beat uniform randomness on 2203 and 2204 (163 against 141, 146 against 136); late, it was ahead of alone on two worlds of
+  four. **Broadcast did not**: ahead of alone on two worlds, behind on two, total 560 against 550.
+- **Broadcast pulled the worlds together a little, as feared**: the cosine between worlds' operation shares stayed 0.96-0.98
+  through the run under broadcast against 0.93-0.96 alone and 0.93-0.95 in pairs. No arm made worlds share functional
+  genotypes after the start (Jaccard 0.000-0.004 from 80,000 ticks); partners in pairs shared the most (0.002-0.004).
+- Read with care: one run per arm per world, the worlds differ a lot among themselves (uniform: 244 on 2201, 136 on 2204),
+  and nothing here measures the run-to-run spread of a single arm. Pairs ahead of alone on four of four is the first mind
+  result in this project that points the same way on every world it was run on. The deciding run would be pairs against
+  alone and uniform, with MIND_SEED replicates for a null band, on unseen worlds, with the rule written first.
+
+**#295b rerun with growth fixed (learning rate scaled to size, units kept only if they help; d24dbe6; same seeds).**
+
+| arm | first-time adaptive, last three windows | adaptive ever | the AI's loss at 400k, size, growths kept / tried |
+|---|---|---|---|
+| v2 mind (64 units) | 44 / 43 | 113 / 171 | 5.06 / 4.78 |
+| grow2 (the AI grows) | 19 / 47 | 100 / 140 | 4.04 at 72 units, 1 / 70 · 4.98 at 64, 0 / 71 |
+| breed2 (births + growth) | 41 / 19 | 155 / 113 | 4.01 at 80, 2 / 70 · 4.71 at 64, 0 / 73 |
+
+- **Given a fair test, the mind almost never wants to be bigger.** About 70 tries each over 400,000 ticks, kept 1, 0, 2
+  and 0 times: in each trial the loss with the new units on was no lower than with them switched off. Capacity is not
+  what limits this mind; its error rises because the world changes faster than a 1,024-example memory can follow.
+- **The world breeds cautious minds again**: carrier-weighted curiosity below its shadow in 356 of 378 samples on 2201
+  (mean 0.004 against the shadow's 0.119) and 301 of 356 on 2202 (0.004 against 0.030). That is now four runs of four.
+  Learning rate: no selection on 2201 (174 below, 204 above, both 0.050), below its shadow on 2202 (294 against 85). In
+  the faulty run it was below on both, which is what a world compensating for too-jumpy grown minds would do.
+- **Neither growth nor births raised novelty** (grow2 19 and 47 late, 100 and 140 ever; breed2 41 and 19, 155 and 113;
+  against the fixed mind's 44 and 43, 113 and 171): one seed up and one down every time, as noise does.
+- **So #295's answer:** minds that are born, inherit and grow are a working population (3,355 and 3,541 born, up to 9
+  generations deep), and the world shapes them, but toward caution, and their novelty is the lone mind's. What a
+  mind would need to keep up with this world is memory, not size; and what keeps it curious is not anything the world
+  rewards. Of everything tried in #293-#295, the one result pointing the same way on every world is #294's: minds that
+  learn from one partner world.
+
+### #294b — DECIDING RUN, pre-registered (written and committed before the first decision run)
+
+**Question.** Do minds that learn from one partner world (`pairs`) produce more novelty than minds that learn alone, by
+more than chance moves a lone mind's world? #294's pilot said yes on 4 of 4 worlds, with no null band.
+- **Worlds:** 2301, 2302, 2303, 2304 (unseen). Pairs: 2301 with 2302, 2303 with 2304. Horizon 400,000 ticks (at 200,000
+  the pilot was 3 of 4, so the horizon is the pilot's). Code: `lab/multiverse.js` with `{MIND:0.2}` (v2's mind), SYNC 50,
+  from a frozen worktree at the commit that carries this entry.
+- **Null band, per world:** the `alone` control and three replicates `null1-3` with `MIND_SEED` 1, 2, 3: the same world
+  and the same rules, a different draw of the mind's own random stream.
+- **Executed first:** a world counts only if its pairs mind took in foreign examples (`abroad`, logged) and every mind
+  made proposals. Fewer than 3 counted worlds: INCONCLUSIVE.
+- **Primary measure:** functional adaptive genotypes ever (`core-geno.js`, WIN=40, ten windows). Secondary: first-time
+  adaptive genotypes in the last three windows.
+- **Per world:** BETTER when pairs is above every one of the four alone runs; WORSE when below every one; otherwise inside.
+- **R1:** MET when pairs is BETTER on the primary measure on at least two-thirds of counted worlds (3 of 4). If it is
+  BETTER on one measure and WORSE on the other on two-thirds, SPLIT. Otherwise NOT MET.
+- **Uniform randomness:** one uniform run per world (`{MIND:0.2, MIND_MODE:'uniform'}`), reported beside the result. With no
+  band of its own it gets NO verdict here: whether learning beats randomness is not decided by this run.
+- **Scored by** `lab/score-294b.js`, committed with this entry. Nothing in the default world changes either way; the
+  result decides whether partner-learning is built on (next: a longer memory) or dropped.
+
+**#294b RESULT: R1 NOT MET.** All four worlds counted (each pairs mind took in 1.59-1.76 million foreign examples).
+`node lab/score-294b.js DIR=lab/mindrun/heavy/d294`:
+```
+2301: counted (pairs took in 1647440 foreign examples) | ever: pairs 202, alone band 147/172/143/102 -> BETTER | late: pairs 64, band 38/72/26/36 -> inside | uniform (one run, no band) ever 148 late 57
+2302: counted (pairs took in 1684990 foreign examples) | ever: pairs 163, alone band 60/176/160/85 -> inside | late: pairs 46, band 6/56/68/18 -> inside | uniform (one run, no band) ever 235 late 80
+2303: counted (pairs took in 1757037 foreign examples) | ever: pairs 200, alone band 178/152/162/66 -> BETTER | late: pairs 57, band 32/23/45/12 -> BETTER | uniform (one run, no band) ever 156 late 28
+2304: counted (pairs took in 1592222 foreign examples) | ever: pairs 107, alone band 70/130/45/126 -> inside | late: pairs 28, band 6/52/4/34 -> inside | uniform (one run, no band) ever 118 late 34
+counted 4; needed 3. Primary (adaptive ever): NOT DIFFERENT (BETTER on 2, WORSE on 0). Secondary (late): NOT DIFFERENT (BETTER on 1, WORSE on 0).
+R1: NOT MET
+```
+- **Pairs was BETTER on 2 of 4 worlds (needed 3), inside the band on the other two, WORSE on none.** By the rule written
+  first, partner-learning is not shown to beat learning alone.
+- **The null band is the finding.** The same world, the same rules, only the lone mind's own random stream changed:
+  adaptive genotypes ever ranged 102-172, 60-176, 66-178 and 45-130. Chance alone moves this measure by a factor of two to
+  three on one world. The pilot's "4 of 4" came from differences of 12-68, every one smaller than these bands.
+- Described, not ruled on: pairs ranked 1st, 2nd, 1st and 3rd of five on the four worlds (rank sum 7 against chance's 12;
+  if the five runs were exchangeable a sum this low would come 35 times in 625, p = 0.056). Suggestive, and nothing more.
+  Uniform randomness (one run each, no band) was 148, 235, 156, 118: inside or above the lone band, level with pairs.
+- **What this does to #293-#295.** Every comparison between minds in those pilots was one run per arm per world, and
+  every difference there (curious against exploiting, mix against single drives, grown against fixed, births against
+  none) is smaller than the band measured here. None of them was resolvable; they are recorded, not results. The one
+  #293-#295 result that survives is of a different kind: curiosity below its own neutral shadow among the minds the world
+  keeps (#295, 4 runs of 4), measured within each run against a drift twin rather than across runs.
+- For any next mind experiment: a band of at least four runs per arm per world from the start, and a measure or a horizon
+  whose spread is smaller than the effect looked for. At this spread an effect of +30 needs about ten runs per arm per world.
+
+### #296 — THE MIND IN THE REAL ENGINE (the user: "until it's actually in the system and ran for real we don't actually know")
+
+Everything in #293-#295 ran in `lab/oee-core.js`, a simplified world. This moves the mind into `engine.html`, the universe
+the field runs, and switches it on from the field.
+- **What it is:** #293's v2 mind (`EngineMind`, beside `inheritProg`): learns from the running program of the parent at
+  every parented birth, and with odds P rewrites one instruction of the child (operation and registers; the constant kept)
+  with one it samples from what it expects there. Instructions here are `[op, dst, src, k]`, so a token pair is the
+  operation (vocabulary `OPCODE_DRAW`) and the two registers as one token (dst and src mod 12, as every mutation operator
+  here draws them). K=6, D=16, H=64, SGD every 50 ticks on 100 positions of the last 1,024 parents, as in the lab.
+- **Where:** both reproduction chokepoints, `addParticle` and `addCompound`, right after the child's program is made (two
+  sites, asserted when patched); training at the top of `loop()`. Liveness names `mind.see`, `mind.propose`, `mind.train`
+  are declared, so a run without the mind reports them never fired.
+- **Switches:** rigs `MIND=<percent>` (in `harness-env.js` KNOBS), `MIND_MODE=1` frozen / `2` uniform, `MIND_SEED`. The
+  field: `index.html#mind` (20%), `#mind=40`, `#mind,mindmode=uniform`. The field writes the token into every hash it
+  gives a universe (surface, layers, grown, and the ones that relight a face), and the engine latches it at its first tick.
+  Each universe's `__field.stat()` now carries `mind` (its counters), read, not drawn.
+- **Off is the old engine, byte for byte**: `harness-oee.js` seeds 1 and 2, 600 ticks, whole metric series identical
+  against the pre-change engine. `substrate-test.js` 264 passed, 0 failed at TICKS=900, the default, TICKS=40 and FOUND=0.
+  With the mind off nothing is drawn; switched on without `MIND_SEED`, it takes one `Math.random` for its seed (so a
+  field's universes do not share one stream).
+- **On, in the real field** (`mind-test.js`, Chromium, two universes and the collective, 60 seconds each): every universe
+  had a learning mind that had seen 298-402 parents and written 57-87 children by tick ~1,500, prediction loss 3.32-3.53
+  against uniform's 6.06; `#mind=40,mindmode=uniform` ran at 0.4 with no learning; with no token, every universe reported
+  no mind.
+- Not saved with a universe: a reload starts a newborn mind. Off by default; nothing about saved worlds changes.
+
+### #296b — DECIDING RUN, pre-registered (written and committed before the first decision run)
+
+**Question.** In the real engine, does the mind (MIND=20) change the world's diversity, and which way, beyond what
+chance does? The retire-or-prove template, as #272 ran it.
+- **Seeds:** 301, 302, 303 (unseen). 20,000 ticks, `harness-oee.js` with ESTABLISH=250, from a frozen worktree of the
+  commit carrying this entry.
+- **Arms per seed:** null0 (mind off), null1-3 (mind off, NULLSHIFT 1, 2, 3), M (MIND=20, MIND_SEED=1), U (MIND=20,
+  MIND_MODE=2, MIND_SEED=1: uniformly random rewrites at the same rate).
+- **Executed first:** a seed counts only if the arm's mind wrote children (`mind.uses` > 0) and its series differs from null0.
+- **Measures, against EVERY null on the seed:** centredEntropyRatio (0.05), spread_late (10%), establishment estFrac (25%),
+  program entropy sigH_late (10%); crash (alive late under 5 with every null over 20); sweep (effN late 25% under).
+- **Verdict on M:** fewer than 3 counted, INCONCLUSIVE. WORSE on two-thirds of counted seeds: DELETE (or DORMANT with a
+  named follow-up). BETTER on two-thirds and not WORSE: KEEP, claimed only at the rung measured (diversity, not selection,
+  not invention). Better on one measure and worse on another on two-thirds: SPLIT, stays an off-by-default switch.
+  Otherwise KEEP as an off-by-default switch. The default does not change in any case: making the mind part of every
+  universe changes the artwork, and that is the user's call.
+- **U** is scored the same way and reported beside M, to say whether learning matters or only the extra rewrites.
+- Scored by `score-296b.js`, committed with this entry.
+
+**#296 before push: `smoke.sh` 61 ok, 1 failing (`slot-test.js`), and it is the machine, measured three ways.** Standalone,
+slot-test failed twice on this commit (9 passed, 6 failed): none of the nine built universes reached the first autosave
+(tick 1,800) inside the 150-second window, and the five #201 rows failed with it because they borrow a germline from a
+built universe that has saved (`donorKey` = the first saved slot; with none saved the founding carries no genome and is
+refused). (1) The pre-#296 code (worktree at ab1b584) on the same box failed the same row, 2 of 9 saved, 14 passed.
+(2) Browser speed A/B, a four-universe field for 45 seconds, alternating order: old 4,655 and 4,546 ticks in total, new
+4,805 and 4,535. (3) With SECS=260 (the rig's own knob; the threshold is untouched) this commit passes 15 of 15,
+nine of nine saved and every #201 row green. The 150-second window is marginal on this box for old and new code alike;
+recorded, not retuned. `mind-test.js` now also reads the layers and grown universes: every one of them has its own mind
+(L1_*, L2_*, g0, g1 included); it asks for activity only from universes past 1,000 ticks, because the layers run paced
+and a grown universe can be seconds old. Added to `smoke.sh` (SECS=45).
+
+**#296: the mind is ON BY DEFAULT in the browser — the user's call** ("open pages in github and the mind to be added, no
+extra steps"). This changes the artwork and what every saved universe does after a reload (CLAUDE.md's rule 6), and the
+user asked for exactly that. Every universe a browser runs — the field's surface, the collective, every layer, every
+grown universe, and a universe opened by itself — has its own mind at 20% from its first tick, each with its own seed.
+`#nomind` (or `#mind=0`) switches it off; `#mind=<percent>` and `mindmode=frozen|uniform` still work. **Under node it
+stays OFF unless a rig sets MIND**, so every rig keeps measuring the world it always measured (re-checked: harness-oee seed 1,
+600 ticks, whole series identical to the pre-#296 engine, mind reported off), and #296b's mind-off nulls are what they
+were pre-registered to be. `mind-test.js` now asks the default field (no token) for minds in all nine of its universes,
+and `#nomind` for none: 10/10 in Chromium.
+
+**#296: the mind is saved with its universe, and you can see what it is doing** (the user: "we need to see what the mind
+is doing. If we save the field we should also save the mind at the same time. No resets").
+- **Saved:** at every autosave of the genome (and at an extinction's rebirth) the mind writes itself beside it: every
+  weight at 8 bits with one scale per array, its counters and its random stream; about 71 KB, so eighteen fit in one
+  origin's storage beside the genomes. Not its memory of the last 1,024 parents, which refills within minutes. Key: the
+  universe's slot with `mind_` in place of `selection_` (`mind_u3`, `mind_collective`, `mind_L1_0`, `mind_g0`;
+  `mind_genome` for a universe opened by itself), OUTSIDE the selection_ namespace because every rig and the field read
+  each selection_ key as a genome. A reload restores it (only into a mind of the same shape; otherwise a new one is born).
+  A universe's save file carries it (`mind` beside `genome`) and its load button takes it back; the field's harvest
+  carries every universe's mind and its live readout (`mind`, `mindNow`), and loading a harvest gives each universe its own
+  mind back. `#reset` and the field's "new" clear every mind with the genomes.
+- **Seen:** an opened universe's HUD now STARTS with its mind's line, because on a phone the HUD is 2,900 characters and
+  its tail is never seen: "mind: learned from 475 · wrote 86 children · knows 58% · its children have 0.87x the children
+  of ordinary ones". The field shows the sum over every universe, every ten seconds, top left (hidden while a universe is
+  open): "18 minds · learned from … parents · wrote … children · their children have …x the children of ordinary ones".
+  "Knows" is 1 - loss/log(operations): how far from blind guessing its predictions of the next operation are.
+- **The comparison is only between creatures born under the mind**: each carries a mark (2 written by the mind, 1 born
+  ordinary while it watched, 0 a founder), moved with it by compact(). The first version counted founders as ordinary
+  parents and read 0.37x on the same run that reads 1.96x without them: the readout is a description of one world's
+  recent births, early numbers are small, and it is not a verdict on the mind (that is #296b's job).
+- Tested: `mind-persist-test.js` 10/10 in Chromium (saved at the autosave, 71 KB per mind, field line, save file, reload
+  restores and keeps counting, HUD line first, harvest round trip, #reset clears); added to `smoke.sh`. Under node the mind
+  stays off and the engine is identical to pre-#296 (harness-oee seed 1); substrate-test 264/0 at TICKS=40 and 900.
+
+### #297 — A GROWN UNIVERSE COMES BACK AFTER A RELOAD (reported by the user: "it always got to 2 grown quickly then stayed at that")
+
+- **Stopping at two is the design**: the shell's adoption cap is read from `navigator.deviceMemory` (8 GB or more: 4; 4 GB
+  or more: 2; unknown: 3; less: 0), and every founding after the cap is refused and counted. A phone reporting 4 GB grows
+  two and refuses the rest; the universes keep founding, the field declines.
+- **The fault**: nothing ever reopened a grown universe. At boot the page builds its built frames and `grown` starts
+  empty; the slots the last session's daughters lived in (`selection_g<n>`) were left in storage, running nowhere, and
+  since an index is never reused, the field then grew two NEW daughters into two NEW slots. So every reload dropped the
+  field's grown universes (a reset, for them) and stranded one lineage per daughter in storage. Present since #201 was
+  added (62f5a06, 18 September). It got worse with #296: a mind beside every genome makes each stranded daughter about
+  90 KB, against the 5.2 million characters one origin's storage holds (measured in Chromium); a full field with minds
+  uses about 1.8 million, so a dozen or two reloads would fill it, after which saves fail silently.
+- **The fix** (index.html): at boot, before anything can found, the newest grown slots are reopened, up to the cap, each
+  in its own frame on its own slot (so its own genome and its own `mind_g<n>`); they count against the cap, so a full field
+  grows nothing new and strands nothing. Older grown slots beyond the cap are left exactly as they are: they are lineages,
+  and deleting them is the user's call. The harvest now carries grown universes too (`grown/g<n>`), and loading a harvest
+  puts each back into its own slot.
+- Tested: `grown-test.js` 7/7 in Chromium (three daughters in storage, cap 2: g7 and g3 come back running, each with its
+  own saved mind; g0 untouched; no new slot; a grown universe saves genome and mind); added to `smoke.sh`.
+
+**#296b RESULT: KEEP (not WORSE).** All three seeds counted (the mind wrote 412-430 children per run). `node
+score-296b.js <dir>`:
+```
+== M: the mind, MIND=20
+  301 nulls [cE, spread, est, progH, effN, alive] [[0.22,0.213,0.0033,5.134,197.21,369],[0.15,0.2089,0.0025,4.542,166.27,377],[0.18,0.1787,0.0046,4.456,159.64,366],[0.14,0.2138,0.0053,4.432,141.87,360]]
+  301 M [0.26,0.2187,0.0045,4.53,159.47,377] mind wrote 416 | counted true better [] worse []
+  302 nulls [cE, spread, est, progH, effN, alive] [[1.34,0.4755,0.0179,5.299,135.8,369],[0.25,0.2289,0.0046,4.146,218.12,334],[0.16,0.1685,0.0057,5.134,163.29,362],[0.45,0.3062,0.0024,4.977,178.2,369]]
+  302 M [0.13,0.1775,0.0044,4.441,137.16,369] mind wrote 430 | counted true better [] worse []
+  303 nulls [cE, spread, est, progH, effN, alive] [[0.82,0.3872,0.0069,4.988,140.8,391],[0.25,0.2277,0.0032,4.618,191.41,369],[0.4,0.2424,0.0198,5.086,42.54,388],[1.12,0.4756,0.0059,5.198,184.7,375]]
+  303 M [1.49,0.5766,0.0051,4.492,189.51,354] mind wrote 412 | counted true better ["centredEntropyRatio","spread"] worse []
+VERDICT M: KEEP (not WORSE)
+== U: uniform random rewrites at the same rate (reported, no ruling)
+  301 nulls [cE, spread, est, progH, effN, alive] [[0.22,0.213,0.0033,5.134,197.21,369],[0.15,0.2089,0.0025,4.542,166.27,377],[0.18,0.1787,0.0046,4.456,159.64,366],[0.14,0.2138,0.0053,4.432,141.87,360]]
+  301 U [0.26,0.2397,0.0085,6.059,148.03,367] mind wrote 494 | counted true better ["spread","establishment","programEntropy"] worse []
+  302 nulls [cE, spread, est, progH, effN, alive] [[1.34,0.4755,0.0179,5.299,135.8,369],[0.25,0.2289,0.0046,4.146,218.12,334],[0.16,0.1685,0.0057,5.134,163.29,362],[0.45,0.3062,0.0024,4.977,178.2,369]]
+  302 U [0.27,0.2136,0.0053,5.727,171.54,377] mind wrote 466 | counted true better [] worse []
+  303 nulls [cE, spread, est, progH, effN, alive] [[0.82,0.3872,0.0069,4.988,140.8,391],[0.25,0.2277,0.0032,4.618,191.41,369],[0.4,0.2424,0.0198,5.086,42.54,388],[1.12,0.4756,0.0059,5.198,184.7,375]]
+  303 U [0.23,0.2035,0.0044,5.712,158.11,365] mind wrote 482 | counted true better [] worse ["spread"]
+U: KEEP (not WORSE)
+```
+- **The mind did no measured harm in the real engine, and showed no consistent benefit**: BETTER on seed 303 only
+  (centredEntropyRatio 1.49 against a null band of 0.25-1.12; spread 0.577 against 0.228-0.476), inside the band on 301
+  and 302, WORSE on none. By the rule, KEEP; not BETTER (that needed two seeds of three).
+- **Program diversity tells the same story as the lab.** Program entropy (sigH late): the learning mind sat at the bottom
+  of the null band on every seed (4.53, 4.44, 4.49 against nulls 4.43-5.13, 4.15-5.30, 4.62-5.20); uniformly random
+  rewrites at the same rate sat above it on every seed (6.06, 5.73, 5.71). What the mind learns is what is common, and
+  writing it makes programs a little more alike; randomness makes them more varied. Neither moved trait-space diversity
+  outside the band on two seeds of three.
+- The null band is wide again: centredEntropyRatio 0.16-1.34 on seed 302 with only the draw order changed.
+- These runs predate the readout's success counters (b09babb), so they carry no children-per-child figure; the field on
+  the user's phone does.

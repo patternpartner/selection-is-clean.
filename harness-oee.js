@@ -680,6 +680,7 @@ const driver = `
     }
   };
   globalThis.__lvCensus=function(){ try{ return livenessCensus(); }catch(e){ return null; } };   // #249: the never-fired list, read not drawn
+  globalThis.__mindReport=function(){ try{ return mindReport(); }catch(e){ return null; } };   // #296: the mind's own counters, read not drawn
 })();
 `;
 
@@ -965,6 +966,7 @@ console.log(JSON.stringify({
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253
   armHits: globalThis.__armHit || undefined,
+  mind: (globalThis.__mindReport && globalThis.__mindReport()) || undefined,   // #296
   livenessNever: (() => { const c = globalThis.__lvCensus && globalThis.__lvCensus(); return c ? c.never : undefined; })(),   // #249   // #249: gate hits when INDEX is an engine wrapped by harness-openup.js --emit
   establishment: EST_EVERY && globalThis.__ESOUT ? EC.summarize(globalThis.__ESOUT, { WARM: parseInt(process.env.ESTWARM || '2000', 10), ESTN: parseInt(process.env.ESTN || '10', 10), seed: process.env.SEED || '1', ticks: TICKS }) : undefined,
   ablation: process.env.ABLATE ? { mode: process.env.ABLATE, idx: ablateIdx, expr: ablateExpr, pinnedNeutralised: ablatedCount } : null,
