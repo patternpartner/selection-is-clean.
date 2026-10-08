@@ -1,0 +1,160 @@
+<title>Looked At (film)</title>
+<style>html,body{margin:0;background:#07080c}canvas{display:block}</style>
+<canvas id="c" width="720" height="1280"></canvas>
+<script>
+/* The Looked At world (video/looked_at.html) stepped under a camera, one frame per call.
+   The simulation rules are copied from that page. The only additions are the scripted hero stranger and the visitor's look. */
+const W=360,H=640,SC=2,TPF=3,WARM=5000;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let seed=1;
+function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+function gauss(){return (rnd()+rnd()+rnd()-1.5)*1.15}
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const HB=36,sprites=[];
+for(let i=0;i<HB;i++){const s=document.createElement('canvas');s.width=s.height=128;const g=s.getContext('2d');
+  const gr=g.createRadialGradient(64,64,0,64,64,64);const h=i*360/HB;
+  gr.addColorStop(0,'hsla('+h+',30%,98%,1)');gr.addColorStop(.12,'hsla('+h+',70%,72%,.85)');gr.addColorStop(.4,'hsla('+h+',80%,50%,.22)');gr.addColorStop(1,'hsla('+h+',80%,40%,0)');
+  g.fillStyle=gr;g.fillRect(0,0,128,128);sprites.push(s)}
+const CAP=110,SEE=240,G=0.0006,U=0.0006;
+let pairs,nextId,tick,hero,visitor,F;
+function newGenome(){return{near:rnd()*2-1,bright:rnd()*2-1,hueAff:rnd()*2-1,sepAff:rnd()*2-1,pull:rnd()*1.2-.3,hue:rnd()*360,sep:8+rnd()*22}}
+function mutate(g){const m=.12;return{near:clamp(g.near+gauss()*m,-1,1),bright:clamp(g.bright+gauss()*m,-1,1),hueAff:clamp(g.hueAff+gauss()*m,-1,1),sepAff:clamp(g.sepAff+gauss()*m,-1,1),pull:clamp(g.pull+gauss()*m*.6,-.4,1),hue:(g.hue+gauss()*14+360)%360,sep:clamp(g.sep+gauss()*2.2,6,34)}}
+function make(g,x,y,e,root){const id=nextId++;return{id,root:root||id,g,x,y,vx:0,vy:0,e,ang:rnd()*6.283,tgt:null,att:0,age:0,dying:0,flare:1,wob:rnd()*100,blink:rnd()*300}}
+function addStranger(){const p=make(newGenome(),40+rnd()*(W-80),40+rnd()*(H-80),.5);p.flare=1.6;p.stranger=1;pairs.push(p)}
+function step(){
+  tick++;const n=pairs.length;
+  for(let i=0;i<n;i++)pairs[i].att=0;
+  for(let i=0;i<n;i++){const p=pairs[i];if(p.dying)continue;let best=-1e9,bt=null;const g=p.g;
+    for(let j=0;j<n;j++){if(j===i)continue;const q=pairs[j];if(q.dying)continue;
+      const dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;if(d2>SEE*SEE)continue;
+      const d=Math.sqrt(d2);let dh=Math.abs(q.g.hue-g.hue);if(dh>180)dh=360-dh;
+      const s=g.near*(1-d/SEE)+g.bright*(q.e-.5)*2+g.hueAff*(1-dh/90)+g.sepAff*((q.g.sep-20)/14)+(((p.id*31+q.id*17)%7)-3)*.015;
+      if(s>best){best=s;bt=q}}
+    p.tgt=bt;if(bt)bt.att+=1}
+  if(visitor&&hero&&!hero.dying)hero.att+=3.5;
+  const crowd=Math.max(1,n/CAP),born=[];
+  for(const p of pairs){
+    p.age++;p.flare+=(1-p.flare)*.04;if(p.dying){p.dying++;continue}
+    p.e+=(p.att*G-U*crowd);
+    const t=p.tgt;let ax=Math.cos(tick*.011+p.wob)*.012,ay=Math.sin(tick*.0093+p.wob*1.3)*.012;
+    if(t){const dx=t.x-p.x,dy=t.y-p.y,d=Math.hypot(dx,dy)||1;const want=Math.atan2(dy,dx);
+      let da=want-p.ang;da=Math.atan2(Math.sin(da),Math.cos(da));p.ang+=da*.08;
+      const k=p.g.pull*(d>70?.02:-.004);ax+=dx/d*k;ay+=dy/d*k}else p.ang+=.004;
+    const m=40;if(p.x<m)ax+=.02;if(p.x>W-m)ax-=.02;if(p.y<m)ay+=.02;if(p.y>H-m)ay-=.02;
+    p.vx=(p.vx+ax)*.965;p.vy=(p.vy+ay)*.965;p.x+=p.vx;p.y+=p.vy;
+    if(p.e>=1&&pairs.length+born.length<CAP+20){p.e=.5;p.flare=1.8;const c=make(mutate(p.g),p.x+gauss()*8,p.y+gauss()*8,.5,p.root);c.flare=1.8;c.vx=gauss()*1.2;c.vy=gauss()*1.2;born.push(c)}
+    if(p.e<=0)p.dying=1;
+  }
+  for(let i=0;i<n;i++){const a=pairs[i];if(a.dying)continue;for(let j=i+1;j<n;j++){const b=pairs[j];if(b.dying)continue;const dx=b.x-a.x,dy=b.y-a.y,d2=dx*dx+dy*dy;if(d2<1600&&d2>.01){const d=Math.sqrt(d2),f=(40-d)/40*.05;a.vx-=dx/d*f;a.vy-=dy/d*f;b.vx+=dx/d*f;b.vy+=dy/d*f}}}
+  for(const c of born)pairs.push(c);
+  pairs=pairs.filter(p=>p.dying<50||p===hero);
+  if(pairs.length<40||(tick%330===0&&rnd()<.9))addStranger();
+}
+
+/* ---- the film ---- */
+const T_ARRIVE=165;      /* frame the hero arrives (5.5 s) */
+let LOOK_F=400;           /* frame the visitor's look begins */
+const FRAMES=900,CARD_AT=900,TOTAL=900+112;
+function init(s,lookF){seed=s>>>0;pairs=[];nextId=1;tick=0;hero=null;visitor=false;F=0;LOOK_F=lookF||400;
+  for(let i=0;i<70;i++)pairs.push(make(newGenome(),40+rnd()*(W-80),40+rnd()*(H-80),.4+rnd()*.3));
+  for(let i=0;i<WARM;i++)step()}
+function injectHero(){
+  /* the emptiest spot in the lower half: the stranger arrives where nobody is */
+  let best=null,bd=-1;for(let k=0;k<40;k++){const x=50+((k*97)%260),y=H*.55+((k*53)%200);let md=1e9;for(const q of pairs){if(q.dying)continue;md=Math.min(md,Math.hypot(q.x-x,q.y-y))}if(md>bd){bd=md;best=[x,y]}}
+  hero=make({near:0,bright:0,hueAff:0,sepAff:0,pull:.1,hue:48,sep:16},best[0],best[1],.5);hero.flare=2.2;hero.stranger=1;hero.hero=1;pairs.push(hero)}
+function advance(){
+  if(F<FRAMES){if(F===T_ARRIVE)injectHero();
+    visitor=(F>=LOOK_F&&F<LOOK_F+330);
+    for(let i=0;i<TPF;i++)step()}
+  F++}
+function kids(){return pairs.filter(q=>!q.dying&&q.root===(hero&&hero.id)&&q!==hero).length}
+
+/* camera: eased zoom onto the hero, hold, then pull back */
+const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+function camera(f){
+  let z=1,cx=W/2,cy=H/2;
+  const hx=hero?hero.x:W/2,hy=hero?hero.y:H/2;
+  const a=ease((f-T_ARRIVE)/260);          /* push in 5.5 -> 14.2 s */
+  const b=ease((f-(LOOK_F+270))/330);      /* pull back */
+  z=1+a*2.5-b*1.55;
+  /* centre: on the hero while close; on its family while pulling back */
+  let fx=hx,fy=hy;
+  if(hero){let sx=0,sy=0,c=0;for(const q of pairs)if(!q.dying&&q.root===hero.id){sx+=q.x;sy+=q.y;c++}if(c){fx=sx/c;fy=sy/c}}
+  const m=a*(1-b*.9);
+  cx=W/2+(fx-W/2)*m;cy=H/2+(fy-H/2)*m;
+  return{z,cx,cy}
+}
+function eyeAt(x,y,tx,ty,rr,hue,bright,lid,halo){
+  ctx.globalCompositeOperation='lighter';ctx.globalAlpha=halo;const sp=sprites[Math.round(hue/360*HB)%HB];ctx.drawImage(sp,x-rr*4,y-rr*4,rr*8,rr*8);
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  const a=Math.atan2(ty-y,tx-x),ry=Math.max(.12,lid)*rr;
+  ctx.fillStyle='hsl('+hue+','+(30+bright*40)+'%,'+(62+bright*30)+'%)';
+  ctx.beginPath();ctx.ellipse(x,y,rr,ry,0,0,6.2832);ctx.fill();
+  ctx.fillStyle='#0b0a10';ctx.beginPath();ctx.ellipse(x+Math.cos(a)*rr*.34,y+Math.sin(a)*rr*.34*lid,rr*.5,Math.min(rr*.5,ry*.9),0,0,6.2832);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.85)';ctx.beginPath();ctx.arc(x+Math.cos(a)*rr*.34-rr*.16,y-ry*.25,rr*.13,0,6.2832);ctx.fill();
+}
+function pairAt(x,y,ang,sep,tx,ty,rr,hue,bright,lid,halo){
+  const nx=-Math.sin(ang),ny=Math.cos(ang),h=sep*.5+rr*1.1;
+  for(let k=-1;k<=1;k+=2)eyeAt(x+nx*h*k,y+ny*h*k,tx,ty,rr,hue,bright,lid,halo)
+}
+function drawWorld(cam){
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#07080c';ctx.fillRect(0,0,720,1280);
+  const k=cam.z*SC;ctx.setTransform(k,0,0,k,360-cam.cx*k,640-cam.cy*k);
+  ctx.globalCompositeOperation='lighter';ctx.lineWidth=1/cam.z;
+  for(const p of pairs){if(p.dying||!p.tgt)continue;const t=p.tgt;const a=clamp(.04+t.att*.025,0,.2)*clamp(p.e*1.5,0,1);
+    ctx.globalAlpha=a;ctx.strokeStyle='hsl('+p.g.hue+',60%,70%)';ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(t.x,t.y);ctx.stroke()}
+  ctx.globalCompositeOperation='source-over';
+  for(const p of pairs){
+    const close=p.dying?clamp(p.dying/36,0,1):0,fade=p.dying?clamp(1-p.dying/50,0,1):1;
+    const ph=(tick+p.blink)%280,bl=ph<9?1-Math.sin(ph/9*Math.PI):1;
+    /* a starving pair's lids sag with its own energy */
+    const sag=p.e<.3?clamp(p.e/.3,.25,1):1;
+    const lid=Math.min(bl,1-close*.95,.35+.65*sag);
+    const rr=(3.6+clamp(p.e,0,1.2)*2.6+Math.min(p.att,5)*.45)*p.flare;
+    const t=p.tgt,tx=t?t.x:p.x+Math.cos(p.ang)*60,ty=t?t.y:p.y+Math.sin(p.ang)*60;
+    ctx.globalAlpha=fade;
+    pairAt(p.x,p.y,p.ang,p.g.sep*.45,tx,ty,rr,p.g.hue,clamp(p.att/3,0,1),lid,(.18+Math.min(p.att,5)*.06)*fade);
+  }
+  /* a newcomer arrives with one ring */
+  for(const p of pairs){if(p.stranger&&p.age<70&&!p.dying){ctx.globalAlpha=(1-p.age/70)*.6;ctx.strokeStyle='hsl('+p.g.hue+',70%,75%)';ctx.lineWidth=1.2/cam.z;ctx.beginPath();ctx.arc(p.x,p.y,10+p.age*.9,0,6.2832);ctx.stroke()}}
+  /* the stranger's pulse: a ring every second or so, as strong as its energy, so you can follow it and see it fade */
+  if(hero&&!hero.dying){const ph=(tick%75)/75;ctx.globalAlpha=(1-ph)*clamp(hero.e,0,.8)*.8;ctx.strokeStyle='hsl(48,80%,75%)';ctx.lineWidth=1.4/cam.z;ctx.beginPath();ctx.arc(hero.x,hero.y,6+ph*26,0,6.2832);ctx.stroke()}
+  ctx.globalAlpha=1;
+}
+/* the visitor: one large pair of eyes, in screen space, looking down at the stranger */
+function drawVisitor(cam,f){
+  const t=f-LOOK_F;if(t<-60||t>330+120||!hero)return;
+  const inn=ease((t+60)/70),out=ease((t-330)/110);
+  const vis=inn*(1-out);if(vis<=0)return;
+  const hs=[(hero.x-cam.cx)*cam.z*SC+360,(hero.y-cam.cy)*cam.z*SC+640];
+  const vx=360,vy=-140+(inn*430)-out*520;
+  const blink=((t>150&&t<162)?1-Math.sin((t-150)/12*Math.PI):1);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha=1;
+  /* thread, brightening as the look holds */
+  ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.55*vis*clamp((t+20)/60,0,1);ctx.strokeStyle='#f3dca0';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(vx,vy+58);ctx.lineTo(hs[0],hs[1]);ctx.stroke();
+  ctx.globalAlpha=.25*vis;ctx.lineWidth=9;ctx.stroke();
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=vis;
+  pairAt(vx,vy,Math.PI/2,52,hs[0],hs[1],42,45,1,blink,.45);
+  ctx.globalAlpha=1;
+}
+function vignette(){ctx.setTransform(1,0,0,1,0,0);const g=ctx.createRadialGradient(360,640,300,360,640,860);g.addColorStop(0,'rgba(7,8,12,0)');g.addColorStop(1,'rgba(7,8,12,.62)');ctx.fillStyle=g;ctx.fillRect(0,0,720,1280)}
+function card(a){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#07080c';ctx.globalAlpha=1;ctx.fillRect(0,0,720,1280);
+  ctx.globalAlpha=a;ctx.fillStyle='#e8e2d0';ctx.textAlign='center';ctx.font='italic 54px "Liberation Serif",serif';
+  ctx.fillText('Somebody has to',360,625);ctx.fillText('look first.',360,695);ctx.globalAlpha=1}
+function render(){
+  const f=F;
+  if(f>=CARD_AT){const a=clamp((f-CARD_AT-14)/30,0,1);card(a);return}
+  const cam=camera(f);drawWorld(cam);drawVisitor(cam,f);vignette();
+  const fi=clamp(1-f/18,0,1);if(fi>0){ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=fi;ctx.fillStyle='#07080c';ctx.fillRect(0,0,720,1280);ctx.globalAlpha=1}
+  /* the last second of the world fades to black before the card */
+  const fo=clamp((f-(CARD_AT-24))/24,0,1);if(fo>0){ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=fo;ctx.fillStyle='#07080c';ctx.fillRect(0,0,720,1280);ctx.globalAlpha=1}
+}
+window.film={init,advance,render,frame:()=>F,total:TOTAL,
+  png:()=>cv.toDataURL('image/png'),
+  /* headless: run the whole film without drawing and report what happened to the stranger */
+  probe:(s,lookF,look)=>{init(s,look?lookF:1e9);const out={};
+    for(let f=0;f<FRAMES;f++){advance();
+      if(hero){if(f===lookF-1)out.eBeforeLook=+hero.e.toFixed(3);if(f===FRAMES-1)out.kidsEnd=kids();if(f===lookF+330)out.kidsAfterLook=kids();if(hero.dying&&out.diedAt===undefined)out.diedAt=f}}
+    out.alive=!!hero&&!hero.dying;out.n=pairs.length;return out}};
+</script>
