@@ -16,6 +16,7 @@ PAL = dict(
 PEOPLE = {
     'holder': dict(coat=(44, 62, 102), coat2=(32, 46, 80), hat=(224, 168, 46), hat2=(190, 138, 30), brim=True, skin=(236, 190, 156), shoe=(36, 36, 44), pants=(58, 58, 70)),
     'walker': dict(coat=(200, 69, 47), coat2=(160, 52, 36), hat=(241, 230, 200), hat2=(214, 200, 166), brim=False, pom=True, skin=(222, 172, 138), shoe=(48, 32, 28), pants=(70, 60, 56)),
+    'kid': dict(coat=(238, 196, 52), coat2=(206, 160, 30), hat=(244, 214, 84), hat2=(214, 180, 50), brim=False, skin=(240, 200, 168), shoe=(210, 60, 60), pants=(50, 60, 100)),
     'second': dict(coat=(70, 130, 96), coat2=(52, 100, 74), hat=(60, 56, 70), hat2=(44, 40, 52), brim=False, skin=(190, 140, 108), shoe=(30, 30, 36), pants=(54, 54, 66)),
 }
 
@@ -102,9 +103,15 @@ def person(d, kind, x, y, th, k, phase=0.0, stride=0.0, swing=0.0, bob=0.0, head
             for lx, lf in ((-5, -8), (5, -8), (5, 8), (-5, 8)):
                 wx, wy = to_world(0, 0, a, lx, lf); pts.append((c[0] + wx * k, c[1] + wy * k))
             d.polygon(pts, fill=(30, 34, 46, 255), outline=(190, 220, 255, 255))
+        elif prop == 'icecream':
+            cx_, cy_ = hand
+            d.polygon([(cx_ - 4 * k, cy_), (cx_ + 4 * k, cy_), (cx_, cy_ + 13 * k)], fill=(214, 168, 100, 255), outline=INK)
+            d.ellipse([cx_ - 7 * k, cy_ - 8 * k, cx_ + 7 * k, cy_ + 5 * k], fill=(244, 150, 190, 255), outline=INK)
+        elif prop == 'bag':
+            d.rounded_rectangle([hand[0] - 7 * k, hand[1] - 9 * k, hand[0] + 7 * k, hand[1] + 9 * k], radius=2 * k, fill=(236, 214, 150, 255), outline=INK)
         elif prop == 'watch':
             d.ellipse([hand[0] - 3 * k, hand[1] - 3 * k, hand[0] + 3 * k, hand[1] + 3 * k], fill=(230, 230, 236, 255))
-        d.ellipse([hand[0] - 5 * k, hand[1] - 5 * k, hand[0] + 5 * k, hand[1] + 5 * k], fill=P['skin'] + (255,), outline=INK) if prop in (None, 'watch') else None
+        d.ellipse([hand[0] - 5 * k, hand[1] - 5 * k, hand[0] + 5 * k, hand[1] + 5 * k], fill=P['skin'] + (255,), outline=INK) if prop in (None, 'watch', 'icecream', 'bag') else None
     return hL, hR
 
 
