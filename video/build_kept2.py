@@ -28,6 +28,10 @@ SPB, PHRASE, DUR, T_CARD, LETGO = K.SPB, K.PHRASE, K.DUR, K.T_CARD, K.LETGO
 PANES, PANE = K.PANES, K.PANE
 MOT = json.load(open(os.path.join(os.path.dirname(__file__), "kept_motion.json")))
 AMBER = np.array([255, 176, 88], np.float32)
+# knobs for 'Intertwined' (defaults are v2 exactly): no body before NOBODY_UNTIL (the window alone, the light on its
+# panes); no glass on him before GLASS_FROM (it arrives with the transformation shot); LETGO is read at run time
+NOBODY_UNTIL = 0.0
+GLASS_FROM = 0.0
 
 
 # ---------- 1. time: film seconds -> (clip, clip seconds, mirror) ----------
@@ -229,6 +233,18 @@ def main():
         win[edge] *= .2
         img = win.copy()
         u, ct, mirror, seg = clip_time(t)
+        if t < NOBODY_UNTIL:
+            u = None
+            # the window alone: the light plays its panes, as in Played
+            j = max(0, np.searchsorted([x[0] for x in tops], t, "right") - 1)
+            A_, B_ = tops[j], tops[min(j + 1, len(tops) - 1)]
+            q = 0.0 if B_[0] == A_[0] else min(1, max(0, ((t - A_[0]) / (B_[0] - A_[0]) - .35) / .65))
+            q = q * q * (3 - 2 * q)
+            lx = (PANE[A_[1]]["x"] * (1 - q) + PANE[B_[1]]["x"] * q) * W
+            ly = (PANE[A_[1]]["y"] * (1 - q) + PANE[B_[1]]["y"] * q) * H
+            d2 = (xx - lx) ** 2 + (yy - ly) ** 2
+            img += (np.exp(-d2 / (2 * 9.0 ** 2)) * 2.0 + np.exp(-d2 / (2 * 24.0 ** 2)) * .6 + np.exp(-d2 / (2 * 96.0 ** 2)) * .18)[..., None] * AMBER * min(1, t / .8)
+            img = img * (1 + .9 * min(1, t / 2))           # the window brighter while it is alone
         if u is not None:
             col, a = clips[u].at(ct)
             bx = BOX[u][min(len(BOX[u]) - 1, int(ct * 24))].copy()
@@ -272,7 +288,7 @@ def main():
                     e = min(1.6, lit[n])
                     br = .5 + 1.15 * e ** .7
                     glass[Y0:Y1, X0:X1][m] = src[py, px] * br
-                    age = t - first.get(n, 1e9)
+                    age = t - max(first.get(n, 1e9), GLASS_FROM)
                     gw[Y0:Y1, X0:X1][m] = np.clip(age / .5, 0, 1) * (1 - np.clip((t - LETGO) / 2.5, 0, 1))
             lum = col.mean(-1, keepdims=True) / 255
             facew = np.clip((yy[:, :1] - bx[1] - bh * .03) / (bh * .12), 0, 1) * .85 + .15   # his face stays his
