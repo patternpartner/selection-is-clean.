@@ -3372,5 +3372,147 @@
   ],
   "talks": null,
   "used_in": []
+ },
+ {
+  "id": "u172",
+  "file": "out/user-clips/u172.mp4",
+  "upload": "27d560d2-grok_video_2026-10-08-17-54-18.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (8 Oct, Grok, blue screen): grey t-shirt, jeans, trainers - stands, sways, playful jumps, then drops to push-ups (zoomed close-up from 12 s)",
+  "tags": [
+   "own-likeness",
+   "bluescreen",
+   "has-audio"
+  ],
+  "talks": null,
+  "moves": [
+   [
+    "stand",
+    0,
+    2
+   ],
+   [
+    "sway",
+    2,
+    4.2
+   ],
+   [
+    "crouch-jump",
+    4.3,
+    5.6
+   ],
+   [
+    "arms out",
+    6.2,
+    6.8
+   ],
+   [
+    "jump from behind",
+    6.9,
+    7.4
+   ],
+   [
+    "grin",
+    8,
+    8.8
+   ],
+   [
+    "jump",
+    9.3,
+    9.8
+   ],
+   [
+    "crouch",
+    10,
+    11.8
+   ],
+   [
+    "push-ups (zoom)",
+    12,
+    15
+   ]
+  ],
+  "used_in": [
+   "the-one-you-kept"
+  ]
+ },
+ {
+  "id": "u173",
+  "file": "out/user-clips/u173.mp4",
+  "upload": "7f04d45d-grok_video_2026-10-08-17-56-05.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (8 Oct, Grok, blue screen): stands, turns side-on, runs, a long leap, lands in a crouch",
+  "tags": [
+   "own-likeness",
+   "bluescreen",
+   "has-audio"
+  ],
+  "talks": null,
+  "moves": [
+   [
+    "stand",
+    0,
+    2
+   ],
+   [
+    "turn",
+    2,
+    2.6
+   ],
+   [
+    "run",
+    2.8,
+    9.2
+   ],
+   [
+    "leap",
+    9.4,
+    11.6
+   ],
+   [
+    "land crouch",
+    12,
+    15
+   ]
+  ],
+  "used_in": [
+   "the-one-you-kept"
+  ]
+ },
+ {
+  "id": "u174",
+  "file": "out/user-clips/u174.mp4",
+  "upload": "c822f6a3-grok_video_2026-10-08-17-58-10.mp4",
+  "seconds": 15.04,
+  "size": "720x1280",
+  "what": "THE USER'S OWN LIKENESS (8 Oct, Grok, blue screen): stands, raises both arms pointing up, disco-dances turning (heavy motion ghosting at 3.5, 5.5, 8, 11.5-13.5)",
+  "tags": [
+   "own-likeness",
+   "bluescreen",
+   "has-audio"
+  ],
+  "talks": null,
+  "moves": [
+   [
+    "stand",
+    0,
+    1.2
+   ],
+   [
+    "arms rise",
+    1.2,
+    2.4
+   ],
+   [
+    "dance",
+    2.4,
+    15
+   ]
+  ],
+  "used_in": [
+   "the-one-you-kept"
+  ]
  }
 ]
