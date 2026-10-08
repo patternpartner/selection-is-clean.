@@ -45,11 +45,13 @@ for(let i=0;i<HB;i++){const s=document.createElement('canvas');s.width=s.height=
 
 const CAP=110,SEE=240,G=0.0006,U=0.0006;
 let pairs=[],nextId=1,ever=0,strangers=0,tick=0;
-function newGenome(){return{near:rnd()*2-1,bright:rnd()*2-1,hueAff:rnd()*2-1,sepAff:rnd()*2-1,pull:rnd()*1.2-.3,hue:rnd()*360,sep:8+rnd()*22}}
-function mutate(g){const m=.12;return{near:clamp(g.near+gauss()*m,-1,1),bright:clamp(g.bright+gauss()*m,-1,1),hueAff:clamp(g.hueAff+gauss()*m,-1,1),sepAff:clamp(g.sepAff+gauss()*m,-1,1),pull:clamp(g.pull+gauss()*m*.6,-.4,1),hue:(g.hue+gauss()*14+360)%360,sep:clamp(g.sep+gauss()*2.2,6,34)}}
+function newGenome(){const g={near:rnd()*2-1,bright:rnd()*2-1,hueAff:rnd()*2-1,sepAff:rnd()*2-1,pull:rnd()*1.2-.3,hue:rnd()*360,sep:8+rnd()*22};
+  if(opts.care){g.care=rnd()*2-1;g.mutual=rnd()*2-1}return g}
+function mutate(g){const m=.12;const o={near:clamp(g.near+gauss()*m,-1,1),bright:clamp(g.bright+gauss()*m,-1,1),hueAff:clamp(g.hueAff+gauss()*m,-1,1),sepAff:clamp(g.sepAff+gauss()*m,-1,1),pull:clamp(g.pull+gauss()*m*.6,-.4,1),hue:(g.hue+gauss()*14+360)%360,sep:clamp(g.sep+gauss()*2.2,6,34)};
+  if(g.care!==undefined){o.care=clamp(g.care+gauss()*m,-1,1);o.mutual=clamp(g.mutual+gauss()*m,-1,1)}return o}
 const opts={neutral:false,visitor:false},rootTicks=new Map();
 function make(g,x,y,e,stranger,root){ever++;if(stranger)strangers++;const id=nextId++;
-  return{id,root:root||id,g,x,y,vx:0,vy:0,e,ang:rnd()*6.283,tgt:null,att:0,age:0,dying:0,flare:1,wob:rnd()*100,blink:rnd()*300}}
+  return{id,root:root||id,g,x,y,vx:0,vy:0,e,ang:rnd()*6.283,tgt:null,att:0,age:0,dying:0,flare:1,wob:rnd()*100,blink:rnd()*300,attEma:1}}
 function addStranger(x,y){const p=make(newGenome(),x==null?60+rnd()*(W-120):x,y==null?60+rnd()*(H-120):y,.5,true);p.flare=1.6;pairs.push(p)}
 function seedWorld(){pairs=[];ever=0;strangers=0;for(let i=0;i<70;i++){const p=make(newGenome(),60+rnd()*(W-120),60+rnd()*(H-120),.4+rnd()*.3,false);pairs.push(p)}}
 seedWorld();
@@ -65,14 +67,14 @@ addEventListener('pointerleave',()=>{ptr.on=false;ptr.down=false});
 function step(){
   tick++;
   const n=pairs.length;
-  for(let i=0;i<n;i++){pairs[i].att=0}
+  for(let i=0;i<n;i++){const q=pairs[i];q.attEma=q.attEma*.98+q.att*.02;q.att=0}
   /* each pair chooses what to look at, by its own heritable taste */
   for(let i=0;i<n;i++){const p=pairs[i];if(p.dying)continue;
     let best=-1e9,bt=null;const g=p.g;
     for(let j=0;j<n;j++){if(j===i)continue;const q=pairs[j];if(q.dying)continue;
       const dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;if(d2>SEE*SEE)continue;
       const d=Math.sqrt(d2);let dh=Math.abs(q.g.hue-g.hue);if(dh>180)dh=360-dh;
-      const s=g.near*(1-d/SEE)+g.bright*(q.e-.5)*2+g.hueAff*(1-dh/90)+g.sepAff*((q.g.sep-20)/14)+(((p.id*31+q.id*17)%7)-3)*.015;
+      const s=g.near*(1-d/SEE)+g.bright*(q.e-.5)*2+g.hueAff*(1-dh/90)+g.sepAff*((q.g.sep-20)/14)+(((p.id*31+q.id*17)%7)-3)*.015+(g.care!==undefined?g.care*clamp(1-q.attEma/2,0,1)+g.mutual*(q.tgt===p?1:0):0);
       if(s>best){best=s;bt=q}}
     p.tgt=bt;if(bt)bt.att+=1}
   /* the visitor looks at the nearest one within reach, harder when pressing */
@@ -159,6 +161,6 @@ function loop(ts){
 }
 if(matchMedia('(prefers-reduced-motion: reduce)').matches){for(let i=0;i<200;i++)step()}
 requestAnimationFrame(t=>{last=t;loop(t)});
-window.__lit={step,opts,rootTicks,get pairs(){return pairs},get ever(){return ever},get strangers(){return strangers},seed:s=>{seed=s>>>0;seedWorld()}};
+window.__lit={step,opts,rootTicks,get pairs(){return pairs},get ever(){return ever},get strangers(){return strangers},seed:(s,shift)=>{seed=s>>>0;for(let k=0;k<(shift||0);k++)rnd();seedWorld()}};
 })();
 </script>
