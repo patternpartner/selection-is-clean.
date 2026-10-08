@@ -1495,3 +1495,23 @@ SOUND (synthesized): near-silent hall, footsteps, pencil, muffled bass through t
 peak -9.4 dBFS. Caught: an array-length bug in the audio; the muffling was inaudible until the melody was turned up against the bass; the render
 crashed when the camera zoomed out past the background (PAD=260 black margin added); the first camera was too wide to read him or the wall.
 NOT DONE: not watched in motion, audio unheard; not backed up to Modal library/finals.
+
+## Be Unlike (out/novelty/be-unlike.mp4, 41 s, 720x1280) — `video/build_novelty.py`, `video/novelty_core.py`
+Not a story and not a gag: a real experiment, filmed. 24 tiny image-making networks (CPPN-style, 10-node layers, evolving weights, activation
+functions and a frequency gene) are told one thing, "be unlike everything found so far". Each generation: children grow out of their parent (the
+tile morphs from the parent's picture to the child's), every picture is scored by novelty (mean distance to its 5 nearest neighbours among the
+archive and the rest of the population, on an 8x8x3 downsample of the image), the six most novel become the next parents, the three most novel are
+kept in the archive (the strip at the bottom). 28 generations x 24 = 672 pictures; the archive ends at 84.
+EVERYTHING ON SCREEN IS THE RUN. The amber line is the real per-generation mean novelty of seed 1; the grey line is its CONTROL, same budget and
+same archive rule but a fresh random network every generation (blind guessing). The end card's numbers are the mean over seeds 1-8 of late-run
+novelty (last 7 generations): selection 4.87, blind guessing 3.82, selection ahead on 8 of 8 seeds; mean archive spacing (nearest-neighbour
+distance) 4.97 vs 4.12. Seed 1 was chosen in advance, not for looking good (its figures, 4.71 vs 3.79, are mid-pack). Mutation size 0.5 was set before
+the first run and not tuned.
+The honest shape of the result: blind guessing's novelty DECAYS as the archive fills (4.6 -> 3.8) while selection's holds and rises slightly
+(4.6 -> 5.0). That is the project's claim in miniature (novelty keeps arriving), at one rung: this is a descriptor I chose (a thumbnail), so
+"novel" means novel to that thumbnail, not to an eye, and the 28-generation horizon says nothing about generation 500.
+SOUND (synthesized): a drone that opens as the run goes on; a soft tick per generation; the six selected pictures PLAY, a pluck each, pitched from
+their own mean brightness and red-blue balance on a pentatonic scale and louder for higher novelty; a bell for each of the three kept (pitched from
+colour); a whoosh as the chosen move; a chord as the wall forms. -17.2 LUFS, peak -6.3 dBFS. Not heard.
+CAUGHT: the final wall ran under the header and the closing text (fixed); a scipy filter call missing output='sos'. Not watched in motion; the colours
+are harsh (the networks saturate) and I did not tune that. Share copy `be-unlike-share.mp4`; the master is 41 MB. Not backed up to Modal.
