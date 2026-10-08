@@ -165,9 +165,11 @@ def build_bg():
     arr = np.asarray(im).astype(np.int16); arr += rng.integers(-3, 4, size=arr.shape[:2] + (1,)).astype(np.int16)
     return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
 _BG = None
+PAD = 260                       # a black margin round the hall, so the camera can pull right out
 def bg():
     global _BG
-    if _BG is None: _BG = build_bg()
+    if _BG is None:
+        b = build_bg(); _BG = Image.new('RGB', ((720 + 2 * PAD) * SBG, (1280 + 2 * PAD) * SBG), (3, 4, 8)); _BG.paste(b, (PAD * SBG, PAD * SBG))
     return _BG
 
 # the drawing the maker makes: strokes in card coordinates (0..1), a tiny sketch of this very scene
@@ -222,11 +224,8 @@ YY, XX = np.mgrid[0:1280, 0:720].astype(np.float32)
 def beat_t(t): return (t - T_MUSIC) / BEAT
 def render(t):
     z, cx, cy = camera(t); k = z * SC; vw, vh = 720 / z, 1280 / z
-    if z >= 1.0: box = ((cx - vw / 2) * SBG, (cy - vh / 2) * SBG, (cx + vw / 2) * SBG, (cy + vh / 2) * SBG)
-    else: box = ((cx - vw / 2) * SBG, (cy - vh / 2) * SBG, (cx + vw / 2) * SBG, (cy + vh / 2) * SBG)
-    # a camera that is out past the edge of the world sees black there
-    canvas = Image.new('RGB', (720 * SBG, 1280 * SBG), (3, 4, 8)); canvas.paste(bg(), (0, 0))
-    img = canvas.resize((720 * SC, 1280 * SC), Image.BILINEAR, box=box) if True else None
+    box = ((cx - vw / 2 + PAD) * SBG, (cy - vh / 2 + PAD) * SBG, (cx + vw / 2 + PAD) * SBG, (cy + vh / 2 + PAD) * SBG)
+    img = bg().resize((720 * SC, 1280 * SC), Image.BILINEAR, box=box)
     d = ImageDraw.Draw(img, 'RGBA')
     P = lambda x, y: ((x - cx) * z * SC + 360 * SC, (y - cy) * z * SC + 640 * SC)
     # the drawing appearing on the blank card
