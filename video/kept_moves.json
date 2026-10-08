@@ -1,0 +1,9 @@
+[
+ {"a": 0,  "b": 6,  "clip": "u172", "s": 0.0, "e": 1.9,  "note": "the first tune: standing, hands in pockets"},
+ {"a": 6,  "b": 12, "clip": "u174", "s": 1.0, "e": 2.4,  "note": "#3: arms rising slowly to the window"},
+ {"a": 12, "b": 24, "clip": "u174", "s": 2.4, "e": 7.6,  "note": "#12 with the bass: dancing, slowed so it floats"},
+ {"a": 24, "b": 36, "clip": "u172", "s": 4.2, "e": 11.8, "note": "#7, the arpeggios: the jumps"},
+ {"a": 36, "b": 48, "clip": "u173", "s": 2.0, "e": 9.2,  "note": "#18 and #39, #7's family: running"},
+ {"a": 48, "b": 54, "clip": "u173", "s": 9.2, "e": 12.0, "note": "#7 returns: the leap, slow"},
+ {"a": 54, "b": 65, "clip": "u172", "s": 7.8, "e": 8.9,  "note": "the last low note: standing, grinning, the glass lets go"}
+]

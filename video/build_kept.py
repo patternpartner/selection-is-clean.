@@ -46,8 +46,9 @@ TUNES = {
 # phrase by phrase: (tune, form, call)
 SCORE = [(0, "alone", True), (3, "alone", True), (12, "bass", True), (12, "bass", False), (7, "arp", True),
          (7, "arp", False), (18, "bass", True), (39, "bass", True), (7, "return", True), (None, "ring", True)]
-DUR = len(SCORE) * PHRASE + 1.0
-T_CARD = DUR - 4.2
+DUR = len(SCORE) * PHRASE + 4.6          # the ring, ~2 s of him as himself, then the card
+T_CARD = len(SCORE) * PHRASE + .4
+LETGO = (len(SCORE) - 1) * PHRASE + .5    # the glass lets go over 2.5 s from here, inside the last phrase
 
 
 def events():
@@ -136,7 +137,7 @@ def render_audio():
     st = np.stack([L, R], 1)
     st /= np.abs(st).max() / .7
     st = np.tanh(st * 1.15) / 1.15
-    st *= np.clip((DUR - .2 - np.arange(N) / SR) / 2.0, 0, 1)[:, None]
+    st *= np.clip((T_CARD + 1.5 - np.arange(N) / SR) / 2.5, 0, 1)[:, None]
     st /= np.abs(st).max() / .89
     with wave.open("out/drawn/kept.wav", "wb") as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
@@ -243,7 +244,7 @@ def main_video():
             b = .45 + 1.1 * e ** .7
             win[y0:y1, x0:x1][m] = tile[m] * b
             # a pane turns to glass the first time its note is struck, and the glass lets go in the last phrase
-            g = np.clip(age / .6, 0, 1) * (1 - np.clip((t - (DUR - PHRASE - 1 + 2.5)) / 2.5, 0, 1))
+            g = np.clip(age / .6, 0, 1) * (1 - np.clip((t - LETGO) / 2.5, 0, 1))
             glassw[y0:y1, x0:x1][m] = g
         col, a = body(t)
         img = np.zeros((H, W, 3), np.float32)
@@ -253,14 +254,20 @@ def main_video():
             lum = col.mean(-1, keepdims=True) / 255
             himself = col * .78
             glass = win * (.55 + .75 * lum)                       # the glass, with his own shading under it
-            gw = glassw[..., None] * .9
+            # his face stays readable: the glass is lighter over the top sixth of his silhouette
+            rows = np.nonzero(a.max(1) > .5)[0]
+            facew = np.ones((H, 1), np.float32)
+            if len(rows):
+                top, ht = rows.min(), rows.max() - rows.min()
+                facew[:, 0] = np.clip((np.arange(H) - top) / max(1, ht * .17), 0, 1) * .6 + .4
+            gw = glassw[..., None] * .9 * facew[..., None]
             inside = himself * (1 - gw) + glass * gw
             img = img * (1 - a[..., None]) + inside * a[..., None]
             rim = cv2.morphologyEx((a > .5).astype(np.uint8), cv2.MORPH_GRADIENT, np.ones((3, 3), np.uint8)).astype(np.float32)
             img += cv2.GaussianBlur(rim, (0, 0), 4)[..., None] * AMBER * (.35 + .5 * max(lit.values()) / 1.6)
         if col is not None:
             ea = edge & (a > .5)
-            img[ea] *= .15                                       # the leading, only where he is glass
+            img[ea] *= (1 - .85 * glassw[ea])[:, None]           # the leading belongs to the glass: it comes and goes with it
         # the light, arriving on each strike
         j = max(0, np.searchsorted([x[0] for x in tops], t, "right") - 1)
         A = tops[j]
@@ -271,7 +278,7 @@ def main_video():
         ly = PANE[A[1]]["y"] * H * (1 - u) + PANE[B[1]]["y"] * H * u
         d2 = (xx - lx) ** 2 + (yy - ly) ** 2
         rad = 22 + 4 * math.sin(t * 2.3)
-        fade = min(1, t / .8) * (1 - min(1, max(0, (t - (T_CARD - 1.5)) / 1.5)))
+        fade = min(1, t / .8) * (1 - min(1, max(0, (t - LETGO) / 2.5)))       # the light goes with the glass
         img += (np.exp(-d2 / (2 * (rad * .38) ** 2)) * 2.0 + np.exp(-d2 / (2 * rad ** 2)) * .6 +
                 np.exp(-d2 / (2 * (rad * 4) ** 2)) * .18)[..., None] * AMBER * fade
         img = img + cv2.GaussianBlur(img, (0, 0), 6) * .22
