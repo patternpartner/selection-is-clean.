@@ -1136,3 +1136,21 @@ longest same-note run 2; (3) the memory section came 6 times in 6 minutes -> at 
 opening copy claimed "It never repeats" - false (25/28 distinct), now "No two playings are the same".
 HONEST: the evolution has no ear either - its fitness is music theory rules Claude wrote, so it selects for
 "correct", not for beautiful; and the user is still the only listener.
+
+### Selected by Ear (`video/selected_by_ear.html`) - listening as the selection
+https://claude.ai/artifact/Rzatvxvc98qoXqhp2JbuiZ (private; `db` capability; same assets as Still Playing). The user:
+"Build the listening-as-selection version." Twelve tunes live in the window, saved in the page's database
+(`window/state`: population, scores, a 400-entry family tree, totals), so Claude can read back what the user's ear chose.
+Each turn (call + answer, about 12 s) plays a child (a mutation of a tournament-picked parent, 30% a cross: first bar of
+one, second bar of another), or now and then an existing tune again, or - in the "remembering" section - the one kept
+most. Verdicts: Keep +3, Skip -2.5 (cuts it and starts a fresh tune; a skipped child never joins), each pane touched
+during it +0.8 (max 3), heard through +0.4, page left or paused during it -0.8. A child joins if not skipped and it
+beats the weakest (which "makes room"); scores fade 1.5% a turn so the population keeps moving. Claude's music rules
+no longer choose: they only discard unsingable mutants, and among the singable ones the pick is random - chance
+proposes, the ear decides. Keys: k = keep, s = skip.
+TESTED, pre-registered (video/tests/selected_by_ear_selection.md): synthetic listeners with hidden tastes (high, busy,
+leapy) vs four null listeners per seed that keep/skip at the same rates blind: all three tastes beyond every null on
+>= 2/3 unseen seeds at 300 turns (~1 hour) -> it selects; slow and noisy (1/3 for leapy at 20 min). Sound unchanged
+(-14.2 LUFS, 95/95 at pitch, 0 clicks). Live: touch, keep, skip, and the no-save fallback all checked in Chromium.
+HONEST: a real ear is not a consistent logistic; one shared population means two listeners would overwrite each
+other (last write wins); and the rules still prune, so there are tunes it can never offer.
