@@ -26410,3 +26410,19 @@ patched, and anything a longer horizon or a saved world would reach. Run it on a
 by construction, verifiable — CLAUDE.md's "remove" option, and the honest one for a mechanism that has never run), or
 REVIVE it per lineage (each creature billed for its OWN meta magnitude, so lineages could be selected on it), which is a
 new mechanism changing every run and goes through the retire-or-prove template, pre-registered, unseen seeds.
+
+#### #298b — DELETED, NOT REVIVED; THE GATES; AND TWO RED ROWS THAT WERE ALREADY THERE
+The user: "Do as you wish." So finding 1 took the removal: the dead meta charge in applyEntropy, the loop() magnitude
+sum that only fed it (and carried #108's missed site), CARRY_COST_META, and lgc (written into every lineage snapshot
+and pulse event from a field nothing ever wrote). CODEMAP's LEAP 9 section corrected beside the claim it made ("already
+acted on": the meta half never was; only atoms are billed). **What moved in the universe: nothing, and that is the
+claim** - LEAP 9's principle has never been applied to the meta layer, and now the code no longer pretends it is.
+Gates: behaviour BYTE-IDENTICAL to the pre-#298 engine, seeds 1/2/3, 3,000 ticks, 30 checkpoints each (positions,
+amplitudes, germline length); the comparison was itself checked by a deliberate 1e-4 change to densityCost, which it
+caught at tick 100. substrate-test 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0. smoke.sh: 58 ok and 7 FAILING
+on "Cannot find module 'playwright-core'" - an environment fault, the browser rigs never started; rerun with
+NODE_PATH pointed at the global playwright's copy: pace, slot, mind, mind-persist, grown all pass; pool-test 27/1 ("peers
+30 of 27 built") and layers-test 47/2 ("31", "31/27") FAIL - and fail IDENTICALLY on the pre-#298 engine in a worktree,
+two rounds each, same counts. Pre-existing and deterministic, not flaky and not this change: the field builds 3-4
+more universes than those tests expect, which reads like #297's grown universes coming back on reload. Left for
+whoever owns #297; not changed here.
