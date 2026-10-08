@@ -121,6 +121,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
 .btns { display: flex; gap: 8px; }
 button.keep { background: var(--amber); color: var(--night); border-color: var(--amber); }
 button.keep.lit { box-shadow: 0 0 22px var(--amber); }
+button.recording { color: var(--night); background: var(--amber); border-color: var(--amber); font-variant-numeric: tabular-nums; }
 .pop-wrap { display: grid; gap: 6px; min-width: 0; }
 .pop { display: flex; align-items: flex-end; gap: 3px; height: 28px; }
 .pop .ind { width: 9px; height: 100%; display: flex; align-items: flex-end; background: rgba(233,225,214,.08); border-radius: 2px; overflow: hidden; }
@@ -141,7 +142,7 @@ button.keep.lit { box-shadow: 0 0 22px var(--amber); }
         <h1>Selected by Ear</h1>
         <div class="meta" id="meta">18 panes · D minor · 80 bpm</div>
       </div>
-      <button id="pause" type="button" hidden>Pause</button>
+      <div class="btns"><button id="rec" type="button" hidden>Record</button><button id="pause" type="button" hidden>Pause</button></div>
     </div>
     <div></div>
     <div style="display:grid;gap:6px">
@@ -383,13 +384,15 @@ function buildGraph(ctx, bufs) {
   const lim = ctx.createDynamicsCompressor();                 // a last limiter so the loudest strikes never clip
   lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = .002; lim.release.value = .12;
   master.gain.value = 1;
+  const tap = ctx.createMediaStreamDestination ? ctx.createMediaStreamDestination() : null;   // what Record hears
+  if (tap) lim.connect(tap);
   dry.connect(comp); send.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(master); master.connect(lim); lim.connect(ctx.destination);
   const pans = {};
   for (const p of DATA.panes) {
     const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, (p.x - .5) * 1.4));
     pn.connect(dry); pn.connect(send); pans[p.note] = pn;
   }
-  return { master, pans, bufs };
+  return { master, pans, bufs, tap };
 }
 const LEVEL = .9;
 function strike(ctx, G, n, when, lenBeats, vel) {
@@ -691,6 +694,8 @@ async function start() {
     document.getElementById("gate").hidden = true;
     for (const id of ["pause", "verdict"]) document.getElementById(id).hidden = false;
     renderPop(-1);
+    downloads = await Promise.race([downloadsReady, new Promise(r => setTimeout(() => r(null), 3000))]);
+    recBtn.hidden = !(downloads && recType() !== null && cv.captureStream && G.tap);
     try { await navigator.wakeLock?.request("screen"); } catch (e) {}
   } catch (e) {
     btn.disabled = false; btn.textContent = "Play";
@@ -702,6 +707,47 @@ document.getElementById("pause").addEventListener("click", async e => {
   if (!ctx) return;
   if (!paused) { paused = true; const tr = playingTurn(); if (tr) tr.sig.left = true; await ctx.suspend(); e.target.textContent = "Resume"; }
   else { paused = false; await ctx.resume(); nextPhraseAt = Math.max(nextPhraseAt, ctx.currentTime + .2); e.target.textContent = "Pause"; }
+});
+// ---------- recording what it plays, picture and sound, to save as a video ----------
+const recBtn = document.getElementById("rec");
+let rec = null, recChunks = [], recT0 = 0, recTick = null, downloads = null;
+const downloadsReady = (async () => { try { return await window.claude?.use?.("downloads"); } catch (e) { return null; } })();
+function recType() {
+  // a true H.264 mp4 where the browser makes one (it opens everywhere), else webm; a bare mp4 last, for Safari
+  const types = ["video/mp4;codecs=avc1.42E01F,mp4a.40.2", "video/mp4;codecs=avc1,mp4a.40.2", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+  return window.MediaRecorder ? types.find(t => MediaRecorder.isTypeSupported(t)) || "" : null;
+}
+function startRecording() {
+  const type = recType();
+  if (type === null || !cv.captureStream || !G.tap) { note("This browser cannot record the window."); return false; }
+  const stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...G.tap.stream.getAudioTracks()]);
+  rec = new MediaRecorder(stream, { mimeType: type || undefined, videoBitsPerSecond: 5e6, audioBitsPerSecond: 192e3 });
+  recChunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+  rec.start(1000); recT0 = performance.now();
+  recBtn.classList.add("recording");
+  const tick = () => { const s = Math.floor((performance.now() - recT0) / 1000); recBtn.textContent = `Stop ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+  tick(); recTick = setInterval(tick, 500);
+  return true;
+}
+function stopRecording() {
+  return new Promise(res => {
+    if (!rec) return res(null);
+    const r = rec; rec = null; clearInterval(recTick);
+    recBtn.classList.remove("recording"); recBtn.textContent = "Record";
+    r.onstop = () => { const type = (r.mimeType || "video/webm").split(";")[0]; res(new Blob(recChunks, { type })); };
+    r.stop(); r.stream.getTracks().forEach(t => { if (t.kind === "video") t.stop(); });
+  });
+}
+recBtn.addEventListener("click", async () => {
+  if (!rec) { startRecording(); return; }
+  const blob = await stopRecording();
+  if (!blob || !blob.size) { note("Nothing was recorded."); return; }
+  const ext = blob.type.includes("mp4") ? "mp4" : "webm", d = new Date();
+  const name = `selected-by-ear-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}.${ext}`;
+  try { await downloads.save({ filename: name, data: blob }); note(`Saved ${name}.`); }
+  catch (e) {
+    note(e && e.code === "declined" ? "Not saved. Record again whenever you like." : e && e.code === "rate_limited" ? "A save is already waiting for an answer." : "This view cannot save files.");
+  }
 });
 const keepBtn = document.getElementById("keep");
 keepBtn.addEventListener("click", keep);
@@ -728,6 +774,9 @@ cv.addEventListener("pointerdown", e => {
 // ---------- measuring it: an offline recording, and a test of whether listening really selects ----------
 window.__still = {
   Breeder, Arranger,
+  async recordTest(ms) { if (!startRecording()) return null; await new Promise(r => setTimeout(r, ms)); const b = await stopRecording();
+    const buf = new Uint8Array(await b.arrayBuffer()); let s = ""; for (let k = 0; k < buf.length; k += 32768) s += String.fromCharCode.apply(null, buf.subarray(k, k + 32768));
+    return { type: b.type, size: b.size, b64: btoa(s) }; },
   async renderOffline(seconds, seed) {
     const sr = 48000, oc = new OfflineAudioContext(2, Math.ceil(seconds * sr), sr);
     const bufs = await decodeAll(oc), g = buildGraph(oc, bufs), b = Breeder(seed, null), a = Arranger(mulberry(seed ^ 0x5bd1e995)), notes = [], log = [];

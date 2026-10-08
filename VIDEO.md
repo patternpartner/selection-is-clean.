@@ -1154,3 +1154,9 @@ leapy) vs four null listeners per seed that keep/skip at the same rates blind: a
 (-14.2 LUFS, 95/95 at pitch, 0 clicks). Live: touch, keep, skip, and the no-save fallback all checked in Chromium.
 HONEST: a real ear is not a consistent logistic; one shared population means two listeners would overwrite each
 other (last write wins); and the rules still prune, so there are tunes it can never offer.
+RECORD (8 Oct, user: "lets make it downloadable. I cant see a way to do that"): a Record button beside Pause captures
+the canvas (30 fps) and the exact master mix (a MediaStreamDestination tapped after the limiter) with MediaRecorder,
+then offers the file through the `downloads` capability (the viewer confirms the save). H.264 MP4 where the browser
+can make one, else WebM, bare MP4 last (Safari). The overlaid words are not in the recording - only the glass and the
+light. Hidden where saving or recording is impossible. Tested in headless Chromium: 8 s -> picture + sound, -16.9 LUFS.
+Caught: open Chromium put VP9 inside an .mp4 (won't open on iPhones) when asked for bare "video/mp4" - reordered.
