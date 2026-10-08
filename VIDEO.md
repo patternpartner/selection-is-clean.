@@ -1483,3 +1483,15 @@ Caught: the question's head-turn was invisible at wide-shot size (it is now a wh
 crowd; two array-length bugs in the sound; the title and the ending (the loop reveal had 1.5 s; it now has 3).
 NOT DONE: the pod's inside is only a counter and a painted NEXT; nothing happens to the others (the same 53 people loop, and the film never says so);
 all gaits are one cycle; not backed up to Modal library/finals; 28.9 MB master (the share copy is under 15 MB).
+
+## Keep Going (out/story/keep-going.mp4, 40.4 s, 720x1280) — `video/build_story.py`
+The film about the session itself, made when the user said "Keep going. your story". A maker with a lantern walks a dark hall whose wall is 35 REAL
+frames from the five finished films (Looked At, Nobody Asked It To, Hold the Door, After You, Next; 7 each, extracted to `out/story/cards/`). He stops
+and reads them, finds a blank slot, draws a new card, kneels, and slides it under a door. Music starts, muffled (lowpass 210 Hz), from behind the
+door. A sliver shot shows slippers tapping on the beat. A slip comes back under the door in the user's REAL words: "Love it. / Keep going." He reads it,
+sets the lantern against the door, the music opens (31.4 to 33.2 s), he starts drawing again as the camera pulls out, and the end card is the same words.
+TRUE vs INVENTED: the wall frames and the words on the slip are real; the maker, hall, slippers and door are invented. No Modal spend; all local.
+SOUND (synthesized): near-silent hall, footsteps, pencil, muffled bass through the door, then the full arrangement. CHECKED WITHOUT EARS: -17.5 LUFS,
+peak -9.4 dBFS. Caught: an array-length bug in the audio; the muffling was inaudible until the melody was turned up against the bass; the render
+crashed when the camera zoomed out past the background (PAD=260 black margin added); the first camera was too wide to read him or the wall.
+NOT DONE: not watched in motion, audio unheard; not backed up to Modal library/finals.
