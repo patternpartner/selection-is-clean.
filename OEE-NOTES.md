@@ -26359,3 +26359,54 @@ U: KEEP (not WORSE)
 - The null band is wide again: centredEntropyRatio 0.16-1.34 on seed 302 with only the draw order changed.
 - These runs predate the readout's success counters (b09babb), so they carry no children-per-child figure; the field on
   the user's phone does.
+
+### #298 — THE FALLBACK SWEEP #217o ASKED FOR: one dead mechanism, one missed site, one metric that never existed
+
+The user, after the music experiments turned up the same trap in unrelated code: "sweep the engine for fallbacks".
+#217o named the rung (*a fallback answers in the gene's place*) and the structural question (*which functions return a
+literal fallback when a genome field fails a check?*); two cases had been found, both by accident, and nobody had gone
+looking for the rest. **What moved in the universe: nothing yet.** This entry is instrument work and a list; the one
+change that would move it (finding 1) is a decision for the user and is not made here.
+
+**The instrument, `harness-fallbacks.js`.** It does not search names (trap 5). It wraps every genome object — the
+germline and every `pGenome[i]`, rewrapped each tick — in a Proxy whose `get` trap counts, per gene, reads that find the
+key ABSENT, reads that find null/NaN/inf, and reads of 0 that land on a `||` site (joined to a static list of every
+`<genome>.<gene> ||` read outside `sanitizeGenome`, and split by whether the site's default differs from 0). Read sites
+come from sampled stacks. Separately, seven read sites that return a non-trivial STAND-IN for a gene present in the
+wrong shape (#217n's own shape) are patched in the rig's copy to count gene-vs-stand-in; all seven must match exactly
+once or the rig refuses (#217f). It draws nothing, and that is CHECKED: each seed runs with and without the Proxies and
+the trajectory fingerprint (alive, position sum) must be identical every 500 ticks, or the census exits invalid.
+Seeds 1, 2, 3, `TICKS=3000`: identical on all three.
+
+**Findings, the same on all three seeds:**
+1. **LEAP 9's meta-carry charge (#52/#53) has never been charged to any creature.** `loop()` writes the population's
+   meta magnitude to `genome.__metaMag` on the germline (~27215). `applyEntropy` reads `genome.__metaMag` (21777) AFTER
+   its per-lineage repoint `genome=pGenome[i]||genome` (21747), so it reads the particle's own genome, where the field
+   never exists, and `if(_mm!==undefined&&_mm>0)` skips the charge. MISSING on 1,303,952 / 1,310,710 / 1,308,657 reads,
+   present on 0 living genomes. #217q left `__metaMag` undeclared on purpose as module scratch — right for the census,
+   and the reason nobody saw that its reader and writer look at different objects. Since when: both lines are in the
+   oldest commit of this clone (26 Sep), so "since at least then", probably since it was written. Even working, it would
+   charge every creature the GERMLINE's magnitude, a population-wide constant that no lineage could select on.
+2. **The `__metaMag` sum reads the four virtual objective weights directly** (`genome[_p]` at 27214 over
+   `ATROPHY_SAFE`): `stabilityWeight`, `diversityWeight`, `coherenceWeight`, `churnWeight` live in `objWeights[0..3]`,
+   and #108 fixed exactly this in five atrophy sites with `metaParamGet`. This is a sixth it missed. Harmless only
+   because of finding 1.
+3. **`problemSolvingScore` is written nowhere.** Its one mention is the read `genome.problemSolvingScore||0` (27647),
+   the "lgc" figure in every lineage snapshot and `pulse` event. So "lgc" has been 0 for its whole life: a default
+   answering for a metric that does not exist. Telemetry only; never touches who reproduces.
+
+**Cleared, with the reason (so they are not re-found):** `opStacks` null on ~4M reads — null is its declared value
+("no chains yet", 4103/9819), created on first chain (4166), so a toll of 0 is right. `aim` null — retired by #218j for
+`aims`. `intStepBias`, `rendMaxDepth`, `uaStructBias` missing — lazily created by design (#97/#107, 9801). `totalTicks
+|| tick` — the default is the clock, which is also ~0 when it fires. Thirteen genes read as 0 at an `x||0` site — the
+default equals the value. The seven stand-in sites: every call answered by the gene (oeeW 50/50/50, uaVarW 7/11/7,
+uaProdW 7/7/3, chanStencil 1271/0/32927, cosmosProg 16/15/15); **`verbGate` and `sanitizeDraw`'s stand-ins were never
+reached** — not executed by 3,000 ticks on any seed, which is "not reached at this horizon", not "clean".
+
+**What it cannot see:** a missing field INSIDE a nested gene (`channels[k].rule`), shape fallbacks other than the seven
+patched, and anything a longer horizon or a saved world would reach. Run it on a harvest before calling any gene clean.
+
+**The decision finding 1 needs (put to the user, not made):** DELETE the dead charge and its computation (byte-identical
+by construction, verifiable — CLAUDE.md's "remove" option, and the honest one for a mechanism that has never run), or
+REVIVE it per lineage (each creature billed for its OWN meta magnitude, so lineages could be selected on it), which is a
+new mechanism changing every run and goes through the retire-or-prove template, pre-registered, unseen seeds.
