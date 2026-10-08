@@ -42,16 +42,19 @@ def to_world(x, y, th, lx, lf):
 
 
 def person(d, kind, x, y, th, k, phase=0.0, stride=0.0, swing=0.0, bob=0.0, head_yaw=0.0, lean=0.0,
-           armL=None, armR=None, propL=None, propR=None, slump=0.0, alpha=255):
+           armL=None, armR=None, propL=None, propR=None, slump=0.0, alpha=255, pal=None, sun=None):
     """x, y: screen position of the body centre. k: pixels per world unit (already includes the 2x). armL/armR: None for the natural swing,
     or a body-local hand target (lx, lf) in world units. propL/propR: 'coffee' | 'phone' | 'watch' | None."""
-    P = PEOPLE[kind]
+    P = pal if pal is not None else PEOPLE[kind]
     f = (math.sin(th), -math.cos(th)); r = (math.cos(th), math.sin(th))
     def T(lx, lf):
         wx, wy = to_world(0, 0, th, lx, lf); return (x + wx * k, y + wy * k)
     sx, sy = sh(k)
-    # shadow
-    poly_ellipse(d, x + sx, y + sy, 33 * k, 21 * k, th, (0, 0, 0, 52))
+    # shadow: a fixed offset by default; with `sun` = (dx, dy, length) it is cast along the sun's direction and stretches when the sun is low
+    if sun is None: poly_ellipse(d, x + sx, y + sy, 33 * k, 21 * k, th, (0, 0, 0, 52))
+    else:
+        dx_, dy_, ln_ = sun; a_ = math.atan2(dy_, dx_)
+        poly_ellipse(d, x + dx_ * k * 0.55, y + dy_ * k * 0.55, (24 + ln_ * 0.55) * k, 19 * k, a_, (0, 0, 0, 58))
     # feet (stride along forward, opposite feet opposite phase)
     s = math.sin(phase) * stride
     for side, off in ((-1, s), (1, -s)):
@@ -83,8 +86,9 @@ def person(d, kind, x, y, th, k, phase=0.0, stride=0.0, swing=0.0, bob=0.0, head
         d.ellipse([ex - 4 * k, ey - 4 * k, ex + 4 * k, ey + 4 * k], fill=P['skin'] + (255,))
     nx, ny = hc[0] + math.sin(hh) * 15 * k, hc[1] - math.cos(hh) * 15 * k
     d.ellipse([nx - 3.5 * k, ny - 3.5 * k, nx + 3.5 * k, ny + 3.5 * k], fill=P['skin'] + (255,))
-    poly_ellipse(d, hc[0], hc[1], 17.5 * k, 17.5 * k, hh, P['hat'] + (255,), INK)
-    poly_ellipse(d, hc[0] - math.sin(hh) * 3 * k, hc[1] + math.cos(hh) * 3 * k, 12 * k, 12 * k, hh, P['hat2'] + (255,))
+    hr = 16.0 if P.get('bare') else 17.5
+    poly_ellipse(d, hc[0], hc[1], hr * k, hr * k, hh, P['hat'] + (255,), INK)
+    poly_ellipse(d, hc[0] - math.sin(hh) * 3 * k, hc[1] + math.cos(hh) * 3 * k, (9.5 if P.get('bare') else 12) * k, (9.5 if P.get('bare') else 12) * k, hh, P['hat2'] + (255,))
     if P.get('brim'):
         b0 = (hc[0] + math.sin(hh) * 10 * k, hc[1] - math.cos(hh) * 10 * k)
         b1 = (hc[0] + math.sin(hh) * 26 * k, hc[1] - math.cos(hh) * 26 * k)
