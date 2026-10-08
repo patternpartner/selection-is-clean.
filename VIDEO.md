@@ -1171,3 +1171,19 @@ id), so what the user records from the window can be cut into films. Tested with
 call: upload, db row, save with the right file, shelf listing - 0 errors. Still untested on the user's own device.
 FIRST READ OF THE USER'S EAR (window/state, 8 Oct): 31 turns, 5 keeps, 12 skips. Favourite #7 (kept 2x, score 5.6):
 A4 D5 F5 E5 C5 D5 C5 D5 F5 - the busier tune that climbs back up at the end. Too few verdicts to call a taste.
+
+### Its Own Ears (`video/its_own_ears.html`) - the system's own ears select
+https://claude.ai/artifact/FvKH8tzvWrPsw1GD15XuSh (private; db `ears/state`, downloads, assets). The user: "Or we give
+the system the ears" ... "Yes build it". 16 tunes, 8 listeners. A listener enjoys a tune by its LEARNING PROGRESS (how
+much better it predicts the tune after hearing it, through a heritable lens over interval / rhythm / register channels,
+order-k Markov models; all forget 3% a turn, not heritable). Ears select tunes; every 10 turns the most bored ear is
+replaced by a mutated copy of a curious one (memory copied). Nobody outside chooses; touching panes only plays notes.
+The world is saved and carries on between visits (snapshot plateaus ~95 KB thanks to forgetting). Same window, sound,
+recording and shelf as Selected by Ear.
+TESTED (video/tests/its_own_ears_novelty.md): run 1 CONFOUNDED by a real bug - an off-grid split (1.5 -> .75 + .75) that
+validity accepted and the saved form corrupted, plus a fallback that cloned the parent when nothing new could be made;
+clones took over the drift control (fallback on 80% of turns). Fixed in BOTH pages (the user's Selected by Ear tunes
+checked: none corrupted). Run 2 inconclusive (the measure averaged over arrivals and could not see "nothing arrives").
+Experiment 2, pre-registered, unseen seeds: the measure works (liking the familiar collapses to 0); curious ears are NO
+BETTER THAN DRIFT at keeping novelty arriving - they never collapse, and on every seed the ears evolve to hear melodic
+intervals with a two-note memory: they steer which novelty, not how much. Sound -14.0 LUFS, 87/87 at pitch, 0 clicks.

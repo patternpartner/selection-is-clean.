@@ -46,3 +46,14 @@ of archive novelty over the tunes that joined in that window (0 when nothing joi
 Same rule: step 0 = `familiar` late flow below every `random` null on >= 2/3 seeds, else INCONCLUSIVE; step 1 =
 `curious` late flow beyond / within / below every `random` null on >= 2/3 seeds -> BEYOND DRIFT / NO BETTER THAN DRIFT /
 SLOWS NOVELTY, mixed -> SPLIT. Reported: trend (late / second window) per arm.
+
+## Experiment 2 result (seeds 41-43, 2000 turns, rule unchanged)
+Step 0 PASSES: `familiar` late flow 0.00 / 0.01 / 0.00, below every `random` null (1.55-2.63) on 3/3 - the measure sees
+collapse. Step 1: `curious` late flow 2.27 / 1.57 / 1.93 vs null bands 2.02-2.55 / 1.55-2.63 / 2.11-2.50: within, within,
+below -> NO BETTER THAN DRIFT. Trend (late / second window): curious 1.25 / 0.73 / 0.98; random roughly flat.
+Reading: curiosity keeps novelty arriving (it never collapses, unlike liking the familiar) but no faster than chance;
+the ears are choosier (~1200 tunes admitted vs ~1650), so each arrival is a little further from the past (run 2) but less
+arrives. What they change is WHICH novelty: on every seed the ears converge on the same lens, intervals with a two-note
+memory - left to evolve, they learn to listen for the shape of the melody. A negative result at this rung; not tuned to
+pass. Candidate follow-ups (each needs its own pre-registration): ears that attend to only part of the population
+(niches), and novelty judged against each ear's own history.
