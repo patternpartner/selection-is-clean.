@@ -1455,3 +1455,31 @@ frames I labelled 22.35 were scene 20.95 until I noticed. The two men walked awa
 comes 2 s earlier and both men watch him pass. A first sound pass crashed on a 0.12 s vs 0.13 s array mismatch.
 NOT DONE: no pose sheet at full size for the splat (the figures are small in that shot); the two men are identical in gait; the
 child's whistle is four notes; not backed up to Modal library/finals.
+
+### Next (`video/build_queue.py` + `video/door_draw.py`, `out/queue/next.mp4` and `next-share.mp4`, 38.8 s, 720x1280, silent comedy with synthesized sound)
+THE USER on After You: "Keep going love this." The third in the top-down series, and the first with a CROWD: 54 people. Zero Modal cost,
+~5 min to render. THE JOKE: a man in a red coat joins the back of a very long queue that spirals in to a little pod at the middle. He asks the
+person in front what it is for; the question goes up the line as a ripple of people turning round (lit yellow as it passes), and the answer comes back
+down it as a ripple of shrugs (lit blue): nobody knows. The day passes while the whole line shuffles forward like a conveyor: the shadows swing right
+round the sun (long to the west in the morning, short at noon, long to the east in the evening), it rains and umbrellas open in a wave along the
+spiral and close the same way, it gets dark and the lamps and the pod come on. He reaches the pod, goes through it, comes out of a glass tunnel that
+runs straight back to the START of the line, and he is at the back of the queue again. The camera rises and it is a ring of people, a mandala of
+red ropes. A child in a yellow raincoat walks up and asks him what it is for. He shrugs.
+HOW IT IS BUILT. The queue is ONE CLOSED CHAIN: 54 slots round a loop (the Archimedean spiral of 2.5 turns, 3,386 px; then straight through the pod and
+along the tunnel, 430 px; total 3,816 px, 70.7 px a slot). One gap is left at the start of the line, where the red man arrives and stands (5 s). Each
+"event" moves everyone on one slot, as a RIPPLE THAT STARTS AT THE FRONT and runs backwards down the line (0.04 s a slot), so people at the back
+start moving two seconds after the front has gone; the events are timed by the inverse of a smoothstep so the line shuffles slowly, rushes in the
+middle (the time-lapse) and slows to a stop as he arrives. People in the pod and tunnel step first. Every person has an independent set of
+gestures (phone, stretch, look round, sway, check the time, wave) at random times. Shadows are cast along the sun's direction and stretch when it
+is low (door_draw.person takes `sun=(dx,dy,length)` now, and `pal=` for random palettes). The red man has a unique coat and a faint ring so he can be
+followed in a wide shot; no one else wears red, because in the first look half the crowd did and he was lost.
+SOUND (synthesized, from the film's own events): a footstep for every gait contact, quiet when far and loud when the camera is near; birds in the
+morning; the question's ripple is a rising run of plucks up the line and the answer's ripple a descending run back down it; the score is a marimba
+note on every shuffle, so it is the queue's own rhythm and it speeds up and slows with it; rain, and a pop for each umbrella; crickets at night; a
+warm chord as the camera rises on the loop; the child's exchange uses the same two notes as the first. CHECKED WITHOUT EARS: -18.9 LUFS (the first mix was
+-10.6: 5,877 footsteps are a roar; the far steps were turned down), no transient above 25x its neighbourhood, spectrogram shows the birds, the rising
+run, the dense middle, the chord, the crickets. Whether it is funny and whether the sound is pleasant is for the user to say; not watched in motion.
+Caught: the question's head-turn was invisible at wide-shot size (it is now a whole-body turn plus a travelling glow); the red man was lost in the
+crowd; two array-length bugs in the sound; the title and the ending (the loop reveal had 1.5 s; it now has 3).
+NOT DONE: the pod's inside is only a counter and a painted NEXT; nothing happens to the others (the same 53 people loop, and the film never says so);
+all gaits are one cycle; not backed up to Modal library/finals; 28.9 MB master (the share copy is under 15 MB).
