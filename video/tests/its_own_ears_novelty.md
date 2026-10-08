@@ -20,3 +20,29 @@ RULE:
     novelty (converge). Mixed -> SPLIT, say so.
  2. Reported, not ruled on: the trend (late / second window) for each arm, so "keeps arriving" vs "running down" is
     visible; population diversity; which lenses the listeners evolved.
+
+## Run 1 (8 Oct) - CONFOUNDED BY A BUG, kept on record
+The `random` null collapsed to zero novelty and zero diversity on every replicate. Cause, found by counting rejection
+reasons: a split mutation could make off-grid lengths (1.5 -> .75 + .75) that validG accepted; the saved form rounds
+lengths to the half-beat grid, so the stored tune no longer summed to two bars; every mutant of it was then invalid
+(7,080 of 7,283 attempts in 300 turns), and the fallback in propose() returned an unchanged copy of the parent, so clones
+took over (fallback on 80% of turns in `random`, 7% in `curious`). A fallback answering in place of the mechanism - the
+CLAUDE.md trap. Fixed: splits stay on the grid, validG requires it, and when nothing new can be proposed an existing tune
+plays again (`stuck`, counted) instead of a clone joining. The same split and fallback were in Selected by Ear: fixed
+there too; the user's 12 saved tunes were checked and none was corrupted.
+
+## Run 2 (same rule, bug fixed, same seeds)
+Step 0 FAILS: `familiar` admits nothing after the first window on seeds 31 and 32 (late window NaN: no arrivals to
+average) and on seed 33 its few rare arrivals score high (6.50). The measure, an AVERAGE over arrivals, cannot express
+"nothing arrives". Verdict by the rule: INCONCLUSIVE.
+Reported only: `curious` late window 2.49 / 3.60 / 3.41 vs null bands 2.72-3.24 / 2.09-2.81 / 2.52-3.18 (below on 31,
+beyond on 32 and 33); over all windows curious averages ~0.4-0.6 slots more per arrival than drift. Neither curious nor
+drift runs down over 2000 turns. `stuck` 0-4 per run. Curious arm admits ~1200 tunes vs drift ~1650. The ears converge
+on the same lens on every seed: INTERVALS, memory 2 (one seed also memory 1).
+
+## Experiment 2 (pre-registered after run 2, before running it): NOVELTY FLOW
+Same page, arms and controls; UNSEEN seeds 41, 42, 43; 2000 turns. MEASURE: novelty flow per 250-turn window = the SUM
+of archive novelty over the tunes that joined in that window (0 when nothing joins), divided by 250 (novelty per turn).
+Same rule: step 0 = `familiar` late flow below every `random` null on >= 2/3 seeds, else INCONCLUSIVE; step 1 =
+`curious` late flow beyond / within / below every `random` null on >= 2/3 seeds -> BEYOND DRIFT / NO BETTER THAN DRIFT /
+SLOWS NOVELTY, mixed -> SPLIT. Reported: trend (late / second window) per arm.

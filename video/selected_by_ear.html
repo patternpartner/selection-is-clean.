@@ -220,7 +220,8 @@ const dec = a => a.map(([b, i, l]) => ({ b: b / 2, i, l: l / 2 }));
 const tuneStr = g => g.map(n => MEL[n.i]).join(" ");
 const sameTune = (a, b) => JSON.stringify(enc(a)) === JSON.stringify(enc(b));
 function validG(g) {
-  let t = 0; for (const n of g) { if (Math.abs(n.b - t) > 1e-6 || n.l < .5 || n.i < 0 || n.i >= MEL.length) return false; t += n.l; }
+  // every length on the half-beat grid: an off-grid length (a split 1.5 -> .75 + .75) was corrupted by the saved form
+  let t = 0; for (const n of g) { if (Math.abs(n.b - t) > 1e-6 || n.l < .5 || Math.abs(n.l * 2 - Math.round(n.l * 2)) > 1e-6 || n.i < 0 || n.i >= MEL.length) return false; t += n.l; }
   return Math.abs(t - 8) < 1e-6 && g.length >= 3 && g.length <= 11;
 }
 function restamp(g) { let t = 0; for (const n of g) { n.b = t; t += n.l; } return g; }
@@ -249,7 +250,8 @@ function Breeder(seed, saved) {
     let k = Math.floor(R() * g.length);
     for (let tries = 0; tries < 3 && g[k].b < 2 && R() > .25; tries++) k = Math.floor(R() * g.length);
     if (op < .32) g[k].i += pick([-2,-1,-1,1,1,2]);
-    else if (op < .48 && g[k].l >= 1) { const h = g[k].l / 2; g.splice(k + 1, 0, { b: 0, i: g[k].i + pick([-1,1,2,-2]), l: h }); g[k].l = h; }
+    else if (op < .48 && g[k].l >= 1) { const first = Math.max(.5, Math.floor(g[k].l) / 2), second = g[k].l - first;   // stays on the half-beat grid
+      g.splice(k + 1, 0, { b: 0, i: g[k].i + pick([-1,1,2,-2]), l: second }); g[k].l = first; }
     else if (op < .6 && k + 1 < g.length) { g[k].l += g[k + 1].l; g.splice(k + 1, 1); }
     else if (op < .74) { const e = Math.min(g.length, k + 2 + Math.floor(R() * 2)), d = pick([-1,1]); for (let j = k; j < e; j++) g[j].i += d; }
     else if (op < .86 && k + 1 < g.length) { const l = g[k].l; g[k].l = g[k + 1].l; g[k + 1].l = l; }
@@ -287,7 +289,8 @@ function Breeder(seed, saved) {
       if (!validG(g) || singable(g) < 1.1 || S.pop.some(p => sameTune(dec(p.notes), g))) continue;
       viable.push(g);
     }
-    let g = viable.length ? pick(viable) : base.map(o => ({ ...o }));   // chance proposes; the ear decides
+    if (!viable.length) return asTurn(tournament(), "again");          // nothing new to offer: never a clone
+    let g = pick(viable);                                               // chance proposes; the ear decides
     for (const w of pending.splice(0)) {
       let j = 0, bd = 99; g.forEach((n, k) => { const d = Math.abs(n.b - w.b); if (d < bd) { bd = d; j = k; } });
       g[j].i = w.i; g[j].you = true;
