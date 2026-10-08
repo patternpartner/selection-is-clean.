@@ -1204,6 +1204,15 @@ const CARRY_COST_ATOM=0.0000040;  // amp/tick per carried atom in the bank
 costs are deliberately structural constants precisely because a cost gene would be evolved to zero.
 `metabolicCost` remaining a gene is a legacy holdover, not an oversight in principle.
 
+**CORRECTED BY #298: the META half was never acted on.** `CARRY_COST_META` never reached a creature:
+`loop()` wrote `genome.__metaMag` on the germline and `applyEntropy` read it after repointing `genome` to
+the particle's own genome, where it never exists, so the charge was skipped on every read (about 1.3M a
+run, `harness-fallbacks.js`, seeds 1-3). #298 removed it (behaviour byte-identical, checked). So LEAP 9's
+principle has been applied to ATOMS (`CARRY_COST_ATOM`, which reads the particle's own bank and works) but
+NEVER to the meta-influence layer whose 4-5x inflation motivated it. A working version would have to bill
+each creature its OWN meta magnitude; billing the germline's number, as written, is a population-wide
+constant nothing could select on.
+
 **And it matters directly for the atom arc: carrying an atom is NOT free.** `CARRY_COST_ATOM` charges
 0.000004 amp/tick per atom in the bank, structurally, un-dodgeable. Combined with #83's finding of no
 benefit, an authored atom is a small **net negative** to its carrier — which is consistent with the
@@ -1411,7 +1420,8 @@ exempt from being atrophied.
 **[inferred]** This is the machinery that produces `_growFactor` / `_shrinkFactor` in the mutation
 operators — i.e. the system's self-assessment feeds back into how hard it creates and culls structure.
 It is also the layer LEAP 9 measured as *losing*: 1472 atrophy cuts fired while the layer it judged grew
-4–5×, which is why `CARRY_COST_META` was added as a structural charge rather than trusting the verdict.
+4–5×, which is why `CARRY_COST_META` was added as a structural charge rather than trusting the verdict. (#298: added, but it never
+charged anyone - see the correction under LEAP 9 above - and was removed.)
 
 ---
 

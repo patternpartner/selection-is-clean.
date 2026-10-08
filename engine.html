@@ -4640,7 +4640,7 @@ const TEND_TOLL=0.010;              // amp charged per tick per unit beyond the 
 // judges is losing; the pressure that charges wins. So carried machinery is now billed at the same
 // per-unit economy instructions already pay. STRUCTURAL, not a gene — a self-cost gene gets evolved to
 // zero to dodge the bill while keeping the bloat.
-const CARRY_COST_META=0.0000009;    // amp/tick per unit of summed meta-influence magnitude
+// CARRY_COST_META removed in #298 with the meta charge it priced (the charge never reached a creature).
 const CARRY_COST_ATOM=0.0000040;    // amp/tick per carried atom in the bank
 
 // LEAP 10 — HYBRIDISATION. Crossover is gated to within-lineage whenever isolation is on, so once
@@ -9804,7 +9804,7 @@ let genome={
   //     the gating, which is a design decision and not an oversight.
   //   coupling -- per-peer flow INSTRUMENTATION rebuilt from network state, not a heritable trait.
   //     Declaring it would file telemetry in the genome census as a gene.
-  //   __metaMag -- internal scratch, underscore-prefixed by the file's convention for module scratch.
+  //   __metaMag -- was internal scratch; removed in #298 with the dead charge that read it.
   // === #217q: THE LAST SEVEN, DECLARED WITH THEIR OWN INITIALISERS ===
   // #217l declared 57 and named nine it skipped as structures with bespoke initialisation. #217n took
   // two of those (uaProdW, uaVarW) because the census reported them ABSENT. These are the remaining
@@ -21774,8 +21774,13 @@ function applyEntropy(){
       // meta layer inflated 4-5x THROUGH 1472 atrophy cuts because its coefficients were free; the
       // opcode layer concentrated onto a 5-op core with no pruner because instructions cost amp. This
       // charges the bloat rather than judging it, which is the pressure that demonstrably works here.
-      {const _mm=genome.__metaMag;
-       if(_mm!==undefined&&_mm>0)amp[i]-=_mm*CARRY_COST_META;
+      // #298 REMOVED THE META HALF OF THIS CHARGE, which had never been charged to any creature: loop()
+      // wrote genome.__metaMag on the GERMLINE, and this line read genome.__metaMag after the per-lineage
+      // repoint above (genome=pGenome[i]), where the field never exists, so the charge was skipped on
+      // every read (harness-fallbacks: ~1.3M reads a run, MISSING on all, seeds 1-3). Removed, not revived:
+      // working, it would bill every creature the germline's number, which no lineage can select on. The
+      // atom levy below (FIX #53) reads the particle's own genome and is unaffected.
+      {
        // FIX (#53) — charge the BLOAT, not the working machinery. Measured: wave 2 showed 162 atom uses
        // at 6k and 0/0 by 20k. LEAP 9's per-atom levy was taxing out of existence exactly what LEAP 7
        // had just switched on — two leaps in one wave pulling against each other. An atom that has been
@@ -27209,11 +27214,9 @@ function loop(){
     selfModel.population=alive;
 
     selfModel.avgAmplitude=alive>0?totalAmp/alive:0;
-    // LEAP 9 (#52) — measure the machinery the population is carrying, so it can be billed for it.
-    try{ let _mm=0;
-      if(typeof ATROPHY_SAFE!=='undefined')for(const _p of ATROPHY_SAFE){const _v=genome[_p]; if(isFinite(_v))_mm+=_v<0?-_v:_v;}
-      genome.__metaMag=_mm;
-    }catch(e){ genome.__metaMag=0; }
+    // #298: the LEAP 9 meta magnitude computed here fed only the charge removed in applyEntropy (its reader
+    // looked at a different genome). It also read the four virtual objective weights as genome[p], the site
+    // #108 missed. Both went with the charge.
     selfModel.avgResonance=alive>0?totalRes/alive:0;
     // Pe128 Layer 117: spatial spread — 2D std dev of particle positions, normalized.
     if(alive>1){const _mX=_sumX128/alive,_mY=_sumY128/alive;const _vX=_sumX2128/alive-_mX*_mX,_vY=_sumY2128/alive-_mY*_mY;selfModel.spatialSpread=Math.sqrt(Math.max(0,_vX+_vY))/Math.sqrt(W*W+H*H);}
@@ -27644,10 +27647,11 @@ function loop(){
     const compCount=genome.vmProgram.filter(i=>i[0]===3).length;
     const memCount=genome.vmProgram.filter(i=>i[0]===6||i[0]===7).length;
     const op1Count=genome.vmProgram.filter(i=>i[0]===1).length;
-    const _pss144snap=+(genome.problemSolvingScore||0).toFixed(3);
-    genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3))),lgc:_pss144snap,op3:compCount,op1:op1Count});  // Pe144: lgc=problemSolvingScore, op3/op1=vmProgram architecture snapshot
+    // #298: "lgc" (problemSolvingScore) removed from the snapshot and the pulse event: nothing in the engine ever
+    // wrote problemSolvingScore, so it recorded the || 0 default for its whole life.
+    genome.lineage.push({t:genome.totalTicks,p:selfModel.population,c:selfModel.clusterCount,d:+(selfModel.diversity.toFixed(3)),f:+(currentFitness.toFixed(3)),s:+(selfModel.stability.toFixed(3)),w:genome.objWeights.map(v=>+(v.toFixed(3))),op3:compCount,op1:op1Count});  // Pe144: op3/op1=vmProgram architecture snapshot (lgc removed in #298)
     if(genome.lineage.length>6)genome.lineage.shift();
-    recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2),lgc:_pss144snap},1800);  // Pe144: lgc in event log
+    recordEvent('pulse',{p:selfModel.population,c:selfModel.clusterCount,f:+currentFitness.toFixed(2),s:+(selfModel.stability||0).toFixed(2)},1800);
     epochSample(selfModel.population,currentFitness,selfModel.clusterCount,selfModel.diversity); // full-arc summary accrues here
     saveGenome();
     let plasmidParticles=0,totalPlasmids=0;

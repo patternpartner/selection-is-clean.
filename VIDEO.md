@@ -1236,3 +1236,16 @@ against 8%. The film shows what one look can do, not how often. The no-look twin
 Checked: stills at eight points at full size (found the stranger hard to track -> pulse ring; the thread started inside the
 visitor's face -> moved below the eyes); the finished MP4 sampled at eight times. NOT checked: it has not been watched in
 motion, and with no sound the pacing is untested against a track. Not backed up to Modal library/finals.
+
+### The One You Kept (`video/build_kept.py` + `video/kept_moves.json`, `out/the-one-you-kept.mp4`, 64.6 s, 720x1280)
+8 Oct: the user sent three new own-likeness blue-screen clips (u172 jumps, u173 run + leap, u174 disco; catalogued with
+`moves`) and: "Make something with them, your choice." The music is the tunes the user's ear KEPT in Selected by Ear,
+read from that window's database, in birth order: the first tune -> #3 -> #12 -> #7 (kept twice; four of the living
+twelve are its children) -> #18 (a cross with #7) -> #39 (#7's child) -> #7 again -> one low D ringing. Played by the
+window's own instrument (out/still/notes), no borrowed song; 80 bpm, 6 s phrases, the same arranger as the page.
+He starts as himself (keyed, dim) in a dark window; the first time a pane's note is struck, that pane turns to glass
+inside his silhouette, his own shading under it and his face kept lighter; the leading belongs to the glass. Moves cut
+on the phrases: stand / arms rising / dancing slowed so it floats / the jumps on #7's arpeggios / running through #18 and
+#39 / the leap, slow, while #7 returns / the glass lets go and he stands grinning, himself, before the card.
+Checks: 18/18 isolated notes at pitch, 0 clicks, -15.2 LUFS final. Fixed before render: the card faded in before the
+glass let go (no "himself again"); glass painted over his face; the leading stayed on him with no glass.
