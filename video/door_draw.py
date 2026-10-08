@@ -111,11 +111,21 @@ def person(d, kind, x, y, th, k, phase=0.0, stride=0.0, swing=0.0, bob=0.0, head
             cx_, cy_ = hand
             d.polygon([(cx_ - 4 * k, cy_), (cx_ + 4 * k, cy_), (cx_, cy_ + 13 * k)], fill=(214, 168, 100, 255), outline=INK)
             d.ellipse([cx_ - 7 * k, cy_ - 8 * k, cx_ + 7 * k, cy_ + 5 * k], fill=(244, 150, 190, 255), outline=INK)
+        elif prop == 'lantern':
+            c_ = hand; d.ellipse([c_[0] - 9 * k, c_[1] - 9 * k, c_[0] + 9 * k, c_[1] + 9 * k], fill=(255, 206, 108, 255), outline=INK); d.ellipse([c_[0] - 4 * k, c_[1] - 4 * k, c_[0] + 4 * k, c_[1] + 4 * k], fill=(255, 244, 200, 255))
+        elif prop == 'pencil':
+            c_ = hand; a_ = th - 0.6; e_ = (c_[0] + math.sin(a_) * 15 * k, c_[1] - math.cos(a_) * 15 * k); d.line([c_, e_], fill=(240, 196, 60, 255), width=max(1, int(3 * k))); d.line([e_, (e_[0] + math.sin(a_) * 4 * k, e_[1] - math.cos(a_) * 4 * k)], fill=(40, 40, 46, 255), width=max(1, int(2 * k)))
+        elif prop == 'card':
+            c_ = hand
+            pts = []
+            for lx, lf in ((-6, -9), (6, -9), (6, 9), (-6, 9)):
+                wx, wy = to_world(0, 0, th, lx, lf); pts.append((c_[0] + wx * k, c_[1] + wy * k))
+            d.polygon(pts, fill=(246, 242, 232, 255), outline=INK)
         elif prop == 'bag':
             d.rounded_rectangle([hand[0] - 7 * k, hand[1] - 9 * k, hand[0] + 7 * k, hand[1] + 9 * k], radius=2 * k, fill=(236, 214, 150, 255), outline=INK)
         elif prop == 'watch':
             d.ellipse([hand[0] - 3 * k, hand[1] - 3 * k, hand[0] + 3 * k, hand[1] + 3 * k], fill=(230, 230, 236, 255))
-        d.ellipse([hand[0] - 5 * k, hand[1] - 5 * k, hand[0] + 5 * k, hand[1] + 5 * k], fill=P['skin'] + (255,), outline=INK) if prop in (None, 'watch', 'icecream', 'bag') else None
+        d.ellipse([hand[0] - 5 * k, hand[1] - 5 * k, hand[0] + 5 * k, hand[1] + 5 * k], fill=P['skin'] + (255,), outline=INK) if prop in (None, 'watch', 'icecream', 'bag', 'lantern', 'pencil', 'card') else None
     return hL, hR
 
 
