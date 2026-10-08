@@ -3,10 +3,8 @@
 <canvas id="c" width="720" height="1280"></canvas>
 <script>
 /* The Looked At world (video/looked_at.html) stepped under a camera, one frame per call.
-   The simulation rules are copied from that page. The only additions are the scripted hero stranger and the visitor's look. */
+   The simulation rules are copied from that page. Care/mutual genes as in video/tests/looked_at_care.md. Added: a scripted stranger, a visitor that is itself a pair in the simulation, and a second stranger. */
 const W=360,H=640,SC=2,WARM=5000;
-let LOOK_F=380;
-function tpf(f){const t=f-LOOK_F;return(t>=40&&t<130)?1:(t>=130&&t<170)?2:3}
 const cv=document.getElementById('c');let ctx=cv.getContext('2d');const MAIN=ctx;
 const lay=document.createElement('canvas');lay.width=720;lay.height=1280;const LCTX=lay.getContext('2d');
 let seed=1;
@@ -19,7 +17,7 @@ for(let i=0;i<HB;i++){const s=document.createElement('canvas');s.width=s.height=
   gr.addColorStop(0,'hsla('+h+',30%,98%,1)');gr.addColorStop(.12,'hsla('+h+',70%,72%,.85)');gr.addColorStop(.4,'hsla('+h+',80%,50%,.22)');gr.addColorStop(1,'hsla('+h+',80%,40%,0)');
   g.fillStyle=gr;g.fillRect(0,0,128,128);sprites.push(s)}
 const CAP=110,SEE=240,G=0.0006,U=0.0006;
-let pairs,nextId,tick,hero,visitor,F;
+let pairs,nextId,tick,hero,newc,vis,F,hbFlag,events;
 let CARE=false;
 function newGenome(){const g={near:rnd()*2-1,bright:rnd()*2-1,hueAff:rnd()*2-1,sepAff:rnd()*2-1,pull:rnd()*1.2-.3,hue:rnd()*360,sep:8+rnd()*22};
   if(CARE){g.care=rnd()*2-1;g.mutual=rnd()*2-1}return g}
@@ -27,19 +25,23 @@ function mutate(g){const m=.12;const o={near:clamp(g.near+gauss()*m,-1,1),bright
   if(g.care!==undefined){o.care=clamp(g.care+gauss()*m,-1,1);o.mutual=clamp(g.mutual+gauss()*m,-1,1)}return o}
 function make(g,x,y,e,root){const id=nextId++;return{id,root:root||id,g,x,y,vx:0,vy:0,e,ang:rnd()*6.283,tgt:null,att:0,age:0,dying:0,flare:1,wob:rnd()*100,blink:rnd()*300,attEma:1}}
 function addStranger(){const p=make(newGenome(),40+rnd()*(W-80),40+rnd()*(H-80),.5);p.flare=1.6;p.stranger=1;pairs.push(p)}
+let visOn=false;
 function step(){
   tick++;const n=pairs.length;
   for(let i=0;i<n;i++){const q=pairs[i];q.attEma=q.attEma*.98+q.att*.02;q.att=0}
-  for(let i=0;i<n;i++){const p=pairs[i];if(p.dying)continue;let best=-1e9,bt=null;const g=p.g;
-    for(let j=0;j<n;j++){if(j===i)continue;const q=pairs[j];if(q.dying)continue;
+  if(vis)vis.tgt=(visOn&&hero&&!hero.dying)?hero:null;
+  for(let i=0;i<n;i++){const p=pairs[i];if(p.dying||p.vis)continue;let best=-1e9,bt=null;const g=p.g;
+    for(let j=0;j<n;j++){if(j===i)continue;const q=pairs[j];if(q.dying)continue;if(q.vis&&p!==hero)continue;
       const dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;if(d2>SEE*SEE)continue;
       const d=Math.sqrt(d2);let dh=Math.abs(q.g.hue-g.hue);if(dh>180)dh=360-dh;
       const s=g.near*(1-d/SEE)+g.bright*(q.e-.5)*2+g.hueAff*(1-dh/90)+g.sepAff*((q.g.sep-20)/14)+(((p.id*31+q.id*17)%7)-3)*.015+(g.care!==undefined?g.care*clamp(1-q.attEma/2,0,1)+g.mutual*(q.tgt===p?1:0):0);
       if(s>best){best=s;bt=q}}
     p.tgt=bt;if(bt)bt.att+=1}
-  if(visitor&&hero&&!hero.dying)hero.att+=3.5;
+  /* the visitor is a pair: its gaze is on the stranger, worth what a press is worth (3.5 a tick) */
+  if(vis&&vis.tgt)vis.tgt.att+=3.5;
   const crowd=Math.max(1,n/CAP),born=[];
   for(const p of pairs){
+    if(p.vis)continue;
     p.age++;p.flare+=(1-p.flare)*.04;if(p.dying){p.dying++;continue}
     p.e+=(p.att*G-U*crowd);
     const t=p.tgt;let ax=Math.cos(tick*.011+p.wob)*.012,ay=Math.sin(tick*.0093+p.wob*1.3)*.012;
@@ -51,43 +53,58 @@ function step(){
     if(p.e>=1&&pairs.length+born.length<CAP+20){p.e=.5;p.flare=1.8;const c=make(mutate(p.g),p.x+gauss()*8,p.y+gauss()*8,.5,p.root);c.flare=1.8;c.vx=gauss()*1.2;c.vy=gauss()*1.2;born.push(c)}
     if(p.e<=0)p.dying=1;
   }
-  for(let i=0;i<n;i++){const a=pairs[i];if(a.dying)continue;for(let j=i+1;j<n;j++){const b=pairs[j];if(b.dying)continue;const dx=b.x-a.x,dy=b.y-a.y,d2=dx*dx+dy*dy;if(d2<1600&&d2>.01){const d=Math.sqrt(d2),f=(40-d)/40*.05;a.vx-=dx/d*f;a.vy-=dy/d*f;b.vx+=dx/d*f;b.vy+=dy/d*f}}}
+  for(let i=0;i<n;i++){const a=pairs[i];if(a.dying||a.vis)continue;for(let j=i+1;j<n;j++){const b=pairs[j];if(b.dying||b.vis)continue;const dx=b.x-a.x,dy=b.y-a.y,d2=dx*dx+dy*dy;if(d2<1600&&d2>.01){const d=Math.sqrt(d2),f=(40-d)/40*.05;a.vx-=dx/d*f;a.vy-=dy/d*f;b.vx+=dx/d*f;b.vy+=dy/d*f}}}
   for(const c of born)pairs.push(c);
-  pairs=pairs.filter(p=>p.dying<50||p===hero);
+  pairs=pairs.filter(p=>p.dying<50||p===hero||p===newc||p.vis);
+  if(!hbFlag&&tick%75===0)hbFlag=1;
   if(pairs.length<40||(tick%330===0&&rnd()<.9))addStranger();
 }
 
-/* ---- the film ---- */
-const T_ARRIVE=165;      /* frame the hero arrives (5.5 s) */
-const FRAMES=900,CARD_AT=900,TOTAL=900+112;
-function init(s,lookF,o){o=o||{};CARE=!!o.care;seed=s>>>0;for(let k=0;k<(o.shift||0);k++)rnd();pairs=[];nextId=1;tick=0;hero=null;visitor=false;F=0;LOOK_F=lookF||380;
+/* ---- the film (frames at 30 fps) ---- */
+const T_ARRIVE=150,LOOKLEN=400;
+let LOOK_F=340,NEW_F=770,FRAMES=985,CARD_AT=985,TOTAL=985+112;
+function tpf(f){const t=f-LOOK_F;return(t>=40&&t<130)?1:(t>=130&&t<170)?2:3}
+const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+function init(s,lookF,o){o=o||{};CARE=o.care!==false;seed=s>>>0;for(let k=0;k<(o.shift||0);k++)rnd();pairs=[];nextId=1;tick=0;hero=null;newc=null;vis=null;visOn=false;F=0;LOOK_F=lookF||340;NEW_F=LOOK_F+LOOKLEN+30;FRAMES=NEW_F+215;CARD_AT=FRAMES;TOTAL=FRAMES+112;events=[];hbFlag=0;
   for(let i=0;i<70;i++)pairs.push(make(newGenome(),40+rnd()*(W-80),40+rnd()*(H-80),.4+rnd()*.3));
   for(let i=0;i<WARM;i++)step()}
+function emptiest(cx,cy,r0,r1,ylo,yhi){let best=null,bd=-1;for(let k=0;k<48;k++){const a=k*2.399,rr=r0+((k*37)%100)/100*(r1-r0);let x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr;x=clamp(x,50,W-50);y=clamp(y,ylo,yhi);let md=1e9;for(const q of pairs){if(q.dying||q.vis)continue;md=Math.min(md,Math.hypot(q.x-x,q.y-y))}if(md>bd){bd=md;best=[x,y]}}return best}
 function injectHero(){
-  /* the emptiest spot in the lower half: the stranger arrives where nobody is */
-  let best=null,bd=-1;for(let k=0;k<40;k++){const x=50+((k*97)%260),y=H*.55+((k*53)%200);let md=1e9;for(const q of pairs){if(q.dying)continue;md=Math.min(md,Math.hypot(q.x-x,q.y-y))}if(md>bd){bd=md;best=[x,y]}}
-  hero=make({near:0,bright:0,hueAff:0,sepAff:0,pull:.1,hue:48,sep:16},best[0],best[1],.5);hero.flare=2.2;hero.stranger=1;hero.hero=1;pairs.push(hero)}
+  /* the emptiest spot in the lower half: the stranger arrives where nobody is. Its genome is a plain stranger's, except that it
+     looks back at whoever looks at it (mutual 0.8): the trait that went positive on 5 of 6 selected worlds */
+  const b=emptiest(W/2,H*.7,0,200,H*.55,H*.55+200);
+  hero=make({near:0,bright:0,hueAff:0,sepAff:0,pull:.1,hue:48,sep:16,care:0,mutual:.8},b[0],b[1],.5);hero.flare=2.2;hero.stranger=1;hero.pulse=1;pairs.push(hero)}
+function famCentroid(){let sx=0,sy=0,c=0;const r=hero&&hero.id;for(const q of pairs)if(!q.dying&&q.root===r){sx+=q.x;sy+=q.y;c++}return c?[sx/c,sy/c]:[hero.x,hero.y]}
+function injectNewcomer(){
+  const c=famCentroid(),b=emptiest(c[0],c[1],45,95,40,H-40);
+  newc=make(Object.assign(newGenome(),{hue:285}),b[0],b[1],.5);newc.flare=2.2;newc.stranger=1;newc.pulse=1;pairs.push(newc)}
+function visScreenY(f){const t=f-LOOK_F,inn=ease((t+60)/70),out=ease((t-LOOKLEN)/110);return{y:-140+(inn*430)-out*520,vis:inn*(1-out),t}}
+function kidsOf(r){return pairs.filter(q=>!q.dying&&q.root===r&&q.id!==r).length}
 function advance(){
-  if(F<FRAMES){if(F===T_ARRIVE)injectHero();
-    visitor=(F>=LOOK_F&&F<LOOK_F+LOOKLEN);
-    for(let i=0,n=tpf(F);i<n;i++)step()}
+  if(F<FRAMES){
+    if(F===T_ARRIVE)injectHero();
+    if(F===NEW_F)injectNewcomer();
+    const V=visScreenY(F);
+    if(hero&&V.t>=-60&&V.t<LOOKLEN+110){
+      if(!vis){vis=make({near:0,bright:0,hueAff:0,sepAff:0,pull:0,hue:45,sep:20},0,0,1);vis.vis=1;vis.e=1;pairs.push(vis)}
+      const cam=camera(F),k=cam.z*SC;vis.x=cam.cx;vis.y=(V.y-640)/k+cam.cy;
+    }else if(vis&&V.t>=LOOKLEN+110){pairs=pairs.filter(p=>p!==vis);vis=null}
+    visOn=(F>=LOOK_F&&F<LOOK_F+LOOKLEN);
+    hbFlag=0;const k0=hero?kidsOf(hero.id):0;
+    for(let i=0,n=tpf(F);i<n;i++)step();
+    const foc=(newc&&F>=NEW_F)?newc:hero;
+    events.push({f:F,hb:hbFlag,e:foc?+foc.e.toFixed(3):0,births:hero?Math.max(0,kidsOf(hero.id)-k0):0,hue:hero?hero.g.hue:0});
+  }
   F++}
-function kids(){return pairs.filter(q=>!q.dying&&q.root===(hero&&hero.id)&&q!==hero).length}
 
-/* camera: eased zoom onto the hero, hold, then pull back */
-const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* camera: push in on the stranger, hold, pull back to the family, then find the newcomer */
 function camera(f){
-  let z=1,cx=W/2,cy=H/2;
-  const hx=hero?hero.x:W/2,hy=hero?hero.y:H/2;
-  const a=ease((f-T_ARRIVE)/260);          /* push in 5.5 -> 14.2 s */
-  const b=ease((f-(LOOK_F+LOOKLEN-60))/330);      /* pull back */
-  z=1+a*2.5-b*1.55;
-  /* centre: on the hero while close; on its family while pulling back */
-  let fx=hx,fy=hy;
-  if(hero){let sx=0,sy=0,c=0;for(const q of pairs)if(!q.dying&&q.root===hero.id){sx+=q.x;sy+=q.y;c++}if(c){fx=sx/c;fy=sy/c}}
-  const m=a*(1-b*.9);
-  cx=W/2+(fx-W/2)*m;cy=H/2+(fy-H/2)*m;
-  return{z,cx,cy}
+  const a=ease((f-T_ARRIVE)/220),b=ease((f-(LOOK_F+LOOKLEN-60))/140),c=ease((f-(NEW_F+50))/110);
+  const z=1+2.5*a-1.6*b+1.5*c;
+  let fc=hero?(f<NEW_F+30||!newc?famCentroid():famCentroid()):[W/2,H/2];
+  if(newc&&f>=NEW_F){const w=ease((f-(NEW_F+20))/90);fc=[fc[0]+(newc.x-fc[0])*w,fc[1]+(newc.y-fc[1])*w]}
+  const m=a*(1-.55*b*(1-c));
+  return{z,cx:W/2+(fc[0]-W/2)*m,cy:H/2+(fc[1]-H/2)*m}
 }
 function eyeAt(x,y,tx,ty,rr,hue,bright,lid,halo){
   ctx.globalCompositeOperation='lighter';ctx.globalAlpha=halo;const sp=sprites[Math.round(hue/360*HB)%HB];ctx.drawImage(sp,x-rr*4,y-rr*4,rr*8,rr*8);
@@ -102,76 +119,71 @@ function pairAt(x,y,ang,sep,tx,ty,rr,hue,bright,lid,halo){
   const nx=-Math.sin(ang),ny=Math.cos(ang),h=sep*.5+rr*1.1;
   for(let k=-1;k<=1;k+=2)eyeAt(x+nx*h*k,y+ny*h*k,tx,ty,rr,hue,bright,lid,halo)
 }
-const LOOKLEN=360;
-function contactW(f){return ease((f-LOOK_F-45)/25)*(1-ease((f-LOOK_F-LOOKLEN+40)/50))}
-function visitorY(f){const t=f-LOOK_F,inn=ease((t+60)/70),out=ease((t-LOOKLEN)/110);return{y:-140+(inn*430)-out*520,vis:inn*(1-out),t}}
-/* one layer of pairs under the camera. Used twice: the room (blurred) and the stranger's lineage (sharp) */
+/* one layer of pairs under the camera. Used twice: the room (blurred) and the lineage in focus (sharp) */
 function drawSet(c,list,cam,f,withThreads){
   ctx=c;const k=cam.z*SC;c.setTransform(k,0,0,k,360-cam.cx*k,640-cam.cy*k);
   if(withThreads){c.globalCompositeOperation='lighter';c.lineWidth=1/cam.z;
-    for(const p of list){if(p.dying||!p.tgt)continue;const t=p.tgt;const a=clamp(.04+t.att*.025,0,.2)*clamp(p.e*1.5,0,1);
+    for(const p of list){if(p.dying||!p.tgt||p.tgt.vis)continue;const t=p.tgt;const a=clamp(.04+t.att*.025,0,.2)*clamp(p.e*1.5,0,1);
       c.globalAlpha=a;c.strokeStyle='hsl('+p.g.hue+',60%,70%)';c.beginPath();c.moveTo(p.x,p.y);c.lineTo(t.x,t.y);c.stroke()}}
   c.globalCompositeOperation='source-over';
-  const cw=contactW(f),vy=visitorY(f);
   for(const p of list){
     const close=p.dying?clamp(p.dying/36,0,1):0,fade=p.dying?clamp(1-p.dying/50,0,1):1;
     const ph=(tick+p.blink)%280,bl=ph<9?1-Math.sin(ph/9*Math.PI):1;
     const sag=p.e<.3?clamp(p.e/.3,.25,1):1;
     const lid=Math.min(bl,1-close*.95,.35+.65*sag);
     const rr=(3.6+clamp(p.e,0,1.2)*2.6+Math.min(p.att,5)*.45)*p.flare;
-    const t=p.tgt;let tx=t?t.x:p.x+Math.cos(p.ang)*60,ty=t?t.y:p.y+Math.sin(p.ang)*60;
-    if(p===hero&&cw>0&&vy.vis>0){/* it looks back: its pupils swing to the visitor's eyes */
-      const vx=(360-360)/k+cam.cx,vyw=(vy.y-640)/k+cam.cy;tx+=(vx-tx)*cw;ty+=(vyw-ty)*cw}
+    const t=p.tgt,tx=t?t.x:p.x+Math.cos(p.ang)*60,ty=t?t.y:p.y+Math.sin(p.ang)*60;
     c.globalAlpha=fade;
     pairAt(p.x,p.y,p.ang,p.g.sep*.45,tx,ty,rr,p.g.hue,clamp(p.att/3,0,1),lid,(.18+Math.min(p.att,5)*.06)*fade);
   }
-  for(const p of list){if(p.stranger&&p.age<70&&!p.dying){c.globalAlpha=(1-p.age/70)*.6;c.strokeStyle='hsl('+p.g.hue+',70%,75%)';c.lineWidth=1.2/cam.z;c.beginPath();c.arc(p.x,p.y,10+p.age*.9,0,6.2832);c.stroke()}}
-  if(list.includes(hero)&&hero&&!hero.dying){const ph=(tick%75)/75;c.globalAlpha=(1-ph)*clamp(hero.e,0,.8)*.8;c.strokeStyle='hsl(48,80%,75%)';c.lineWidth=1.4/cam.z;c.beginPath();c.arc(hero.x,hero.y,6+ph*26,0,6.2832);c.stroke()}
+  for(const p of list){if(p.stranger&&p.age<70&&!p.dying){c.globalAlpha=(1-p.age/70)*.6;c.strokeStyle='hsl('+p.g.hue+',70%,75%)';c.lineWidth=1.2/cam.z;c.beginPath();c.arc(p.x,p.y,10+p.age*.9,0,6.2832);c.stroke()}
+    if(p.pulse&&!p.dying){const ph=(tick%75)/75;c.globalAlpha=(1-ph)*clamp(p.e,0,.8)*.8;c.strokeStyle='hsl('+p.g.hue+',80%,75%)';c.lineWidth=1.4/cam.z;c.beginPath();c.arc(p.x,p.y,6+ph*26,0,6.2832);c.stroke()}}
   c.globalAlpha=1;ctx=MAIN}
-function blurAmt(f){const a=ease((f-T_ARRIVE-60)/200),b=ease((f-(LOOK_F+LOOKLEN+10))/330);return 5.5*a*(1-.75*b)}
+function blurAmt(f){const a=ease((f-T_ARRIVE-60)/200),b=ease((f-(LOOK_F+LOOKLEN+10))/120),c=ease((f-(NEW_F+50))/110);return 5.5*a*(1-.75*b*(1-c))}
 function drawWorld(cam,f){
   MAIN.setTransform(1,0,0,1,0,0);MAIN.globalCompositeOperation='source-over';MAIN.globalAlpha=1;MAIN.fillStyle='#07080c';MAIN.fillRect(0,0,720,1280);
-  const mine=[],rest=[];for(const p of pairs)(hero&&p.root===hero.id?mine:rest).push(p);
+  const focusRoot=(newc&&f>=NEW_F+30)?newc.id:(hero?hero.id:-1);
+  const mine=[],rest=[];for(const p of pairs){if(p.vis)continue;(p.root===focusRoot?mine:rest).push(p)}
   const bAmt=blurAmt(f);
   if(bAmt>.2){LCTX.setTransform(1,0,0,1,0,0);LCTX.globalCompositeOperation='source-over';LCTX.globalAlpha=1;LCTX.fillStyle='#07080c';LCTX.fillRect(0,0,720,1280);
     drawSet(LCTX,rest,cam,f,true);
     MAIN.setTransform(1,0,0,1,0,0);MAIN.filter='blur('+bAmt.toFixed(2)+'px)';MAIN.drawImage(lay,0,0);MAIN.filter='none'}
   else drawSet(MAIN,rest,cam,f,true);
-  /* the stranger and its descendants stay sharp, with a soft dark pool under them so they separate from the blurred room */
   if(bAmt>.2&&mine.length){MAIN.setTransform(1,0,0,1,0,0);const k=cam.z*SC;let sx=0,sy=0;for(const q of mine){sx+=q.x;sy+=q.y}sx/=mine.length;sy/=mine.length;
     const g=MAIN.createRadialGradient((sx-cam.cx)*k+360,(sy-cam.cy)*k+640,10,(sx-cam.cx)*k+360,(sy-cam.cy)*k+640,260+mine.length*14);g.addColorStop(0,'rgba(7,8,12,.55)');g.addColorStop(1,'rgba(7,8,12,0)');MAIN.fillStyle=g;MAIN.fillRect(0,0,720,1280)}
   drawSet(MAIN,mine,cam,f,false);
 }
-/* the visitor: one large pair of eyes, in screen space, looking down at the stranger */
+/* the visitor: drawn large in screen space where its simulated pair sits, looking down at the stranger */
 function drawVisitor(cam,f){
-  const V=visitorY(f);if(!hero||V.t<-60||V.vis<=0)return;
+  const V=visScreenY(f);if(!hero||!vis||V.t<-60||V.vis<=0)return;
   const hs=[(hero.x-cam.cx)*cam.z*SC+360,(hero.y-cam.cy)*cam.z*SC+640];
   const vx=360,vy=V.y,t=V.t;
   const blink=(t>=140&&t<152)?1-Math.sin((t-140)/12*Math.PI):1;
   ctx=MAIN;MAIN.setTransform(1,0,0,1,0,0);
-  MAIN.globalCompositeOperation='lighter';MAIN.globalAlpha=.55*V.vis*clamp((t+20)/60,0,1);MAIN.strokeStyle='#f3dca0';MAIN.lineWidth=3;MAIN.beginPath();MAIN.moveTo(vx,vy+58);MAIN.lineTo(hs[0],hs[1]);MAIN.stroke();
-  MAIN.globalAlpha=.25*V.vis;MAIN.lineWidth=9;MAIN.stroke();
+  if(visOn){MAIN.globalCompositeOperation='lighter';MAIN.globalAlpha=.55*V.vis*clamp((t+20)/60,0,1);MAIN.strokeStyle='#f3dca0';MAIN.lineWidth=3;MAIN.beginPath();MAIN.moveTo(vx,vy+58);MAIN.lineTo(hs[0],hs[1]);MAIN.stroke();
+    MAIN.globalAlpha=.25*V.vis;MAIN.lineWidth=9;MAIN.stroke()}
   MAIN.globalCompositeOperation='source-over';MAIN.globalAlpha=V.vis;
   pairAt(vx,vy,Math.PI/2,52,hs[0],hs[1],42,45,1,blink,.45);
   MAIN.globalAlpha=1;
 }
-function vignette(){ctx.setTransform(1,0,0,1,0,0);const g=ctx.createRadialGradient(360,640,300,360,640,860);g.addColorStop(0,'rgba(7,8,12,0)');g.addColorStop(1,'rgba(7,8,12,.62)');ctx.fillStyle=g;ctx.fillRect(0,0,720,1280)}
-function card(a){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#07080c';ctx.globalAlpha=1;ctx.fillRect(0,0,720,1280);
-  ctx.globalAlpha=a;ctx.fillStyle='#e8e2d0';ctx.textAlign='center';ctx.font='italic 54px "Liberation Serif",serif';
-  ctx.fillText('Somebody has to',360,625);ctx.fillText('look first.',360,695);ctx.globalAlpha=1}
+function vignette(){MAIN.setTransform(1,0,0,1,0,0);const g=MAIN.createRadialGradient(360,640,300,360,640,860);g.addColorStop(0,'rgba(7,8,12,0)');g.addColorStop(1,'rgba(7,8,12,.62)');MAIN.fillStyle=g;MAIN.fillRect(0,0,720,1280)}
+function card(a){MAIN.setTransform(1,0,0,1,0,0);MAIN.fillStyle='#07080c';MAIN.globalAlpha=1;MAIN.fillRect(0,0,720,1280);
+  MAIN.globalAlpha=a;MAIN.fillStyle='#e8e2d0';MAIN.textAlign='center';MAIN.font='italic 54px "Liberation Serif",serif';
+  MAIN.fillText('Somebody has to',360,625);MAIN.fillText('look first.',360,695);MAIN.globalAlpha=1}
 function render(){
   const f=F;
   if(f>=CARD_AT){const a=clamp((f-CARD_AT-14)/30,0,1);card(a);return}
   const cam=camera(f);drawWorld(cam,f);drawVisitor(cam,f);vignette();
-  const fi=clamp(1-f/18,0,1);if(fi>0){ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=fi;ctx.fillStyle='#07080c';ctx.fillRect(0,0,720,1280);ctx.globalAlpha=1}
-  /* the last second of the world fades to black before the card */
-  const fo=clamp((f-(CARD_AT-24))/24,0,1);if(fo>0){ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=fo;ctx.fillStyle='#07080c';ctx.fillRect(0,0,720,1280);ctx.globalAlpha=1}
+  const fi=clamp(1-f/18,0,1);if(fi>0){MAIN.setTransform(1,0,0,1,0,0);MAIN.globalAlpha=fi;MAIN.fillStyle='#07080c';MAIN.fillRect(0,0,720,1280);MAIN.globalAlpha=1}
+  const fo=clamp((f-(CARD_AT-24))/24,0,1);if(fo>0){MAIN.setTransform(1,0,0,1,0,0);MAIN.globalAlpha=fo;MAIN.fillStyle='#07080c';MAIN.fillRect(0,0,720,1280);MAIN.globalAlpha=1}
 }
-window.film={init,advance,render,frame:()=>F,total:TOTAL,
+window.film={init,advance,render,frame:()=>F,get total(){return TOTAL},events:()=>events,
   png:()=>cv.toDataURL('image/png'),
-  /* headless: run the whole film without drawing and report what happened to the stranger */
-  probe:(s,lookF,look)=>{init(s,look?lookF:1e9);const out={};
-    for(let f=0;f<FRAMES;f++){advance();
-      if(hero){if(f===lookF-1)out.eBeforeLook=+hero.e.toFixed(3);if(f===FRAMES-1)out.kidsEnd=kids();if(f===lookF+330)out.kidsAfterLook=kids();if(hero.dying&&out.diedAt===undefined)out.diedAt=f}}
-    out.alive=!!hero&&!hero.dying;out.n=pairs.length;return out}};
+  /* headless: run the film without drawing; report what happened to the stranger, its family and the newcomer */
+  probe:(s,lookF,look)=>{init(s,lookF);const out={};let nAtt=0,nTgt=0;
+    for(let f=0;f<FRAMES;f++){const sv=LOOK_F;if(!look)LOOK_F=1e9;advance();LOOK_F=sv;
+      if(hero){if(f===lookF-1)out.eBeforeLook=+hero.e.toFixed(3);if(f===lookF+LOOKLEN)out.famAtLookEnd=kidsOf(hero.id);if(f===NEW_F-1)out.famBeforeNew=kidsOf(hero.id);
+        if(newc&&f>=NEW_F+30){nAtt+=newc.att;for(const q of pairs)if(!q.dying&&q.root===hero.id&&q.tgt===newc)nTgt++}
+        if(f===FRAMES-1){out.famEnd=kidsOf(hero.id);out.heroAlive=!hero.dying;out.newcAlive=!!newc&&!newc.dying;out.newcE=newc?+newc.e.toFixed(3):null}}}
+    out.newcAttMean=+(nAtt/Math.max(1,FRAMES-NEW_F-30)).toFixed(2);out.famLookFrames=nTgt;return out}};
 </script>
