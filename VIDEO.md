@@ -1110,3 +1110,29 @@ two panes (E4, G4) never played - dead keys - written into the climax arpeggios.
 HONEST: none of those checks say whether it is BEAUTIFUL. The timbre is a guess - plucked/struck, somewhere between a
 kalimba and a prepared piano with grit - and the user is the only ear this piece has had. Picture: legible at full
 size, murky on a contact sheet; the window never fully lights at once.
+
+### Still Playing (`video/still_playing.html` + `video/build_still_playing_assets.py`, a live page, not a film)
+Published as a private artifact: https://claude.ai/artifact/N2GLPmfbUrmPnZe4s3nFR9 (assets: out/still/, 4.8 MB, rebuilt by
+the asset script; backed up to Modal library/still/). The user on Played: "Sounds like music to me. Quite drawing
+actually. Like you wait to hear the next note... Lets push it as far as you can go." So: stop making a fixed film.
+The window from Played is a LIVE INSTRUMENT that composes as it plays, never the same twice. Same 18 panes, same struck
+notes (each the clip's own sound through the tuned resonator, exported rung-out; the page damps them live), same light.
+THE TUNE EVOLVES: Played's motif is the ancestor; each generation is the best of 28 mutants (step a note, split, merge,
+shift a fragment, swap lengths, swap notes) by a fitness for singability (steps not leaps, chord tones on strong beats,
+a resolving last note, range, few repeats) plus a NOVELTY pressure (an exact repeat of the last 12 is heavily penalised,
+a small change rewarded). Form is a small machine: alone -> with bass -> arpeggios -> (rarely) remembering the first
+tune. Touching a pane plays it on the next eighth and writes it into the next generation (a bass pane leads the next
+chords). The page shows the generation, chords and the current tune with the playing note lit.
+CHECKED WITHOUT EARS, on the live instrument: an OfflineAudioContext render path in the page (window.__still) drives the
+same composer and voice code; a Playwright rig records it to WAV for any seed and length, then the Played checks run.
+Six-minute runs on six unseen seeds: -13.4 to -15.6 LUFS, peak <= 0.95, zero clicks, every isolated note at its written
+pitch (top D6 read an octave low - confirmed a detector artefact: the sample has equal D6/D7 and nothing at D5), rumble
+-48 to -54 dB with no bass sounding. What the logs caught: (1) the mix was 5 dB quiet -> level + a final limiter;
+(2) THE EVOLUTION WANDERED: 54/56 tunes distinct but fully away from the ancestor within a minute, and some
+generations collapsed to one note repeated (the fitness scored a repeat as a step). Fixed by call-and-answer (a new
+generation every other phrase; the answer repeats it and resolves), a protected head (first two beats mutate ~4x more
+rarely), and a repeat penalty: after, the head 'A4 D5 F5 E5' carries through 10+ phrases while the tail explores,
+longest same-note run 2; (3) the memory section came 6 times in 6 minutes -> at least 20 phrases apart; (4) the
+opening copy claimed "It never repeats" - false (25/28 distinct), now "No two playings are the same".
+HONEST: the evolution has no ear either - its fitness is music theory rules Claude wrote, so it selects for
+"correct", not for beautiful; and the user is still the only listener.

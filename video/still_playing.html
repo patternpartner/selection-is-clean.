@@ -1,0 +1,601 @@
+<title>Still Playing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one dark window filling the screen, 9:16, the composition is the page; text sits in the dark around it.
+   A deliberate single look (a lit window at night), so one palette for both themes. */
+:root {
+  --night: #07060a;
+  --lead: #000000;
+  --amber: #ffb058;
+  --amber-dim: #a8794a;
+  --glass: #e9e1d6;
+  --ink-soft: #8d8478;
+  --display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night);
+  color: var(--glass);
+  font-family: var(--mono);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  position: relative;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+#frame { position: relative; max-width: 100%; }
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 16px;
+}
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.mark { display: grid; gap: 4px; min-width: 0; }
+.mark h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1;
+  color: var(--glass);
+  text-shadow: 0 0 18px rgba(0,0,0,.9);
+}
+.meta {
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(0,0,0,.95);
+}
+.meta b { color: var(--amber); font-weight: 500; }
+button {
+  pointer-events: auto;
+  font: 500 12px/1 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: rgba(7,6,10,.72);
+  border: 1px solid var(--amber-dim);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--amber); }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.tune {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-shadow: 0 0 10px rgba(0,0,0,.95);
+  min-height: 2.6em;
+}
+.tune .lbl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); width: 100%; }
+.tune span.n { color: var(--glass); transition: color .15s; }
+.tune span.n.on { color: var(--amber); }
+.tune span.n.you { text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 4px; }
+.toast { font-size: 12px; color: var(--amber); min-height: 1.4em; text-shadow: 0 0 10px rgba(0,0,0,.95); }
+#gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-inline: 16px;
+  background: radial-gradient(ellipse at center, rgba(7,6,10,.55), rgba(7,6,10,.88));
+}
+.gate-inner { display: grid; gap: 18px; justify-items: center; text-align: center; max-width: 34ch; }
+.gate-inner h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(44px, 11vw, 72px);
+  line-height: .95;
+  color: var(--glass);
+  text-wrap: balance;
+}
+.gate-inner p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--glass); opacity: .85; }
+.gate-inner .small { font-size: 11px; color: var(--ink-soft); }
+#play { font-size: 14px; padding: 14px 26px; }
+@media (prefers-reduced-motion: reduce) { .tune span.n { transition: none; } }
+</style>
+
+<div id="stage">
+  <div id="frame">
+  <canvas id="win" aria-label="A stained-glass window of eighteen moving pictures. Each pane is one note; touch a pane to play it."></canvas>
+  <div class="hud">
+    <div class="top">
+      <div class="mark">
+        <h1>Still Playing</h1>
+        <div class="meta" id="meta">18 panes · D minor · 80 bpm</div>
+      </div>
+      <button id="pause" type="button" hidden>Pause</button>
+    </div>
+    <div></div>
+    <div style="display:grid;gap:6px">
+      <div class="toast" id="toast" aria-live="polite"></div>
+      <div class="tune" id="tune"><span class="lbl">the tune, generation 0</span></div>
+    </div>
+  </div>
+  </div>
+  <div id="gate">
+    <div class="gate-inner">
+      <h2>Still Playing</h2>
+      <p>Every pane is one note, and every note is made from that clip's own sound. The tune evolves as it plays: each phrase is a mutation of the last, kept only if it still sings. No two playings are the same.</p>
+      <button id="play" type="button">Play</button>
+      <p class="small" id="gatemsg">Sound on. Touch a pane to give the tune your note.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------- the window ----------
+const DW = 720, DH = 1280;
+const MEL = ["D4","E4","F4","G4","A4","Bb4","C5","D5","E5","F5","G5","A5","C6","D6"];
+const BASS = ["D2","Bb1","F2","C2"];
+const CHORD = { D2: ["D","F","A"], Bb1: ["Bb","D","F"], F2: ["F","A","C"], C2: ["C","E","G"] };
+const CHORD_NAME = { D2: "Dm", Bb1: "B♭", F2: "F", C2: "C" };
+const PROGS = [["D2","Bb1","F2","C2"],["D2","C2","Bb1","C2"],["D2","F2","C2","Bb1"],["Bb1","C2","D2","D2"],
+               ["D2","Bb1","C2","D2"],["F2","C2","D2","Bb1"],["D2","D2","Bb1","C2"]];
+const ANCESTOR = [{b:0,i:4,l:1.5},{b:1.5,i:7,l:.5},{b:2,i:9,l:1},{b:3,i:8,l:.5},{b:3.5,i:7,l:.5},{b:4,i:6,l:2},{b:6,i:4,l:2}];
+const pc = n => n.replace(/\d/g, "");
+const label = n => n.replace("Bb", "B♭");
+
+function mulberry(seed) {
+  let a = seed >>> 0;
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+
+// ---------- the composer: a tune that evolves ----------
+function Composer(seed) {
+  const R = mulberry(seed);
+  const pick = a => a[Math.floor(R() * a.length)];
+  let genome = ANCESTOR.map(o => ({...o}));
+  let gen = 0, history = [key(genome)], phraseNo = 0;
+  let prog = PROGS[0], form = "alone", formLeft = 4, pending = [], bassWish = null, sinceReturn = 0;
+  const log = [];
+
+  function key(g) { const s = new Array(16).fill(-1); for (const n of g) for (let k = n.b * 2; k < (n.b + n.l) * 2; k++) s[k] = n.i; return s; }
+  function dist(a, b) { let d = 0; for (let k = 0; k < 16; k++) d += a[k] !== b[k]; return d; }
+  function valid(g) {
+    let t = 0; for (const n of g) { if (Math.abs(n.b - t) > 1e-6 || n.l < .5 || n.i < 0 || n.i >= MEL.length) return false; t += n.l; }
+    return Math.abs(t - 8) < 1e-6 && g.length >= 3 && g.length <= 11;
+  }
+  function restamp(g) { let t = 0; for (const n of g) { n.b = t; t += n.l; } return g; }
+  function mutate(src) {
+    const g = src.map(o => ({...o})), op = R();
+    // the head of the tune (its first two beats) mutates far more rarely, so the tune stays recognisable
+    let k = Math.floor(R() * g.length);
+    for (let tries = 0; tries < 3 && g[k].b < 2 && R() > .25; tries++) k = Math.floor(R() * g.length);
+    if (op < .32) g[k].i += pick([-2,-1,-1,1,1,2]);
+    else if (op < .48 && g[k].l >= 1) { const h = g[k].l / 2; g.splice(k + 1, 0, {b:0, i: g[k].i + pick([-1,1,2,-2]), l: h}); g[k].l = h; }
+    else if (op < .6 && k + 1 < g.length) { g[k].l += g[k + 1].l; g.splice(k + 1, 1); }
+    else if (op < .74) { const e = Math.min(g.length, k + 2 + Math.floor(R() * 2)), d = pick([-1,1]); for (let j = k; j < e; j++) g[j].i += d; }
+    else if (op < .86 && k + 1 < g.length) { const l = g[k].l; g[k].l = g[k + 1].l; g[k + 1].l = l; }
+    else if (k + 2 < g.length) { const a = g[k].i; g[k].i = g[k + 2].i; g[k + 2].i = a; }
+    else g[k].i += pick([-1,1]);
+    return restamp(g);
+  }
+  function fitness(g, chords) {
+    let f = 0, steps = 0, leaps = 0, reps = 0;
+    for (let j = 1; j < g.length; j++) { const d = Math.abs(g[j].i - g[j - 1].i); if (d >= 1 && d <= 2) steps++; if (d > 4) leaps++; if (d === 0) reps++; }
+    f += 3 * steps / Math.max(1, g.length - 1) - 1.5 * leaps - .7 * Math.max(0, reps - 1) - .25 * reps;
+    if (g.length > 9) f -= .5 * (g.length - 9);
+    const lo = Math.min(...g.map(n => n.i)), hi = Math.max(...g.map(n => n.i));
+    if (hi - lo > 8) f -= (hi - lo - 8);
+    for (const n of g) {
+      const ch = CHORD[chords[n.b < 4 ? 0 : 1]], strong = n.b % 2 === 0;
+      if (strong) f += ch.includes(pc(MEL[n.i])) ? .6 : -.5;
+    }
+    const last = g[g.length - 1];
+    f += CHORD[chords[1]].includes(pc(MEL[last.i])) ? 1.2 : -1;
+    if (last.l >= 1) f += .4;
+    const ks = key(g); let near = 99;
+    for (const h of history.slice(-12)) near = Math.min(near, dist(ks, h));
+    if (near === 0) f -= 6; else if (near <= 5) f += .8; else f -= .15 * (near - 5);
+    const mid = (lo + hi) / 2; f -= .08 * Math.abs(mid - 7);
+    return f;
+  }
+  function evolve(chords) {
+    let best = null, bf = -1e9;
+    for (let c = 0; c < 28; c++) {
+      let g = mutate(genome); if (R() < .4) g = mutate(g);
+      if (!valid(g)) continue;
+      const f = fitness(g, chords) + R() * .25;
+      if (f > bf) { bf = f; best = g; }
+    }
+    if (best) { genome = best; gen++; history.push(key(genome)); }
+  }
+  function applyWishes() {
+    // a note the listener touched joins the tune: it replaces the note nearest where it was played
+    for (const w of pending.splice(0)) {
+      let j = 0, bd = 99; genome.forEach((n, k) => { const d = Math.abs(n.b - w.b); if (d < bd) { bd = d; j = k; } });
+      genome[j].i = w.i; genome[j].you = true;
+      history.push(key(genome));
+    }
+  }
+  function nextForm() {
+    // the memory of the first tune is rare, so it still means something when it comes
+    const canReturn = sinceReturn >= 20;
+    if (form === "alone") form = "bass";
+    else if (form === "bass") { const r = R(); form = r < .45 ? "arp" : (r < .8 || !canReturn) ? "bass" : "return"; }
+    else if (form === "arp") form = canReturn && R() < .5 ? "return" : (R() < .5 ? "bass" : "alone");
+    else form = R() < .5 ? "alone" : "bass";
+    if (form === "return") sinceReturn = 0;
+    formLeft = { alone: 2 + 2 * Math.floor(R() * 2), bass: 4, arp: 4, return: 2 }[form];
+  }
+
+  // one phrase = two bars; returns its notes in beats from the phrase start
+  function phrase() {
+    if (phraseNo % 4 === 0 && phraseNo > 0) prog = R() < .35 ? PROGS[0] : pick(PROGS);
+    if (bassWish && phraseNo % 2 === 0) { prog = [bassWish, ...prog.slice(1)]; bassWish = null; }
+    const half = (phraseNo % 2) * 2, chords = [prog[half], prog[half + 1]];
+    for (const g of genome) delete g.you;
+    // a new generation every other phrase: the call is the new tune, the answer repeats it and resolves
+    const call = phraseNo % 2 === 0;
+    if (form !== "return" && call) evolve(chords);
+    applyWishes();
+    let play = genome;
+    if (!call) {
+      play = genome.map(o => ({...o}));
+      const last = play[play.length - 1], tones = CHORD[chords[1]];
+      if (!tones.includes(pc(MEL[last.i]))) {
+        const prev = play.length > 1 ? play[play.length - 2].i : -1;
+        for (const d of [-1, 1, -2, 2, -3, 3]) { const j = last.i + d; if (j >= 0 && j < MEL.length && j !== prev && tones.includes(pc(MEL[j]))) { last.i = j; break; } }
+      }
+    }
+    const ev = [], add = (b, n, l, v) => ev.push({ b, n, l, v });
+    const lift = form === "arp" ? 1.3 : 1;
+    if (form === "return") {
+      for (const n of ANCESTOR) add(n.b, MEL[n.i], n.l, .55);
+      add(0, chords[0], 8, .7);
+    } else {
+      const soft = form === "alone" ? .95 : 1;
+      for (const n of play) {
+        let i = n.i;
+        if (form === "arp" && n.l >= 1 && i + 7 < MEL.length) i += 7;
+        if (form === "arp" && n.l < 1) continue;
+        add(n.b, MEL[i], n.l, (n.b % 2 === 0 ? .82 : .7) * soft * lift);
+      }
+    }
+    if (form === "bass") {
+      chords.forEach((r, k) => { add(k * 4, r, 4, .95); add(k * 4 + 2.5, r, 1.5, .45); });
+      const tops = MEL.slice(9).filter(n => CHORD[chords[0]].includes(pc(n)));
+      if (tops.length) { add(1, tops[tops.length - 1], .5, .33); add(3, tops[0], .5, .33); }
+    }
+    if (form === "arp") {
+      chords.forEach((r, k) => {
+        for (let be = 0; be < 4; be++) add(k * 4 + be, r, 1, (be === 0 ? .9 : .6) * lift);
+        const tones = MEL.filter(n => CHORD[r].includes(pc(n)));
+        const lo = Math.floor(R() * Math.max(1, tones.length - 5)), run = tones.slice(lo, lo + 5);
+        const seq = [...run, ...run.slice(1, -1).reverse()].slice(0, 8);
+        while (seq.length < 8) seq.push(run[seq.length % run.length]);
+        seq.forEach((n, j) => add(k * 4 + j * .5, n, .5, (j % 2 ? .6 : .75) * lift));
+      });
+    }
+    const out = { no: phraseNo, gen, form, chords, genome: play.map(o => ({...o})), ev };
+    log.push({ no: phraseNo, gen, form, chords: chords.map(c => CHORD_NAME[c]), tune: play.map(n => MEL[n.i]).join(" ") });
+    phraseNo++; sinceReturn++;
+    if (--formLeft <= 0) nextForm();
+    return out;
+  }
+  function wish(note, beatInPhrase) {
+    const i = MEL.indexOf(note);
+    if (i >= 0) pending.push({ i, b: Math.max(0, Math.min(7.5, Math.round(beatInPhrase * 2) / 2)) });
+    else bassWish = note;
+  }
+  return { phrase, wish, log, get gen() { return gen; } };
+}
+
+// ---------- sound ----------
+let DATA = null, BUF = {}, ENVREF = 1;
+const BPM = 80, SPB = 60 / BPM, PHRASE = 8 * SPB;
+
+function makeReverb(ctx, seed) {
+  const R = mulberry(seed), sr = ctx.sampleRate, n = Math.floor(3.2 * sr), b = ctx.createBuffer(2, n, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch); let lp = 0, e2 = 0;
+    for (let k = 0; k < n; k++) {
+      const t = k / sr, x = (R() * 2 - 1) * Math.exp(-t * 6.9 / 2.4);
+      lp += .5 * (x - lp); d[k] = t < .022 ? 0 : lp; e2 += d[k] * d[k];
+    }
+    const s = 1 / Math.sqrt(e2); for (let k = 0; k < n; k++) d[k] *= s;
+  }
+  return b;
+}
+function buildGraph(ctx, bufs) {
+  const dry = ctx.createGain(), send = ctx.createGain(), verb = ctx.createConvolver(), wet = ctx.createGain();
+  const comp = ctx.createDynamicsCompressor(), master = ctx.createGain();
+  verb.normalize = false; verb.buffer = makeReverb(ctx, 7); wet.gain.value = .32;
+  comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 3; comp.attack.value = .004; comp.release.value = .25;
+  const lim = ctx.createDynamicsCompressor();                 // a last limiter so the loudest strikes never clip
+  lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = .002; lim.release.value = .12;
+  master.gain.value = 1;
+  dry.connect(comp); send.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(master); master.connect(lim); lim.connect(ctx.destination);
+  const pans = {};
+  for (const p of DATA.panes) {
+    const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, (p.x - .5) * 1.4));
+    pn.connect(dry); pn.connect(send); pans[p.note] = pn;
+  }
+  return { master, pans, bufs };
+}
+const LEVEL = .9;
+function strike(ctx, G, n, when, lenBeats, vel) {
+  const p = PANE[n], src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = G.bufs[n];
+  const amp = vel * LEVEL * (p.midi < 50 ? 1.4 : 1);
+  const off = when + lenBeats * SPB * 1.05 + .04;
+  g.gain.setValueAtTime(amp, when);
+  g.gain.setTargetAtTime(0, off, .12);
+  src.connect(g); g.connect(G.pans[n]);
+  src.start(when); src.stop(Math.min(when + src.buffer.duration, off + 1.2) + .05);
+  return { n, when, off, amp: vel * (p.midi < 50 ? 1.4 : 1) };
+}
+
+// ---------- picture ----------
+let PANE = {}, LIST = [];
+function cellPolys() {
+  // power diagram of the seeds, clipped to the frame: straight leading, like real glass
+  const S = LIST.map(p => ({ x: p.x * DW, y: p.y * DH, r: p.w * DW * 2 }));
+  return S.map((a, i) => {
+    let poly = [[0,0],[DW,0],[DW,DH],[0,DH]];
+    S.forEach((b, j) => {
+      if (i === j) return;
+      const nx = b.x - a.x, ny = b.y - a.y;
+      const c = (b.x * b.x + b.y * b.y - a.x * a.x - a.y * a.y - (b.r * b.r - a.r * a.r)) / 2;
+      const inside = q => q[0] * nx + q[1] * ny <= c;
+      const out = [];
+      for (let k = 0; k < poly.length; k++) {
+        const P = poly[k], Q = poly[(k + 1) % poly.length], pi = inside(P), qi = inside(Q);
+        if (pi) out.push(P);
+        if (pi !== qi) { const dp = P[0] * nx + P[1] * ny - c, dq = Q[0] * nx + Q[1] * ny - c, t = dp / (dp - dq);
+          out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]); }
+      }
+      poly = out;
+    });
+    const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
+    return { poly, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+  });
+}
+
+const cv = document.getElementById("win"), cx = cv.getContext("2d");
+let ctx = null, G = null, comp = null, running = false, paused = false;
+let voices = [], strikes = [], rings = [], nextPhraseAt = 0, phraseQueue = [], lastPlayed = {};
+const tuneEl = document.getElementById("tune"), metaEl = document.getElementById("meta"), toastEl = document.getElementById("toast");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function fit() {
+  // the window keeps its 9:16 and is as large as the screen allows; the words sit on the glass
+  const st = document.getElementById("stage").getBoundingClientRect(), fr = document.getElementById("frame");
+  const h = Math.min(st.height, st.width * 16 / 9), w = h * 9 / 16;
+  fr.style.width = w + "px"; fr.style.height = h + "px";
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener("resize", fit);
+
+function lightAt(t) {
+  let a = null, b = null;
+  for (const s of strikes) { if (s.t <= t) a = s; else { b = s; break; } }
+  if (!a) return b ? [PANE[b.n].x * DW, PANE[b.n].y * DH] : [DW / 2, DH * .7];
+  const A = [PANE[a.n].x * DW, PANE[a.n].y * DH];
+  if (!b) return A;
+  const B = [PANE[b.n].x * DW, PANE[b.n].y * DH];
+  let u = Math.max(0, Math.min(1, ((t - a.t) / (b.t - a.t) - .35) / .65)); u = u * u * (3 - 2 * u);
+  return [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u];
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  const W = cv.width, H = cv.height, s = W / DW;
+  if (!W || !LIST.length) return;
+  const now = ctx ? ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0) : performance.now() / 1000;
+  const bright = {}, lit = {};
+  for (const p of LIST) { bright[p.note] = 0; lit[p.note] = 0; }
+  voices = voices.filter(v => now < v.off + 1.5);
+  for (const v of voices) {
+    const p = PANE[v.n], k = Math.floor((now - v.when) * 60);
+    if (k < 0 || k >= p.env.length) continue;
+    const rel = now > v.off ? Math.exp(-(now - v.off) / .12) : 1;
+    const e = v.amp * p.env[k] / ENVREF * rel;
+    lit[v.n] = Math.max(lit[v.n], e);
+  }
+  cx.setTransform(1, 0, 0, 1, 0, 0); cx.fillStyle = "#07060a"; cx.fillRect(0, 0, W, H);
+  cx.setTransform(s, 0, 0, s, 0, 0);
+  for (const p of LIST) {
+    const e = Math.min(1.6, lit[p.note]);
+    const last = lastPlayed[p.note];
+    const mem = running ? (last === undefined ? .1 : .2 + .12 * Math.exp(-(now - last) / 20)) : .3;
+    const b = Math.min(1.35, mem + 1.15 * Math.pow(e, .7));
+    bright[p.note] = b; lit[p.note] = e;
+    cx.save(); path(p.poly); cx.clip();
+    const [x0, y0, x1, y1] = p.box, bw = x1 - x0, bh = y1 - y0;
+    const vd = p.video;
+    if (vd && vd.readyState >= 2 && vd.videoWidth) {
+      const sc = Math.max(bw / vd.videoWidth, bh / vd.videoHeight) * 1.08;
+      const dw = vd.videoWidth * sc, dh = vd.videoHeight * sc;
+      cx.drawImage(vd, x0 + (bw - dw) / 2, y0 + (bh - dh) / 2, dw, dh);
+    } else { cx.fillStyle = `rgb(${p.mean.join(",")})`; cx.fillRect(x0, y0, bw, bh); }
+    if (b < 1) { cx.fillStyle = `rgba(7,6,10,${(1 - b).toFixed(3)})`; cx.fillRect(x0, y0, bw, bh); }
+    else { cx.globalCompositeOperation = "lighter"; cx.fillStyle = `rgba(255,176,88,${((b - 1) * .5).toFixed(3)})`; cx.fillRect(x0, y0, bw, bh); cx.globalCompositeOperation = "source-over"; }
+    for (const r of rings) if (r.n === p.note && now >= r.t && now - r.t < .5) {
+      const a = 1 - (now - r.t) / .5, rad = 30 + (now - r.t) * 420;
+      cx.strokeStyle = `rgba(255,176,88,${(a * .85).toFixed(3)})`; cx.lineWidth = 5;
+      cx.beginPath(); cx.arc(p.x * DW, p.y * DH, rad, 0, Math.PI * 2); cx.stroke();
+    }
+    cx.restore();
+  }
+  rings = rings.filter(r => now - r.t < .6);
+  cx.lineJoin = "round"; cx.strokeStyle = "#000"; cx.lineWidth = 5;
+  for (const p of LIST) { path(p.poly); cx.stroke(); }
+  cx.globalCompositeOperation = "lighter";
+  for (const p of LIST) {
+    const e = lit[p.note]; if (e < .04) continue;
+    cx.shadowColor = "rgba(255,176,88,.9)"; cx.shadowBlur = 14 * s;
+    cx.strokeStyle = `rgba(255,176,88,${Math.min(1, e * .8).toFixed(3)})`; cx.lineWidth = 2.2;
+    path(p.poly); cx.stroke();
+  }
+  cx.shadowBlur = 0;
+  if (running) {
+    const [lx, ly] = lightAt(now), rad = 22 + 4 * Math.sin(now * 2.3);
+    for (const [r, a] of [[rad * 4, .2], [rad, .55], [rad * .38, 1]]) {
+      const g = cx.createRadialGradient(lx, ly, 0, lx, ly, r);
+      g.addColorStop(0, `rgba(255,190,110,${a})`); g.addColorStop(1, "rgba(255,176,88,0)");
+      cx.fillStyle = g; cx.fillRect(lx - r, ly - r, r * 2, r * 2);
+    }
+  }
+  cx.globalCompositeOperation = "source-over";
+  const vg = cx.createRadialGradient(DW / 2, DH / 2, DH * .3, DW / 2, DH / 2, DH * .75);
+  vg.addColorStop(0, "rgba(7,6,10,0)"); vg.addColorStop(1, "rgba(7,6,10,.6)");
+  cx.fillStyle = vg; cx.fillRect(0, 0, DW, DH);
+  updateTune(now);
+}
+function path(poly) { cx.beginPath(); poly.forEach((q, k) => k ? cx.lineTo(q[0], q[1]) : cx.moveTo(q[0], q[1])); cx.closePath(); }
+
+let shownPhrase = null;
+function updateTune(now) {
+  const cur = phraseQueue.filter(q => q.t0 <= now).pop();
+  if (!cur) return;
+  if (shownPhrase !== cur) {
+    shownPhrase = cur;
+    const formName = { alone: "the tune alone", bass: "with the bass", arp: "arpeggios", return: "remembering the first tune" }[cur.ph.form];
+    metaEl.innerHTML = `generation <b>${cur.ph.gen}</b> · ${cur.ph.chords.map(c => CHORD_NAME[c]).join("–")} · ${formName}`;
+    tuneEl.innerHTML = `<span class="lbl">${cur.ph.form === "return" ? "the first tune" : "the tune, generation " + cur.ph.gen}</span>` +
+      (cur.ph.form === "return" ? ANCESTOR.map(n => ({...n})) : cur.ph.genome).map((n, k) =>
+        `<span class="n${n.you ? " you" : ""}" data-b="${n.b}" data-l="${n.l}">${label(MEL[n.i])}</span>`).join("");
+  }
+  const beat = (now - cur.t0) / SPB;
+  for (const el of tuneEl.querySelectorAll(".n")) {
+    const b = +el.dataset.b, l = +el.dataset.l;
+    el.classList.toggle("on", beat >= b && beat < b + l);
+  }
+}
+
+// ---------- live scheduling ----------
+let composer = null;
+function schedule() {
+  if (!running || paused) return;
+  while (nextPhraseAt < ctx.currentTime + 1.6) {
+    const ph = composer.phrase(), t0 = nextPhraseAt;
+    phraseQueue.push({ t0, ph }); if (phraseQueue.length > 6) phraseQueue.shift();
+    playPhrase(ph, t0);
+    nextPhraseAt += PHRASE;
+  }
+}
+function playPhrase(ph, t0) {
+  const top = {};
+  for (const e of ph.ev) {
+    const when = t0 + e.b * SPB;
+    voices.push(strike(ctx, G, e.n, when, e.l, e.v));
+    rings.push({ n: e.n, t: when });
+    const k = when.toFixed(3);
+    if (!top[k] || PANE[e.n].midi > PANE[top[k]].midi) top[k] = e.n;
+    setTimeout(() => { lastPlayed[e.n] = when; }, Math.max(0, (when - ctx.currentTime) * 1000));
+  }
+  for (const k of Object.keys(top)) strikes.push({ t: +k, n: top[k] });
+  strikes.sort((a, b) => a.t - b.t);
+  strikes = strikes.filter(s => s.t > ctx.currentTime - 20);
+}
+
+async function load() {
+  DATA = await (await fetch("panes.json")).json();
+  LIST = DATA.panes; PANE = Object.fromEntries(LIST.map(p => [p.note, p]));
+  const polys = cellPolys(); LIST.forEach((p, k) => Object.assign(p, polys[k]));
+  let mx = 0; for (const p of LIST) for (const v of p.env) mx = Math.max(mx, v); ENVREF = mx * .55;
+  for (const p of LIST) {
+    const v = document.createElement("video");
+    v.muted = true; v.loop = true; v.playsInline = true; v.preload = "auto"; v.setAttribute("muted", ""); v.setAttribute("playsinline", "");
+    for (const ext of ["webm", "mp4"]) { const s = document.createElement("source"); s.src = `clips/${p.note}.${ext}`; s.type = ext === "webm" ? "video/webm" : "video/mp4"; v.appendChild(s); }
+    p.video = v; v.play().catch(() => {});
+  }
+  fit(); requestAnimationFrame(draw);
+}
+async function decodeAll(ac) {
+  const out = {};
+  await Promise.all(LIST.map(async p => { const ab = await (await fetch(`notes/${p.note}.mp3`)).arrayBuffer(); out[p.note] = await ac.decodeAudioData(ab); }));
+  return out;
+}
+
+async function start() {
+  const btn = document.getElementById("play"); btn.disabled = true; btn.textContent = "Tuning";
+  try {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" });
+    await ctx.resume();
+    BUF = await decodeAll(ctx);
+    G = buildGraph(ctx, BUF);
+    composer = Composer((Math.random() * 2 ** 31) | 0);
+    nextPhraseAt = ctx.currentTime + .3; running = true;
+    for (const p of LIST) p.video.play().catch(() => {});
+    setInterval(schedule, 120); schedule();
+    document.getElementById("gate").hidden = true;
+    document.getElementById("pause").hidden = false;
+    try { await navigator.wakeLock?.request("screen"); } catch (e) {}
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "Play";
+    document.getElementById("gatemsg").textContent = "The sound could not start in this browser. Try again, or open the page in another browser.";
+  }
+}
+document.getElementById("play").addEventListener("click", start);
+document.getElementById("pause").addEventListener("click", async e => {
+  if (!ctx) return;
+  if (!paused) { paused = true; await ctx.suspend(); e.target.textContent = "Resume"; }
+  else { paused = false; await ctx.resume(); nextPhraseAt = Math.max(nextPhraseAt, ctx.currentTime + .2); e.target.textContent = "Pause"; }
+});
+
+// touching a pane plays it on the next eighth, and the note joins the tune's next generation
+cv.addEventListener("pointerdown", e => {
+  if (!running || paused) return;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * DW, y = (e.clientY - r.top) / r.height * DH;
+  const p = LIST.find(q => { cx.setTransform(1,0,0,1,0,0); path(q.poly); return cx.isPointInPath(x, y); });
+  if (!p) return;
+  const eighth = SPB / 2, when = Math.ceil((ctx.currentTime + .03) / eighth) * eighth;
+  voices.push(strike(ctx, G, p.note, when, 1, .8)); rings.push({ n: p.note, t: when });
+  strikes.push({ t: when, n: p.note }); strikes.sort((a, b) => a.t - b.t);
+  setTimeout(() => { lastPlayed[p.note] = when; }, Math.max(0, (when - ctx.currentTime) * 1000));
+  const cur = phraseQueue.filter(q => q.t0 <= when).pop();
+  composer.wish(p.note, cur ? (when - cur.t0) / SPB : 0);
+  toastEl.textContent = p.midi < 50 ? `Your ${label(p.note)} will lead the next chords.` : `Your ${label(p.note)} joins the tune's next generation.`;
+  clearTimeout(cv._t); cv._t = setTimeout(() => toastEl.textContent = "", 3500);
+});
+
+// ---------- an offline recording of the live instrument, so it can be measured ----------
+window.__still = {
+  Composer,
+  async renderOffline(seconds, seed, taps = []) {
+    const sr = 48000, oc = new OfflineAudioContext(2, Math.ceil(seconds * sr), sr);
+    const bufs = await decodeAll(oc), g = buildGraph(oc, bufs), c = Composer(seed), notes = [];
+    let t0 = .3, no = 0;
+    while (t0 < seconds) {
+      for (const tp of taps) if (tp.phrase === no) c.wish(tp.note, tp.b);   // a touch during the phrase before
+      const ph = c.phrase(); no++;
+      for (const e of ph.ev) { const when = t0 + e.b * SPB; if (when < seconds) { strike(oc, g, e.n, when, e.l, e.v); notes.push([+when.toFixed(4), e.n, e.l, e.v]); } }
+      t0 += PHRASE;
+    }
+    const buf = await oc.startRendering();
+    return { L: buf.getChannelData(0), R: buf.getChannelData(1), log: c.log, notes };
+  }
+};
+load().catch(() => { document.getElementById("gatemsg").textContent = "The window could not load its panes. Reload the page to try again."; });
+</script>
