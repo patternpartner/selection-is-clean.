@@ -1,0 +1,768 @@
+<title>Selected by Ear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one dark window filling the screen, 9:16, the composition is the page; text sits in the dark around it.
+   A deliberate single look (a lit window at night), so one palette for both themes. */
+:root {
+  --night: #07060a;
+  --lead: #000000;
+  --amber: #ffb058;
+  --amber-dim: #a8794a;
+  --glass: #e9e1d6;
+  --ink-soft: #8d8478;
+  --display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night);
+  color: var(--glass);
+  font-family: var(--mono);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  position: relative;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+#frame { position: relative; max-width: 100%; }
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 16px;
+}
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.mark { display: grid; gap: 4px; min-width: 0; }
+.mark h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1;
+  color: var(--glass);
+  text-shadow: 0 0 18px rgba(0,0,0,.9);
+}
+.meta {
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(0,0,0,.95);
+}
+.meta b { color: var(--amber); font-weight: 500; }
+button {
+  pointer-events: auto;
+  font: 500 12px/1 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: rgba(7,6,10,.72);
+  border: 1px solid var(--amber-dim);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--amber); }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+.tune {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-shadow: 0 0 10px rgba(0,0,0,.95);
+  min-height: 2.6em;
+}
+.tune .lbl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); width: 100%; }
+.tune span.n { color: var(--glass); transition: color .15s; }
+.tune span.n.on { color: var(--amber); }
+.tune span.n.you { text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 4px; }
+.toast { font-size: 12px; color: var(--amber); min-height: 1.4em; text-shadow: 0 0 10px rgba(0,0,0,.95); }
+#gate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-inline: 16px;
+  background: radial-gradient(ellipse at center, rgba(7,6,10,.55), rgba(7,6,10,.88));
+}
+.gate-inner { display: grid; gap: 18px; justify-items: center; text-align: center; max-width: 34ch; }
+.gate-inner h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(44px, 11vw, 72px);
+  line-height: .95;
+  color: var(--glass);
+  text-wrap: balance;
+}
+.gate-inner p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--glass); opacity: .85; }
+.gate-inner .small { font-size: 11px; color: var(--ink-soft); }
+#play { font-size: 14px; padding: 14px 26px; }
+.verdict { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.btns { display: flex; gap: 8px; }
+button.keep { background: var(--amber); color: var(--night); border-color: var(--amber); }
+button.keep.lit { box-shadow: 0 0 22px var(--amber); }
+.pop-wrap { display: grid; gap: 6px; min-width: 0; }
+.pop { display: flex; align-items: flex-end; gap: 3px; height: 28px; }
+.pop .ind { width: 9px; height: 100%; display: flex; align-items: flex-end; background: rgba(233,225,214,.08); border-radius: 2px; overflow: hidden; }
+.pop .ind i { display: block; width: 100%; background: var(--ink-soft); }
+.pop .ind.kept i { background: var(--amber-dim); }
+.pop .ind.cur { outline: 1px solid var(--amber); outline-offset: 1px; }
+.pop .ind.cur i { background: var(--amber); }
+.count { font-size: 10px; letter-spacing: .06em; color: var(--ink-soft); font-variant-numeric: tabular-nums; text-shadow: 0 0 10px rgba(0,0,0,.95); }
+@media (prefers-reduced-motion: reduce) { .tune span.n { transition: none; } }
+</style>
+
+<div id="stage">
+  <div id="frame">
+  <canvas id="win" aria-label="A stained-glass window of eighteen moving pictures. Each pane is one note; touch a pane to play it and join in."></canvas>
+  <div class="hud">
+    <div class="top">
+      <div class="mark">
+        <h1>Selected by Ear</h1>
+        <div class="meta" id="meta">18 panes · D minor · 80 bpm</div>
+      </div>
+      <button id="pause" type="button" hidden>Pause</button>
+    </div>
+    <div></div>
+    <div style="display:grid;gap:6px">
+      <div class="toast" id="toast" aria-live="polite"></div>
+      <div class="tune" id="tune"><span class="lbl">the first tune</span></div>
+      <div class="verdict" id="verdict" hidden>
+        <div class="pop-wrap"><div class="pop" id="pop" aria-label="The twelve living tunes, by how well each has done with you"></div><div class="count" id="count"></div></div>
+        <div class="btns"><button id="skip" type="button" aria-keyshortcuts="s">Skip</button><button id="keep" class="keep" type="button" aria-keyshortcuts="k">Keep</button></div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div id="gate">
+    <div class="gate-inner">
+      <h2>Selected by Ear</h2>
+      <p>Twelve tunes live in this window. Each turn plays a child of the ones that have done well with you. Keep what you love, skip what you don't, touch the panes to join in. Your listening decides which tunes have children, and the window remembers between visits.</p>
+      <button id="play" type="button">Play</button>
+      <p class="small" id="gatemsg">Sound on.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------- the window ----------
+const DW = 720, DH = 1280;
+const MEL = ["D4","E4","F4","G4","A4","Bb4","C5","D5","E5","F5","G5","A5","C6","D6"];
+const BASS = ["D2","Bb1","F2","C2"];
+const CHORD = { D2: ["D","F","A"], Bb1: ["Bb","D","F"], F2: ["F","A","C"], C2: ["C","E","G"] };
+const CHORD_NAME = { D2: "Dm", Bb1: "B♭", F2: "F", C2: "C" };
+const PROGS = [["D2","Bb1","F2","C2"],["D2","C2","Bb1","C2"],["D2","F2","C2","Bb1"],["Bb1","C2","D2","D2"],
+               ["D2","Bb1","C2","D2"],["F2","C2","D2","Bb1"],["D2","D2","Bb1","C2"]];
+const ANCESTOR = [{b:0,i:4,l:1.5},{b:1.5,i:7,l:.5},{b:2,i:9,l:1},{b:3,i:8,l:.5},{b:3.5,i:7,l:.5},{b:4,i:6,l:2},{b:6,i:4,l:2}];
+const pc = n => n.replace(/\d/g, "");
+const label = n => n.replace("Bb", "B♭");
+
+function mulberry(seed) {
+  let a = seed >>> 0;
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+
+// ---------- the population: tunes your ear selects ----------
+const POP = 12, LINEAGE_MAX = 400;
+const enc = g => g.map(n => [Math.round(n.b * 2), n.i, Math.round(n.l * 2)]);
+const dec = a => a.map(([b, i, l]) => ({ b: b / 2, i, l: l / 2 }));
+const tuneStr = g => g.map(n => MEL[n.i]).join(" ");
+const sameTune = (a, b) => JSON.stringify(enc(a)) === JSON.stringify(enc(b));
+function validG(g) {
+  let t = 0; for (const n of g) { if (Math.abs(n.b - t) > 1e-6 || n.l < .5 || n.i < 0 || n.i >= MEL.length) return false; t += n.l; }
+  return Math.abs(t - 8) < 1e-6 && g.length >= 3 && g.length <= 11;
+}
+function restamp(g) { let t = 0; for (const n of g) { n.b = t; t += n.l; } return g; }
+// my rules only throw out what cannot be sung; among the singable, the listener decides
+function singable(g) {
+  let steps = 0, leaps = 0, reps = 0;
+  for (let j = 1; j < g.length; j++) { const d = Math.abs(g[j].i - g[j - 1].i); if (d >= 1 && d <= 2) steps++; if (d > 4) leaps++; if (d === 0) reps++; }
+  const lo = Math.min(...g.map(n => n.i)), hi = Math.max(...g.map(n => n.i));
+  return 3 * steps / Math.max(1, g.length - 1) - 1.5 * leaps - .7 * Math.max(0, reps - 1) - .25 * reps
+    - .5 * Math.max(0, g.length - 9) - Math.max(0, hi - lo - 8);
+}
+
+function Breeder(seed, saved) {
+  const R = mulberry(seed), pick = a => a[Math.floor(R() * a.length)];
+  const ok = saved && saved.v === 1 && Array.isArray(saved.pop) && saved.pop.length > 0;
+  const S = ok ? JSON.parse(JSON.stringify(saved)) : {
+    v: 1, nextId: 1, turns: 0,
+    pop: [{ id: 0, notes: enc(ANCESTOR), score: 0, plays: 0, keeps: 0, skips: 0, touches: 0, parent: -1, mate: -1, born: 0 }],
+    lineage: [{ id: 0, parent: -1, mate: -1, born: 0, tune: tuneStr(ANCESTOR), fate: "the first tune", keeps: 0 }],
+    totals: { turns: 0, keeps: 0, skips: 0, touches: 0, heard: 0 }
+  };
+  const pending = [];
+  function mutate(src) {
+    const g = src.map(o => ({ ...o })), op = R();
+    // the head of a tune (its first two beats) changes far more rarely, so its children stay recognisable
+    let k = Math.floor(R() * g.length);
+    for (let tries = 0; tries < 3 && g[k].b < 2 && R() > .25; tries++) k = Math.floor(R() * g.length);
+    if (op < .32) g[k].i += pick([-2,-1,-1,1,1,2]);
+    else if (op < .48 && g[k].l >= 1) { const h = g[k].l / 2; g.splice(k + 1, 0, { b: 0, i: g[k].i + pick([-1,1,2,-2]), l: h }); g[k].l = h; }
+    else if (op < .6 && k + 1 < g.length) { g[k].l += g[k + 1].l; g.splice(k + 1, 1); }
+    else if (op < .74) { const e = Math.min(g.length, k + 2 + Math.floor(R() * 2)), d = pick([-1,1]); for (let j = k; j < e; j++) g[j].i += d; }
+    else if (op < .86 && k + 1 < g.length) { const l = g[k].l; g[k].l = g[k + 1].l; g[k + 1].l = l; }
+    else if (k + 2 < g.length) { const a = g[k].i; g[k].i = g[k + 2].i; g[k + 2].i = a; }
+    else g[k].i += pick([-1,1]);
+    return restamp(g);
+  }
+  // a cross: the first bar of one parent, the second bar of the other
+  function crossover(a, b) {
+    const out = [];
+    for (const n of a) if (n.b < 4) out.push({ b: n.b, i: n.i, l: Math.min(n.l, 4 - n.b) });
+    for (const n of b) if (n.b + n.l > 4) { const s = Math.max(n.b, 4); out.push({ b: s, i: n.i, l: n.b + n.l - s }); }
+    return restamp(out);
+  }
+  function tournament(excl) {
+    const cands = S.pop.filter(p => p !== excl); let best = cands[0], bs = -1e9;
+    for (let k = 0; k < 3; k++) { const p = pick(cands), s = p.score + .5 / (1 + p.plays); if (s > bs) { bs = s; best = p; } }
+    return best;
+  }
+  function asTurn(p, kind) { return { id: p.id, genome: dec(p.notes), kind, parent: p.parent, mate: p.mate, isNew: false, keeps: p.keeps, plays: p.plays }; }
+  function nextTurn(favourite) {
+    S.turns++;
+    for (const p of S.pop) p.score *= .985;            // scores fade, so old favourites make room
+    if (favourite) {
+      const kept = S.pop.filter(p => p.keeps > 0).sort((a, b) => b.keeps - a.keeps || b.score - a.score)[0];
+      return asTurn(kept || S.pop.slice().sort((a, b) => b.score - a.score)[0], kept ? "favourite" : "best");
+    }
+    if (S.pop.length > 3 && R() < .15) return asTurn(tournament(), "again");
+    const a = tournament(), b = S.pop.length > 1 && R() < .3 ? tournament(a) : null;
+    let base = dec(a.notes);
+    if (b) { const x = crossover(base, dec(b.notes)); if (validG(x)) base = x; }
+    const viable = [];
+    for (let c = 0; c < 40 && viable.length < 8; c++) {
+      let g = mutate(base); if (R() < .4) g = mutate(g);
+      if (!validG(g) || singable(g) < 1.1 || S.pop.some(p => sameTune(dec(p.notes), g))) continue;
+      viable.push(g);
+    }
+    let g = viable.length ? pick(viable) : base.map(o => ({ ...o }));   // chance proposes; the ear decides
+    for (const w of pending.splice(0)) {
+      let j = 0, bd = 99; g.forEach((n, k) => { const d = Math.abs(n.b - w.b); if (d < bd) { bd = d; j = k; } });
+      g[j].i = w.i; g[j].you = true;
+    }
+    return { id: S.nextId++, genome: g, kind: b ? "cross" : "child", parent: a.id, mate: b ? b.id : -1, isNew: true, keeps: 0, plays: 0 };
+  }
+  function mark(id, f) { const e = S.lineage.find(x => x.id === id); if (e) f(e); }
+  function verdict(turn, sig) {
+    const delta = (sig.keep ? 3 : 0) - (sig.skip ? 2.5 : 0) + .8 * Math.min(3, sig.touches) + .4 * sig.heard - (sig.left ? .8 : 0);
+    const T = S.totals; T.turns++; if (sig.keep) T.keeps++; if (sig.skip) T.skips++; T.touches += sig.touches; if (sig.heard > .95) T.heard++;
+    let fate;
+    if (turn.isNew) {
+      const ind = { id: turn.id, notes: enc(turn.genome), score: delta, plays: 1, keeps: sig.keep ? 1 : 0, skips: sig.skip ? 1 : 0,
+                    touches: sig.touches, parent: turn.parent, mate: turn.mate, born: S.turns };
+      if (sig.skip) fate = "skipped";
+      else if (S.pop.length < POP) { S.pop.push(ind); fate = "joined"; }
+      else {
+        const worst = S.pop.reduce((a, b) => b.score < a.score ? b : a);
+        if (sig.keep || delta >= worst.score) { S.pop.splice(S.pop.indexOf(worst), 1, ind); fate = "joined"; mark(worst.id, e => e.fate = "made room"); }
+        else fate = "not kept";
+      }
+      S.lineage.push({ id: ind.id, parent: ind.parent, mate: ind.mate, born: S.turns, tune: tuneStr(turn.genome), fate, keeps: ind.keeps });
+      if (S.lineage.length > LINEAGE_MAX) S.lineage.splice(0, S.lineage.length - LINEAGE_MAX);
+    } else {
+      const p = S.pop.find(q => q.id === turn.id);
+      if (p) { p.score += delta; p.plays++; if (sig.keep) p.keeps++; if (sig.skip) p.skips++; p.touches += sig.touches; }
+      if (sig.keep) mark(turn.id, e => e.keeps = (e.keeps || 0) + 1);
+      fate = "heard again";
+    }
+    return { delta, fate };
+  }
+  function wish(note, beat) {
+    const i = MEL.indexOf(note);
+    if (i >= 0) pending.push({ i, b: Math.max(0, Math.min(7.5, Math.round(beat * 2) / 2)) });
+  }
+  return { nextTurn, verdict, wish, state: () => S, restored: ok };
+}
+
+// ---------- the arrangement around whichever tune is playing ----------
+function Arranger(R) {
+  const pick = a => a[Math.floor(R() * a.length)];
+  let prog = PROGS[0], form = "alone", left = 2, sinceReturn = 0, no = 0, bassWish = null;
+  function nextForm() {
+    const canReturn = sinceReturn >= 10;
+    if (form === "alone") form = "bass";
+    else if (form === "bass") { const r = R(); form = r < .45 ? "arp" : (r < .8 || !canReturn) ? "bass" : "return"; }
+    else if (form === "arp") form = canReturn && R() < .5 ? "return" : (R() < .5 ? "bass" : "alone");
+    else form = R() < .5 ? "alone" : "bass";
+    if (form === "return") sinceReturn = 0;
+    left = { alone: 1 + Math.floor(R() * 2), bass: 2, arp: 2, return: 1 }[form];
+  }
+  function beginTurn() { if (no % 2) no++; if (left <= 0) nextForm(); left--; sinceReturn++; return form; }
+  function phrase(genome, call) {
+    if (no % 4 === 0 && no > 0) prog = R() < .35 ? PROGS[0] : pick(PROGS);
+    if (bassWish && no % 2 === 0) { prog = [bassWish, ...prog.slice(1)]; bassWish = null; }
+    const half = (no % 2) * 2, chords = [prog[half], prog[half + 1]];
+    // the call is the tune; the answer repeats it and resolves onto the chord
+    let play = genome.map(o => ({ ...o }));
+    if (!call) {
+      const last = play[play.length - 1], tones = CHORD[chords[1]];
+      if (!tones.includes(pc(MEL[last.i]))) {
+        const prev = play.length > 1 ? play[play.length - 2].i : -1;
+        for (const d of [-1, 1, -2, 2, -3, 3]) { const j = last.i + d; if (j >= 0 && j < MEL.length && j !== prev && tones.includes(pc(MEL[j]))) { last.i = j; break; } }
+      }
+    }
+    const ev = [], add = (b, n, l, v) => ev.push({ b, n, l, v });
+    const lift = form === "arp" ? 1.3 : 1;
+    if (form === "return") {
+      for (const n of play) add(n.b, MEL[n.i], n.l, .6);
+      add(0, chords[0], 8, .7);
+    } else {
+      const soft = form === "alone" ? .95 : 1;
+      for (const n of play) {
+        let i = n.i;
+        if (form === "arp" && n.l >= 1 && i + 7 < MEL.length) i += 7;
+        if (form === "arp" && n.l < 1) continue;
+        add(n.b, MEL[i], n.l, (n.b % 2 === 0 ? .82 : .7) * soft * lift);
+      }
+    }
+    if (form === "bass") {
+      chords.forEach((r, k) => { add(k * 4, r, 4, .95); add(k * 4 + 2.5, r, 1.5, .45); });
+      const tops = MEL.slice(9).filter(n => CHORD[chords[0]].includes(pc(n)));
+      if (tops.length) { add(1, tops[tops.length - 1], .5, .33); add(3, tops[0], .5, .33); }
+    }
+    if (form === "arp") {
+      chords.forEach((r, k) => {
+        for (let be = 0; be < 4; be++) add(k * 4 + be, r, 1, (be === 0 ? .9 : .6) * lift);
+        const tones = MEL.filter(n => CHORD[r].includes(pc(n)));
+        const lo = Math.floor(R() * Math.max(1, tones.length - 5)), run = tones.slice(lo, lo + 5);
+        const seq = [...run, ...run.slice(1, -1).reverse()].slice(0, 8);
+        while (seq.length < 8) seq.push(run[seq.length % run.length]);
+        seq.forEach((n, j) => add(k * 4 + j * .5, n, .5, (j % 2 ? .6 : .75) * lift));
+      });
+    }
+    no++;
+    return { form, chords, genome: play, ev };
+  }
+  return { beginTurn, phrase, setBass: n => { bassWish = n; }, get form() { return form; } };
+}
+
+// ---------- sound ----------
+let DATA = null, BUF = {}, ENVREF = 1;
+const BPM = 80, SPB = 60 / BPM, PHRASE = 8 * SPB;
+
+function makeReverb(ctx, seed) {
+  const R = mulberry(seed), sr = ctx.sampleRate, n = Math.floor(3.2 * sr), b = ctx.createBuffer(2, n, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch); let lp = 0, e2 = 0;
+    for (let k = 0; k < n; k++) {
+      const t = k / sr, x = (R() * 2 - 1) * Math.exp(-t * 6.9 / 2.4);
+      lp += .5 * (x - lp); d[k] = t < .022 ? 0 : lp; e2 += d[k] * d[k];
+    }
+    const s = 1 / Math.sqrt(e2); for (let k = 0; k < n; k++) d[k] *= s;
+  }
+  return b;
+}
+function buildGraph(ctx, bufs) {
+  const dry = ctx.createGain(), send = ctx.createGain(), verb = ctx.createConvolver(), wet = ctx.createGain();
+  const comp = ctx.createDynamicsCompressor(), master = ctx.createGain();
+  verb.normalize = false; verb.buffer = makeReverb(ctx, 7); wet.gain.value = .32;
+  comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 3; comp.attack.value = .004; comp.release.value = .25;
+  const lim = ctx.createDynamicsCompressor();                 // a last limiter so the loudest strikes never clip
+  lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = .002; lim.release.value = .12;
+  master.gain.value = 1;
+  dry.connect(comp); send.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(master); master.connect(lim); lim.connect(ctx.destination);
+  const pans = {};
+  for (const p of DATA.panes) {
+    const pn = ctx.createStereoPanner(); pn.pan.value = Math.max(-1, Math.min(1, (p.x - .5) * 1.4));
+    pn.connect(dry); pn.connect(send); pans[p.note] = pn;
+  }
+  return { master, pans, bufs };
+}
+const LEVEL = .9;
+function strike(ctx, G, n, when, lenBeats, vel) {
+  const p = PANE[n], src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = G.bufs[n];
+  const amp = vel * LEVEL * (p.midi < 50 ? 1.4 : 1);
+  const off = when + lenBeats * SPB * 1.05 + .04;
+  g.gain.setValueAtTime(amp, when);
+  g.gain.setTargetAtTime(0, off, .12);
+  src.connect(g); g.connect(G.pans[n]);
+  src.start(when); src.stop(Math.min(when + src.buffer.duration, off + 1.2) + .05);
+  return { n, when, off, amp: vel * (p.midi < 50 ? 1.4 : 1), src, g };
+}
+
+// ---------- picture ----------
+let PANE = {}, LIST = [];
+function cellPolys() {
+  // power diagram of the seeds, clipped to the frame: straight leading, like real glass
+  const S = LIST.map(p => ({ x: p.x * DW, y: p.y * DH, r: p.w * DW * 2 }));
+  return S.map((a, i) => {
+    let poly = [[0,0],[DW,0],[DW,DH],[0,DH]];
+    S.forEach((b, j) => {
+      if (i === j) return;
+      const nx = b.x - a.x, ny = b.y - a.y;
+      const c = (b.x * b.x + b.y * b.y - a.x * a.x - a.y * a.y - (b.r * b.r - a.r * a.r)) / 2;
+      const inside = q => q[0] * nx + q[1] * ny <= c;
+      const out = [];
+      for (let k = 0; k < poly.length; k++) {
+        const P = poly[k], Q = poly[(k + 1) % poly.length], pi = inside(P), qi = inside(Q);
+        if (pi) out.push(P);
+        if (pi !== qi) { const dp = P[0] * nx + P[1] * ny - c, dq = Q[0] * nx + Q[1] * ny - c, t = dp / (dp - dq);
+          out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]); }
+      }
+      poly = out;
+    });
+    const xs = poly.map(q => q[0]), ys = poly.map(q => q[1]);
+    return { poly, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+  });
+}
+
+const cv = document.getElementById("win"), cx = cv.getContext("2d");
+let ctx = null, G = null, comp = null, running = false, paused = false;
+let voices = [], strikes = [], rings = [], nextPhraseAt = 0, phraseQueue = [], lastPlayed = {};
+const popEl = document.getElementById("pop"), countEl = document.getElementById("count"), gateMsg = document.getElementById("gatemsg");
+const tuneEl = document.getElementById("tune"), metaEl = document.getElementById("meta"), toastEl = document.getElementById("toast");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function fit() {
+  // the window keeps its 9:16 and is as large as the screen allows; the words sit on the glass
+  const st = document.getElementById("stage").getBoundingClientRect(), fr = document.getElementById("frame");
+  const h = Math.min(st.height, st.width * 16 / 9), w = h * 9 / 16;
+  fr.style.width = w + "px"; fr.style.height = h + "px";
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener("resize", fit);
+
+function lightAt(t) {
+  let a = null, b = null;
+  for (const s of strikes) { if (s.t <= t) a = s; else { b = s; break; } }
+  if (!a) return b ? [PANE[b.n].x * DW, PANE[b.n].y * DH] : [DW / 2, DH * .7];
+  const A = [PANE[a.n].x * DW, PANE[a.n].y * DH];
+  if (!b) return A;
+  const B = [PANE[b.n].x * DW, PANE[b.n].y * DH];
+  let u = Math.max(0, Math.min(1, ((t - a.t) / (b.t - a.t) - .35) / .65)); u = u * u * (3 - 2 * u);
+  return [A[0] + (B[0] - A[0]) * u, A[1] + (B[1] - A[1]) * u];
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  const W = cv.width, H = cv.height, s = W / DW;
+  if (!W || !LIST.length) return;
+  const now = ctx ? ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0) : performance.now() / 1000;
+  const bright = {}, lit = {};
+  for (const p of LIST) { bright[p.note] = 0; lit[p.note] = 0; }
+  voices = voices.filter(v => now < v.off + 1.5);
+  for (const v of voices) {
+    const p = PANE[v.n], k = Math.floor((now - v.when) * 60);
+    if (k < 0 || k >= p.env.length) continue;
+    const rel = now > v.off ? Math.exp(-(now - v.off) / .12) : 1;
+    const e = v.amp * p.env[k] / ENVREF * rel;
+    lit[v.n] = Math.max(lit[v.n], e);
+  }
+  cx.setTransform(1, 0, 0, 1, 0, 0); cx.fillStyle = "#07060a"; cx.fillRect(0, 0, W, H);
+  cx.setTransform(s, 0, 0, s, 0, 0);
+  for (const p of LIST) {
+    const e = Math.min(1.6, lit[p.note]);
+    const last = lastPlayed[p.note];
+    const mem = running ? (last === undefined ? .1 : .2 + .12 * Math.exp(-(now - last) / 20)) : .3;
+    const b = Math.min(1.35, mem + 1.15 * Math.pow(e, .7));
+    bright[p.note] = b; lit[p.note] = e;
+    cx.save(); path(p.poly); cx.clip();
+    const [x0, y0, x1, y1] = p.box, bw = x1 - x0, bh = y1 - y0;
+    const vd = p.video;
+    if (vd && vd.readyState >= 2 && vd.videoWidth) {
+      const sc = Math.max(bw / vd.videoWidth, bh / vd.videoHeight) * 1.08;
+      const dw = vd.videoWidth * sc, dh = vd.videoHeight * sc;
+      cx.drawImage(vd, x0 + (bw - dw) / 2, y0 + (bh - dh) / 2, dw, dh);
+    } else { cx.fillStyle = `rgb(${p.mean.join(",")})`; cx.fillRect(x0, y0, bw, bh); }
+    if (b < 1) { cx.fillStyle = `rgba(7,6,10,${(1 - b).toFixed(3)})`; cx.fillRect(x0, y0, bw, bh); }
+    else { cx.globalCompositeOperation = "lighter"; cx.fillStyle = `rgba(255,176,88,${((b - 1) * .5).toFixed(3)})`; cx.fillRect(x0, y0, bw, bh); cx.globalCompositeOperation = "source-over"; }
+    for (const r of rings) if (r.n === p.note && now >= r.t && now - r.t < .5) {
+      const a = 1 - (now - r.t) / .5, rad = 30 + (now - r.t) * 420;
+      cx.strokeStyle = `rgba(255,176,88,${(a * .85).toFixed(3)})`; cx.lineWidth = 5;
+      cx.beginPath(); cx.arc(p.x * DW, p.y * DH, rad, 0, Math.PI * 2); cx.stroke();
+    }
+    cx.restore();
+  }
+  rings = rings.filter(r => now - r.t < .6);
+  cx.lineJoin = "round"; cx.strokeStyle = "#000"; cx.lineWidth = 5;
+  for (const p of LIST) { path(p.poly); cx.stroke(); }
+  cx.globalCompositeOperation = "lighter";
+  for (const p of LIST) {
+    const e = lit[p.note]; if (e < .04) continue;
+    cx.shadowColor = "rgba(255,176,88,.9)"; cx.shadowBlur = 14 * s;
+    cx.strokeStyle = `rgba(255,176,88,${Math.min(1, e * .8).toFixed(3)})`; cx.lineWidth = 2.2;
+    path(p.poly); cx.stroke();
+  }
+  cx.shadowBlur = 0;
+  if (running) {
+    const [lx, ly] = lightAt(now), rad = 22 + 4 * Math.sin(now * 2.3);
+    for (const [r, a] of [[rad * 4, .2], [rad, .55], [rad * .38, 1]]) {
+      const g = cx.createRadialGradient(lx, ly, 0, lx, ly, r);
+      g.addColorStop(0, `rgba(255,190,110,${a})`); g.addColorStop(1, "rgba(255,176,88,0)");
+      cx.fillStyle = g; cx.fillRect(lx - r, ly - r, r * 2, r * 2);
+    }
+  }
+  cx.globalCompositeOperation = "source-over";
+  const vg = cx.createRadialGradient(DW / 2, DH / 2, DH * .3, DW / 2, DH / 2, DH * .75);
+  vg.addColorStop(0, "rgba(7,6,10,0)"); vg.addColorStop(1, "rgba(7,6,10,.6)");
+  cx.fillStyle = vg; cx.fillRect(0, 0, DW, DH);
+  updateTune(now);
+}
+function path(poly) { cx.beginPath(); poly.forEach((q, k) => k ? cx.lineTo(q[0], q[1]) : cx.moveTo(q[0], q[1])); cx.closePath(); }
+
+async function load() {
+  DATA = await (await fetch("panes.json")).json();
+  LIST = DATA.panes; PANE = Object.fromEntries(LIST.map(p => [p.note, p]));
+  const polys = cellPolys(); LIST.forEach((p, k) => Object.assign(p, polys[k]));
+  let mx = 0; for (const p of LIST) for (const v of p.env) mx = Math.max(mx, v); ENVREF = mx * .55;
+  for (const p of LIST) {
+    const v = document.createElement("video");
+    v.muted = true; v.loop = true; v.playsInline = true; v.preload = "auto"; v.setAttribute("muted", ""); v.setAttribute("playsinline", "");
+    for (const ext of ["webm", "mp4"]) { const s = document.createElement("source"); s.src = `clips/${p.note}.${ext}`; s.type = ext === "webm" ? "video/webm" : "video/mp4"; v.appendChild(s); }
+    p.video = v; v.play().catch(() => {});
+  }
+  fit(); requestAnimationFrame(draw);
+}
+async function decodeAll(ac) {
+  const out = {};
+  await Promise.all(LIST.map(async p => { const ab = await (await fetch(`notes/${p.note}.mp3`)).arrayBuffer(); out[p.note] = await ac.decodeAudioData(ab); }));
+  return out;
+}
+
+let shownPhrase = null;
+function turnLabel(tr) {
+  if (tr.kind === "favourite") return `the one you kept most · #${tr.id} · kept ${tr.keeps}×`;
+  if (tr.kind === "best") return `remembering the best so far · #${tr.id}`;
+  if (tr.kind === "again") return `heard again · #${tr.id}`;
+  if (tr.kind === "cross") return `#${tr.id} · a cross of #${tr.parent} and #${tr.mate}`;
+  return tr.parent < 0 ? `#${tr.id} · the first tune` : `#${tr.id} · child of #${tr.parent}`;
+}
+function updateTune(now) {
+  const cur = phraseQueue.filter(q => q.t0 <= now).pop();
+  if (!cur) return;
+  if (shownPhrase !== cur) {
+    shownPhrase = cur;
+    const tr = cur.turn, formName = { alone: "the tune alone", bass: "with the bass", arp: "arpeggios", return: "remembering" }[cur.ph.form];
+    metaEl.innerHTML = `${cur.ph.chords.map(c => CHORD_NAME[c]).join("–")} · ${formName}`;
+    tuneEl.innerHTML = `<span class="lbl">${turnLabel(tr)}</span>` +
+      cur.ph.genome.map(n => `<span class="n${n.you ? " you" : ""}" data-b="${n.b}" data-l="${n.l}">${label(MEL[n.i])}</span>`).join("");
+    renderPop(tr.id);
+  }
+  const beat = (now - cur.t0) / SPB;
+  for (const el of tuneEl.querySelectorAll(".n")) {
+    const b = +el.dataset.b, l = +el.dataset.l;
+    el.classList.toggle("on", beat >= b && beat < b + l);
+  }
+}
+function renderPop(curId) {
+  const S = breeder.state(), mx = Math.max(1, ...S.pop.map(p => Math.abs(p.score)));
+  popEl.innerHTML = S.pop.slice().sort((a, b) => a.id - b.id).map(p => {
+    const h = Math.max(8, Math.round(100 * Math.max(0, p.score) / mx));
+    return `<span class="ind${p.id === curId ? " cur" : ""}${p.keeps ? " kept" : ""}" title="#${p.id}: ${tuneStr(dec(p.notes))}"><i style="height:${h}%"></i></span>`;
+  }).join("");
+  const T = S.totals;
+  countEl.textContent = `${S.pop.length} alive · ${T.turns} heard · ${T.keeps} kept · ${T.skips} skipped${saveNote ? " · " + saveNote : ""}`;
+}
+
+// ---------- live scheduling, one turn = a call and its answer ----------
+let breeder = null, arranger = null, turn = null, turns = [];
+function playingTurn() { const now = ctx.currentTime; return turns.filter(t => !t.done && !t.dropped && t.t0 <= now).pop() || null; }
+function schedule() {
+  if (!running || paused) return;
+  while (nextPhraseAt < ctx.currentTime + 1.6) {
+    const t0 = nextPhraseAt, call = !turn || turn.half === 1;
+    if (call) {
+      const form = arranger.beginTurn();
+      turn = { ...breeder.nextTurn(form === "return"), form, t0, half: 0, sig: { keep: false, skip: false, touches: 0, left: false }, done: false };
+      turns.push(turn); if (turns.length > 12) turns.shift();
+    } else turn.half = 1;
+    const ph = arranger.phrase(turn.genome, call);
+    const q = { t0, ph, turn, voices: [] };
+    phraseQueue.push(q); if (phraseQueue.length > 8) phraseQueue.shift();
+    playPhrase(q);
+    nextPhraseAt += PHRASE;
+  }
+  for (const tr of turns) if (!tr.done && !tr.dropped && ctx.currentTime >= tr.t0 + 2 * PHRASE) finish(tr, 1);
+}
+function playPhrase(q) {
+  const top = {};
+  for (const e of q.ph.ev) {
+    const when = q.t0 + e.b * SPB, v = strike(ctx, G, e.n, when, e.l, e.v);
+    voices.push(v); q.voices.push(v);
+    rings.push({ n: e.n, t: when });
+    const k = when.toFixed(3);
+    if (!top[k] || PANE[e.n].midi > PANE[top[k]].midi) top[k] = e.n;
+    setTimeout(() => { lastPlayed[e.n] = when; }, Math.max(0, (when - ctx.currentTime) * 1000));
+  }
+  for (const k of Object.keys(top)) strikes.push({ t: +k, n: top[k] });
+  strikes.sort((a, b) => a.t - b.t);
+  strikes = strikes.filter(s => s.t > ctx.currentTime - 20);
+}
+function finish(tr, heard) {
+  tr.done = true;
+  const r = breeder.verdict(tr, { ...tr.sig, heard });
+  if (tr.isNew && !tr.sig.keep && !tr.sig.skip && r.fate === "not kept") note(`#${tr.id} faded out. It did not hold its place.`);
+  queueSave();
+}
+function note(msg) { toastEl.textContent = msg; clearTimeout(note._t); note._t = setTimeout(() => toastEl.textContent = "", 4000); }
+
+function keep() {
+  const tr = playingTurn(); if (!tr || tr.sig.keep) return;
+  tr.sig.keep = true;
+  note(tr.isNew ? `Kept #${tr.id}. It joins the twelve, and its children will carry it.` : `Kept #${tr.id} again. It will come back more often.`);
+  keepBtn.classList.add("lit"); setTimeout(() => keepBtn.classList.remove("lit"), 600);
+}
+function skip() {
+  const tr = playingTurn(); if (!tr || tr.done) return;
+  const now = ctx.currentTime;
+  tr.sig.skip = true;
+  // cut what is sounding and everything already scheduled, then start a fresh tune
+  for (const v of voices) if (v.off > now - .05) { try { v.g.gain.cancelScheduledValues(now); v.g.gain.setTargetAtTime(0, now, .04); v.src.stop(now + .3); } catch (e) {} v.off = Math.min(v.off, now); }
+  for (const t of turns) if (!t.done && t !== tr && t.t0 > now - .01) t.dropped = true;
+  phraseQueue = phraseQueue.filter(q => q.t0 <= now);
+  strikes = strikes.filter(s => s.t <= now); rings = rings.filter(r => r.t <= now);
+  finish(tr, Math.min(1, (now - tr.t0) / (2 * PHRASE)));
+  note(tr.isNew ? `Skipped #${tr.id}. It will not be a parent.` : `Skipped #${tr.id}. It loses its place a little.`);
+  turn = null; nextPhraseAt = now + .45;
+  schedule();
+}
+
+// ---------- remembering, across visits ----------
+let dbDoc = null, saving = false, dirty = false, saveNote = "";
+const dbReady = (async () => {
+  try {
+    const db = await window.claude?.use?.("db");
+    if (!db) return null;
+    const ref = db.doc("window/state"), snap = await ref.get();
+    return { ref, saved: snap.exists ? snap.data() : null };
+  } catch (e) { return null; }
+})();
+async function queueSave() {
+  if (!dbDoc) return;
+  dirty = true; if (saving) return;
+  saving = true;
+  while (dirty) {
+    dirty = false;
+    try { await dbDoc.set(JSON.parse(JSON.stringify(breeder.state()))); saveNote = "remembered"; }
+    catch (e) {
+      if (e && e.code === "unavailable") { dirty = true; await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500)); continue; }
+      saveNote = e && e.code === "quota_exceeded" ? "storage full, not saving" : "not saving in this view";
+      dbDoc = null; break;
+    }
+  }
+  saving = false;
+}
+dbReady.then(d => {
+  const S = d && d.saved && d.saved.totals;
+  gateMsg.textContent = !d ? "This view cannot save, so the twelve will start fresh and your listening will not be remembered."
+    : S ? `The window remembers you: ${S.turns} tunes heard, ${S.keeps} kept, ${d.saved.pop.length} alive.`
+    : "Nothing heard yet. The first tune is waiting.";
+});
+
+async function start() {
+  const btn = document.getElementById("play"); btn.disabled = true; btn.textContent = "Tuning";
+  try {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" });
+    await ctx.resume();
+    BUF = await decodeAll(ctx);
+    G = buildGraph(ctx, BUF);
+    const d = await Promise.race([dbReady, new Promise(r => setTimeout(() => r(null), 4000))]);
+    const seed = (Math.random() * 2 ** 31) | 0;
+    breeder = Breeder(seed, d && d.saved); arranger = Arranger(mulberry(seed ^ 0x5bd1e995));
+    dbDoc = d ? d.ref : null; saveNote = d ? "" : "not saving in this view";
+    nextPhraseAt = ctx.currentTime + .3; running = true;
+    for (const p of LIST) p.video.play().catch(() => {});
+    setInterval(schedule, 120); schedule();
+    document.getElementById("gate").hidden = true;
+    for (const id of ["pause", "verdict"]) document.getElementById(id).hidden = false;
+    renderPop(-1);
+    try { await navigator.wakeLock?.request("screen"); } catch (e) {}
+  } catch (e) {
+    btn.disabled = false; btn.textContent = "Play";
+    gateMsg.textContent = "The sound could not start in this browser. Try again, or open the page in another browser.";
+  }
+}
+document.getElementById("play").addEventListener("click", start);
+document.getElementById("pause").addEventListener("click", async e => {
+  if (!ctx) return;
+  if (!paused) { paused = true; const tr = playingTurn(); if (tr) tr.sig.left = true; await ctx.suspend(); e.target.textContent = "Resume"; }
+  else { paused = false; await ctx.resume(); nextPhraseAt = Math.max(nextPhraseAt, ctx.currentTime + .2); e.target.textContent = "Pause"; }
+});
+const keepBtn = document.getElementById("keep");
+keepBtn.addEventListener("click", keep);
+document.getElementById("skip").addEventListener("click", skip);
+addEventListener("keydown", e => { if (!running || paused || e.target.closest("button")) return; if (e.key === "k") keep(); if (e.key === "s") skip(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && running && !paused) { const tr = playingTurn(); if (tr) tr.sig.left = true; } });
+
+// touching a pane plays it on the next eighth, counts as joining in, and the note goes into the next child
+cv.addEventListener("pointerdown", e => {
+  if (!running || paused) return;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * DW, y = (e.clientY - r.top) / r.height * DH;
+  const p = LIST.find(q => { cx.setTransform(1,0,0,1,0,0); path(q.poly); return cx.isPointInPath(x, y); });
+  if (!p) return;
+  const eighth = SPB / 2, when = Math.ceil((ctx.currentTime + .03) / eighth) * eighth;
+  voices.push(strike(ctx, G, p.note, when, 1, .8)); rings.push({ n: p.note, t: when });
+  strikes.push({ t: when, n: p.note }); strikes.sort((a, b) => a.t - b.t);
+  setTimeout(() => { lastPlayed[p.note] = when; }, Math.max(0, (when - ctx.currentTime) * 1000));
+  const tr = playingTurn(); if (tr) tr.sig.touches++;
+  const cur = phraseQueue.filter(q => q.t0 <= when).pop();
+  if (p.midi < 50) { arranger.setBass(p.note); note(`Your ${label(p.note)} will lead the next chords.`); }
+  else { breeder.wish(p.note, cur ? (when - cur.t0) / SPB : 0); note(`Your ${label(p.note)} goes into the next child.`); }
+});
+
+// ---------- measuring it: an offline recording, and a test of whether listening really selects ----------
+window.__still = {
+  Breeder, Arranger,
+  async renderOffline(seconds, seed) {
+    const sr = 48000, oc = new OfflineAudioContext(2, Math.ceil(seconds * sr), sr);
+    const bufs = await decodeAll(oc), g = buildGraph(oc, bufs), b = Breeder(seed, null), a = Arranger(mulberry(seed ^ 0x5bd1e995)), notes = [], log = [];
+    let t0 = .3, tr = null;
+    while (t0 < seconds) {
+      const call = !tr || tr.half === 1;
+      if (call) { if (tr) b.verdict(tr, { keep: false, skip: false, touches: 0, left: false, heard: 1 });
+        const form = a.beginTurn(); tr = { ...b.nextTurn(form === "return"), half: 0 }; } else tr.half = 1;
+      const ph = a.phrase(tr.genome, call);
+      log.push({ form: ph.form, id: tr.id, kind: tr.kind, tune: tuneStr(ph.genome) });
+      for (const e of ph.ev) { const when = t0 + e.b * SPB; if (when < seconds) { strike(oc, g, e.n, when, e.l, e.v); notes.push([+when.toFixed(4), e.n, e.l, e.v]); } }
+      t0 += PHRASE;
+    }
+    const buf = await oc.startRendering();
+    return { L: buf.getChannelData(0), R: buf.getChannelData(1), log, notes };
+  },
+  // a synthetic listener with a hidden taste, against listeners whose keeps and skips ignore the tune
+  simulate({ turns = 300, seed = 1, ear = "high", every = 25 }) {
+    const b = Breeder(seed, null), R = mulberry(seed * 7919 + 13);
+    const trait = { high: g => g.reduce((s, n) => s + n.i * n.l, 0) / 8,
+                    busy: g => g.length,
+                    leapy: g => { let s = 0; for (let j = 1; j < g.length; j++) s += Math.abs(g[j].i - g[j - 1].i); return s / Math.max(1, g.length - 1); } };
+    const T = trait[ear.split(":")[0]] || trait.high, mid = { high: 7.5, busy: 7, leapy: 1.8 }[ear.split(":")[0]] || 7.5, sc = { high: .8, busy: 1, leapy: .4 }[ear.split(":")[0]] || .8;
+    const nullEar = ear.endsWith(":null"), passive = ear === "passive";
+    const curve = [];
+    const popMean = () => { const P = b.state().pop; return P.reduce((s, p) => s + T(dec(p.notes)), 0) / P.length; };
+    for (let k = 0; k <= turns; k++) {
+      if (k % every === 0) curve.push(+popMean().toFixed(3));
+      const tr = b.nextTurn(k % 20 === 19), x = T(tr.genome), like = 1 / (1 + Math.exp(-(x - mid) / sc));
+      const pk = passive ? 0 : nullEar ? .3 : .6 * like, ps = passive ? 0 : nullEar ? .25 : .5 * (1 - like);
+      const keepIt = R() < pk, skipIt = !keepIt && R() < ps;
+      b.verdict(tr, { keep: keepIt, skip: skipIt, touches: 0, left: false, heard: skipIt ? .4 : 1 });
+    }
+    return { curve, totals: b.state().totals };
+  }
+};
+load().catch(() => { gateMsg.textContent = "The window could not load its panes. Reload the page to try again."; });
+</script>
