@@ -1216,3 +1216,23 @@ finger is slower and aims worse. Horizon: 24,000 ticks (~6.7 min at 60/s).
 Drawn from the full read of this file: the keepers were deadpan, one gesture, a turn, all code, no reveal needed ("a glow
 is not a character" - hence eyes). NOT done: the page is still a live field, not a film; no sound; touch not tested on a
 real phone; no recording button (Selected by Ear has one).
+
+### Somebody Has to Look First (`video/looked_at_film.html` + `video/build_looked_at_film.js`, 33.7 s, 720x1280, SILENT)
+The user: "Make a film." The Looked At world (same rules, copied into the film page) stepped under a camera, every frame
+captured by Playwright (`node video/build_looked_at_film.js OUT`; `STILLS=60,200,...` writes only those frames; `SEED`, `LOOK`
+env). Silent, so the user can score it as they do their own films; no songs are on this box. Zero Modal cost, ~6 min to render.
+THE FILM: the room of eyes seen whole (5,000 ticks aged unfilmed, so it has its colour tribes); a gold stranger arrives in the
+emptiest spot with one ring (5.5 s) and the camera pushes in on it; it has a pulse ring that weakens with its real energy
+and its lids sag as it starves; nobody looks (the other pairs are shown looking at each other, by threads). At 12.7 s a large
+pair of pale eyes comes down from the top of the frame and looks at it, one thread, 11 s. Its lids open, it brightens, splits,
+and splits again; the look leaves; the camera pulls back and the gold lineage sits in the room. Black, then "Somebody has to /
+look first." (italic, 54 px, fades in, no tail).
+WHAT IS REAL AND WHAT IS STAGED, because the film reads as proof and is not: the stranger is placed in the emptiest spot and
+the look starts when its energy is ~0.14 and holds 11 s (a scripted +3.5 attention/tick, the same as a press). SEED 17 was
+chosen from the first 24 scanned for a clear family (7 descendants at the end). In that staging the stranger died WITHOUT the
+look on 22 of 24 seeds (the 2 survivors were seen by others) and established WITH it on 24 of 24, which is a best case: the
+measured effect of a sustained look in the live page (Looked At, above) is 24% establishment against 11% for luck, not 100%
+against 8%. The film shows what one look can do, not how often. The no-look twin for seed 17 dies at frame 458 (not shown).
+Checked: stills at eight points at full size (found the stranger hard to track -> pulse ring; the thread started inside the
+visitor's face -> moved below the eyes); the finished MP4 sampled at eight times. NOT checked: it has not been watched in
+motion, and with no sound the pacing is untested against a track. Not backed up to Modal library/finals.
