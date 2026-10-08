@@ -1355,3 +1355,42 @@ Whether the voice and the score are GOOD is the user's ear's call.
 near it" is read off the frames, not measured; "does not appear to mind" and "did not say goodbye" are jokes, not findings.
 The cut speeds the world up 0.4x to 4x. Not watched in motion. Not backed up to Modal library/finals. 66 s is long next to
 the user's 30 s preference; the first seconds are slow on purpose (321 specks) and the numbers line is 11.7 s.
+
+### Hold the Door (`video/build_door.py` + `video/door_draw.py`, `out/door/hold-the-door.mp4`, 34.5 s, 720x1280, silent comedy WITH synthesized sound)
+THE USER: "Let's keep going. Something new. Something bold. Take yourself out of your comfort zone." Claude's read of its own
+comfort zone: every piece so far was a simulation of selection, narrated or captioned, with an honesty note. So this one has no
+AI, no evolution, no data, no narrator and no claim to be true of anything: a joke about the most awkward thing a person can
+do, holding a door for someone who is far away, drawn in code and shot from straight above (Tati's Playtime, a cutaway
+building like a dollhouse). Zero Modal cost; ~4 min to render. THE FIRST CHARACTER ANIMATION IN THIS FILE'S RECORD that is not a
+glow: three people made of shoulders, a hat (the cap's brim and the nose bump say where they face), two hands and two feet,
+with props (a coffee cup, a phone), a pigeon, a swinging door and glass sliding doors. Top-down means no faces: all of the
+acting is in the head-turn, the shoulders dropping, the arms and the timing.
+THE JOKE (setup, escalation, twist, tag, callback). A man comes out of a staff-only door with a coffee and sees a stranger a long
+way off across the plaza, so he catches the door and holds it. The mat beside him says STAFF EXIT ONLY / NO RE-ENTRY (legible in
+the first shot; it is the setup for the lock-out). He waits: weight shifts, a foot tap, a sip, a glance, the held arm getting
+tired. The stranger, on his phone, looks up, understands someone is holding a door FOR HIM, and breaks into the guilty jog, stiff
+arms and a sorry-wave, while the holder cups the air with his coffee in the "no rush" pat. At the last second the stranger veers
+left, the automatic doors beside it open by themselves, he walks in without a glance. The holder's head follows him; his arm
+comes down; the door's closer shuts it with a click; he pushes it twice (it rattles) and reads the mat. He sulks along the wall
+to the automatic doors, which open for him, and stands in the doorway. A second stranger appears far away; the holder, without
+thinking, puts an arm out and holds the door that doesn't need holding. The stranger does the guilty jog, thanks him, goes in.
+He stands there alone in the lit doorway. Fade.
+CAMERA (real cuts, Playwright-style editing in code): tight on the door for the setup, a slow pull-out to a wide to reveal the
+distance, a cut to a close follow of the jogger, a cut to the holder's cup patting the air, a cut to both, a push-in on the two
+doors for the twist, a wide for the callback, a push-in on the doorway. The title (HOLD THE DOOR) is on black for the first 1.5 s.
+SOUND (all synthesized, from the animation's own events): every footstep is a contact in that person's gait phase, with the
+loudness following whichever person the camera is on; a hinge squeak that glides up as the door opens and down as the closer
+shuts it, the latch click, two rattles; the automatic doors' whoosh and a two-note chime taken from the model of the sensor, not
+timed by hand; a pigeon's coo and wing-flaps. Score: a pizzicato bass walking on the first stranger's steps; one high plink and
+a stop when he looks up; a rising ostinato and tremolo for the jog; three falling muted-trombone notes at the veer; sparse sad
+notes while he is locked out; a ukulele strum when the doors open for him; the same jog, brighter, for the second stranger; a
+warm chord at the end. CHECKED WITHOUT EARS: -19.5 LUFS, peak -4.2 dBFS, spectrogram shows the squeak glides, the foot rhythm,
+the jog build and the three falling notes. A first mix had the trombone notes far louder than the footsteps and the chord too
+hot; both turned down. Whether it is FUNNY and whether the timing works is for the user to say: it has not been watched in motion.
+Checked on frames: poses on a sheet (the first shadows were opaque black: ImageDraw on an RGBA canvas replaces alpha; RGB canvas
+with an RGBA draw blends), the whole film one frame a second, the cut sequence at half-second steps, and the second half. Caught
+and fixed: the first stranger stood still in the lobby for the last 14 s (he now walks off); the title overlapped the scene; the
+doorway frame cut off the mat; the wide shot made the guilty jog too small to enjoy (hence the cuts); the automatic doors opened
+for the holder while he stood at the staff door (sensor radius).
+NOT DONE: not backed up to Modal library/finals; no voice (silent comedy); the walkers' gaits are one cycle each; the pigeon is
+small. 34.5 s is a little over the user's 30 s.
