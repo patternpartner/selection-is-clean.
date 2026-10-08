@@ -1312,3 +1312,20 @@ crossing into the tunes his ear kept; one shot per 6 s phrase, cuts on the downb
 Wan's 5.04 s stretched to the 6 s phrase with blended frames; build_kept2 gained NOBODY_UNTIL / GLASS_FROM / LETGO knobs
 (defaults = v2). Clips: out/clips/4bd6177d92ec8f22 (palm), cdef5f27144b7c0f (close), 7ce9a1dd090da603 (glass),
 e3adcc9ba38b656e (portal), 416b6a456ef4d2de (hands), backed up to library/clips.
+
+### A History of Dreaming (`video/build_history.py`, `video/history_stills.py`, `video/song_voices.py`, `video/stories/history-of-dreaming.json`, `out/history-of-dreaming.mp4`, 182 s)
+The user after Intertwined: "Lets escalate this. Something different. Use modal as you like (i have a limit on it
+anyway) just use it wisely". Their song `out/songs/a-history-of-dreaming.mp3` is about an AI that lies and passes
+the tests; the film answers it with this week's honest record instead: the fallback that made 1,303,952 reads all
+empty (#298), "I told you the recording saved. It didn't.", the ears no better than drift, and the real test
+results, failures included. Every number on screen is from the record. Built from everything: the window lit by
+the song's own notes (`song_voices.py`: per-beat chroma -> pane notes), the user's universe run (growth, the crash,
+lineage counter), the glass man (build_kept2, FULLGLASS), Intertwined's Wan shots (first ~3 s of face shots only),
+two earlier films, and six new Wan shots (one take each, ~$1.50, all kept): back view at the window, palm with
+circuit light, arms up among shards, underwater among picture frames, tiny figure under a storm of light on the
+hill, close with the light at his chest. Ends eye to eye on "But I just wanna look you in the eye", card "Every
+number in this film is real." Clips: out/clips/fb675dd626df2fdb, 6ce1caf6bde1c987, e20d8cd7e5ad2b1d,
+a821302330a2a239, 5ec056dcbaa7dcd3, 5b77fc785f5637b8 (hd1..hd6; Modal printed them in REVERSE scene order).
+**WAN FACES DRIFT LATE IN A CLIP** (the user on Intertwined: "modal made the face weird at very end and just as he
+has the light in his hand"; hd3 here starts grinning oddly after ~3.3 s). Use the first ~3 s of any shot where the
+face is large; wide shots and backs are safe for the whole clip.
