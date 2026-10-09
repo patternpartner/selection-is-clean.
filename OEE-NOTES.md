@@ -26541,3 +26541,20 @@ The #299d replicates carry every layer, so here is what they say about the rest.
 **Net, at the rung measured and the 20,000-tick horizon: of five layers, one (traits) is consistently below drift, none is consistently above it.** The
 artwork's claim ("novelty keeps arriving") is not supported by this instrument in any layer of the default world at this horizon; it is also not refuted in
 programs, atoms, channels or lineages, where the readings are chance. Raw: `out/sweep/`, `out/rep/` (not committed).
+
+### #300 — THE RENDER REGISTER READS A NUMBER THE CREATURES LEFT BEHIND: amp pinned at the clamp on ~99% of the living. A reading, one world, drawn by chance.
+
+The subject, the form and the seed were drawn with `os.urandom` and committed before anything was made (`video/chance_draw.json`: entry #71, an interactive page, engine
+seed 776). #71 found `R[4]=__cl(amp[i],0,1)` (engine.html ~3671) bound on 89% of evaluations at 12,000 ticks and called such a sensor "not an input". This reads the
+same site's INPUT on today's engine: `video/pinned_capture.js`, seed 776, 6,000 ticks, every living particle's `amp` every 100 ticks (60 records).
+- **Fraction of living particles with amp >= 1 (so the clamp returns exactly 1):** 79.9% at tick 100, 91.9% at 1,000, 98.4% at 2,000, 99.5% at 4,000, 98.9%
+  at 5,900. From tick 2,000 on: mean 98.8%, never under 96.4%. Population 321-450.
+- **amp never exceeds 1.2** (max 1.20 in every record) and, from tick 2,500, no living particle is under 0.38. Living values sit in a band of about 0.2 just above
+  the wall; the register's range 0-1 is the part nobody occupies.
+- **What this is not:** #71's 89% counted clamp EVALUATIONS (10.5M on seeds 3-23 at 12,000 ticks, on the engine of that day); this counts living PARTICLES at a
+  sample, on one seed, on today's engine. They are not the same quantity and the comparison is a direction, not a replication. One world; the seed was drawn, not
+  chosen, and no other seed was read.
+- **What it says at the ladder's rungs:** the register is EXECUTED and read; it is not VARYING after tick ~2,000 (every reader of `R[4]` sees 1 for 99 creatures in 100).
+  Same shape as #217n and #262: a live mechanism answering with a constant. **Not measured here:** whether any evolved program actually reads `R[4]`, or whether
+  amp's 1.2 ceiling is the thing that pins it. Neither changes the engine; no mechanism is kept or deleted by this entry.
+- **Shipped as:** `video/pinned.html`, an interactive page (hold to see the true values, drag to move through time).

@@ -1562,3 +1562,17 @@ first axis; the opening burst is staggered 35 ms apart because 68 at once clippe
 The chimes thin out as the run goes on; that is the point. -21.0 LUFS, peak -4.6 dBFS. Not heard.
 NOT DONE: only seed 1 is plotted over time (the other two appear on the end card); no real-world null replicates; not watched in motion.
 Not backed up to Modal. `out/` is not committed (the capture takes ~20 minutes: `SEED=1 TICKS=40000 node video/novelty_capture.js`).
+
+## Pinned (video/pinned.html — an interactive page, 102 KB, single file) — the chance experiment
+The user's prompt: "if chance wins, why don't you take a chance in what you do?" So the subject was drawn, not chosen. `video/chance_draw.json` was committed BEFORE
+anything was made: one `os.urandom` draw per field, no redraws. It gave: OEE-NOTES entry #71 (the clamp census), the form "an interactive page you can play with",
+the constraint "small enough to read in one second at thumbnail size", and engine seed 776. (Four of the five forms and constraints would have made me do something
+else; I would not have picked this one.)
+WHAT IT SHOWS. #71 said a sensor pinned at its clamp "is not an input". The page asks what that looks like in a real world: seed 776, 6,000 ticks, every living
+particle's `amp` (the number engine.html clamps to 0-1 into render register R[4]). One dot per creature, x = the value the register reads. They crowd against the
+wall at 1 (the headline is the live percentage: 80% at tick 100, 99% from tick 2,000). HOLD anywhere (or space) and the dots slide to what they actually hold: the
+narrow band 1.0 to 1.2 just past the wall, the whole 0-1 range empty. Drag left/right to move through time; it also plays by itself.
+REAL: every dot is a real creature of a real run (OEE-NOTES #300 has the table). INVENTED: the vertical position of a dot (it is a stable hash of its slot, not data).
+THUMBNAIL: at 90x160 the default state reads as a bright wall of dots and a big amber number, which was the constraint. Checked on screenshots at 540x960 and 1280x720,
+no console errors; not tried on a phone or with touch.
+NOT DONE: one seed, drawn not chosen; no audio; the fraction counts creatures at a sample, not register reads (#71's 89% counted reads).
