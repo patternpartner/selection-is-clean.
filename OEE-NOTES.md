@@ -26476,3 +26476,12 @@ extinctions (alive at end 380 / 442 / 372, minimum 310-315). Verdicts, against t
 - **Lineage seed 1: FASTER against both nulls at 40k** (3.39 v 2.45 /1k; 271 ever held), as FASTER-against-MIXED at 20k. It is the one reading in
   this session that repeats across horizons; it is one seed of three.
 - **What moved in the universe: nothing.** Two readable seeds, one horizon pair, one run each, no real-world nulls. Raw: `out/sweep40/` (not committed).
+
+#### #299c — BROWSER CAPTURES OF THE SAME THREE SEEDS (video/novelty_capture.js, 40,000 ticks, 40 ticks a record): none went extinct.
+Same seeds as #299b, but stepped in the browser the way `doc_capture.js` does. Living floor 356 / 327 / 351; end 386 / 356 / 369; zero records at 0 living.
+The node sweep's seed 2 went extinct 53 times; here it never fell under 327. The engine reads wall-clock gates, so a seed is not a trajectory
+across stepping patterns (the same caveat `doc_capture.js` carries). **So #299b's "seed 2 is unreadable" is a statement about one node trajectory;
+it does not say seed 2 is fragile in general, and #259's census (12 seeds per engine, one pattern) remains the number for that.**
+Cells ever held (first 3 trait axes, M=3, 10 bins over +/-1.5), capture v the sweep's drift-alone mean: 97 v 204, 152 v 144, 107 v 175. Seed 2 sits
+ABOVE its drift line in the capture and below it (115 v 144) in the sweep run, which is the spread between two trajectories of one seed. Two of
+three seeds under their drift line in both runs; the third is on either side of it. Not a verdict.

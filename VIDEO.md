@@ -1543,3 +1543,22 @@ one by one and walk to each other (run cycle, slowed); each arrival lights that 
 column; they go on together toward the sun. Sound: each rope a tone of D major across the octaves, detuned while its
 person pulls apart, settling into the chord as they arrive. Card, the user's own words: "We have to align ourselves
 too."
+
+## The Clock (out/clock/film/the-clock.mp4, 43 s, 720x1280) — `video/build_clock.py`, `video/novelty_capture.js`
+Made from the question the session ended up on: is new territory still arriving in the real universe? NOT a story: the real engine, three seeds,
+40,000 ticks each, stepped 40 ticks a record in the browser (`novelty_capture.js`; 1,000 records and a JPEG of the world per seed). The film plays
+seed 1 at one record a frame. Top: the world itself. Bottom left: the trait map (harness-novelty's grid, the first two of its three trait axes,
+collapsed over the third; teal = held now, dim teal = ever held, amber = new in the last 8 records). Bottom right: cells ever held (full 3-axis
+count) against a dashed line, "drift alone". Bottom: new cells per 1,000 ticks over the last 4,000 ticks, the clock.
+THE NUMBERS. Cells held at 40,000 ticks in the captures: seed 1: 97, seed 2: 152, seed 3: 107. Drift alone (mean of the 8 neutral shadows, ever-held
+cells, from a SEPARATE node run of `harness-sweep.js` on the same seed, `out/sweep40`): 204 / 144 / 175. So seed 2 beat its drift line and seeds 1 and
+3 did not; the end card says so, including that seed 2 is the exception, and says each pair is a reading, not a verdict (different run, one world per
+seed, M=3 grid, 40k ticks says nothing about 400k). The headline sentence "Novelty did not stop. It slowed." is the shape of the curves (a burst in the
+first thousand ticks, then 0.2-2 new cells per 1,000), not a statistic.
+WORTH KNOWING: the sweep's seed 2 went extinct 53 times in the node run; the browser capture of seed 2 never fell under 327 living. The engine is not
+deterministic across stepping patterns, so the extinction is a property of that trajectory, not of the seed. Logged in OEE-NOTES #299c.
+SOUND (synthesized): a faint click every third record (the clock), a chime for every newly held cell (pitch from its trait coordinates, panned by the
+first axis; the opening burst is staggered 35 ms apart because 68 at once clipped after AAC), a drone, three low notes and one lower for the end card.
+The chimes thin out as the run goes on; that is the point. -21.0 LUFS, peak -4.6 dBFS. Not heard.
+NOT DONE: only seed 1 is plotted over time (the other two appear on the end card); no real-world null replicates; not watched in motion.
+Not backed up to Modal. `out/` is not committed (the capture takes ~20 minutes: `SEED=1 TICKS=40000 node video/novelty_capture.js`).
