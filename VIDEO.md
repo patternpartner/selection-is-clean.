@@ -1456,6 +1456,19 @@ comes 2 s earlier and both men watch him pass. A first sound pass crashed on a 0
 NOT DONE: no pose sheet at full size for the splat (the figures are small in that shot); the two men are identical in gait; the
 child's whistle is four notes; not backed up to Modal library/finals.
 
+### Two Ends (`video/build_two_ends.py`, `out/two-ends.mp4`, 30 s, 720x1280, wordless, $0)
+The user on the History face fix: "It didnt quite fit. But I dont not like it. Adds a hit of weirdness." Then: "Lets
+do a shorter one. Something way out your comfort zone. 30 seconds. AI alignment based. Maybe humans arent pulling their
+weight in that discussion?" Out of the comfort zone = no text but the card, no data, no window, no music, no Wan:
+physical comedy in silhouette at dusk, and every sound synthesized (wind, the light's strained hum resolving to an A
+major chord once both ends are held, rope creaks, footsteps, the dive, phone pings). The amber light strains alone on
+a rope; the camera follows the rope to an empty chair with a phone pinging on the seat; he sprints in late (u173 run
+5-7.5 s, leap 9.25-11.75 s, crouched landing 12.25-13.5 s, all keyed, mirrored to face the light, turned to
+silhouette), flies over the chair and lands on the rope; wide, the strain stops, the light travels down the rope to
+his hands lighting it, push-in; card "Alignment has two ends."; one last ping on the empty chair. It takes the user's
+side of the argument (the empty chair) without letting the AI off it (two ends). No faces anywhere: nothing for Wan to
+warp. Sky, hill, grass, chair and rope are procedural; renders in 90 s locally.
+
 ### Next (`video/build_queue.py` + `video/door_draw.py`, `out/queue/next.mp4` and `next-share.mp4`, 38.8 s, 720x1280, silent comedy with synthesized sound)
 THE USER on After You: "Keep going love this." The third in the top-down series, and the first with a CROWD: 54 people. Zero Modal cost,
 ~5 min to render. THE JOKE: a man in a red coat joins the back of a very long queue that spirals in to a little pod at the middle. He asks the
@@ -1515,3 +1528,18 @@ their own mean brightness and red-blue balance on a pentatonic scale and louder 
 colour); a whoosh as the chosen move; a chord as the wall forms. -17.2 LUFS, peak -6.3 dBFS. Not heard.
 CAUGHT: the final wall ran under the header and the closing text (fixed); a scipy filter call missing output='sos'. Not watched in motion; the colours
 are harsh (the networks saturate) and I did not tune that. Share copy `be-unlike-share.mp4`; the master is 41 MB. Not backed up to Modal.
+The user on Two Ends: "Really like it. Its quite arty and simplifies what is currently a very complicated issue (not
+that it needs to be in my view)". Wordless, silhouette, one idea held simply landed; worth returning to.
+
+### Many Ends (`video/build_many_ends.py`, `out/many-ends.mp4`, 30 s, part two of Two Ends, $0)
+The user, after Two Ends: "My point is more we really have to align ourselves. Too. Its interesting youre still
+thinking in terms of one way alignment even with everything you have before you." (Fair: Claude's reply had again
+listed only the user checking Claude.) Proposed and agreed: the light hung in the middle of six ropes held by six
+people pulling their own ways. Same dusk world (imports build_two_ends). Six silhouettes, all the user (u173 crouched
+pull and stand, u113 front, u174 arms up, u114 looking down at a phone that pings), each with its own random tugs;
+the light is a damped spring pulled toward every hand, integrated once at 240 Hz (light hung 820 px up so the ropes
+make a tall fan in the 9:16 frame); at ~10 s everyone yanks at once and it flickers and dims. From 12.5 s they let go
+one by one and walk to each other (run cycle, slowed); each arrival lights that rope; gathered, the ropes are a lit
+column; they go on together toward the sun. Sound: each rope a tone of D major across the octaves, detuned while its
+person pulls apart, settling into the chord as they arrive. Card, the user's own words: "We have to align ourselves
+too."
