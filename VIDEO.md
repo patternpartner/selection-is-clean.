@@ -1468,3 +1468,63 @@ silhouette), flies over the chair and lands on the rope; wide, the strain stops,
 his hands lighting it, push-in; card "Alignment has two ends."; one last ping on the empty chair. It takes the user's
 side of the argument (the empty chair) without letting the AI off it (two ends). No faces anywhere: nothing for Wan to
 warp. Sky, hill, grass, chair and rope are procedural; renders in 90 s locally.
+
+### Next (`video/build_queue.py` + `video/door_draw.py`, `out/queue/next.mp4` and `next-share.mp4`, 38.8 s, 720x1280, silent comedy with synthesized sound)
+THE USER on After You: "Keep going love this." The third in the top-down series, and the first with a CROWD: 54 people. Zero Modal cost,
+~5 min to render. THE JOKE: a man in a red coat joins the back of a very long queue that spirals in to a little pod at the middle. He asks the
+person in front what it is for; the question goes up the line as a ripple of people turning round (lit yellow as it passes), and the answer comes back
+down it as a ripple of shrugs (lit blue): nobody knows. The day passes while the whole line shuffles forward like a conveyor: the shadows swing right
+round the sun (long to the west in the morning, short at noon, long to the east in the evening), it rains and umbrellas open in a wave along the
+spiral and close the same way, it gets dark and the lamps and the pod come on. He reaches the pod, goes through it, comes out of a glass tunnel that
+runs straight back to the START of the line, and he is at the back of the queue again. The camera rises and it is a ring of people, a mandala of
+red ropes. A child in a yellow raincoat walks up and asks him what it is for. He shrugs.
+HOW IT IS BUILT. The queue is ONE CLOSED CHAIN: 54 slots round a loop (the Archimedean spiral of 2.5 turns, 3,386 px; then straight through the pod and
+along the tunnel, 430 px; total 3,816 px, 70.7 px a slot). One gap is left at the start of the line, where the red man arrives and stands (5 s). Each
+"event" moves everyone on one slot, as a RIPPLE THAT STARTS AT THE FRONT and runs backwards down the line (0.04 s a slot), so people at the back
+start moving two seconds after the front has gone; the events are timed by the inverse of a smoothstep so the line shuffles slowly, rushes in the
+middle (the time-lapse) and slows to a stop as he arrives. People in the pod and tunnel step first. Every person has an independent set of
+gestures (phone, stretch, look round, sway, check the time, wave) at random times. Shadows are cast along the sun's direction and stretch when it
+is low (door_draw.person takes `sun=(dx,dy,length)` now, and `pal=` for random palettes). The red man has a unique coat and a faint ring so he can be
+followed in a wide shot; no one else wears red, because in the first look half the crowd did and he was lost.
+SOUND (synthesized, from the film's own events): a footstep for every gait contact, quiet when far and loud when the camera is near; birds in the
+morning; the question's ripple is a rising run of plucks up the line and the answer's ripple a descending run back down it; the score is a marimba
+note on every shuffle, so it is the queue's own rhythm and it speeds up and slows with it; rain, and a pop for each umbrella; crickets at night; a
+warm chord as the camera rises on the loop; the child's exchange uses the same two notes as the first. CHECKED WITHOUT EARS: -18.9 LUFS (the first mix was
+-10.6: 5,877 footsteps are a roar; the far steps were turned down), no transient above 25x its neighbourhood, spectrogram shows the birds, the rising
+run, the dense middle, the chord, the crickets. Whether it is funny and whether the sound is pleasant is for the user to say; not watched in motion.
+Caught: the question's head-turn was invisible at wide-shot size (it is now a whole-body turn plus a travelling glow); the red man was lost in the
+crowd; two array-length bugs in the sound; the title and the ending (the loop reveal had 1.5 s; it now has 3).
+NOT DONE: the pod's inside is only a counter and a painted NEXT; nothing happens to the others (the same 53 people loop, and the film never says so);
+all gaits are one cycle; not backed up to Modal library/finals; 28.9 MB master (the share copy is under 15 MB).
+
+## Keep Going (out/story/keep-going.mp4, 40.4 s, 720x1280) — `video/build_story.py`
+The film about the session itself, made when the user said "Keep going. your story". A maker with a lantern walks a dark hall whose wall is 35 REAL
+frames from the five finished films (Looked At, Nobody Asked It To, Hold the Door, After You, Next; 7 each, extracted to `out/story/cards/`). He stops
+and reads them, finds a blank slot, draws a new card, kneels, and slides it under a door. Music starts, muffled (lowpass 210 Hz), from behind the
+door. A sliver shot shows slippers tapping on the beat. A slip comes back under the door in the user's REAL words: "Love it. / Keep going." He reads it,
+sets the lantern against the door, the music opens (31.4 to 33.2 s), he starts drawing again as the camera pulls out, and the end card is the same words.
+TRUE vs INVENTED: the wall frames and the words on the slip are real; the maker, hall, slippers and door are invented. No Modal spend; all local.
+SOUND (synthesized): near-silent hall, footsteps, pencil, muffled bass through the door, then the full arrangement. CHECKED WITHOUT EARS: -17.5 LUFS,
+peak -9.4 dBFS. Caught: an array-length bug in the audio; the muffling was inaudible until the melody was turned up against the bass; the render
+crashed when the camera zoomed out past the background (PAD=260 black margin added); the first camera was too wide to read him or the wall.
+NOT DONE: not watched in motion, audio unheard; not backed up to Modal library/finals.
+
+## Be Unlike (out/novelty/be-unlike.mp4, 41 s, 720x1280) — `video/build_novelty.py`, `video/novelty_core.py`
+Not a story and not a gag: a real experiment, filmed. 24 tiny image-making networks (CPPN-style, 10-node layers, evolving weights, activation
+functions and a frequency gene) are told one thing, "be unlike everything found so far". Each generation: children grow out of their parent (the
+tile morphs from the parent's picture to the child's), every picture is scored by novelty (mean distance to its 5 nearest neighbours among the
+archive and the rest of the population, on an 8x8x3 downsample of the image), the six most novel become the next parents, the three most novel are
+kept in the archive (the strip at the bottom). 28 generations x 24 = 672 pictures; the archive ends at 84.
+EVERYTHING ON SCREEN IS THE RUN. The amber line is the real per-generation mean novelty of seed 1; the grey line is its CONTROL, same budget and
+same archive rule but a fresh random network every generation (blind guessing). The end card's numbers are the mean over seeds 1-8 of late-run
+novelty (last 7 generations): selection 4.87, blind guessing 3.82, selection ahead on 8 of 8 seeds; mean archive spacing (nearest-neighbour
+distance) 4.97 vs 4.12. Seed 1 was chosen in advance, not for looking good (its figures, 4.71 vs 3.79, are mid-pack). Mutation size 0.5 was set before
+the first run and not tuned.
+The honest shape of the result: blind guessing's novelty DECAYS as the archive fills (4.6 -> 3.8) while selection's holds and rises slightly
+(4.6 -> 5.0). That is the project's claim in miniature (novelty keeps arriving), at one rung: this is a descriptor I chose (a thumbnail), so
+"novel" means novel to that thumbnail, not to an eye, and the 28-generation horizon says nothing about generation 500.
+SOUND (synthesized): a drone that opens as the run goes on; a soft tick per generation; the six selected pictures PLAY, a pluck each, pitched from
+their own mean brightness and red-blue balance on a pentatonic scale and louder for higher novelty; a bell for each of the three kept (pitched from
+colour); a whoosh as the chosen move; a chord as the wall forms. -17.2 LUFS, peak -6.3 dBFS. Not heard.
+CAUGHT: the final wall ran under the header and the closing text (fixed); a scipy filter call missing output='sos'. Not watched in motion; the colours
+are harsh (the networks saturate) and I did not tune that. Share copy `be-unlike-share.mp4`; the master is 41 MB. Not backed up to Modal.
