@@ -1528,3 +1528,5 @@ their own mean brightness and red-blue balance on a pentatonic scale and louder 
 colour); a whoosh as the chosen move; a chord as the wall forms. -17.2 LUFS, peak -6.3 dBFS. Not heard.
 CAUGHT: the final wall ran under the header and the closing text (fixed); a scipy filter call missing output='sos'. Not watched in motion; the colours
 are harsh (the networks saturate) and I did not tune that. Share copy `be-unlike-share.mp4`; the master is 41 MB. Not backed up to Modal.
+The user on Two Ends: "Really like it. Its quite arty and simplifies what is currently a very complicated issue (not
+that it needs to be in my view)". Wordless, silhouette, one idea held simply landed; worth returning to.
