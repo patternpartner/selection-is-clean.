@@ -26501,3 +26501,21 @@ SLOWER** if at least 3 of its 4 replicates read SLOWER. Then:
   the file says trait novelty is not resolved from chance by this instrument at this horizon.
 Reported beside, not ruling: real cells-ever-held (`everAtM`) range across replicates against the shadow range, and the TREE verdict. Horizon 20,000
 ticks only (the 40k reading in #299b is one run per seed and is not re-run here). Nothing in the engine changes; no mechanism is being kept or deleted.
+
+**#299d RESULT — the claim stands: ROBUSTLY SLOWER on 3 of 3 seeds.** Seeds 1-3, 20,000 ticks, four replicates each (replicate 0 is #299's run; 1-3 are
+`NULLSHIFT`), twelve worlds, none extinct (alive at end 342-442).
+
+| seed | traits vs MIXED, replicates 0-3 | vs TREE | real cells ever held | shadow range (min-max across replicates' own shadows) |
+|---|---|---|---|---|
+| 1 | SLOWER, SLOWER, SLOWER, SLOWER | 4 of 4 SLOWER | 66, 63, 60, 71 | 100-137 |
+| 2 | SLOWER, SLOWER, **chance**, SLOWER | 3 of 4 SLOWER, 1 chance | 72, 65, 74, 64 | 92-135 |
+| 3 | SLOWER, SLOWER, SLOWER, SLOWER | 4 of 4 SLOWER | 54, 90, 62, 65 | 105-131 |
+
+By the pre-registered rule (at least 3 of 4 on at least 2 of 3 seeds), **trait novelty is slower than neutral drift in the default world at 20,000 ticks, as a
+property of the world and not of one run** — at the rung measured: persistent arrivals against neutral shadows, not selection. The real count of trait
+cells held (54-90) sits under every replicate's own shadow range (92-137) on all twelve worlds; the single closest case is seed 3 replicate 1 (90 against
+115-124). The one CHANCE reading (seed 2, replicate 2) is a world whose real count (74) is its highest on that seed.
+**What this does not say:** it is one horizon (20k; #299b's 40k reading is one run per seed, and #299c's browser capture put seed 2 ABOVE its drift
+line); the grid and M=3 are choices; and a world held below drift is not yet a world with a lever — #258 and #262 each screened the in-life forces
+and found NEITHER at this null width. What changed is how well the shortfall is known: twelve runs, not three.
+Raw: `out/rep/` (not committed).
