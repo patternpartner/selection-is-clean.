@@ -26519,3 +26519,25 @@ cells held (54-90) sits under every replicate's own shadow range (92-137) on all
 line); the grid and M=3 are choices; and a world held below drift is not yet a world with a lever — #258 and #262 each screened the in-life forces
 and found NEITHER at this null width. What changed is how well the shortfall is known: twelve runs, not three.
 Raw: `out/rep/` (not committed).
+
+#### #299e — THE OTHER LAYERS, ACROSS THE SAME TWELVE WORLDS. Descriptive; no rule, nothing claimed beyond the table.
+The #299d replicates carry every layer, so here is what they say about the rest. Verdicts per world, MIXED / TREE, twelve worlds (seeds 1-3 x four draw orders):
+
+| layer | vs MIXED (verdict null) | vs TREE |
+|---|---|---|
+| traits | SLOWER 11, chance 1 | SLOWER 11, chance 1 |
+| lineage | FASTER 4, chance 6, SLOWER 2 | chance 10, FASTER 1, SLOWER 1 |
+| program | chance 10, FASTER 1, SLOWER 1 | chance 7, SLOWER 5 |
+| atoms | chance 10, FASTER 2 | chance 12 |
+| channels | chance 9, FASTER 3 | chance 7, SLOWER 5 |
+
+- **Traits are the only layer with a consistent direction.** Nothing else reads the same way on more than 5 of 12 worlds.
+- **Lineage's FASTER-than-MIXED is a seed-1 property, not a world property:** FASTER on 4 of 4 draw orders of seed 1 and on 0 of 8 worlds of seeds 2 and 3
+  (which read chance or SLOWER). Against TREE it is chance on 10 of 12, FASTER on 1. That is "spreads faster than a well-mixed population" (which skewed
+  breeding alone achieves, #256b), not "reaches new lineages faster than the real family tree". #299b's lineage FASTER at 40k is the same seed-1 reading.
+- **Programs and channels lean SLOWER against TREE (5 of 12 each) and sit at chance against MIXED.** Atoms read chance against TREE on all twelve.
+- **Counting:** 60 layer readings per null, about 2 in 9 outside the band by chance, half of those high: the 10 FASTER-than-MIXED readings out of 60 here
+  (4 lineage, 1 program, 2 atoms, 3 channels) are the size chance gives (60 x 1/9 = 6.7) with the lineage cluster accounted for by one seed.
+**Net, at the rung measured and the 20,000-tick horizon: of five layers, one (traits) is consistently below drift, none is consistently above it.** The
+artwork's claim ("novelty keeps arriving") is not supported by this instrument in any layer of the default world at this horizon; it is also not refuted in
+programs, atoms, channels or lineages, where the readings are chance. Raw: `out/sweep/`, `out/rep/` (not committed).
