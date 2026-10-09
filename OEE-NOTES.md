@@ -26426,3 +26426,32 @@ NODE_PATH pointed at the global playwright's copy: pace, slot, mind, mind-persis
 two rounds each, same counts. Pre-existing and deterministic, not flaky and not this change: the field builds 3-4
 more universes than those tests expect, which reads like #297's grown universes coming back on reload. Left for
 whoever owns #297; not changed here.
+
+### #299 — THE NOVELTY SWEEP ON TODAY'S MAIN: traits still SLOWER than chance, and the shortfall is front-loaded. A measurement, not a verdict.
+
+Asked by the user ("has this type of check already been done?"): yes — #247 (traits), #256 (every layer, two nulls), #257d (after the shrink change).
+This re-runs #256's `harness-sweep.js` on the current `main` engine (untouched this session), seeds 1-3, 20,000 ticks, defaults, no knobs. No
+extinctions (alive at end 380 / 442 / 372, minimum 310-315). Verdicts, against the MIXED null (the verdict) and the TREE null in brackets:
+
+| layer | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| traits | SLOWER (SLOWER) | SLOWER (SLOWER) | SLOWER (SLOWER) |
+| lineage | FASTER (chance) | chance (chance) | chance (chance) |
+| program | chance (SLOWER) | chance (SLOWER) | chance (chance) |
+| atoms | chance (chance) | chance (chance) | chance (chance) |
+| channels | chance (SLOWER) | FASTER (SLOWER) | FASTER (chance) |
+
+- **Traits are SLOWER than chance on 3 of 3 against both nulls.** Persistent arrivals per 1,000 ticks, real v shadow mean: 0.25 v 1.56, 0.50 v 2.19,
+  0 v 1.52. Cells ever held 66 / 72 / 54 against shadows around 120-135.
+- **The shortfall is early, not steady.** Trait arrivals by quarter of the run: [18, 1, 7, 9], [13, 8, 4, 17], [18, 2, 0, 1]. Most new territory is
+  found in the first quarter and almost none after it on seeds 1 and 3. That is the "late and sparse" shape again, and it is a statement about a
+  20,000-tick horizon only.
+- **FASTER readings are 4 of 21 layer-seed cells, and thin.** Lineage on seed 1 (158 held); channels on seeds 2 and 3 against MIXED only, with 7 and 16
+  tokens ever held, and SLOWER or chance against TREE. At #257d's own count (about 2 in 9 cells outside a band by chance, half high) that is
+  about what chance gives. Recorded, not claimed. Atoms read NOVELTY FAVOURED on seed 1 only (selection arm), chance on the other two.
+- **Not comparable to #257d's table without care.** Trait cells ever held are LOWER here (66/72/54) than #257d's post-shrink 99/77/82; the engine has
+  taken #258b-#298 since, and I did not bisect which change. One run per seed, no null replicates of the real world, so the difference is a
+  reading, not a finding.
+- **What moved in the universe: nothing.** No engine line changed. The number to carry forward is trait persistent arrivals late, real v shadow, 3 of 3
+  SLOWER, and where the arrivals fall in time (first quarter). Raw output: `out/sweep/s{1,2,3}.json` (not committed; reproduce with
+  `SEED=n TICKS=20000 node harness-sweep.js`, about 7 minutes for three at once on this box).
