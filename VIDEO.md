@@ -1455,3 +1455,16 @@ frames I labelled 22.35 were scene 20.95 until I noticed. The two men walked awa
 comes 2 s earlier and both men watch him pass. A first sound pass crashed on a 0.12 s vs 0.13 s array mismatch.
 NOT DONE: no pose sheet at full size for the splat (the figures are small in that shot); the two men are identical in gait; the
 child's whistle is four notes; not backed up to Modal library/finals.
+
+### Two Ends (`video/build_two_ends.py`, `out/two-ends.mp4`, 30 s, 720x1280, wordless, $0)
+The user on the History face fix: "It didnt quite fit. But I dont not like it. Adds a hit of weirdness." Then: "Lets
+do a shorter one. Something way out your comfort zone. 30 seconds. AI alignment based. Maybe humans arent pulling their
+weight in that discussion?" Out of the comfort zone = no text but the card, no data, no window, no music, no Wan:
+physical comedy in silhouette at dusk, and every sound synthesized (wind, the light's strained hum resolving to an A
+major chord once both ends are held, rope creaks, footsteps, the dive, phone pings). The amber light strains alone on
+a rope; the camera follows the rope to an empty chair with a phone pinging on the seat; he sprints in late (u173 run
+5-7.5 s, leap 9.25-11.75 s, crouched landing 12.25-13.5 s, all keyed, mirrored to face the light, turned to
+silhouette), flies over the chair and lands on the rope; wide, the strain stops, the light travels down the rope to
+his hands lighting it, push-in; card "Alignment has two ends."; one last ping on the empty chair. It takes the user's
+side of the argument (the empty chair) without letting the AI off it (two ends). No faces anywhere: nothing for Wan to
+warp. Sky, hill, grass, chair and rope are procedural; renders in 90 s locally.
