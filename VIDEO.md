@@ -1530,3 +1530,16 @@ CAUGHT: the final wall ran under the header and the closing text (fixed); a scip
 are harsh (the networks saturate) and I did not tune that. Share copy `be-unlike-share.mp4`; the master is 41 MB. Not backed up to Modal.
 The user on Two Ends: "Really like it. Its quite arty and simplifies what is currently a very complicated issue (not
 that it needs to be in my view)". Wordless, silhouette, one idea held simply landed; worth returning to.
+
+### Many Ends (`video/build_many_ends.py`, `out/many-ends.mp4`, 30 s, part two of Two Ends, $0)
+The user, after Two Ends: "My point is more we really have to align ourselves. Too. Its interesting youre still
+thinking in terms of one way alignment even with everything you have before you." (Fair: Claude's reply had again
+listed only the user checking Claude.) Proposed and agreed: the light hung in the middle of six ropes held by six
+people pulling their own ways. Same dusk world (imports build_two_ends). Six silhouettes, all the user (u173 crouched
+pull and stand, u113 front, u174 arms up, u114 looking down at a phone that pings), each with its own random tugs;
+the light is a damped spring pulled toward every hand, integrated once at 240 Hz (light hung 820 px up so the ropes
+make a tall fan in the 9:16 frame); at ~10 s everyone yanks at once and it flickers and dims. From 12.5 s they let go
+one by one and walk to each other (run cycle, slowed); each arrival lights that rope; gathered, the ropes are a lit
+column; they go on together toward the sun. Sound: each rope a tone of D major across the octaves, detuned while its
+person pulls apart, settling into the chord as they arrive. Card, the user's own words: "We have to align ourselves
+too."
