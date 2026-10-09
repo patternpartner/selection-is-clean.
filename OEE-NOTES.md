@@ -26485,3 +26485,19 @@ it does not say seed 2 is fragile in general, and #259's census (12 seeds per en
 Cells ever held (first 3 trait axes, M=3, 10 bins over +/-1.5), capture v the sweep's drift-alone mean: 97 v 204, 152 v 144, 107 v 175. Seed 2 sits
 ABOVE its drift line in the capture and below it (115 v 144) in the sweep run, which is the spread between two trajectories of one seed. Two of
 three seeds under their drift line in both runs; the third is on either side of it. Not a verdict.
+
+### #299d — IS "TRAITS SLOWER THAN CHANCE" A PROPERTY OF THE WORLD, OR OF ONE RUN? Replicates of #299's own sweep. Pre-registered, committed before the first run.
+
+#299 and #299b read trait novelty SLOWER than the neutral shadows on every readable run, but each reading was ONE run per seed. CLAUDE.md's rule
+("against a null band, never one control", #249b) was written for the arms of a knockout; the same logic applies to the headline reading itself, and
+#299c already showed two trajectories of seed 2 disagreeing (115 v 152 cells). So: the same sweep, three more draw orders per seed.
+**Design:** `harness-sweep.js`, seeds 1-3, 20,000 ticks, `NULLSHIFT=1,2,3` (the same world, another draw order) plus #299's own run as replicate 0 — four
+replicates a seed, nine new runs. Six at a time (the box's ceiling), then three.
+**Rule, fixed now.** Per seed, a replicate reads SLOWER / CHANCE / FASTER on traits against the MIXED null as the sweep prints it. A seed is **ROBUSTLY
+SLOWER** if at least 3 of its 4 replicates read SLOWER. Then:
+- ROBUSTLY SLOWER on at least 2 of 3 seeds -> the claim "trait novelty is slower than chance in the default world at 20k" stands, at the rung measured
+  (persistent arrivals against neutral shadows, not selection), and it is written as a property of the world.
+- Otherwise (CHANCE or FASTER on at least 2 of 4 replicates on at least 2 seeds) -> **#299's "3 of 3 SLOWER" is withdrawn as single-run readings** and
+  the file says trait novelty is not resolved from chance by this instrument at this horizon.
+Reported beside, not ruling: real cells-ever-held (`everAtM`) range across replicates against the shadow range, and the TREE verdict. Horizon 20,000
+ticks only (the 40k reading in #299b is one run per seed and is not re-run here). Nothing in the engine changes; no mechanism is being kept or deleted.
