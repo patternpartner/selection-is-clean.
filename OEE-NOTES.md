@@ -26455,3 +26455,24 @@ extinctions (alive at end 380 / 442 / 372, minimum 310-315). Verdicts, against t
 - **What moved in the universe: nothing.** No engine line changed. The number to carry forward is trait persistent arrivals late, real v shadow, 3 of 3
   SLOWER, and where the arrivals fall in time (first quarter). Raw output: `out/sweep/s{1,2,3}.json` (not committed; reproduce with
   `SEED=n TICKS=20000 node harness-sweep.js`, about 7 minutes for three at once on this box).
+
+#### #299b — THE SAME SWEEP AT 40,000 TICKS (seeds 1-3, defaults, late window 20,000-38,000): the trait shortfall is not a 20k artifact; one world is not readable.
+
+| | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| alive end / floor / extinctions | 365 / 303 / 0 | **37 / 0 / 53** | 372 / 311 / 0 |
+| traits vs MIXED (vs TREE) | SLOWER (SLOWER) | chance (SLOWER) | SLOWER (SLOWER) |
+| traits persistent /1k, real v shadow mean | 0.11 v 1.17 | 0.22 v 0.20 | 0.06 v 0.90 |
+| trait arrivals by quarter | 19, 16, 9, 6 | 21, 21, 29, 14 | 20, 1, 12, 4 |
+| lineage vs MIXED (TREE) | FASTER (FASTER) | chance (chance) | chance (chance) |
+
+- **Seeds 1 and 3 (both alive throughout): traits SLOWER than chance against both nulls at 40k, as at 20k.** On seed 1 trait arrivals fall steadily
+  by quarter (19, 16, 9, 6) rather than stopping; on seed 3 they are 20, 1, 12, 4. So at the longer horizon the shortfall is not a first-quarter
+  artifact of 20,000 ticks, and it is not a clean cliff either: it is a decay on one seed and a near-stop on the other.
+- **Seed 2 went extinct 53 times between 20k and 40k** (floor 0, 37 living at the end) after reading healthy at 20k (442 alive, no extinctions). Its
+  five FASTER-than-MIXED readings (program, atoms, channels, both markers) are not evidence of novelty: a world that keeps dying and being
+  re-seeded makes "introductions" the null cannot match. Treat seed 2 as unreadable at this horizon. This is the swing #258c recorded and
+  #259 pre-registered a census for; it is a second observation of it, not a new one, and I did not read #259's result here.
+- **Lineage seed 1: FASTER against both nulls at 40k** (3.39 v 2.45 /1k; 271 ever held), as FASTER-against-MIXED at 20k. It is the one reading in
+  this session that repeats across horizons; it is one seed of three.
+- **What moved in the universe: nothing.** Two readable seeds, one horizon pair, one run each, no real-world nulls. Raw: `out/sweep40/` (not committed).
