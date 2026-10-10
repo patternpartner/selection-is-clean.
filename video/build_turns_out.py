@@ -41,20 +41,28 @@ CUT = [
     ("card", None, 0, 3.4, "Go and look.", None),
 ]
 SLOW = {"face": 1.5}                                           # the warped face held half as fast again
+# the empty chair is a portrait shot: take the landscape strip round the horizon, chair and phone, rather than a sliver
+CROP = {"out/two-ends.mp4": "crop=720:405:0:735,"}
+# a slow push-in on Claude's Wan shots (they come back nearly static), toward what each is about: (x, y) of the frame
+ZOOM = {"tape": (.62, .3), "mirror": (.5, .5), "sand": (.42, .62), "mannequin": (.66, .55)}
 
 
 def sh(*a):
     subprocess.run([FF, "-loglevel", "error", "-y", *a], check=True)
 
 
-def video_part(i, kind, src, a, b, slow):
+def video_part(i, kind, src, a, b, slow, zoom=None):
     out = f"{WORK}/p{i:02d}.mp4"
     d = (b - a) * slow
     if kind == "card":
         sh("-f", "lavfi", "-i", f"color=c=black:s={W}x{H}:r={FPS}:d={b - a}", "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", out)
         return out, b - a
-    vf = (f"setpts=(PTS-STARTPTS)*{slow},fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,"
+    pre = CROP.get(src, "")
+    vf = (f"{pre}setpts=(PTS-STARTPTS)*{slow},fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,"
           f"pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p")
+    if zoom:
+        zx, zy = zoom
+        vf += (f",zoompan=z='1+0.0035*on':x='(iw-iw/zoom)*{zx}':y='(ih-ih/zoom)*{zy}':d=1:s={W}x{H}:fps={FPS}")
     sh("-ss", str(a), "-t", str(b - a), "-i", src, "-an", "-vf", vf, "-t", f"{d:.3f}", "-c:v", "libx264", "-crf", "16", out)
     return out, d
 
@@ -111,7 +119,7 @@ def main():
     vids, auds = [], []
     for i, (kind, src, a, b, cap, snd) in enumerate(CUT):
         slow = SLOW.get(snd, 1.0)
-        v, d = video_part(i, kind, src, a, b, slow)
+        v, d = video_part(i, kind, src, a, b, slow, ZOOM.get(snd))
         n = int(round(d * SR))
         if kind == "his":
             x = his_audio(src, a, b)

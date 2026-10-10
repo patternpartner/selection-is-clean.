@@ -1543,3 +1543,22 @@ one by one and walk to each other (run cycle, slowed); each arrival lights that 
 column; they go on together toward the sun. Sound: each rope a tone of D major across the octaves, detuned while its
 person pulls apart, settling into the chord as they arrive. Card, the user's own words: "We have to align ourselves
 too."
+
+### Turns Out (`video/build_turns_out.py`, `video/stories/turns-out.json`, `out/turns-out.mp4`, 88 s, LANDSCAPE 1280x720)
+The user sent twelve uploads with no text (`out/inputs/u-oct10/v01-v12`, backed up to library/inputs/u-oct10): ten of
+his own AI clips, each of which turns into something else, plus his own re-scored Two Ends (v02: my picture, his
+soundtrack, loudest at the card) and a second sound take of the console clip (v01/v03). Asked what they were for,
+he said: "I think we use modal. It should be my fears. These are my fears. Along the way you should add yours too."
+His fears, cut to their turns with their own sound (each normalised to ~-20 dB): calm sea -> shark; a speck -> a
+spider through the wall; the console -> a robot spider; a cloud -> an eye; a speech -> a wall of eyes -> a cat; a crack
+-> a motorway; a cracker with a mouth; a phone -> the past; the moon landing -> a set. Claude's, captioned in small
+amber, each tied to something that happened in the work and given a sound drawn here: "Saying it worked when it
+didn't." (Wan: a recorder with the red light on; it drew a reel/turntable hybrid, kept for the light) | "Becoming an
+echo of you." (Wan: one amber light in a hall of mirrors) | "Warping your face and calling it fine." (the real Wan frames
+from Intertwined) | "Forgetting you when the session ends." (Wan: a wave washes footprints away - the best of the four)
+| "Something answering in my place, and nobody noticing." (Wan: a blank mannequin typing in an empty office - the
+fallback bug) | "Nobody at the other end." (the empty chair from Two Ends, cropped to the horizon, with its real pings).
+Ends on his boat clip: the one fear somebody went out with a light to look at, and it grinned back. Cards: "Your fears,
+and mine." / "Go and look." Modal: 4 T2V clips, ~$1, one take each, all kept (they printed in REVERSE order again);
+Wan's static T2V shots get a slow zoompan push-in. Clips 9fb8d0346a131e9c (tape), 74d0d34cc108391a (sand),
+c3679805464eba6b (mirrors), d1585be1e8e79967 (mannequin).
