@@ -82,3 +82,17 @@ otherwise delete it too) and record it here.
 Practice seed 3430 only, EARNER and ESHAM, 2 replicates each. The deciding round launches only if the earner learns past the
 sham there (log loss < base and < ESHAM; separation > 0 and > ESHAM's). Not a decision about the world - only whether the
 judge learns at all.
+
+## 8. Trial (practice seed 3430, frozen bc8d2bb, 20k ticks, 2 reps each) - gate PASSED
+
+| run | log loss | base | pos-neg score | positive rate | novel-child rate | S |
+|---|---|---|---|---|---|---|
+| EARNER r0 | 0.4031 | 0.4472 | 0.137 | 0.166 | 0.321 | 2.333 |
+| EARNER r1 | 0.3681 | 0.3963 | 0.126 | 0.137 | 0.297 | 3.000 |
+| ESHAM r0 | 0.4604 | 0.4391 | 0.031 | 0.162 | 0.304 | 2.167 |
+| ESHAM r1 | 0.4248 | 0.3904 | 0.028 | 0.136 | 0.305 | 2.667 |
+
+The judge learns past the sham on both replicates (log loss under base and under ESHAM; separation 0.131 v 0.029). Note,
+not a decision: the positive rate of EARNER's records (0.151) is not above ESHAM's (0.149) - learning has not yet shown up
+as more income-bearing novel children; the deciding round says whether it shows in S. Deciding round launched 21:18 BST
+from /home/box/wt/wild-mind-3-frozen (bc8d2bb), seeds 3541-3543, PAR=4, output /home/box/wild-runs/decide3, SCORE.txt + ALL-DONE.
