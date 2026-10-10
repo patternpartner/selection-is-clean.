@@ -1595,3 +1595,20 @@ REAL: every dot is a real creature of a real run (OEE-NOTES #300 has the table).
 THUMBNAIL: at 90x160 the default state reads as a bright wall of dots and a big amber number, which was the constraint. Checked on screenshots at 540x960 and 1280x720,
 no console errors; not tried on a phone or with touch.
 NOT DONE: one seed, drawn not chosen; no audio; the fraction counts creatures at a sample, not register reads (#71's 89% counted reads).
+**v1 verdict, the user: "Honest feedback is its just a bunch of videos pieced together. Your input was good but it
+literally felt like a jumble sale. I didnt feel like you pushed yourself."** Right: twelve looks, twelve soundtracks,
+hard cuts, captions over stock. LESSON: given a pile of the user's clips, an edit is not a film; make a world first.
+**v2 (`video/build_turns_out2.py`, `out/turns-out-v2.mp4`, 88 s):** frame-by-frame compositor, not a concat.
+- One world: every shot cover-cropped to a 2.39:1 letterboxed picture (focus point per shot; the crack clip has black
+  bars baked in, cropped to x 120-600; portrait shots sit in a window), one grade (split-tone weighted by luminance so
+  black stays black, gentle S, highlights held at 95%: the first grade, a strong shoulder, turned everything milky), one
+  grain.
+- One score composed for it: D drone whose filter opens as the fears pile up, a pulse 52 -> 98 bpm that stops at the
+  boat, the light's hum under each of Claude's fears, a reversed swell into a boom on every turn, D major at the boat.
+  His clips' own sound ducked to 35% as texture.
+- No cuts: three Wan I2V bridges (~$0.75, all kept first take) start on the last frame of the shot before - into the
+  shark's mouth to a light in its throat (35e32c9ee16246a8), the mirrors shatter onto a storm over a city
+  (d2811b946f83b8d7, which lands on his cloud clip), the spider bursts into golden sand (4db8fd8bb53cb9f6) - and the
+  rest are match dissolves (tunnel light -> the light in the mirrors, blue flash -> blue monitor, desk -> desk,
+  eye -> eyes, wall -> wall, sand -> girl, face -> face, red light -> clapperboard, dusk -> mist).
+- One witness: the amber light sits small in each of his fears and at the boat comes down to his headlamp.

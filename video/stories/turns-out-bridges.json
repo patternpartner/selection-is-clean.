@@ -1,0 +1,11 @@
+{
+  "title": "Turns Out v2 - bridges",
+  "about": "Three image-to-video bridges (Wan 2.2 5B, landscape, ~$0.75) so one fear turns into the next instead of cutting: each starts on the last frame of the shot before.",
+  "voice": null,
+  "tail": 0.0,
+  "scenes": [
+    {"image": "../../out/inputs/to_b1_shark.png", "seed": 13101, "prompt": "the camera moves forward into the open mouth of the shark, the dark throat becomes a long dark round tunnel, far ahead at the end of the tunnel a bright white light, the camera rushes forward through the tunnel toward the light, underwater darkness, cinematic"},
+    {"image": "../../out/inputs/to_b2_mirror.png", "seed": 13202, "prompt": "the mirrors in the dark hall crack and shatter, glittering shards of mirror glass fall away in slow motion, behind them a grey stormy sky full of heavy clouds over a city, the small amber light fades into the grey sky, cinematic"},
+    {"image": "../../out/inputs/to_b3_spider.png", "seed": 13303, "prompt": "the giant spider on the wall crumbles into fine golden sand that pours down and blows away in the wind, grains of sand drifting across the frame, warm dusk light, slow motion, cinematic"}
+  ]
+}
