@@ -1658,3 +1658,5 @@ seed (8), and u05 left out - Claude's miss on seed 7, not a rule change. 14 cuts
 around 30-33 s DUEL, six cuts in three seconds, 19 v 18 members; then the doughnut (4, u168 - the doughnut again) holds
 22 s; a gold figure (17, u65) 14 s; the mirrored faces (63, u59) take it to the end, 23 of 392 alive. One clip has no
 sound stream, so silent where it plays. Not watched for fixes; only re-encoded to fit.
+THE USER on the second chance: "Something interesting is happening here." (After "I like how its a beautful failure".)
+The direction the user responded to: the edit handed to the artwork, rules fixed before, one run, no fixing.
