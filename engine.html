@@ -10684,14 +10684,9 @@ function cloneProg(p){
 // mutation operator here draws them). The K=6 tokens before a position are embedded (16 numbers each), passed through
 // one tanh layer of 64 units and read out by an operation head and a register head; plain SGD every 50 ticks on 100
 // random positions of the last 1,024 parents. Not saved with the universe: a reload starts a newborn mind.
-// cos/wild-mind: MIND_MODE=3 or #mindmode=surprise is a learning mind that writes against its own expectations (lab/WILD-MIND.md).
-// It trains exactly as the learning mind does, but when it writes it samples each token v with weight q(v)/p(v|context):
-// q is how common v is across the parents in its memory, p is how strongly it expects v at this place. So it writes what
-// this world uses somewhere, put where the world does not put it (minus the pointwise mutual information of v and its
-// context, sampled, never maximised). A token no remembered parent carries has q=0 and is never written. Off unless asked.
 function __mindRng(a){ const f=function(){ f.s|=0; f.s=f.s+0x6D2B79F5|0; let t=Math.imul(f.s^f.s>>>15,1|f.s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; f.s=a|0; return f; }
 class EngineMind{
-  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform','surprise'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
+  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
     this.K=6; this.D=16; this.H=64; this.LR=0.05; this.BUF=1024; this.EVERY=50; this.STEPS=100; this.V=this.NOPS+this.NREG+1; this.BOS=this.V-1;
     this.rnd=__mindRng(((o.seed>>>0)||1)^0x6d696e64);
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,sc)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*sc; return a; };
@@ -10702,11 +10697,7 @@ class EngineMind{
     // WHAT IT IS DOING, for the readout: children born [ordinary, written by the mind], the children those two kinds of
     // creature went on to have, and which operations it writes. A mind whose children have fewer children than ordinary
     // ones is costing its world; more, and it is helping. Kept across saves.
-    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS);
-    // surprise (cos/wild-mind): q, the token counts of the parents in memory, kept exact as the memory turns over; and, for
-    // the readout, the mean surprisal (nats, under its own model) of the operations it writes, in both learning modes
-    if(this.MODE==='surprise'){ this.qO=new Float64Array(this.NOPS); this.qR=new Float64Array(this.NREG); }
-    this.surp=0; this.surpN=0; }
+    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS); }
   // an instruction as [operation token, register token]; an operation it cannot write (a migrant's, past OPCODE_DRAW) is -1
   tok(ins){ const op=ins[0]|0, d=((ins[1]|0)%12+12)%12, s=((ins[2]|0)%12+12)%12; return [op>=0&&op<this.NOPS?op:-1, d*12+s]; }
   // the K tokens before token position j of a tokenised program, padded with BOS (which also stands in for a -1)
@@ -10728,13 +10719,8 @@ class EngineMind{
   sample(reg){ const p=this.p, n=reg?this.NREG:this.NOPS, r=this.rnd(); let a=0; for(let v=0;v<n;v++){ a+=p[v]; if(r<a)return v; } return n-1; }
   // the world shows it a parent at its birth: its running program
   see(prog){ if(!Array.isArray(prog)||!prog.length)return; const e=prog.map(x=>this.tok(x||[0,0,0,0])); this.seen++; fired('mind.see');
-    if(this.qO){ const q=(t,d)=>{ for(const x of t){ if(x[0]>=0)this.qO[x[0]]+=d; this.qR[x[1]]+=d; } }; q(e,1); if(this.buf.length>=this.BUF)q(this.buf[this.bufAt],-1); }
     if(this.buf.length<this.BUF)this.buf.push(e); else { this.buf[this.bufAt]=e; this.bufAt=(this.bufAt+1)%this.BUF; } }
-  // surprise: turn the model's prediction (in p) into weights q(v)/p(v|context), in place; unchanged if nothing remembered has weight
-  wild(reg){ const p=this.p, q=reg?this.qR:this.qO, n=reg?this.NREG:this.NOPS; let z=0;
-    for(let v=0;v<n;v++){ const w=q[v]>0?q[v]/Math.max(1e-9,p[v]):0; z+=w; }
-    if(!(z>0)||!isFinite(z))return; for(let v=0;v<n;v++)p[v]=q[v]>0?q[v]/Math.max(1e-9,p[v])/z:0; }
-  train(){ if((this.MODE!=='learn'&&this.MODE!=='surprise')||this.buf.length<16)return; let lo=0, lr=0, no=0, nr=0;
+  train(){ if(this.MODE!=='learn'||this.buf.length<16)return; let lo=0, lr=0, no=0, nr=0;
     for(let s=0;s<this.STEPS;s++){ const e=this.buf[(this.rnd()*this.buf.length)|0], j=(this.rnd()*e.length*2)|0, reg=(j&1)===1, tgt=reg?e[j>>1][1]:e[j>>1][0];
       if(tgt<0)continue; const l=this.learn(this.ctx(e,j),tgt,reg); if(reg){ lr+=l; nr++; } else { lo+=l; no++; } }
     const a=0.98; if(no)this.lossO=this.nTrain?a*this.lossO+(1-a)*lo/no:lo/no; if(nr)this.lossR=this.nTrain?a*this.lossR+(1-a)*lr/nr:lr/nr; this.nTrain++; fired('mind.train'); }
@@ -10744,9 +10730,7 @@ class EngineMind{
     const t=prog.map(x=>this.tok(x||[0,0,0,0])), i=(this.rnd()*prog.length)|0, o0=t[i][0], r0=t[i][1]; let op=o0, rg=r0;
     for(let k=0;k<16&&op===o0&&rg===r0;k++){
       if(this.MODE==='uniform'){ op=(this.rnd()*this.NOPS)|0; rg=(this.rnd()*this.NREG)|0; }
-      else if(this.MODE==='surprise'){ const n=this.forward(this.ctx(t,2*i),false), pe=this.p.slice(0,n); this.wild(false); op=this.sample(false); this.surp-=Math.log(Math.max(1e-9,pe[op])); this.surpN++;
-        this.forward(this.ctx(t,2*i,op),true); this.wild(true); rg=this.sample(true); }
-      else { this.forward(this.ctx(t,2*i),false); op=this.sample(false); if(this.MODE==='learn'){ this.surp-=Math.log(Math.max(1e-9,this.p[op])); this.surpN++; } this.forward(this.ctx(t,2*i,op),true); rg=this.sample(true); } }
+      else { this.forward(this.ctx(t,2*i),false); op=this.sample(false); this.forward(this.ctx(t,2*i,op),true); rg=this.sample(true); } }
     if(op===o0&&rg===r0)rg=(rg+1+((this.rnd()*(this.NREG-1))|0))%this.NREG;
     if(op<0)op=(this.rnd()*this.NOPS)|0;
     prog[i]=[op,(rg/12)|0,rg%12,+((prog[i]||[0,0,0,0])[3])||0]; this.wroteOp[op]++; fired('mind.propose'); return true; }
@@ -10756,7 +10740,7 @@ class EngineMind{
   report(){ const sc=this.success();
     return {mode:this.MODE,p:this.P,uses:this.uses,seen:this.seen,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossReg:+this.lossR.toFixed(3),
     uniformOp:+Math.log(this.NOPS).toFixed(3),uniformReg:+Math.log(this.NREG).toFixed(3),buf:this.buf.length,
-    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),surprisal:this.surpN?+(this.surp/this.surpN).toFixed(3):null,topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
+    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
   // SAVED WITH THE UNIVERSE (the user: "if we save the field we should also save the mind at the same time. No resets").
   // Everything it has learned (every weight, quantised to 8 bits per weight with one scale per array: about 70 KB, so
   // eighteen of them fit beside the field's genomes in one origin's storage), its counters and its random stream. Not
@@ -10782,7 +10766,7 @@ function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis
   const h=(typeof location!=='undefined'&&location.hash)||''; const m=h.match(/(^|[#,])mind(=(\d+))?(,|$)/); if(m&&!p)p=m[3]?parseInt(m[3],10):20;
   const node=(typeof process!=='undefined')&&!!(process.versions&&process.versions.node);   // a rig, not a page
   if(/(^|[#,])nomind(,|$)/.test(h)||g.__MIND===0||(m&&m[3]==='0'))p=0; else if(!m&&g.__MIND===undefined&&!node)p=20;   // the browser default
-  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform|surprise)(,|$)/); if(mm&&!mode)mode=({frozen:1,uniform:2,surprise:3})[mm[2]];
+  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform)(,|$)/); if(mm&&!mode)mode=mm[2]==='frozen'?1:2;
   return p>0?{P:Math.min(100,p)/100,mode,seed:seed||(((Math.random()*4294967296)>>>0)||1)}:null; }catch(_){ return null; } }
 function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false;
     if(__mindLatch){ let sv=null; try{ sv=localStorage.getItem('selection_mind'); }catch(_){}   // this universe's own mind, saved beside its genome
@@ -10796,7 +10780,7 @@ function mindImport(txt){ if(!txt||!__mindLatch)return false; const m=EngineMind
 // one line for the HUD: what the mind has done, and whether its children do better or worse than ordinary ones
 function mindHud(){ const M=__mind; if(!M)return ''; const sc=M.success();
   return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+')')+': learned from '+M.seen+' · wrote '+M.uses+' children'+
-    ((M.MODE==='learn'||M.MODE==='surprise')&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
+    (M.MODE==='learn'&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
     (sc===null?'':' · its children have '+sc.toFixed(2)+'x the children of ordinary ones'); }
 const pMindW=new Uint8Array(CAP);   // 2: born carrying an instruction the mind wrote; 1: born ordinary while the mind watched; 0: a founder (not compared). Moves with it in compact
 function mindReport(){ const M=mindOn(); return M?M.report():{mode:'off'}; }

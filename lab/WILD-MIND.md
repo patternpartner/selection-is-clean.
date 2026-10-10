@@ -144,3 +144,17 @@ counted 3 | twin pass 0 | controls pass 0 | both 0 (need 2 of 3)
 ### VERDICT: NO-GO
 
 Surprisal executed (SURPRISE ≫ LEARN on every seed), but the twin never cleared (E vs TREE always negative in the mean — real worlds held less than TREE on the same supply), and controls never cleared (SURPRISE mean E never above every LEARN and UNIFORM replicate). Plain NO-GO, not "wilder, not selected" or "twin only". Per the plan: `MIND_MODE=3` is to be deleted from engine.html (retire-or-prove), browser default unchanged. E here is held programs, not income-per-instruction.
+
+### Deleted (retire-or-prove)
+
+`MIND_MODE=3` / `#mindmode=surprise` and its readout are removed: `engine.html` and `harness-env.js` are back to main's
+86ef899 byte for byte (`git diff origin/main -- engine.html harness-env.js` is empty), so LEARN (#296) and UNIFORM are
+exactly as they were. Kept: `harness-sweep.js` prints the mind's own report when a mind is on (absent when off, so a plain
+run is unchanged). To reproduce the deciding round, run `lab/wild/run.sh` from a worktree at b695788 with
+ALLOW_DELETED=1; on any later commit the engine reads mode 3 as the learning mind, and run.sh refuses the SURPRISE arm.
+
+**What the round says beyond the verdict.** The bands are wider than the effect: on seed 3413 the LEARN replicates
+alone spanned E -1.75 to +4.41, and UNIFORM's mean on 3411 (2.06) was the largest of any arm on any seed. Writing
+surprising instructions was executed hard (surprisal ~9.7 nats against LEARN's ~0.45) and moved nothing selection could
+keep: against the exact-supply TREE twin SURPRISE was below zero in the mean on all three seeds. Making variation wilder
+at the source does not make the world keep more of it.

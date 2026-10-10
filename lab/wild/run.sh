@@ -3,10 +3,13 @@
 # relaunched after a box restart. Runs harness-sweep.js from the worktree given as ROOT (a frozen worktree for the deciding round).
 #   ROOT=<worktree> OUT=<dir> SEEDS="3411 3412 3413" REPS="0 1 2 3" PAR=4 TICKS=20000 bash lab/wild/run.sh
 set -u
+# SURPRISE (MIND_MODE=3) was DELETED after the NO-GO (lab/WILD-MIND.md). The engine now reads mode 3 as the learning mind,
+# so a SURPRISE run would silently be a LEARN run: refuse it.
+case " ${ARMS:-OFF LEARN UNIFORM SURPRISE} " in *" SURPRISE "*) [ "${ALLOW_DELETED:-0}" = 1 ] || { echo 'run.sh: SURPRISE was deleted from engine.html; use the frozen worktree at b695788 to reproduce it (ALLOW_DELETED=1)'; exit 2; };; esac
 ROOT=${ROOT:?}; OUT=${OUT:?}; SEEDS=${SEEDS:?}; REPS=${REPS:-0 1 2 3}; PAR=${PAR:-4}; TICKS=${TICKS:-20000}
 mkdir -p "$OUT"
 jobs_list=()
-for s in $SEEDS; do for k in $REPS; do for a in OFF LEARN UNIFORM SURPRISE; do jobs_list+=("$a $s $k"); done; done; done
+for s in $SEEDS; do for k in $REPS; do for a in ${ARMS:-OFF LEARN UNIFORM SURPRISE}; do jobs_list+=("$a $s $k"); done; done; done
 one(){ local a=$1 s=$2 k=$3; local f="$OUT/$a.$s.$k"   # f on its own line: one local expands every word before assigning any
   [ -f "$f.done" ] && return 0
   local env="SEED=$s TICKS=$TICKS NULLSHIFT=$k"
