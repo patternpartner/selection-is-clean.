@@ -67,7 +67,8 @@ m._compile(code+`
   wrapBirths:`+NS.BIRTHS+`,
   onCompact:`+NS.COMPACT+`,
   read:`+NS.READER(3)+`,   // one pass over the living: traits (axes 0-2) and a token per layer - novelty-shadows.js
-  germ:`+NS.GERM+`
+  germ:`+NS.GERM+`,
+  mind:function(){ return typeof mindReport==='function'?mindReport():null; }
 };`+TF.DRIVER,'/tmp/sweep.js');
 const SW=globalThis.__SW;
 const NULLSHIFT=+(E.NULLSHIFT||0)|0; for(let q=0;q<NULLSHIFT;q++)Math.random();   // after boot, before the first tick
@@ -179,4 +180,5 @@ for(const name of LAY){ const S=SEL.L[name], base=S.expAll>0?S.birthsAll/S.expAl
     verdict:(real===null||!sh.length)?'NO DATA':real>hi?'NOVELTY FAVOURED':real<lo?'NOVELTY DISFAVOURED':'CHANCE',
     birthsLate:S.birthsAll,newShareReal:S.expAll>0?+(S.expNew[0]/S.expAll).toFixed(3):null}; }
 out.summarySelection=Object.fromEntries(LAY.map(n=>[n,out.selection.layers[n].verdict]));
+{ const mr=SW.mind(); if(mr&&mr.mode!=='off')out.mind=mr; }   // cos/wild-mind: what the mind did (absent with the mind off, so a plain run's output is unchanged)
 console.log(JSON.stringify(out));
