@@ -1660,3 +1660,18 @@ around 30-33 s DUEL, six cuts in three seconds, 19 v 18 members; then the doughn
 sound stream, so silent where it plays. Not watched for fixes; only re-encoded to fit.
 THE USER on the second chance: "Something interesting is happening here." (After "I like how its a beautful failure".)
 The direction the user responded to: the edit handed to the artwork, rules fixed before, one run, no fixing.
+
+### The Universe Inherits (`harness-film2.js`, `video/build_evolving.py`, `out/the-universe-inherits.mp4`, 98 s, $0)
+The user picked option 2 ("Do it"): clips that evolve. RULES committed (d216c44) before the one run: as Edited by the
+Universe, plus the LINEAGE family tree (harness-film2 wraps addParticle/addCompound to read the newborn's pLin and its
+first parent's, draws nothing); a founder gets a clip by hash, unchanged; a new lineage inherits its parent's clip and
+every change, plus one mutation by its own id (speed, backwards, colour, crop, mirror, contrast, time jump; one in ten
+a different vault clip); when the leader buds a lineage the newborn cuts in for six frames; a caption names lineage,
+clip and mutation depth. Vault without u01, u03, u05. SEED=9, 9,000 ticks.
+THE RUN: 20 cuts, 12 lineages; 20 newborns seen as they were born. 482 new lineages, every one with a recorded parent -
+but the tree is SHALLOW: 424 one mutation deep, 58 two deep, none deeper in 9,000 ticks, and EVERY lineage that held the
+screen was a founder (0 mutations). So inheritance shows only in the quarter-second buds; no descendant ever won.
+That is a finding about the artwork, not the film: at this horizon the lineage tree barely branches and the founders
+keep the lead (seed 7's lineage 2158 overtaking is the exception so far). The end is a scramble - him in a laundromat
+(u147, lineage 19) and the milk jug that grows a mouth (u165, lineage 27) trading the lead seven times in the last 14 s;
+lineage 19 has it at the end, 23 of 414 alive.
