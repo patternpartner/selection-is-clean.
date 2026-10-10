@@ -68,7 +68,8 @@ m._compile(code+`
   onCompact:`+NS.COMPACT+`,
   read:`+NS.READER(3)+`,   // one pass over the living: traits (axes 0-2) and a token per layer - novelty-shadows.js
   germ:`+NS.GERM+`,
-  mind:function(){ return typeof mindReport==='function'?mindReport():null; }
+  mind:function(){ return typeof mindReport==='function'?mindReport():null; },
+  incOn:function(){ return typeof __INC!=='undefined'&&__INC; }, incTake:function(idx){ return incTake(idx); }
 };`+TF.DRIVER,'/tmp/sweep.js');
 const SW=globalThis.__SW;
 const NULLSHIFT=+(E.NULLSHIFT||0)|0; for(let q=0;q<NULLSHIFT;q++)Math.random();   // after boot, before the first tick
@@ -84,7 +85,18 @@ let tree=null;   // the TREE null (#256b) - created after the warm-up; births be
 // reproductive skew alone produces - the MIXED null's bias, measured on the same run. Two rates, because the layers
 // differ: atoms and channels change at a few percent of births, programs at most of them. MARKER=0 leaves them out.
 const MARKER_U=(E.MARKER_U||'0.05,0.5').split(',').map(Number); let mks=[];
-let SEL=null, curTick=0, inLate=false;   // #267, set up after the layers (see SELECTION below)
+let SEL=null, curTick=0, inLate=false;
+// cos/wild-mind-3: INCOME=1 and INCOME_OUT=<file> write one JSONL row per sample: each program's share of the creatures' gross
+// intake from the world since the last sample (engine.flux, keyed by the same program token the program layer uses), and each
+// operation's share when every creature's intake is split equally over the distinct operations it EXECUTED (engine.opflux,
+// association, not cause - see engine.html INCOME). lab/used-novelty.js reads engine.flux. Draws nothing.
+const INC_OUT=E.INCOME_OUT||null, incFd=INC_OUT?fs.openSync(INC_OUT,'w'):null;
+function incRow(t,c){ if(!incFd||!SW.incOn())return; const r=SW.incTake(c.idx), prog=c.layers.program, byK=new Map(), byO=new Map(); let tot=0;
+  r.rows.forEach(([inc,lo,hi,ops],q)=>{ if(!(inc>0))return; tot+=inc; const k=prog[q]; byK.set(k,(byK.get(k)||0)+inc);
+    const ex=new Set(); for(let s=0;s<ops.length&&s<64;s++){ const b=s<32?(lo>>>s)&1:(hi>>>(s-32))&1; if(b)ex.add(ops[s]); }
+    if(ex.size){ const sh=inc/ex.size; for(const o of ex)byO.set('o'+o,(byO.get('o'+o)||0)+sh); } });
+  const L=m=>[...m].map(([k,v])=>[k,+(v/tot).toFixed(5)]).filter(x=>x[1]>=0.001);
+  fs.writeSync(incFd,JSON.stringify({t,N:c.idx.length,engine:{total:+tot.toFixed(4),flux:tot>0?L(byK):[],opflux:tot>0?L(byO):[],src:r.src}})+'\n'); }   // #267, set up after the layers (see SELECTION below)
 const takeBirths=SW.wrapBirths((i,pa,pb)=>{ for(const mk of mks)mk.lab[i]=(pa>=0&&mk.rng()>=mk.u)?mk.lab[pa]:mk.next++; if(SEL&&inLate&&pa>=0)SEL.birth(pa); if(tree)tree.onBirth(i,pa,pb); }); let errs=0;
 SW.onCompact(ni=>{ for(const mk of mks)NS.compactArray(mk.lab,ni,1); if(tree)tree.onCompact(ni); });   // per-slot state moves with its particle
 for(let s=0;s<WARM;s++) if(!SW.step())errs++;
@@ -143,6 +155,7 @@ for(let s=1;s<=T;s++){
   SEL.step(s,cur.idx);   // #267: after the layers have written this step's real and shadow labels
   tree.syncTraits(cur.idx,cur.tr,false); tree.born.length=0; tree.sd=sd; tree.H=H;
   if(smp&&s>=lateFrom&&s<lateTo){ const t=cur.tr; let sum=0,k=0; for(let a=0;a<t.length;a+=3) for(let b=a+1;b<t.length;b+=7){ sum+=Math.hypot(t[a][0]-t[b][0],t[a][1]-t[b][1],t[a][2]-t[b][2]); k++; } if(k){ spreadSum+=sum/k; spreadN++; } }   // #258: grid-free, draw-free
+  if(smp)incRow(s,cur);
   if(smp){ record(TR.real,s,cellCounts(cur.tr),M); for(const sh of TR.sh) record(sh.tr,s,cellCounts(sh.pop),M); germSample(s);
     for(let k=0;k<K;k++) record(TT[k],s,cellCounts(tree.traitsOf(k,cur.idx)),M); }
 }

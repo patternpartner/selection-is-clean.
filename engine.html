@@ -10782,6 +10782,22 @@ function mindHud(){ const M=__mind; if(!M)return ''; const sc=M.success();
   return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+')')+': learned from '+M.seen+' · wrote '+M.uses+' children'+
     (M.MODE==='learn'&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
     (sc===null?'':' · its children have '+sc.toFixed(2)+'x the children of ordinary ones'); }
+// === cos/wild-mind-3 INCOME (lab/WILD-MIND-3.md): what each creature takes from the world, and which of its own instructions ran.
+// Off unless INCOME=1 (harness-env KNOBS); off, every site below computes exactly what it did (the helper is not called).
+// INCOME here is GROSS INTAKE FROM THE WORLD at the nine sites where a creature's energy (amp) rises because of what it did or
+// where it is: predation take, detritus, local resources, the field, niche harvest (and its pioneer and Allee shares), the
+// niche food web's predator gain, and an aim's pay. NOT income: energy handed over a bond (counted apart, as transfer.in),
+// the engineered bonuses (negative-frequency, genotype-frequency and novelty pay), observer and ghost boosts, and numerical
+// corrections. No instruction in this engine pays energy itself (the VM's cases only spend it): instructions move and steer
+// the creature and the world pays where it is. So income is attributable to a CREATURE and a TICK, and execution to a
+// creature and an instruction SLOT; joining them is association (the income of creatures that ran that instruction), not cause.
+const __INC=(typeof globalThis!=='undefined')&&((globalThis.__INCOME|0)===1);
+const INC_SRC=['predation','detritus','resource','field','niche','niche.pioneer','niche.allee','niche.predgain','aim','transfer.in'];
+const pInc=new Float64Array(CAP), pIncW=new Float64Array(CAP), pExLo=new Uint32Array(CAP), pExHi=new Uint32Array(CAP), incSrc=new Float64Array(INC_SRC.length);
+function __inc(i,s,x){ if(x>0){ if(s<9){ pInc[i]+=x; pIncW[i]+=x; } incSrc[s]+=x; } return x; }   // returns x: the site adds exactly what it always added
+function __exec(i,ip){ if(ip<32)pExLo[i]|=1<<ip; else if(ip<64)pExHi[i]|=1<<(ip-32); }   // slots 0..63 of the running program that have executed since birth
+// the harness's window read: each living creature's intake since the last read, its executed slots and its program's operations; resets the window
+function incTake(idx){ const o=[]; for(const i of idx){ const p=pProg[i]; o.push([pIncW[i],pExLo[i]>>>0,pExHi[i]>>>0,Array.isArray(p)?p.map(r=>r?(r[0]|0):-1):[]]); pIncW[i]=0; } return {rows:o,src:Object.fromEntries(INC_SRC.map((n,k)=>[n,+incSrc[k].toFixed(4)]))}; }
 const pMindW=new Uint8Array(CAP);   // 2: born carrying an instruction the mind wrote; 1: born ordinary while the mind watched; 0: a founder (not compared). Moves with it in compact
 function mindReport(){ const M=mindOn(); return M?M.report():{mode:'off'}; }
 // the birth hook, called from both reproduction chokepoints (addParticle and addCompound) after the child's program is made
@@ -21522,6 +21538,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
+  if(__INC){ pInc[i]=0; pIncW[i]=0; pExLo[i]=0; pExHi[i]=0; }   // cos/wild-mind-3
   if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
@@ -21625,6 +21642,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
+  if(__INC){ pInc[i]=0; pIncW[i]=0; pExLo[i]=0; pExHi[i]=0; }   // cos/wild-mind-3
   if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
@@ -21735,7 +21753,7 @@ function applyEntropy(){
             // fallback for a particle whose genome predates this gene's existence.
             const _pr=finiteOr(pGenome[i]&&pGenome[i].predateRate,PREDATE_RATE);
             const take=amp[j]*_pr*0.5;
-            if(take>0){ amp[j]-=take; amp[i]+=take*0.7; } // 30% lost to the transfer — predation is not free
+            if(take>0){ amp[j]-=take; amp[i]+=__INC?__inc(i,0,take*0.7):take*0.7; } // 30% lost to the transfer — predation is not free
           }
         }
       }
@@ -21767,7 +21785,7 @@ function applyEntropy(){
        const _dt=detritalField[_di];
        if(_dt>0.02&&DIMS>DETRITUS_TRAIT_DIM){
          const _fit=1-Math.min(1,Math.abs(tend[i*DIMS+DETRITUS_TRAIT_DIM]-0.8)); // decomposer register
-         if(_fit>0.15){ const _take=Math.min(_dt,_fit*DETRITUS_YIELD); detritalField[_di]-=_take; amp[i]+=_take*0.85; }
+         if(_fit>0.15){ const _take=Math.min(_dt,_fit*DETRITUS_YIELD); detritalField[_di]-=_take; amp[i]+=__INC?__inc(i,1,_take*0.85):_take*0.85; }
        }}
       amp[i]-=densityCost;
       // LEAP 9 (#52) — carried machinery is billed at the same economy instructions already pay. The
@@ -21790,7 +21808,7 @@ function applyEntropy(){
        const _ua=genome.userAtoms;
        if(_ua&&_ua.length){ let _dead=0; for(let _q=0;_q<_ua.length;_q++) if(!((_ua[_q].uses|0)>0))_dead++;
          if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
-      amp[i]+=localRes[i]*genome.entropyK;
+      amp[i]+=__INC?__inc(i,2,localRes[i]*genome.entropyK):localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       { const _ea=SUN_ON?pAdq[i]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #272: per particle under SUN. starvation: the world couldn't feed everyone this tick
       if(REPL_ON&&pAdq[i]<0.5)amp[i]=-1e6;   // #278b: a replicator that cannot pay half its upkeep starves to death. Without this a dry store only drained amp, which interactions top up, so starving particles cost no energy, never died, and a world without predators grew to 1,700 on sunlight for about 500
@@ -24882,7 +24900,7 @@ function executeVM(i,j,sim,d){
     const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
     const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
 
-    ip=vmStep(op,src,dst,k,si,di,i,j,ip);   // #231: one dispatch for all four machines
+    if(__INC)__exec(i,ip); ip=vmStep(op,src,dst,k,si,di,i,j,ip);   // #231: one dispatch for all four machines
   }
 
   const bond=sim*phaseAlign*proximity;
@@ -25042,7 +25060,7 @@ function executeVM(i,j,sim,d){
 
   const atrans=vmActions[2]*influence*0.5;
   if(Math.abs(atrans)>0.000001){
-    amp[i]-=atrans;amp[j]+=atrans;
+    amp[i]-=atrans;amp[j]+=__INC?__inc(j,9,atrans):atrans;
   }
 
   const tbleed=vmActions[3]*influence;
@@ -25231,7 +25249,7 @@ function executeClusterVM(i,j,sim,d){
 
   const atrans=vmActions[2]*influence*0.5;
   if(Math.abs(atrans)>0.000001){
-    amp[i]-=atrans;amp[j]+=atrans;
+    amp[i]-=atrans;amp[j]+=__INC?__inc(j,9,atrans):atrans;
   }
 
   const tbleed=vmActions[3]*influence;
@@ -25583,7 +25601,7 @@ function updateParticles(){
     const localField=field[lfIdx];
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*(pGenome[i]?pGenome[i].fieldInfluence:genome.fieldInfluence)*affinity; // per-lineage field coupling: each lineage's evolved fieldInfluence now governs its own resource harvest
-    amp[i]+=localField*0.0008*affinity;
+    amp[i]+=__INC?__inc(i,3,localField*0.0008*affinity):localField*0.0008*affinity;
     // LEAP 8 (#52) — the trait wall is a toll booth. Beyond TEND_SOFT a particle keeps drifting but pays
     // amplitude for the distance, so genuinely new niche territory is reachable at a price instead of
     // being unreachable at any price. This is the bound swing #11 identified as the real ceiling.
@@ -25676,7 +25694,7 @@ function executeSoloVM(){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
       const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
-      ip=vmStep(op,src,dst,k,si,di,i,-1,ip);   // #231: j=-1, no partner
+      if(__INC)__exec(i,ip); ip=vmStep(op,src,dst,k,si,di,i,-1,ip);   // #231: j=-1, no partner
     }
 
     for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
@@ -26006,7 +26024,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];if(__INC){pInc[w]=pInc[r];pIncW[w]=pIncW[r];pExLo[w]=pExLo[r];pExHi[w]=pExHi[r];}pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -26773,17 +26791,17 @@ function applyNicheEconomy(){ fired('niche.economy');
     // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
     const LOCAL=(typeof globalThis!=='undefined'&&((globalThis.__NICHE_LOCAL|0)===1&&!__mechOff.NICHE_LOCAL)); // swing #14: per-cell crowding cost
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
-      const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=NICHE_GAIN_REAL*got;
+      const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=__INC?__inc(i,4,NICHE_GAIN_REAL*got):NICHE_GAIN_REAL*got;
       if(__COLO.pioneer){
         // SWING #20 knob C (colonization): a GROWTH term, orthogonal to knob S's death relief. Two self-limiting
         // parts, both pointed at the 244 empty cells so a rare pioneer's per-capita growth goes positive:
         //  • pioneer income — while a cell is still under-occupied the first arrivals harvest its accrued stock
         //    at a bonus rate (got already scales with the stock an empty cell built up). Ends once the cell fills
         //    past pioneerOcc → reduced competition for first arrivals, not a permanent subsidy.
-        if(occ<=__COLO.pioneerOcc) amp[i]+=NICHE_GAIN_REAL*got*__COLO.pioneerK;
+        if(occ<=__COLO.pioneerOcc) amp[i]+=__INC?__inc(i,5,NICHE_GAIN_REAL*got*__COLO.pioneerK):NICHE_GAIN_REAL*got*__COLO.pioneerK;
         //  • Allee relief — a sub-minsize minted lineage gets a per-capita income uplift so rarity itself isn't
         //    penalised; fades to zero as the founder reaches viable size. (linSize is refreshed each cadence.)
-        if(__SPEC.on){ const _ls=linSize.get(pLin[i])||0; if(_ls>0&&_ls<__SPEC.minsize) amp[i]+=NICHE_GAIN_REAL*got*__COLO.alleeK; }
+        if(__SPEC.on){ const _ls=linSize.get(pLin[i])||0; if(_ls>0&&_ls<__SPEC.minsize) amp[i]+=__INC?__inc(i,6,NICHE_GAIN_REAL*got*__COLO.alleeK):NICHE_GAIN_REAL*got*__COLO.alleeK; }
       }
       if(LOCAL&&occ>NICHE_CELL_FLOOR) amp[i]-=NICHE_LOCAL_COST*(occ-NICHE_CELL_FLOOR); // local carrying capacity: crowding your own niche hurts
       nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
@@ -26798,7 +26816,7 @@ function applyNicheEconomy(){ fired('niche.economy');
           const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
           const transfer=Math.min(rm*RQ_MAXFRAC, pm*(genome.rqRate??RQ_RATE));    // conserved: predators gain exactly what prey lose; rate evolvable (#35)
           nicheCellPredGain[c]+=transfer/pm; nicheCellPreyLoss[preyC]+=transfer/rm; }
-        for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=__INC?__inc(i,7,a*(nicheCellPredGain[c]-nicheCellPreyLoss[c])):a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
       }
     }
     // #249f: SWING #32 mutualism deleted - BETTER against one control in #249, beat every null on 0 of 3 seeds in #249b.
@@ -26866,7 +26884,7 @@ function applyNicheEconomy(){ fired('niche.economy');
         const _pay=_sat*2/(1+_tol);   // #218k: precision is priced — wide aims pay less at the peak
         // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
-        amp[i]+=_w*(_pay*_mv-AIM_TAX);   // #228: a still sense pays nothing; the tax stands
+        amp[i]+=__INC?__inc(i,8,_w*(_pay*_mv-AIM_TAX)):_w*(_pay*_mv-AIM_TAX);   // #228: a still sense pays nothing; the tax stands
         fired('aim.pull');
         }
       }

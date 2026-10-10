@@ -20,7 +20,8 @@
 const fs=require('fs');
 
 function readRows(f){ return fs.readFileSync(f,'utf8').trim().split('\n').map(l=>{ try{ return JSON.parse(l); }catch(e){ return null; } }).filter(r=>r&&r.N>0); }
-function incomeList(r){ if(r.body&&r.body.bU)return r.body.bU; if(r.chem&&r.chem.flux)return r.chem.flux; if(r.tasks&&r.tasks.flux)return r.tasks.flux; return null; }
+function incomeList(r){ if(r.engine&&r.engine.flux)return r.engine.flux; if(r.body&&r.body.bU)return r.body.bU;   // engine.flux: harness-sweep INCOME_OUT (cos/wild-mind-3)
+  if(r.chem&&r.chem.flux)return r.chem.flux; if(r.tasks&&r.tasks.flux)return r.tasks.flux; return null; }
 
 // used[w]: the set of keys whose mean income share over window w is at least min. No carrier share, ever.
 function usedSets(rows,WIN,min){ const nW=Math.floor(rows.length/WIN), used=[];
