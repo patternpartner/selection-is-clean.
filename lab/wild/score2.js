@@ -20,13 +20,16 @@ for(const s of SEEDS){
   // under the base-rate log loss, and it scored the edits that were held above the edits that were lost
   const wrote=R.KEEPER.every(r=>r.mind&&r.mind.uses>0)&&kk.every(x=>x.labelled>0);
   const llK=mean(kk.map(x=>x.logLoss)), llB=mean(kk.map(x=>x.baseLogLoss)), sep=mean(kk.map(x=>x.predHeld-x.predLost));
-  const learn=wrote&&llK<llB&&sep>0; if(learn)learned++;
+  // added after the trial seed, before any deciding run: SHAM showed held-minus-lost separation with no information (time
+  // trends do it), so the keeper's separation must also beat SHAM's on the same seed
+  const sepS=mean(ks.map(x=>x.predHeld-x.predLost));
+  const learn=wrote&&llK<llB&&sep>0&&sep>sepS; if(learn)learned++;
   const offClear=R.OFF.every(r=>!r.extinctions&&r.aliveEnd>20), bad=R.KEEPER.filter(r=>r.loopErrors>0||(offClear&&(r.extinctions>0||r.aliveEnd<5)));
   if(bad.length)guardFail.push(s);
   const mK=mean(e.KEEPER), T=mK>0&&e.KEEPER.filter(x=>x>0).length>=4;
   const lostStrict=STRICT.filter(a=>!(mK>Math.max(...e[a]))), lostMean=MEANS.filter(a=>!(mK>mean(e[a]))), C=!lostStrict.length&&!lostMean.length;
   rows.push({s,learn,T,C});
-  console.log(s+': keeper '+(learn?'LEARNED':'did not learn')+' (log loss '+f3(llK)+' v base '+f3(llB)+', held-minus-lost score '+f3(sep)+
+  console.log(s+': keeper '+(learn?'LEARNED':'did not learn')+' (log loss '+f3(llK)+' v base '+f3(llB)+', held-minus-lost score '+f3(sep)+' v sham '+f3(sepS)+
     ') | sham log loss '+f3(mean(ks.map(x=>x.logLoss)))+' v '+f3(mean(ks.map(x=>x.baseLogLoss)))+' | held rate KEEPER '+f3(mean(kk.map(x=>x.heldRate)))+' SHAM '+f3(mean(ks.map(x=>x.heldRate))));
   for(const a of ARMS) console.log('   '+a.padEnd(7)+' ET '+JSON.stringify(e[a])+' mean '+f3(mean(e[a]))+' | E vs MIXED mean '+f3(mean(R[a].map(EM)))+
     ' | real '+JSON.stringify(R[a].map(r=>r.layers.program.realPersistentPer1k))+' | sel '+R[a].map(r=>((r.selection.layers.program||{}).verdict||'-').split(' ').pop()).join(',')+

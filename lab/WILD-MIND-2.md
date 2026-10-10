@@ -95,7 +95,7 @@ the count. That instrumentation is named here and is not part of this round.
 Per deciding seed:
 1. **Executed, and the keeper learned.** Every KEEPER replicate wrote and labelled edits. Over its 6 replicates, the
    keeper's mean prequential log loss is below the base-rate log loss, and its mean predicted score for held edits is
-   above its score for lost ones. If the keeper learned on fewer than 2 seeds: **NO-GO ("the keeper did not learn")**, not
+   above its score for lost ones, and that held-minus-lost gap is above SHAM's on the same seed (added after the trial, see below). If the keeper learned on fewer than 2 seeds: **NO-GO ("the keeper did not learn")**, not
    inconclusive. A longer horizon would be a new experiment.
 2. **Twin (outright):** KEEPER's mean ET is above 0, and ET is above 0 on at least 4 of 6 replicates.
 3. **Controls:** KEEPER's mean ET is above EVERY replicate of SHAM and of UNIFORM, its exact controls ("does the keeper's
@@ -109,6 +109,21 @@ one of these names: "above the arms, not the twin", "twin only", "the keeper did
 
 Reported beside the verdict, with no ruling: ET against MIXED, the selection index for programs (#267), trait verdicts,
 held rate KEEPER against SHAM, SHAM's log loss (it should not beat its base rate), and alive at the end.
+
+## Trial seed 3420 (one run each, 20,000 ticks; not evidence) and the one change it caused
+
+| arm | written | labelled | held rate | prequential log loss vs base | held-minus-lost score | ET (vs TREE) | E vs MIXED | alive |
+|---|---|---|---|---|---|---|---|---|
+| KEEPER | 583 | 534 | 0.586 | 0.6706 vs 0.6719 | +0.021 | -0.594 | -0.422 | 410 |
+| SHAM | 470 | 434 | 0.643 | 0.6646 vs 0.6443 | +0.036 | -0.344 | +0.969 | 350 |
+
+- **The keeper barely learns at this horizon.** It beat the base rate by 0.0013 nats, and the edits it installed were held
+  *less* often than SHAM's (0.59 against 0.64). On one run that's not a finding, but it is the likeliest way this round
+  fails: rule 1, or plain NO-GO.
+- **Change before the deciding round:** SHAM, which has no information, still showed a positive held-minus-lost score
+  (+0.036). Slow drifts in the held rate over a run produce one with no learning at all. So rule 1 now also requires the
+  keeper's gap to beat SHAM's on the same seed. This only makes the bar harder. Nothing is tuned. CAND, LAG, CENSUS and the
+  learning rate are unchanged.
 
 ## What follows either way
 
