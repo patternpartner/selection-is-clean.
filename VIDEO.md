@@ -1651,3 +1651,10 @@ chosen, no test render. THE RUN: 11 cuts, 8 lineages; eight cuts in the first 2.
 alive. u25 (lineage 170) has no audio stream, so its sliver is silent. HONEST, and not fixed because the rules forbid
 it: u05 shows a real public figure in costume - Claude's exclusion list (u01, u03) missed it, though the vault mosaic had
 been looked at; Claude's error, not the universe's. The only change after the run was re-encoding to fit 30 MB.
+**The user: "The bowling one repeated over and over. I like how its a beautful failure. Give it another chance."**
+SECOND CHANCE (`out/edited-by-the-universe-2.mp4`, 97 s): the same rules, committed (2c84e66) before the run, a new
+seed (8), and u05 left out - Claude's miss on seed 7, not a rule change. 14 cuts, 7 lineages: him on blue for a moment
+(lineage 23, u172); the symmetrical eye-mask (24, u26) and the two figures at sunset (3, u111) trade the lead - and
+around 30-33 s DUEL, six cuts in three seconds, 19 v 18 members; then the doughnut (4, u168 - the doughnut again) holds
+22 s; a gold figure (17, u65) 14 s; the mirrored faces (63, u59) take it to the end, 23 of 392 alive. One clip has no
+sound stream, so silent where it plays. Not watched for fixes; only re-encoded to fit.
