@@ -189,3 +189,31 @@ If the keeper learns on fewer than 2 seeds, the result is NO-GO.
 **Runs:** `lab/wild/decide2.sh` runs `run2.sh` from a frozen worktree of the commit carrying this section. When all 90
 runs are done, it writes `ALL-DONE` and `SCORE.txt` in the output directory and appends the score below. It then commits
 that one file to `cos/wild-mind-2` and pushes it.
+
+## Deciding round result (seeds 3421-3423, 2026-10-10 17:20 BST, scored by lab/wild/score2.js from frozen 66a25f8)
+
+```
+3421: keeper did not learn (log loss 0.377 v base 0.438, held-minus-lost score 0.302 v sham 0.180) | sham log loss 0.324 v 0.277 | held rate KEEPER 0.191 SHAM 0.110
+   KEEPER  ET [-0.391,0.125,0.766,0.187,0.719,-0.328] mean 0.180 | E vs MIXED mean 1.377 | real [4.625,5.125,5.125,4.75,6.25,4.125] | sel CHANCE,CHANCE,CHANCE,CHANCE,CHANCE,DISFAVOURED | traits SLOWER,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 383,398,364,382,411,417
+   SHAM    ET [-0.563,0.203,-0.344,-1.25,-1.031,-0.734] mean -0.620 | E vs MIXED mean 0.349 | real [4.125,5.75,3.75,3.125,3.75,3.75] | sel CHANCE,CHANCE,DISFAVOURED,CHANCE,CHANCE,DISFAVOURED | traits SLOWER,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 402,383,435,396,390,373
+   UNIFORM ET [-1.031,-0.641,-0.859,0.172,-0.563,0.484] mean -0.406 | E vs MIXED mean 0.794 | real [4.5,3.75,3.875,4.625,3.375,5] | sel CHANCE,DISFAVOURED,CHANCE,DISFAVOURED,CHANCE,CHANCE | traits SLOWER,CHANCE,SLOWER,SLOWER,CHANCE,SLOWER | alive 393,396,377,369,356,432
+   LEARN   ET [-1.266,-0.906,-1.078,-0.984,-0.359,0.141] mean -0.742 | E vs MIXED mean -0.156 | real [2.875,3.125,2.375,4.5,3.625,5.625] | sel CHANCE,CHANCE,FAVOURED,CHANCE,FAVOURED,CHANCE | traits SLOWER,SLOWER,CHANCE,SLOWER,SLOWER,SLOWER | alive 398,401,299,419,402,391
+   OFF     ET [-0.719,-1.125,-0.797,-1.5,-1.766,0] mean -0.985 | E vs MIXED mean -0.597 | real [3.75,3.75,4.125,2.5,2.25,6.25] | sel DISFAVOURED,CHANCE,CHANCE,DISFAVOURED,CHANCE,CHANCE | traits SLOWER,SLOWER,SLOWER,SLOWER,CHANCE,SLOWER | alive 426,378,414,391,408,531
+   twin (ET>0 in mean and on >=4 of 6): PASS | controls (above every SHAM and UNIFORM replicate, above LEARN and OFF means): fail (SHAM band, UNIFORM band)
+3422: keeper LEARNED (log loss 0.218 v base 0.298, held-minus-lost score 0.429 v sham 0.245) | sham log loss 0.308 v 0.271 | held rate KEEPER 0.116 SHAM 0.100
+   KEEPER  ET [-1.516,-0.641,-0.438,-0.938,-0.859,-0.563] mean -0.826 | E vs MIXED mean 0.419 | real [3.75,3.5,3.75,3.75,3.125,4] | sel CHANCE,CHANCE,CHANCE,CHANCE,CHANCE,FAVOURED | traits CHANCE,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 397,300,379,386,400,399
+   SHAM    ET [-0.578,-1.766,-0.641,-3.219,0.219,0.672] mean -0.885 | E vs MIXED mean 0.797 | real [4.75,2.5,4.75,4.5,4.125,5.125] | sel CHANCE,DISFAVOURED,DISFAVOURED,CHANCE,DISFAVOURED,CHANCE | traits SLOWER,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 409,425,373,399,397,394
+   UNIFORM ET [-0.953,-0.797,-0.359,-0.688,-0.859,-0.719] mean -0.729 | E vs MIXED mean 1.120 | real [2.75,3.25,5.125,5.25,3.375,4.375] | sel CHANCE,DISFAVOURED,CHANCE,CHANCE,CHANCE,CHANCE | traits CHANCE,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 293,391,385,400,385,400
+   LEARN   ET [-0.828,-1.25,-0.484,-1.813,-0.047,0.297] mean -0.688 | E vs MIXED mean 0.310 | real [3.625,4.625,3.75,5.25,4.375,2.75] | sel CHANCE,CHANCE,CHANCE,CHANCE,CHANCE,CHANCE | traits SLOWER,SLOWER,CHANCE,SLOWER,SLOWER,CHANCE | alive 382,423,381,348,382,196
+   OFF     ET [-0.531,-0.438,-0.172,-0.609,-0.906,-0.188] mean -0.474 | E vs MIXED mean -0.334 | real [4.5,5.625,4.25,3.875,3.625,3.5] | sel DISFAVOURED,DISFAVOURED,CHANCE,DISFAVOURED,CHANCE,CHANCE | traits SLOWER,SLOWER,SLOWER,SLOWER,SLOWER,CHANCE | alive 345,445,410,396,360,379
+   twin (ET>0 in mean and on >=4 of 6): fail | controls (above every SHAM and UNIFORM replicate, above LEARN and OFF means): fail (SHAM band, UNIFORM band, LEARN mean, OFF mean)
+3423: keeper LEARNED (log loss 0.170 v base 0.236, held-minus-lost score 0.468 v sham 0.197) | sham log loss 0.352 v 0.300 | held rate KEEPER 0.086 SHAM 0.109
+   KEEPER  ET [-0.281,-0.609,-0.031,-0.359,-0.156,0.094] mean -0.224 | E vs MIXED mean 0.242 | real [7,3.75,5.125,3.5,3.125,3.875] | sel DISFAVOURED,CHANCE,FAVOURED,CHANCE,CHANCE,FAVOURED | traits SLOWER,SLOWER,SLOWER,SLOWER,CHANCE,SLOWER | alive 589,418,383,386,276,390
+   SHAM    ET [-1.109,0.203,-1.188,0.219,-0.094,-0.094] mean -0.344 | E vs MIXED mean 1.435 | real [4.875,5,3,4,4.5,3.125] | sel CHANCE,FAVOURED,DISFAVOURED,CHANCE,CHANCE,DISFAVOURED | traits SLOWER,SLOWER,SLOWER,SLOWER,SLOWER,CHANCE | alive 396,400,285,306,377,173
+   UNIFORM ET [-0.875,-1.25,0.125,-0.094,-1.234,0.812] mean -0.419 | E vs MIXED mean 0.768 | real [4.375,3.5,4.125,3.5,3.375,5.875] | sel CHANCE,DISFAVOURED,FAVOURED,FAVOURED,DISFAVOURED,FAVOURED | traits CHANCE,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 397,396,412,421,366,379
+   LEARN   ET [-1.047,-0.828,-0.547,-1.156,-0.516,-0.781] mean -0.813 | E vs MIXED mean 0.156 | real [4.125,3.625,3.125,3.5,3.75,3.875] | sel CHANCE,CHANCE,DISFAVOURED,CHANCE,CHANCE,CHANCE | traits SLOWER,SLOWER,SLOWER,SLOWER,SLOWER,SLOWER | alive 393,401,355,370,311,400
+   OFF     ET [-0.797,0.297,0.375,-0.656,0.156,-1.406] mean -0.338 | E vs MIXED mean 0.458 | real [4.375,5,4.125,3.25,4.625,3] | sel DISFAVOURED,CHANCE,CHANCE,CHANCE,CHANCE,FAVOURED | traits SLOWER,FASTER,CHANCE,SLOWER,SLOWER,SLOWER | alive 403,443,365,404,406,408
+   twin (ET>0 in mean and on >=4 of 6): fail | controls (above every SHAM and UNIFORM replicate, above LEARN and OFF means): fail (SHAM band, UNIFORM band)
+keeper learned on 2 | twin pass 0 | controls pass 0 | all three 0 (need 2 of 3)
+VERDICT: NO-GO
+```
