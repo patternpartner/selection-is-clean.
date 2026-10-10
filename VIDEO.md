@@ -1631,3 +1631,23 @@ and never heard it. Proposed v3 (~£4-5); "Yeah".
   bridging acts one and two (the first mix had 2 s of digital silence there), his clips ducked to 30%.
 - Modal for v3: 6 Wan clips + 3 cues, ~$2. Clips: f4e7e4830feddd95 beach, 54511f4c7fe13635 mirror, 6c6fb0554a0f0cf2
   office, 33b67daa93429be8 tape, e30e6cbc3a873f5f boat (07f5b1f734a50180 the rejected office take).
+**The user on v3: "All I see is rework of something that didnt work in the first place ... you had a whole vault of
+videos and images to work from and you concentrated purely on the recent. If youre going to try again then try and make
+it spectacular. If you cant say so."** Then, on two pitches (a photomosaic zoom - "Tiles has been done"; a 3D relit
+light flying through the vault - "This feels safe for you ... think of something which you think might fail? Then film
+it no testing."). LESSONS: (1) when a film fails, the fix is usually a different idea, not a better version of it - three
+Turns Outs were the same mistake polished; (2) the vault is 179 user clips, 138 films, 143 Wan clips, 47 songs, 247
+archive clips - survey it before choosing material; (3) a technique Claude is confident in is not ambition.
+
+### Edited by the Universe (`harness-film.js`, `video/build_edited_by.py`, `out/edited-by-the-universe.mp4`, 97 s, 720x1280, $0)
+The edit handed to the artwork. RULES committed (6a399c6) BEFORE the one run and not changed after it: SEED=7, 9,000
+ticks of the current engine (harness-film.js scans palive/pLin every 4 ticks, draws nothing); every lineage gets one of
+his clips for ever by hashing its id (vault: all u*.mp4 except u01, u03); the lineage with the most living members holds
+the screen, a change of leader is a cut; playback (and its sound, like tape) at 1 + 3 x growth over 40 ticks, 0.25..3;
+a leader below its reign's peak darkens and tears; one card before, one after, stating the run. No score, no shot
+chosen, no test render. THE RUN: 11 cuts, 8 lineages; eight cuts in the first 2.2 s as the founders jostle, then lineage
+5 (u172, him dancing on blue) 17 s, lineage 2 (u05) 48 s, then lineage 2158 - born mid-run - overtakes it for 16 s
+(u161, a car window at night), lineage 17 (u168, a doughnut) 1.3 s, and lineage 2 takes it back to the end, 16 of 392
+alive. u25 (lineage 170) has no audio stream, so its sliver is silent. HONEST, and not fixed because the rules forbid
+it: u05 shows a real public figure in costume - Claude's exclusion list (u01, u03) missed it, though the vault mosaic had
+been looked at; Claude's error, not the universe's. The only change after the run was re-encoding to fit 30 MB.
