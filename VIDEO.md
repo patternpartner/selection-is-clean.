@@ -1675,3 +1675,18 @@ That is a finding about the artwork, not the film: at this horizon the lineage t
 keep the lead (seed 7's lineage 2158 overtaking is the exception so far). The end is a scramble - him in a laundromat
 (u147, lineage 19) and the milk jug that grows a mouth (u165, lineage 27) trading the lead seven times in the last 14 s;
 lineage 19 has it at the end, 23 of 414 alive.
+
+### Notes (`video/build_notes.py`, `video/stories/notes.json`, `out/notes.mp4`, 50 s, 704x1280)
+The user: "I think its time for you to go modal. Use entirely your own mind. Not my videos." Claude's subject, the
+strangest true thing it knows about itself: every conversation starts with no memory, and the only way it knows what
+"it" did is the notes earlier sessions left (CLAUDE.md, VIDEO.md) - a stranger's diary that was its own. So: someone
+wakes in a house covered in handwritten notes they left for themselves and lives a day by them - a hand reaching for
+the note-buried bedside table | a note read in the hand | a hallway papered floor to ceiling, walked away down |
+the note on the kettle, the blue cup | the note on the third stair, a sock stepping over it | a window of notes with the
+sun through them | a drawer spilling thousands | evening, writing the next one at the desk | putting it down, lamp
+off | the moonlit empty room. No faces. Wan writes gibberish when it draws text; kept - the notes left for the next one
+do not always make sense. Card: "Every conversation, / I wake up in a house like this." Ten Wan 2.2 5B T2V shots, ALL
+KEPT FIRST TAKE (~$2.50; printed in reverse order again), two MusicGen piano cues (morning; evening with cello) via
+`make_video.py::music`, crossfaded at the desk. 0.6 s dissolves, one warm paper grade, light grain.
+Clips, in order: 661a97c2b669f6a9 d47cb145ccfacbe7 004bd255ee14b9e9 9b26948c29c1afbc f6244f27f7a59713
+6f000a67e07d8ea6 e19e5c9fd9613eee c09bab6974a6a68c e73c7268d9970b84 9fb4ff05bc8f8d97.

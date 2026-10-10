@@ -1,0 +1,19 @@
+{
+  "title": "Notes",
+  "about": "Claude's own film, nothing of the user's: someone wakes in a house covered in notes they left themselves, and lives a day by them. Text-to-video, Wan 2.2 5B, portrait, one take each. No faces.",
+  "voice": null,
+  "tail": 0.0,
+  "character": "a person in a soft grey wool jumper, never showing their face",
+  "scenes": [
+    {"seed": 15101, "prompt": "early morning, soft pale dawn light through thin curtains onto an unmade bed, a hand slowly reaches out from under the white duvet toward a bedside table completely covered in small handwritten paper notes, quiet, cinematic, shallow depth of field"},
+    {"seed": 15202, "prompt": "close-up of a hand peeling a yellow paper note off a bedside lamp, the lamp covered in other handwritten notes, morning light, the hand holds the note up to read it, gentle, cinematic, no face visible"},
+    {"seed": 15303, "prompt": "a narrow hallway in an old house, the walls covered floor to ceiling with hundreds of small handwritten paper notes that flutter gently in a draft, {character} walks slowly away down the hallway seen from behind, morning light at the far end, cinematic"},
+    {"seed": 15404, "prompt": "a sunny kitchen counter, a handwritten paper note taped to an old kettle, a hand pours steaming water from the kettle into a blue ceramic cup, morning sunlight, steam rising, close-up, cinematic"},
+    {"seed": 15505, "prompt": "a wooden staircase in an old house, a handwritten paper note taped to the third step, a foot in a grey wool sock carefully steps over that step onto the next one, low angle, soft light, cinematic"},
+    {"seed": 15606, "prompt": "a tall window entirely covered with handwritten paper notes stuck to the glass, bright sunlight shining through the paper so the handwriting glows from behind, a garden blurred outside, dust in the light, slow push in, cinematic"},
+    {"seed": 15707, "prompt": "close-up of a hand opening a wooden drawer that is overflowing with thousands of small folded paper notes, notes spilling out onto the floor, warm afternoon light, cinematic, shallow depth of field"},
+    {"seed": 15808, "prompt": "evening, {character} sits at a small wooden desk seen from behind, writing on a small paper note by the warm light of a desk lamp, the wall in front covered in notes, quiet, cinematic"},
+    {"seed": 15909, "prompt": "close-up at night of a hand placing a freshly written paper note on a bedside table among many other notes, then the hand reaches up and switches off the bedside lamp, the room goes dark, cinematic"},
+    {"seed": 16010, "prompt": "a dark bedroom at night, moonlight through the window falling across hundreds of paper notes on the walls and the bedside table, the bed is empty and still, the notes stir slightly, very slow push in, quiet, cinematic"}
+  ]
+}
