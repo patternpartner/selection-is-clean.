@@ -10684,9 +10684,17 @@ function cloneProg(p){
 // mutation operator here draws them). The K=6 tokens before a position are embedded (16 numbers each), passed through
 // one tanh layer of 64 units and read out by an operation head and a register head; plain SGD every 50 ticks on 100
 // random positions of the last 1,024 parents. Not saved with the universe: a reload starts a newborn mind.
+// cos/wild-mind-2 (lab/WILD-MIND-2.md), off unless MIND_MODE=4 (#mindmode=keeper) or 5 (#mindmode=sham): an EXPLORER AND
+// A KEEPER. The explorer drafts CAND uniformly random edits (position, operation, registers) for the child; the keeper, a
+// small logistic model, installs the ONE it predicts most likely to still be carried by a living descendant LAG ticks
+// later. It learns only from outcomes in this world: every installed edit is followed (the mark moves with its creature
+// and is inherited), and LAG ticks after it was written it is labelled held (some living carrier still runs exactly that
+// instruction at that place) or lost, and the keeper takes one gradient step on it. SHAM is the same machinery trained on
+// labels drawn at the true labels' running rate from its own stream: as many positives, no information. Same rate as
+// every other mind (one edit per written child), so supply is matched to UNIFORM. Draws only from the mind's own stream.
 function __mindRng(a){ const f=function(){ f.s|=0; f.s=f.s+0x6D2B79F5|0; let t=Math.imul(f.s^f.s>>>15,1|f.s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; f.s=a|0; return f; }
 class EngineMind{
-  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
+  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform',null,'keeper','sham'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
     this.K=6; this.D=16; this.H=64; this.LR=0.05; this.BUF=1024; this.EVERY=50; this.STEPS=100; this.V=this.NOPS+this.NREG+1; this.BOS=this.V-1;
     this.rnd=__mindRng(((o.seed>>>0)||1)^0x6d696e64);
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,sc)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*sc; return a; };
@@ -10697,7 +10705,25 @@ class EngineMind{
     // WHAT IT IS DOING, for the readout: children born [ordinary, written by the mind], the children those two kinds of
     // creature went on to have, and which operations it writes. A mind whose children have fewer children than ordinary
     // ones is costing its world; more, and it is helping. Kept across saves.
-    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS); }
+    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS);
+    if(this.MODE==='keeper'||this.MODE==='sham'){ this.CAND=8; this.LAG=2000; this.CENSUS=250; this.CLR=0.05; this.NF=4096;
+      this.cw=new Float32Array(this.NF); this.cb=0; this.edits=new Map(); this.nextEdit=1; this.last=null;
+      this.lab=[0,0]; this.rate=0; this.llK=0; this.llB=0; this.llN=0; this.sP=0; this.nP=0; this.sN=0; this.nN=0; } }
+  // the keeper's features for writing (op, register token rg) at position i of tokenised program t: what it writes, what it
+  // replaces, its neighbours, where in the program, and its registers; hashed into NF weights
+  feats(t,i,op,rg){ const n=t.length, pv=i>0?t[i-1][0]:-2, nx=i+1<n?t[i+1][0]:-2, o0=t[i][0], qb=((4*i/n)|0), H=(a,b,c)=>{ let h=Math.imul(a+7,0x9E3779B1)^Math.imul(b+13,0x85EBCA77)^Math.imul(c+29,0xC2B2AE3D); h^=h>>>15; h=Math.imul(h,0x27D4EB2F); h^=h>>>13; return (h>>>0)%this.NF; };
+    return [H(1,op,0),H(2,o0,op),H(3,pv,op),H(4,op,nx),H(5,qb,op),H(6,rg,0),H(7,op,rg%12===((rg/12)|0)?1:0)]; }
+  score(f){ let z=this.cb; for(const k of f)z+=this.cw[k]; return z; }
+  // an edit LAG ticks old gets its label; the keeper is scored on it before it learns from it (prequential), then steps
+  settle(e,held){ const y=held?1:0; this.lab[y]++; const nl=this.lab[0]+this.lab[1]; this.rate+=(y-this.rate)/Math.min(nl,500);
+    const p=1/(1+Math.exp(-this.score(e.f))), pb=Math.min(1-1e-6,Math.max(1e-6,this.rate)), q=Math.min(1-1e-6,Math.max(1e-6,p));
+    this.llK-=y?Math.log(q):Math.log(1-q); this.llB-=y?Math.log(pb):Math.log(1-pb); this.llN++; if(y){ this.sP+=p; this.nP++; } else { this.sN+=p; this.nN++; }
+    const t=this.MODE==='sham'?(this.rnd()<this.rate?1:0):y, g=p-t; this.cb-=this.CLR*g; for(const k of e.f)this.cw[k]-=this.CLR*g; }
+  // every CENSUS ticks: which followed edits a living creature still runs, and settle those LAG old
+  census(now,carriers){ const heldNow=new Set();
+    for(const [id,prog] of carriers){ const e=this.edits.get(id); if(!e||!Array.isArray(prog))continue; const x=prog[e.i]; if(!x)continue;
+      if((x[0]|0)===e.op&&((((x[1]|0)%12+12)%12)*12+(((x[2]|0)%12+12)%12))===e.rg)heldNow.add(id); }
+    for(const [id,e] of this.edits) if(now-e.at>=this.LAG){ this.settle(e,heldNow.has(id)); this.edits.delete(id); } }
   // an instruction as [operation token, register token]; an operation it cannot write (a migrant's, past OPCODE_DRAW) is -1
   tok(ins){ const op=ins[0]|0, d=((ins[1]|0)%12+12)%12, s=((ins[2]|0)%12+12)%12; return [op>=0&&op<this.NOPS?op:-1, d*12+s]; }
   // the K tokens before token position j of a tokenised program, padded with BOS (which also stands in for a -1)
@@ -10729,8 +10755,13 @@ class EngineMind{
   propose(prog){ if(!(this.P>0)||!Array.isArray(prog)||!prog.length||this.rnd()>=this.P)return false; this.uses++;
     const t=prog.map(x=>this.tok(x||[0,0,0,0])), i=(this.rnd()*prog.length)|0, o0=t[i][0], r0=t[i][1]; let op=o0, rg=r0;
     for(let k=0;k<16&&op===o0&&rg===r0;k++){
+      if(this.MODE==='keeper'||this.MODE==='sham'){ break; }
       if(this.MODE==='uniform'){ op=(this.rnd()*this.NOPS)|0; rg=(this.rnd()*this.NREG)|0; }
       else { this.forward(this.ctx(t,2*i),false); op=this.sample(false); this.forward(this.ctx(t,2*i,op),true); rg=this.sample(true); } }
+    if(this.cw){ let best=-Infinity, bf=null, bi=0;   // explorer and keeper: CAND uniform drafts, the best-scored one is installed
+      for(let c=0;c<this.CAND;c++){ const ci=(this.rnd()*prog.length)|0; let co=(this.rnd()*this.NOPS)|0, cr=(this.rnd()*this.NREG)|0;
+        if(co===t[ci][0]&&cr===t[ci][1])cr=(cr+1)%this.NREG; const f=this.feats(t,ci,co,cr), z=this.score(f); if(z>best){ best=z; bf=f; bi=ci; op=co; rg=cr; } }
+      prog[bi]=[op,(rg/12)|0,rg%12,+((prog[bi]||[0,0,0,0])[3])||0]; this.wroteOp[op]++; this.last={i:bi,op,rg,f:bf}; fired('mind.propose'); return true; }
     if(op===o0&&rg===r0)rg=(rg+1+((this.rnd()*(this.NREG-1))|0))%this.NREG;
     if(op<0)op=(this.rnd()*this.NOPS)|0;
     prog[i]=[op,(rg/12)|0,rg%12,+((prog[i]||[0,0,0,0])[3])||0]; this.wroteOp[op]++; fired('mind.propose'); return true; }
@@ -10740,7 +10771,10 @@ class EngineMind{
   report(){ const sc=this.success();
     return {mode:this.MODE,p:this.P,uses:this.uses,seen:this.seen,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossReg:+this.lossR.toFixed(3),
     uniformOp:+Math.log(this.NOPS).toFixed(3),uniformReg:+Math.log(this.NREG).toFixed(3),buf:this.buf.length,
-    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
+    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),
+    ...(this.cw?{keeper:{labelled:this.lab[0]+this.lab[1],held:this.lab[1],heldRate:(this.lab[0]+this.lab[1])?+(this.lab[1]/(this.lab[0]+this.lab[1])).toFixed(4):null,pending:this.edits.size,
+      logLoss:this.llN?+(this.llK/this.llN).toFixed(4):null,baseLogLoss:this.llN?+(this.llB/this.llN).toFixed(4):null,
+      predHeld:this.nP?+(this.sP/this.nP).toFixed(4):null,predLost:this.nN?+(this.sN/this.nN).toFixed(4):null}}:{}),topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
   // SAVED WITH THE UNIVERSE (the user: "if we save the field we should also save the mind at the same time. No resets").
   // Everything it has learned (every weight, quantised to 8 bits per weight with one scale per array: about 70 KB, so
   // eighteen of them fit beside the field's genomes in one origin's storage), its counters and its random stream. Not
@@ -10766,7 +10800,7 @@ function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis
   const h=(typeof location!=='undefined'&&location.hash)||''; const m=h.match(/(^|[#,])mind(=(\d+))?(,|$)/); if(m&&!p)p=m[3]?parseInt(m[3],10):20;
   const node=(typeof process!=='undefined')&&!!(process.versions&&process.versions.node);   // a rig, not a page
   if(/(^|[#,])nomind(,|$)/.test(h)||g.__MIND===0||(m&&m[3]==='0'))p=0; else if(!m&&g.__MIND===undefined&&!node)p=20;   // the browser default
-  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform)(,|$)/); if(mm&&!mode)mode=mm[2]==='frozen'?1:2;
+  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform|keeper|sham)(,|$)/); if(mm&&!mode)mode=({frozen:1,uniform:2,keeper:4,sham:5})[mm[2]];
   return p>0?{P:Math.min(100,p)/100,mode,seed:seed||(((Math.random()*4294967296)>>>0)||1)}:null; }catch(_){ return null; } }
 function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false;
     if(__mindLatch){ let sv=null; try{ sv=localStorage.getItem('selection_mind'); }catch(_){}   // this universe's own mind, saved beside its genome
@@ -10782,11 +10816,13 @@ function mindHud(){ const M=__mind; if(!M)return ''; const sc=M.success();
   return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+')')+': learned from '+M.seen+' · wrote '+M.uses+' children'+
     (M.MODE==='learn'&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
     (sc===null?'':' · its children have '+sc.toFixed(2)+'x the children of ordinary ones'); }
+const pMindE=new Int32Array(CAP);   // cos/wild-mind-2: the keeper's mark, the last followed edit in this creature's line (0 none). Moves with it in compact
 const pMindW=new Uint8Array(CAP);   // 2: born carrying an instruction the mind wrote; 1: born ordinary while the mind watched; 0: a founder (not compared). Moves with it in compact
 function mindReport(){ const M=mindOn(); return M?M.report():{mode:'off'}; }
 // the birth hook, called from both reproduction chokepoints (addParticle and addCompound) after the child's program is made
 function mindBirth(i,parentA){ const M=mindOn(); if(!M)return; M.see(pProg[parentA]); const w=M.propose(pGenome[i].vmProgram)?1:0;
-  M.born[w]++; const f=pMindW[parentA]; if(f)M.kids[f-1]++; pMindW[i]=w?2:1; }   // only parents born under the mind are compared
+  M.born[w]++; const f=pMindW[parentA]; if(f)M.kids[f-1]++; pMindW[i]=w?2:1;
+  if(M.cw){ if(w&&M.last){ const id=M.nextEdit++; M.edits.set(id,{i:M.last.i,op:M.last.op,rg:M.last.rg,f:M.last.f,at:tick}); pMindE[i]=id; } else pMindE[i]=pMindE[parentA]; } }   // only parents born under the mind are compared
 function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child = copy of parent's program + birth mutation (rate from the self's genes)
   const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=inheritedCap||(genome.vmMaxInstructions||16);
@@ -21522,7 +21558,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
-  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
+  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else { pMindW[i]=0; pMindE[i]=0; } }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
@@ -21625,7 +21661,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
-  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
+  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else { pMindW[i]=0; pMindE[i]=0; } }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
@@ -26006,7 +26042,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pMindE[w]=pMindE[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -26953,7 +26989,8 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
-  if(__mindLatch!==false){ const _M=mindOn(); if(_M&&tick%_M.EVERY===0)_M.train(); }   // #296: the mind learns from the parents it has seen
+  if(__mindLatch!==false){ const _M=mindOn(); if(_M&&tick%_M.EVERY===0)_M.train();
+    if(_M&&_M.cw&&tick%_M.CENSUS===0){ const cs=[]; for(let p=0;p<N;p++) if(palive[p]&&pMindE[p]>0)cs.push([pMindE[p],pProg[p]]); _M.census(tick,cs); } }   // cos/wild-mind-2: the keeper's outcomes   // #296: the mind learns from the parents it has seen
   updateWorldSignal();   // #136: read the real world before deciding what the sunlight is
   // #183: the world's own legislature. One proposal on probation at a time; the population is the
   // fitness function, because the population is the only thing at this level that can die. Called
