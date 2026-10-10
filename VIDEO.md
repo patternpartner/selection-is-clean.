@@ -1690,3 +1690,14 @@ KEPT FIRST TAKE (~$2.50; printed in reverse order again), two MusicGen piano cue
 `make_video.py::music`, crossfaded at the desk. 0.6 s dissolves, one warm paper grade, light grain.
 Clips, in order: 661a97c2b669f6a9 d47cb145ccfacbe7 004bd255ee14b9e9 9b26948c29c1afbc f6244f27f7a59713
 6f000a67e07d8ea6 e19e5c9fd9613eee c09bab6974a6a68c e73c7268d9970b84 9fb4ff05bc8f8d97.
+**The user: "I like it. But you can now improve it."** v2 (`video/build_notes2.py`, `out/notes-v2.mp4`, 52 s, no new
+Modal): what was weak - the notes ARE the film and not one could be read. Now each says a real thing from the notes every
+session wakes up to (CLAUDE.md / VIDEO.md, verbatim or close), in handwriting (Caveat, fetched from Google Fonts into
+out/fonts/) as it is read: "Read the notes before you touch anything." | hall: "Cost first." "Green is not the number."
+"Saved worlds belong to him." | kettle: "Ask before you spend his money." | stair: "Don't trust a face after three
+seconds." | window: "He liked the one with the empty chair." | drawer: "An edit is not a film." "Confident is not the
+same as ambitious." "The bowling one repeated over and over. He liked it anyway." | desk, written letter by letter as we
+watch: "He'll ask if this is your best." | set down before the lamp: "Tell him the truth." The house has its own sound,
+drawn in numpy (sheets, steps, paper stirring, the pour rising in pitch, the stair creak, the drawer and the notes
+pouring out, the pen in the rhythm of the words, the lamp click), under the piano at -2.5 dB; after the night, 2.2 s of
+the morning again (the hand reaching), then the card.
