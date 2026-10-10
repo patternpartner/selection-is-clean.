@@ -7,7 +7,7 @@ ROOT=${ROOT:?}; OUT=${OUT:?}; SEEDS=${SEEDS:?}; REPS=${REPS:-0 1 2 3}; PAR=${PAR
 mkdir -p "$OUT"
 jobs_list=()
 for s in $SEEDS; do for k in $REPS; do for a in OFF LEARN UNIFORM SURPRISE; do jobs_list+=("$a $s $k"); done; done; done
-one(){ local a=$1 s=$2 k=$3 f="$OUT/$a.$s.$k"
+one(){ local a=$1 s=$2 k=$3; local f="$OUT/$a.$s.$k"   # f on its own line: one local expands every word before assigning any
   [ -f "$f.done" ] && return 0
   local env="SEED=$s TICKS=$TICKS NULLSHIFT=$k"
   case $a in
