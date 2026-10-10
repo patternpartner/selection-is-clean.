@@ -76,6 +76,7 @@ Per deciding seed:
    above LEARN's on that seed. Fewer than 3 counted seeds: **INCONCLUSIVE**.
 2. **Twin (outright, no difference-of-differences).** SURPRISE's mean E over its 4 replicates is > 0, and E > 0 on at
    least 3 of 4 replicates.
+   **And** SURPRISE's mean over its 4 replicates of (real minus the mean of the run's eight TREE shadows) is > 0.
 3. **Controls (outside every null).** SURPRISE's mean E is above EVERY replicate of OFF, of LEARN and of UNIFORM.
 4. **Guard.** No SURPRISE replicate has loop errors; none goes extinct or ends under 5 alive where every OFF replicate
    had no extinction and ended over 20.
@@ -86,6 +87,25 @@ matter beyond random rewrites), or plain NO-GO. Scored by `lab/wild/score.js`, c
 
 Reported beside, no ruling: the TREE verdict and the selection index (#267) for programs, trait-layer verdicts, program
 introductions per 1,000 ticks, alive at the end, surprisal.
+
+## Change before the deciding round (made after the trial seed, before any deciding run)
+
+Trial seed 3401, one replicate per arm, 20,000 ticks (not evidence; recorded so the change below can be judged):
+
+| arm | E (vs MIXED mean) | real | MIXED shadows min/mean/max | MIXED | TREE | introductions /1k late | alive | surprisal |
+|---|---|---|---|---|---|---|---|---|
+| OFF | -0.11 | 4.13 | 3.38 / 4.23 / 5.13 | chance | slower | 68 | 369 | - |
+| LEARN | +0.31 | 3.88 | 2.88 / 3.56 / 3.88 | chance | chance | 80 | 413 | 0.47 |
+| UNIFORM | +0.36 | 4.00 | 3.13 / 3.64 / 4.25 | chance | chance | 72 | 380 | - |
+| SURPRISE | +2.13 | 4.63 | 1.75 / 2.50 / 3.25 | FASTER | FASTER | 93 | 417 | 9.26 |
+
+Most of SURPRISE's E there comes from its MIXED shadows holding LESS (2.50), not from the real world holding much more
+(4.63 against 3.88-4.13). The likely reason is dilution: an arm that introduces more new programs feeds the shadows more
+fresh labels, each gets fewer carriers, fewer reach 3, so the shadow mean falls and E rises for supply alone. So the twin
+condition (2) now ALSO requires E against the TREE null to be > 0 in the mean: TREE replays exactly the real events on the
+real family tree at random recipients, so supply is matched exactly, and it leans toward SLOWER for programs (#256b), so
+the extra condition only makes the bar harder. Nothing else changed; the trial tunes nothing. Runner bug fixed before
+this (every trial run had written one file; re-run).
 
 ## What follows either way
 

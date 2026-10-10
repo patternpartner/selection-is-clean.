@@ -8,6 +8,9 @@ const fs=require('fs'), path=require('path');
 const D=process.argv[2]||'.', SEEDS=(process.argv[3]||'3411,3412,3413').split(',').map(Number), REPS=[0,1,2,3], CTRL=['OFF','LEARN','UNIFORM'];
 const rd=(a,s,k)=>{ const f=path.join(D,a+'.'+s+'.'+k); try{ return fs.existsSync(f+'.done')?JSON.parse(fs.readFileSync(f+'.json','utf8')):null; }catch(e){ return null; } };
 const E=r=>+(r.layers.program.realPersistentPer1k-r.layers.program.shadowPersistentPer1k.mean).toFixed(3);
+// E against the TREE null too (the real family tree, the real events replayed on random recipients: supply matched exactly).
+// Added after the trial seed, before any deciding run: see WILD-MIND.md, 'Change before the deciding round'.
+const ET=r=>+(r.layers.program.realPersistentPer1k-r.layers.program.familyTree.shadowPersistentPer1k.mean).toFixed(3);
 const mean=a=>a.reduce((x,y)=>x+y,0)/a.length, f3=x=>x===null||x===undefined?'-':(+x).toFixed(3);
 let counted=0, pass=0, guardFail=[], pending=false; const rows=[];
 for(const s of SEEDS){
@@ -20,7 +23,7 @@ for(const s of SEEDS){
   // guard: no loop errors; no SURPRISE replicate extinct or crashed where every OFF replicate was clear
   const offClear=R.OFF.every(r=>!r.extinctions&&r.aliveEnd>20), bad=R.SURPRISE.filter(r=>r.loopErrors>0||(offClear&&(r.extinctions>0||r.aliveEnd<5)));
   if(bad.length)guardFail.push(s);
-  const mS=mean(e.SURPRISE), T=mS>0&&e.SURPRISE.filter(x=>x>0).length>=3;
+  const mS=mean(e.SURPRISE), mT=mean(R.SURPRISE.map(ET)), T=mS>0&&e.SURPRISE.filter(x=>x>0).length>=3&&mT>0;
   const C=CTRL.every(a=>mS>Math.max(...e[a])), lost=CTRL.filter(a=>!(mS>Math.max(...e[a])));
   if(ran)counted++; if(ran&&T&&C)pass++;
   rows.push({s,ran,T,C});
@@ -29,7 +32,8 @@ for(const s of SEEDS){
     ' | real '+JSON.stringify(R[a].map(r=>r.layers.program.realPersistentPer1k))+' intro/1k '+JSON.stringify(R[a].map(r=>r.layers.program.introductionsPer1kLate))+
     ' | TREE '+R[a].map(r=>r.layers.program.familyTree.verdict.split(' ')[0]).join(',')+' | sel '+R[a].map(r=>(r.selection.layers.program||{}).verdict||'-').map(v=>v.split(' ').pop()).join(',')+
     ' | traits '+R[a].map(r=>r.layers.traits.verdict.split(' ')[0]).join(',')+' | alive '+R[a].map(r=>r.aliveEnd).join(','));
-  console.log('   twin (E>0 in mean and on >=3 of 4): '+(T?'PASS':'fail')+' | controls (mean E above every replicate of OFF, LEARN, UNIFORM): '+(C?'PASS':'fail, not above '+lost.join(', '))+(bad.length?' | GUARD FAIL':'')); }
+  console.log('   SURPRISE E vs TREE '+JSON.stringify(R.SURPRISE.map(ET))+' mean '+f3(mT));
+  console.log('   twin (E>0 in mean and on >=3 of 4, and E vs TREE >0 in mean): '+(T?'PASS':'fail')+' | controls (mean E above every replicate of OFF, LEARN, UNIFORM): '+(C?'PASS':'fail, not above '+lost.join(', '))+(bad.length?' | GUARD FAIL':'')); }
 if(pending){ console.log('VERDICT: pending'); process.exit(0); }
 const Tn=rows.filter(r=>r.ran&&r.T).length, Cn=rows.filter(r=>r.ran&&r.C).length;
 const v= counted<3?'INCONCLUSIVE ('+counted+' of 3 seeds counted)'
