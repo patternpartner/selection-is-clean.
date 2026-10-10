@@ -9,7 +9,9 @@ it no testing." The edit is handed to the artwork. RULES, written before the run
     speed, so it rises and falls in pitch like tape; each clip keeps its own playhead, and loops;
   - a leader below the peak it reached in this reign darkens and tears in proportion to what it has lost;
   - nothing else: no score, no shot chosen, no grade; a card before and a card after saying what the run was.
-Run 9,000 ticks -> 90 s (100 ticks a second).  python3 video/build_edited_by.py  -> out/edited-by-the-universe.mp4"""
+Run 9,000 ticks -> 90 s (100 ticks a second).
+SECOND CHANCE (the user: "I like how its a beautiful failure. Give it another chance"): the same rules, a new seed
+(SEED=8), and u05 left out - Claude's miss, not a rule change.  SEED=8 RUNFILE=out/drawn/edited/run8.json OUT=...  python3 video/build_edited_by.py  -> out/edited-by-the-universe.mp4"""
 import os, sys, json, glob, re, math, subprocess
 import cv2
 import numpy as np
@@ -20,12 +22,15 @@ import build_kept as K
 
 FF = K.FF
 W, H, FPS, SR = 720, 1280, 24, 32000
-RUN = json.load(open("out/drawn/edited/run.json"))
+SEED = os.environ.get("SEED", "7")
+RUN = json.load(open(os.environ.get("RUNFILE", "out/drawn/edited/run.json")))
 TICKS, EVERY = RUN["ticks"], RUN["every"]
 SAMP = RUN["samples"]                                  # [tick, living, lineages, [[lin, count] x10]]
 RUNSEC = TICKS / 100.0
 INTRO, OUTRO = 3.0, 4.0
-VAULT = sorted([f for f in glob.glob("out/user-clips/u*.mp4") if os.path.basename(f) not in ("u01.mp4", "u03.mp4")],
+# the second chance (seed 8) also leaves out u05: a real public figure, which Claude's list missed on seed 7
+EXCLUDE = ("u01.mp4", "u03.mp4") + (("u05.mp4",) if SEED != "7" else ())
+VAULT = sorted([f for f in glob.glob("out/user-clips/u*.mp4") if os.path.basename(f) not in EXCLUDE],
                key=lambda f: int(re.findall(r"\d+", os.path.basename(f))[0]))
 WORK = "out/drawn/edited"
 SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"
@@ -96,7 +101,8 @@ def main():
                           "-c:v", "libx264", "-crf", "20", "-preset", "medium", "-pix_fmt", "yuv420p", f"{WORK}/v.mp4"], stdin=subprocess.PIPE)
     per = SR // FPS
     # the opening card, in silence
-    intro = card([("Edited by the universe.", 38), ("seed 7  ·  9,000 ticks  ·  nothing chosen", 22)])
+    intro = card([("Edited by the universe.", 38)] + ([("a second chance", 26)] if SEED != "7" else []) +
+                 [(f"seed {SEED}  ·  9,000 ticks  ·  nothing chosen", 22)])
     for f in range(int(INTRO * FPS)):
         k = min(1.0, f / 12, (INTRO * FPS - f) / 12); p.stdin.write((intro * k).astype(np.uint8).tobytes())
         frames_audio.append(np.zeros(per, np.float32))
@@ -151,7 +157,7 @@ def main():
     a = a / (np.abs(a).max() + 1e-6) * .89
     wavfile.write(f"{WORK}/a.wav", SR, (a * 32767).astype(np.int16))
     subprocess.run([FF, "-loglevel", "error", "-y", "-i", f"{WORK}/v.mp4", "-i", f"{WORK}/a.wav", "-c:v", "libx264", "-crf", "21",
-                    "-preset", "slow", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", "out/edited-by-the-universe.mp4"], check=True)
+                    "-preset", "slow", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", os.environ.get("OUT", "out/edited-by-the-universe.mp4")], check=True)
     print(json.dumps({"cuts": cuts, "reigns": reigns, "last": last, "clips_used": len(clips)}))
 
 
