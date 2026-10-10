@@ -1562,3 +1562,36 @@ Ends on his boat clip: the one fear somebody went out with a light to look at, a
 and mine." / "Go and look." Modal: 4 T2V clips, ~$1, one take each, all kept (they printed in REVERSE order again);
 Wan's static T2V shots get a slow zoompan push-in. Clips 9fb8d0346a131e9c (tape), 74d0d34cc108391a (sand),
 c3679805464eba6b (mirrors), d1585be1e8e79967 (mannequin).
+
+## The Clock (out/clock/film/the-clock.mp4, 43 s, 720x1280) — `video/build_clock.py`, `video/novelty_capture.js`
+Made from the question the session ended up on: is new territory still arriving in the real universe? NOT a story: the real engine, three seeds,
+40,000 ticks each, stepped 40 ticks a record in the browser (`novelty_capture.js`; 1,000 records and a JPEG of the world per seed). The film plays
+seed 1 at one record a frame. Top: the world itself. Bottom left: the trait map (harness-novelty's grid, the first two of its three trait axes,
+collapsed over the third; teal = held now, dim teal = ever held, amber = new in the last 8 records). Bottom right: cells ever held (full 3-axis
+count) against a dashed line, "drift alone". Bottom: new cells per 1,000 ticks over the last 4,000 ticks, the clock.
+THE NUMBERS. Cells held at 40,000 ticks in the captures: seed 1: 97, seed 2: 152, seed 3: 107. Drift alone (mean of the 8 neutral shadows, ever-held
+cells, from a SEPARATE node run of `harness-sweep.js` on the same seed, `out/sweep40`): 204 / 144 / 175. So seed 2 beat its drift line and seeds 1 and
+3 did not; the end card says so, including that seed 2 is the exception, and says each pair is a reading, not a verdict (different run, one world per
+seed, M=3 grid, 40k ticks says nothing about 400k). The headline sentence "Novelty did not stop. It slowed." is the shape of the curves (a burst in the
+first thousand ticks, then 0.2-2 new cells per 1,000), not a statistic.
+WORTH KNOWING: the sweep's seed 2 went extinct 53 times in the node run; the browser capture of seed 2 never fell under 327 living. The engine is not
+deterministic across stepping patterns, so the extinction is a property of that trajectory, not of the seed. Logged in OEE-NOTES #299c.
+SOUND (synthesized): a faint click every third record (the clock), a chime for every newly held cell (pitch from its trait coordinates, panned by the
+first axis; the opening burst is staggered 35 ms apart because 68 at once clipped after AAC), a drone, three low notes and one lower for the end card.
+The chimes thin out as the run goes on; that is the point. -21.0 LUFS, peak -4.6 dBFS. Not heard.
+NOT DONE: only seed 1 is plotted over time (the other two appear on the end card); no real-world null replicates; not watched in motion.
+Not backed up to Modal. `out/` is not committed (the capture takes ~20 minutes: `SEED=1 TICKS=40000 node video/novelty_capture.js`).
+
+## Pinned (video/pinned.html — an interactive page, 102 KB, single file) — the chance experiment
+The user's prompt: "if chance wins, why don't you take a chance in what you do?" So the subject was drawn, not chosen. `video/chance_draw.json` was committed BEFORE
+anything was made: one `os.urandom` draw per field, no redraws. It gave: OEE-NOTES entry #71 (the clamp census), the form "an interactive page you can play with",
+the constraint "small enough to read in one second at thumbnail size", and engine seed 776. (Four of the five forms and constraints would have made me do something
+else; I would not have picked this one.)
+WHAT IT SHOWS. #71 said a sensor pinned at its clamp "is not an input". The page asks what that looks like in a real world: seed 776, 6,000 ticks, every living
+particle's `amp` (the number engine.html clamps to 0-1 into render register R[4]). One dot per creature, x = the value the register reads. They crowd against the
+wall at 1 (the headline is the live percentage: 80% at tick 100, 99% from tick 2,000). HOLD anywhere (or space) and the dots slide to what they actually hold: the
+narrow band 1.0 to 1.2 just past the wall, the whole 0-1 range empty. Drag left/right to move through time; it also plays by itself.
+REAL: every dot is a real creature of a real run (OEE-NOTES #300 has the table). INVENTED: the vertical position of a dot (it is a stable hash of its slot, not data).
+THUMBNAIL: at 90x160 the default state reads as a bright wall of dots and a big amber number, which was the constraint. Checked on screenshots at 540x960 and 1280x720,
+no console errors; not tried on a phone or with touch.
+NOT DONE: one seed, drawn not chosen; no audio; the fraction counts creatures at a sample, not register reads (#71's 89% counted reads).

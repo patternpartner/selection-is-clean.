@@ -26426,3 +26426,135 @@ NODE_PATH pointed at the global playwright's copy: pace, slot, mind, mind-persis
 two rounds each, same counts. Pre-existing and deterministic, not flaky and not this change: the field builds 3-4
 more universes than those tests expect, which reads like #297's grown universes coming back on reload. Left for
 whoever owns #297; not changed here.
+
+### #299 — THE NOVELTY SWEEP ON TODAY'S MAIN: traits still SLOWER than chance, and the shortfall is front-loaded. A measurement, not a verdict.
+
+Asked by the user ("has this type of check already been done?"): yes — #247 (traits), #256 (every layer, two nulls), #257d (after the shrink change).
+This re-runs #256's `harness-sweep.js` on the current `main` engine (untouched this session), seeds 1-3, 20,000 ticks, defaults, no knobs. No
+extinctions (alive at end 380 / 442 / 372, minimum 310-315). Verdicts, against the MIXED null (the verdict) and the TREE null in brackets:
+
+| layer | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| traits | SLOWER (SLOWER) | SLOWER (SLOWER) | SLOWER (SLOWER) |
+| lineage | FASTER (chance) | chance (chance) | chance (chance) |
+| program | chance (SLOWER) | chance (SLOWER) | chance (chance) |
+| atoms | chance (chance) | chance (chance) | chance (chance) |
+| channels | chance (SLOWER) | FASTER (SLOWER) | FASTER (chance) |
+
+- **Traits are SLOWER than chance on 3 of 3 against both nulls.** Persistent arrivals per 1,000 ticks, real v shadow mean: 0.25 v 1.56, 0.50 v 2.19,
+  0 v 1.52. Cells ever held 66 / 72 / 54 against shadows around 120-135.
+- **The shortfall is early, not steady.** Trait arrivals by quarter of the run: [18, 1, 7, 9], [13, 8, 4, 17], [18, 2, 0, 1]. Most new territory is
+  found in the first quarter and almost none after it on seeds 1 and 3. That is the "late and sparse" shape again, and it is a statement about a
+  20,000-tick horizon only.
+- **FASTER readings are 4 of 21 layer-seed cells, and thin.** Lineage on seed 1 (158 held); channels on seeds 2 and 3 against MIXED only, with 7 and 16
+  tokens ever held, and SLOWER or chance against TREE. At #257d's own count (about 2 in 9 cells outside a band by chance, half high) that is
+  about what chance gives. Recorded, not claimed. Atoms read NOVELTY FAVOURED on seed 1 only (selection arm), chance on the other two.
+- **Not comparable to #257d's table without care.** Trait cells ever held are LOWER here (66/72/54) than #257d's post-shrink 99/77/82; the engine has
+  taken #258b-#298 since, and I did not bisect which change. One run per seed, no null replicates of the real world, so the difference is a
+  reading, not a finding.
+- **What moved in the universe: nothing.** No engine line changed. The number to carry forward is trait persistent arrivals late, real v shadow, 3 of 3
+  SLOWER, and where the arrivals fall in time (first quarter). Raw output: `out/sweep/s{1,2,3}.json` (not committed; reproduce with
+  `SEED=n TICKS=20000 node harness-sweep.js`, about 7 minutes for three at once on this box).
+
+#### #299b — THE SAME SWEEP AT 40,000 TICKS (seeds 1-3, defaults, late window 20,000-38,000): the trait shortfall is not a 20k artifact; one world is not readable.
+
+| | seed 1 | seed 2 | seed 3 |
+|---|---|---|---|
+| alive end / floor / extinctions | 365 / 303 / 0 | **37 / 0 / 53** | 372 / 311 / 0 |
+| traits vs MIXED (vs TREE) | SLOWER (SLOWER) | chance (SLOWER) | SLOWER (SLOWER) |
+| traits persistent /1k, real v shadow mean | 0.11 v 1.17 | 0.22 v 0.20 | 0.06 v 0.90 |
+| trait arrivals by quarter | 19, 16, 9, 6 | 21, 21, 29, 14 | 20, 1, 12, 4 |
+| lineage vs MIXED (TREE) | FASTER (FASTER) | chance (chance) | chance (chance) |
+
+- **Seeds 1 and 3 (both alive throughout): traits SLOWER than chance against both nulls at 40k, as at 20k.** On seed 1 trait arrivals fall steadily
+  by quarter (19, 16, 9, 6) rather than stopping; on seed 3 they are 20, 1, 12, 4. So at the longer horizon the shortfall is not a first-quarter
+  artifact of 20,000 ticks, and it is not a clean cliff either: it is a decay on one seed and a near-stop on the other.
+- **Seed 2 went extinct 53 times between 20k and 40k** (floor 0, 37 living at the end) after reading healthy at 20k (442 alive, no extinctions). Its
+  five FASTER-than-MIXED readings (program, atoms, channels, both markers) are not evidence of novelty: a world that keeps dying and being
+  re-seeded makes "introductions" the null cannot match. Treat seed 2 as unreadable at this horizon. This is the swing #258c recorded and
+  #259 pre-registered a census for; it is a second observation of it, not a new one, and I did not read #259's result here.
+- **Lineage seed 1: FASTER against both nulls at 40k** (3.39 v 2.45 /1k; 271 ever held), as FASTER-against-MIXED at 20k. It is the one reading in
+  this session that repeats across horizons; it is one seed of three.
+- **What moved in the universe: nothing.** Two readable seeds, one horizon pair, one run each, no real-world nulls. Raw: `out/sweep40/` (not committed).
+
+#### #299c — BROWSER CAPTURES OF THE SAME THREE SEEDS (video/novelty_capture.js, 40,000 ticks, 40 ticks a record): none went extinct.
+Same seeds as #299b, but stepped in the browser the way `doc_capture.js` does. Living floor 356 / 327 / 351; end 386 / 356 / 369; zero records at 0 living.
+The node sweep's seed 2 went extinct 53 times; here it never fell under 327. The engine reads wall-clock gates, so a seed is not a trajectory
+across stepping patterns (the same caveat `doc_capture.js` carries). **So #299b's "seed 2 is unreadable" is a statement about one node trajectory;
+it does not say seed 2 is fragile in general, and #259's census (12 seeds per engine, one pattern) remains the number for that.**
+Cells ever held (first 3 trait axes, M=3, 10 bins over +/-1.5), capture v the sweep's drift-alone mean: 97 v 204, 152 v 144, 107 v 175. Seed 2 sits
+ABOVE its drift line in the capture and below it (115 v 144) in the sweep run, which is the spread between two trajectories of one seed. Two of
+three seeds under their drift line in both runs; the third is on either side of it. Not a verdict.
+
+### #299d — IS "TRAITS SLOWER THAN CHANCE" A PROPERTY OF THE WORLD, OR OF ONE RUN? Replicates of #299's own sweep. Pre-registered, committed before the first run.
+
+#299 and #299b read trait novelty SLOWER than the neutral shadows on every readable run, but each reading was ONE run per seed. CLAUDE.md's rule
+("against a null band, never one control", #249b) was written for the arms of a knockout; the same logic applies to the headline reading itself, and
+#299c already showed two trajectories of seed 2 disagreeing (115 v 152 cells). So: the same sweep, three more draw orders per seed.
+**Design:** `harness-sweep.js`, seeds 1-3, 20,000 ticks, `NULLSHIFT=1,2,3` (the same world, another draw order) plus #299's own run as replicate 0 — four
+replicates a seed, nine new runs. Six at a time (the box's ceiling), then three.
+**Rule, fixed now.** Per seed, a replicate reads SLOWER / CHANCE / FASTER on traits against the MIXED null as the sweep prints it. A seed is **ROBUSTLY
+SLOWER** if at least 3 of its 4 replicates read SLOWER. Then:
+- ROBUSTLY SLOWER on at least 2 of 3 seeds -> the claim "trait novelty is slower than chance in the default world at 20k" stands, at the rung measured
+  (persistent arrivals against neutral shadows, not selection), and it is written as a property of the world.
+- Otherwise (CHANCE or FASTER on at least 2 of 4 replicates on at least 2 seeds) -> **#299's "3 of 3 SLOWER" is withdrawn as single-run readings** and
+  the file says trait novelty is not resolved from chance by this instrument at this horizon.
+Reported beside, not ruling: real cells-ever-held (`everAtM`) range across replicates against the shadow range, and the TREE verdict. Horizon 20,000
+ticks only (the 40k reading in #299b is one run per seed and is not re-run here). Nothing in the engine changes; no mechanism is being kept or deleted.
+
+**#299d RESULT — the claim stands: ROBUSTLY SLOWER on 3 of 3 seeds.** Seeds 1-3, 20,000 ticks, four replicates each (replicate 0 is #299's run; 1-3 are
+`NULLSHIFT`), twelve worlds, none extinct (alive at end 342-442).
+
+| seed | traits vs MIXED, replicates 0-3 | vs TREE | real cells ever held | shadow range (min-max across replicates' own shadows) |
+|---|---|---|---|---|
+| 1 | SLOWER, SLOWER, SLOWER, SLOWER | 4 of 4 SLOWER | 66, 63, 60, 71 | 100-137 |
+| 2 | SLOWER, SLOWER, **chance**, SLOWER | 3 of 4 SLOWER, 1 chance | 72, 65, 74, 64 | 92-135 |
+| 3 | SLOWER, SLOWER, SLOWER, SLOWER | 4 of 4 SLOWER | 54, 90, 62, 65 | 105-131 |
+
+By the pre-registered rule (at least 3 of 4 on at least 2 of 3 seeds), **trait novelty is slower than neutral drift in the default world at 20,000 ticks, as a
+property of the world and not of one run** — at the rung measured: persistent arrivals against neutral shadows, not selection. The real count of trait
+cells held (54-90) sits under every replicate's own shadow range (92-137) on all twelve worlds; the single closest case is seed 3 replicate 1 (90 against
+115-124). The one CHANCE reading (seed 2, replicate 2) is a world whose real count (74) is its highest on that seed.
+**What this does not say:** it is one horizon (20k; #299b's 40k reading is one run per seed, and #299c's browser capture put seed 2 ABOVE its drift
+line); the grid and M=3 are choices; and a world held below drift is not yet a world with a lever — #258 and #262 each screened the in-life forces
+and found NEITHER at this null width. What changed is how well the shortfall is known: twelve runs, not three.
+Raw: `out/rep/` (not committed).
+
+#### #299e — THE OTHER LAYERS, ACROSS THE SAME TWELVE WORLDS. Descriptive; no rule, nothing claimed beyond the table.
+The #299d replicates carry every layer, so here is what they say about the rest. Verdicts per world, MIXED / TREE, twelve worlds (seeds 1-3 x four draw orders):
+
+| layer | vs MIXED (verdict null) | vs TREE |
+|---|---|---|
+| traits | SLOWER 11, chance 1 | SLOWER 11, chance 1 |
+| lineage | FASTER 4, chance 6, SLOWER 2 | chance 10, FASTER 1, SLOWER 1 |
+| program | chance 10, FASTER 1, SLOWER 1 | chance 7, SLOWER 5 |
+| atoms | chance 10, FASTER 2 | chance 12 |
+| channels | chance 9, FASTER 3 | chance 7, SLOWER 5 |
+
+- **Traits are the only layer with a consistent direction.** Nothing else reads the same way on more than 5 of 12 worlds.
+- **Lineage's FASTER-than-MIXED is a seed-1 property, not a world property:** FASTER on 4 of 4 draw orders of seed 1 and on 0 of 8 worlds of seeds 2 and 3
+  (which read chance or SLOWER). Against TREE it is chance on 10 of 12, FASTER on 1. That is "spreads faster than a well-mixed population" (which skewed
+  breeding alone achieves, #256b), not "reaches new lineages faster than the real family tree". #299b's lineage FASTER at 40k is the same seed-1 reading.
+- **Programs and channels lean SLOWER against TREE (5 of 12 each) and sit at chance against MIXED.** Atoms read chance against TREE on all twelve.
+- **Counting:** 60 layer readings per null, about 2 in 9 outside the band by chance, half of those high: the 10 FASTER-than-MIXED readings out of 60 here
+  (4 lineage, 1 program, 2 atoms, 3 channels) are the size chance gives (60 x 1/9 = 6.7) with the lineage cluster accounted for by one seed.
+**Net, at the rung measured and the 20,000-tick horizon: of five layers, one (traits) is consistently below drift, none is consistently above it.** The
+artwork's claim ("novelty keeps arriving") is not supported by this instrument in any layer of the default world at this horizon; it is also not refuted in
+programs, atoms, channels or lineages, where the readings are chance. Raw: `out/sweep/`, `out/rep/` (not committed).
+
+### #300 — THE RENDER REGISTER READS A NUMBER THE CREATURES LEFT BEHIND: amp pinned at the clamp on ~99% of the living. A reading, one world, drawn by chance.
+
+The subject, the form and the seed were drawn with `os.urandom` and committed before anything was made (`video/chance_draw.json`: entry #71, an interactive page, engine
+seed 776). #71 found `R[4]=__cl(amp[i],0,1)` (engine.html ~3671) bound on 89% of evaluations at 12,000 ticks and called such a sensor "not an input". This reads the
+same site's INPUT on today's engine: `video/pinned_capture.js`, seed 776, 6,000 ticks, every living particle's `amp` every 100 ticks (60 records).
+- **Fraction of living particles with amp >= 1 (so the clamp returns exactly 1):** 79.9% at tick 100, 91.9% at 1,000, 98.4% at 2,000, 99.5% at 4,000, 98.9%
+  at 5,900. From tick 2,000 on: mean 98.8%, never under 96.4%. Population 321-450.
+- **amp never exceeds 1.2** (max 1.20 in every record) and, from tick 2,500, no living particle is under 0.38. Living values sit in a band of about 0.2 just above
+  the wall; the register's range 0-1 is the part nobody occupies.
+- **What this is not:** #71's 89% counted clamp EVALUATIONS (10.5M on seeds 3-23 at 12,000 ticks, on the engine of that day); this counts living PARTICLES at a
+  sample, on one seed, on today's engine. They are not the same quantity and the comparison is a direction, not a replication. One world; the seed was drawn, not
+  chosen, and no other seed was read.
+- **What it says at the ladder's rungs:** the register is EXECUTED and read; it is not VARYING after tick ~2,000 (every reader of `R[4]` sees 1 for 99 creatures in 100).
+  Same shape as #217n and #262: a live mechanism answering with a constant. **Not measured here:** whether any evolved program actually reads `R[4]`, or whether
+  amp's 1.2 ceiling is the thing that pins it. Neither changes the engine; no mechanism is kept or deleted by this entry.
+- **Shipped as:** `video/pinned.html`, an interactive page (hold to see the true values, drag to move through time).

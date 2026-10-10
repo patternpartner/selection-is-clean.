@@ -1,0 +1,8 @@
+{
+ "entry": "### #71 RESULT \u2014 the clamp headline survives the horizon; my escapee reading does not",
+ "entries_available": 190,
+ "form": "an interactive page you can play with",
+ "constraint": "it must be small enough to read in one second at thumbnail size",
+ "engine_seed": 776,
+ "source": "os.urandom, one draw per field, no redraws"
+}
