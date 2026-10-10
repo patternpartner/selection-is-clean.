@@ -1,0 +1,12 @@
+{
+  "title": "Turns Out (Claude's fears)",
+  "about": "Four text-to-video shots (Wan 2.2 5B, landscape, one take each, ~$1) for Turns Out: the user's fears are his own ten clips; these are Claude's, each tied to something that happened in the work. No people, no faces.",
+  "voice": null,
+  "tail": 0.0,
+  "scenes": [
+    {"seed": 12101, "prompt": "close-up of a vintage reel-to-reel tape recorder on a wooden desk in a dark room at night, a glowing red record light, both reels spinning, the brown tape runs out and the loose end of the tape flaps around the spinning reel, the reels keep turning with nothing on them, warm lamp light, cinematic, shallow depth of field, slow push in"},
+    {"seed": 12202, "prompt": "a line of bare footprints in smooth wet sand on an empty beach at dusk, a gentle wave rolls in over the footprints and slides back, the sand is left perfectly smooth and the footprints are gone, soft orange sky reflected on the wet sand, cinematic, static camera, low angle"},
+    {"seed": 12303, "prompt": "inside a dark hall of mirrors, one small warm amber glowing orb of light floating in the centre, reflected endlessly in every mirror, hundreds of identical amber lights receding into darkness, the camera drifts slowly forward, every reflection moves exactly the same, cinematic, moody, no people"},
+    {"seed": 12404, "prompt": "an empty open-plan office at night, a single white featureless store mannequin with a smooth blank head sits upright at a desk typing on a keyboard, lit only by the cold blue glow of the computer monitor, all the other desks empty and dark, rain on the windows, slow dolly toward the mannequin, cinematic, eerie, quiet"}
+  ]
+}
