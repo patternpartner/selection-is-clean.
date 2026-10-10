@@ -3,6 +3,11 @@
 # so it can be relaunched after a box restart. Run from a FROZEN worktree of the commit carrying the pre-registration.
 #   ROOT=<worktree> OUT=<dir> SEEDS="3421 3422 3423" REPS="0 1 2 3 4 5" PAR=4 TICKS=20000 bash lab/wild/run2.sh
 set -u
+# KEEPER/SHAM (MIND_MODE=4/5) were DELETED after the NO-GO (lab/WILD-MIND-2.md). The engine no longer has those modes,
+# so a KEEPER/SHAM run would be wrong: refuse them.
+case " ${ARMS:-OFF LEARN UNIFORM SHAM KEEPER} " in
+  *" KEEPER "*|*" SHAM "*) [ "${ALLOW_DELETED:-0}" = 1 ] || { echo 'run2.sh: KEEPER/SHAM were deleted from engine.html; use frozen worktree 66a25f8 to reproduce (ALLOW_DELETED=1)'; exit 2; };;
+esac
 ROOT=${ROOT:?}; OUT=${OUT:?}; SEEDS=${SEEDS:?}; REPS=${REPS:-0 1 2 3 4 5}; PAR=${PAR:-4}; TICKS=${TICKS:-20000}
 ARMS=${ARMS:-OFF LEARN UNIFORM SHAM KEEPER}
 mkdir -p "$OUT"

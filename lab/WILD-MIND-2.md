@@ -217,3 +217,7 @@ that one file to `cos/wild-mind-2` and pushes it.
 keeper learned on 2 | twin pass 0 | controls pass 0 | all three 0 (need 2 of 3)
 VERDICT: NO-GO
 ```
+
+## After NO-GO (2026-10-10 ~17:21 BST)
+
+Keeper and sham deleted from `engine.html` and `harness-env.js` (restored to `b610048` / cos/wild-mind, byte-identical to main `86ef899` for those files). Modes 4 and 5, `pMindE`, and the keeper census are gone. Reason: deciding round on seeds 3421–3423 failed the bar — keeper learned on 2 of 3 seeds, but twin pass 0 and controls pass 0 (need all three on 2 of 3). The frozen worktree at `/home/box/wt/wild-mind-2-frozen` (66a25f8) still reproduces the scored arms. `run2.sh` refuses KEEPER/SHAM unless `ALLOW_DELETED=1`.
