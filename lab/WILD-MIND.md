@@ -120,3 +120,27 @@ this (every trial run had written one file; re-run).
 The null spread is wide (#294b: chance alone moved a mind measure two- to three-fold). Four replicates, "outside every
 replicate", is strict, and a small real effect can fail it. One horizon (20,000 ticks). The default world reads programs
 at CHANCE against MIXED on 10 of 12 worlds (#299e), so beating the twin is a high bar for any arm.
+
+## Deciding round result (seeds 3411, 3412, 3413 — 2026-10-10)
+
+All 48 runs completed (4 arms × 3 seeds × 4 replicates). Scored by `lab/wild/score.js` against the locked bar above.
+
+| seed | counted | surprisal SURPRISE vs LEARN | twin | controls | both |
+|---|---|---|---|---|---|
+| 3411 | yes | 9.798 vs 0.428 nats | fail (E mean 0.391, E>0 on 3/4, E vs TREE mean -0.547) | fail, not above LEARN, UNIFORM | no |
+| 3412 | yes | 9.586 vs 0.480 nats | fail (E mean 0.547, E>0 on 3/4, E vs TREE mean -0.379) | fail, not above LEARN, UNIFORM | no |
+| 3413 | yes | 9.717 vs 0.462 nats | fail (E mean 0.496, E>0 on 4/4, E vs TREE mean -0.352) | fail, not above LEARN, UNIFORM | no |
+
+Per seed detail (E = late persistent program arrivals /1k minus MIXED shadow mean):
+
+**3411** — SURPRISE E [0.828, 1.672, 0.219, -1.156] mean 0.391; E vs TREE mean -0.547. OFF mean -0.449; LEARN mean 0.769; UNIFORM mean 2.062.
+
+**3412** — SURPRISE E [0.094, -0.125, 1.984, 0.234] mean 0.547; E vs TREE mean -0.379. OFF mean 0.199; LEARN mean -0.312; UNIFORM mean -0.160.
+
+**3413** — SURPRISE E [0.187, 0.375, 0.625, 0.797] mean 0.496; E vs TREE mean -0.352. OFF mean -0.512; LEARN mean 0.957; UNIFORM mean 0.149.
+
+counted 3 | twin pass 0 | controls pass 0 | both 0 (need 2 of 3)
+
+### VERDICT: NO-GO
+
+Surprisal executed (SURPRISE ≫ LEARN on every seed), but the twin never cleared (E vs TREE always negative in the mean — real worlds held less than TREE on the same supply), and controls never cleared (SURPRISE mean E never above every LEARN and UNIFORM replicate). Plain NO-GO, not "wilder, not selected" or "twin only". Per the plan: `MIND_MODE=3` is to be deleted from engine.html (retire-or-prove), browser default unchanged. E here is held programs, not income-per-instruction.
