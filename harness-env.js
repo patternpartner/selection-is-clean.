@@ -69,7 +69,7 @@ console.error=()=>{};console.warn=()=>{};};
 // since #183 and no line here read it, so every rig that set it ran with laws mutating - the FOUND trap again.
 // #296: MIND=<percent> puts the primitive mind (#293) into the real engine: it learns from every parent and writes one
 // instruction of a child with those odds. MIND_MODE 1 frozen, 2 uniform (the controls), 4 keeper, 5 sham (cos/wild-mind-2, lab/WILD-MIND-2.md; 3 was surprise, deleted); MIND_SEED its own random stream.
-module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT','SUN','REPL','REPL_INERT','REPL_ARMS','REPL_ATOMS','REPL_KEYD','REPL_SEX','REPL_ATOM_INERT','REPL_COST','MIND','MIND_MODE','MIND_SEED','MIND_KEEP'];
+module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT','SUN','REPL','REPL_INERT','REPL_ARMS','REPL_ATOMS','REPL_KEYD','REPL_SEX','REPL_ATOM_INERT','REPL_COST','MIND','MIND_MODE','MIND_SEED'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);

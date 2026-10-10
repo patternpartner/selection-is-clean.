@@ -141,3 +141,51 @@ held rate KEEPER against SHAM, SHAM's log loss (it should not beat its base rate
 - 20,000 ticks gives roughly 400 labels per run. A keeper that needs more data than that fails rule 1, and that counts as
   an answer.
 - One horizon.
+
+## Strengthened keeper (supersedes the keeper mechanism above; pre-registered before any deciding run)
+
+The CoS call (10 Oct, 10:43): do not run the round as first written, because the keeper barely learned. Strengthen it
+using only trial seed 3420, try at most 3 variants, and delete the design if none learns. Two variants were tried, both from
+commit 76a545e, at 20,000 ticks on seed 3420, keeper and sham each:
+
+| variant | what changed | labels | keeper log loss v base | SHAM log loss v base | held-minus-lost: keeper v SHAM |
+|---|---|---|---|---|---|
+| (first, b202d84) | one label per installed edit: still carried 2,000 ticks later | 534 | 0.6706 v 0.6719 | 0.6646 v 0.6443 | 0.021 v 0.036 |
+| 1 | also labels the world's own random mutations; LAG 1,000; census every 125 | 743 | 0.6018 v 0.6240 | 0.5966 v 0.5586 | 0.061 v 0.015 |
+| **2 (chosen)** | **a fitness surrogate: every parented birth is a record, labelled "had a child within 1,000 ticks"; features of the whole program** | **2,142** | **0.5229 v 0.5799** | **0.6487 v 0.5779** | **0.225 v 0.018** |
+
+Variant 2 learns clearly. It predicts 0.057 nats better than the base rate, while SHAM is 0.071 nats worse than its own.
+Its held-minus-lost gap is 12 times SHAM's. Variant 1 learns, but only a little. Variants 0 and 1 are deleted from the
+engine. Variant 2 is now the only keeper, with no knob.
+
+**The keeper now (what will run):**
+- The explorer is unchanged: 8 uniform drafts per written child, at the same 20% rate as every mind arm.
+- The keeper is a logistic model over a whole child program: each instruction, each adjacent pair of operations, each
+  instruction by quarter of the program, and each instruction by its registers. These are hashed into 4,096 weights.
+  Learning rate 0.02.
+- It installs the draft whose resulting child program it scores highest.
+- It learns from every parented birth in the world, not only the ones it wrote. Each child is a record. The parent's
+  record counts the child. 1,000 ticks after birth the record is labelled (had at least one child, or not), scored
+  prequentially, then learned from.
+- SHAM is the identical machinery, trained on labels drawn at the true running rate from its own stream.
+- In the report, "held" now means "had a child by 1,000 ticks". The field names are unchanged, so `score2.js` reads them.
+- Checked: the cleaned keeper and sham are byte-identical to variant 2 at 76a545e (seed 3420, 3,000 ticks). Mind off is
+  byte-identical to main 86ef899; learn and uniform are unchanged (seed 1, 600 ticks).
+
+**What this changes about the claim.** The keeper is now a learned model of which programs reproduce, used to choose
+among wild drafts. That is closer to #293 v6's judge (children) than to a judge of novelty. The difference is that it never
+chooses the drive: every draft is uniformly random. So it can only make wild variation more viable. Whether more viable
+wild variation means more held novelty is exactly what the primary measure and the twin decide. The label is not income
+(see above).
+
+**The bar, locked (only hardened):** everything in "The bar (locked)" above stands: 6 replicates, seeds 3421-3423, the
+TREE twin outright, above every SHAM and UNIFORM replicate, above the LEARN and OFF means, the guard, and 2 of 3 seeds.
+Rule 1 now requires all of these:
+- the keeper's mean prequential log loss under its base rate's;
+- AND under SHAM's mean log loss;
+- AND its held-minus-lost gap above 0 and above SHAM's.
+If the keeper learns on fewer than 2 seeds, the result is NO-GO.
+
+**Runs:** `lab/wild/decide2.sh` runs `run2.sh` from a frozen worktree of the commit carrying this section. When all 90
+runs are done, it writes `ALL-DONE` and `SCORE.txt` in the output directory and appends the score below. It then commits
+that one file to `cos/wild-mind-2` and pushes it.

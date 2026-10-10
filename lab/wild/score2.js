@@ -23,7 +23,9 @@ for(const s of SEEDS){
   // added after the trial seed, before any deciding run: SHAM showed held-minus-lost separation with no information (time
   // trends do it), so the keeper's separation must also beat SHAM's on the same seed
   const sepS=mean(ks.map(x=>x.predHeld-x.predLost));
-  const learn=wrote&&llK<llB&&sep>0&&sep>sepS; if(learn)learned++;
+  // strengthened round (WILD-MIND-2.md, 'Strengthened keeper'): its log loss must also be under SHAM's
+  const llS=mean(ks.map(x=>x.logLoss));
+  const learn=wrote&&llK<llB&&llK<llS&&sep>0&&sep>sepS; if(learn)learned++;
   const offClear=R.OFF.every(r=>!r.extinctions&&r.aliveEnd>20), bad=R.KEEPER.filter(r=>r.loopErrors>0||(offClear&&(r.extinctions>0||r.aliveEnd<5)));
   if(bad.length)guardFail.push(s);
   const mK=mean(e.KEEPER), T=mK>0&&e.KEEPER.filter(x=>x>0).length>=4;
