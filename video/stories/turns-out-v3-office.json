@@ -1,0 +1,13 @@
+{
+ "title": "Turns Out v3 - office retake",
+ "about": "Retake of the office shot: take one invented a second man walking in from the right.",
+ "voice": null,
+ "tail": 0.0,
+ "scenes": [
+  {
+   "image": "../../out/inputs/to3_3_office.png",
+   "seed": 14313,
+   "prompt": "in a dark empty office at night the one man already standing there, seen from behind, takes two slow steps to the right toward the white mannequin sitting at the desk and rests his hand on its shoulder, the mannequin stops typing, only these two figures in the room and nobody else, static camera, blue monitor glow, cinematic, quiet"
+  }
+ ]
+}

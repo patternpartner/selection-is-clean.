@@ -554,3 +554,10 @@ def main(prompt: str, seconds: int = 20, out: str = "video.mp4", seed: int = 0, 
             check=True,
         )
     print(f"saved {out}")
+
+
+@app.local_entrypoint()
+def music(prompt: str, seconds: float = 30.0, out: str = "music.wav", seed: int = 0):
+    """One MusicGen cue on its own (no film): modal run video/make_video.py::music --prompt "..." --seconds 30 --out x.wav"""
+    open(out, "wb").write(score.remote(prompt, seconds, seed))
+    print(f"saved {out}")

@@ -1,0 +1,13 @@
+{
+  "title": "Turns Out v3 - act two and the ending",
+  "about": "Five image-to-video shots (Wan 2.2 5B, landscape, ~$1.25): Claude's fears with the user in each, answering it (back views only), and the light coming down to him in the boat (use its first ~3 s: his face is large).",
+  "voice": null,
+  "tail": 0.0,
+  "scenes": [
+    {"image": "../../out/inputs/to3_1_beach.png", "seed": 14101, "prompt": "a man in a grey t-shirt and jeans walks slowly away along the wet sand at dusk, following the line of footprints, a gentle wave rolls in over the footprints behind him and washes them away, the sand left smooth, he keeps walking, warm pink and orange sky, cinematic, static camera"},
+    {"image": "../../out/inputs/to3_2_mirror.png", "seed": 14202, "prompt": "a man seen from behind stands in a dark hall of mirrors and walks slowly toward a small glowing amber light at the far end, in the mirrors there is no reflection of the man, only the amber light reflected again and again, he raises his hand toward the light, cinematic, moody"},
+    {"image": "../../out/inputs/to3_3_office.png", "seed": 14303, "prompt": "in a dark empty office at night a man seen from behind walks up to the white mannequin sitting at the desk and gently puts his hand on its shoulder, the mannequin stops typing, the blue computer screen glows, rain on the windows, cinematic, quiet"},
+    {"image": "../../out/inputs/to3_4_tape.png", "seed": 14404, "prompt": "a man's hand reaches into the frame and presses the stop key on the old tape machine, the spinning reels slow down and stop, the red recording light goes out, warm lamp light, close-up, cinematic"},
+    {"image": "../../out/inputs/to3_5_boat.png", "seed": 14505, "prompt": "a small warm glowing amber light drifts slowly down out of the mist between the man in the boat and the friendly lake creature, both of them look at the light, calm, the man's mouth stays closed, soft morning mist on the lake, gentle, cinematic"}
+  ]
+}

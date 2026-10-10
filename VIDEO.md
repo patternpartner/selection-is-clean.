@@ -1612,3 +1612,22 @@ hard cuts, captions over stock. LESSON: given a pile of the user's clips, an edi
   rest are match dissolves (tunnel light -> the light in the mirrors, blue flash -> blue monitor, desk -> desk,
   eye -> eyes, wall -> wall, sand -> girl, face -> face, red light -> clapperboard, dusk -> mist).
 - One witness: the amber light sits small in each of his fears and at the boat comes down to his headlamp.
+**The user on v2: "Is this the very best you can do?"** No - and said why: still a list, Claude's fears the weakest
+part, the witness a dot, the ending borrowed, the score numbers rather than music, and Claude had judged it from stills
+and never heard it. Proposed v3 (~£4-5); "Yeah".
+**v3 (`video/build_turns_out3.py`, `video/turns_out_stills.py`, `out/turns-out-v3.mp4`, 91 s): a story in three acts.**
+- ACT ONE "Your fears.": his clips in the v2 chain, the light now near and lit in each (r 10.5 with a warm spill).
+- ACT TWO "And mine." (written into the golden sand of the spider bridge): Claude's fears with HIM in each, answering
+  it - Wan I2V from his keyed BACK views (u113 5.2-5.6 s, so Wan never has his face) composited onto the first frames
+  of Claude's v1 shots: walks on up his footprints, then (Wan never brought the wave) dissolves into the v1 sand shot
+  where the wave takes them - he is gone | walks toward the light in mirrors that hold no reflection of him, raises a
+  hand to it | walks to the mannequin (take one invented a second man; retake 6c6fb0554a0f0cf2) | a hand reaches in
+  and stops the tape | the warped face dissolves into his real one put back (close_realface) | he sprints in and dives
+  over the empty chair onto the rope (Two Ends, cropped to the horizon, real pings).
+- ACT THREE: the boat; the light comes down out of the mist and settles on the creature (Wan from his closed-mouth
+  frame at 6.0 s - the wide frame has him mid-shout and would be animated talking); "Go and look."
+- Music: three MusicGen cues via the new `make_video.py::music` entrypoint (cellos + pulse built to peak at the spider;
+  sparse piano under act two, entering under "And mine."; a warm resolution for the boat), wind and blowing sand
+  bridging acts one and two (the first mix had 2 s of digital silence there), his clips ducked to 30%.
+- Modal for v3: 6 Wan clips + 3 cues, ~$2. Clips: f4e7e4830feddd95 beach, 54511f4c7fe13635 mirror, 6c6fb0554a0f0cf2
+  office, 33b67daa93429be8 tape, e30e6cbc3a873f5f boat (07f5b1f734a50180 the rejected office take).
