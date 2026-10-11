@@ -1,0 +1,58 @@
+// lab/dreamer/score.js - scores the DREAMER round (lab/DREAMER.md); copied from lab/locksmith/score.js, S and Sf unchanged. Draws nothing; reads the jsonl rows core-run.js wrote.
+//   node lab/dreamer/score.js DIR [SEEDS=7411,7412,7413] [ARMS=X,P0,P1,P2,B,BE] [WIN=30] [FLOOR=5]
+// S and Sf exactly as lab/garden/score.js (S = lab/used-novelty.js's S late: income share >= 1% of net metabolic income, LAG 2,
+// late third; Sf = the same with an absolute floor of FLOOR energy per 1,000 ticks). Collapse: mean N, last quarter, under 200.
+// Arms: X the dreamer (DREAM 1); P0,P1,P2 plain band (NULLSHIFT 0,1,2); B blind any draft (DREAM 2); BE blind enzyme draft (DREAM 3).
+// Reported, not ruling: Snat = S with every released enzyme key removed from the income lists (does the world's OWN discovery move?).
+'use strict';
+const fs=require('fs'), path=require('path'); const UN=require('../used-novelty.js');
+const args=Object.fromEntries(process.argv.slice(3).map(a=>a.split('=')));
+const DIR=process.argv[2], SEEDS=(args.SEEDS||'7411,7412,7413').split(','), ARMS=(args.ARMS||'X,P0,P1,P2,B,BE').split(',');
+const WIN=+(args.WIN||30), FLOOR=+(args.FLOOR||5), MIN=0.01, LAG=2, REL=1.10;
+function Sfloor(rows){ const nW=Math.floor(rows.length/WIN), used=[];
+  for(let w=0;w<nW;w++){ const W=rows.slice(w*WIN,(w+1)*WIN), sh=new Map(), inc=new Map();
+    for(const r of W) for(const [k,v] of r.chem.flux||[]){ sh.set(k,(sh.get(k)||0)+v/W.length); inc.set(k,(inc.get(k)||0)+v*r.chem.metab/W.length); }
+    used.push(new Set([...sh].filter(([k,v])=>v>=MIN&&inc.get(k)>=FLOOR).map(([k])=>k))); }
+  const ever=new Set(), st=[]; for(let w=0;w<nW;w++){ const n=[...used[w]].filter(k=>!ever.has(k)); n.forEach(k=>ever.add(k)); if(w+LAG<nW)st.push(n.filter(k=>used[w+LAG].has(k)).length); }
+  const E=st.length, th=Math.floor(E/3), mean=x=>x.reduce((p,q)=>p+q,0)/x.length; if(th<1)return {late:NaN,middle:NaN};
+  return {late:mean(st.slice(E-th)),middle:mean(st.slice(E-2*th,E-th))}; }
+const lastQuarter=rows=>rows.slice(Math.floor(rows.length*3/4));
+function secondary(rows){ const nW=Math.floor(rows.length/WIN), ever=new Set(), newPer=[];
+  for(let w=0;w<nW;w++){ const W=rows.slice(w*WIN,(w+1)*WIN), m=new Map(); for(const r of W) for(const [k,v] of r.chem.flux||[]) m.set(k,(m.get(k)||0)+v/W.length);
+    const act=[...m].filter(([k,v])=>v>=MIN).map(([k])=>k); newPer.push(act.filter(k=>!ever.has(k)).length); act.forEach(k=>ever.add(k)); }
+  const q=newPer.slice(Math.floor(nW*3/4)), L=lastQuarter(rows), last=rows[rows.length-1];
+  const top=L.reduce((a,r)=>a+((r.chem.flux&&r.chem.flux[0])?r.chem.flux[0][1]:0),0)/L.length, inc=L.reduce((a,r)=>a+r.chem.metab,0)/L.length;
+  const earn=L.reduce((a,r)=>a+(r.dream?r.dream.earning:0),0)/L.length;
+  return {lqNewWindows:q.filter(x=>x>0).length+'/'+q.length,everActive:ever.size,topShareLate:+top.toFixed(3),metabLate:+inc.toFixed(1),
+    opened:last.dream?last.dream.released:'-',skips:last.dream?last.dream.enzReleased:'-',openEarningLate:last.dream?+earn.toFixed(2):'-'}; }
+function relKeys(rows){ const k=new Set(); for(const r of rows) if(r.dream&&r.dream.last&&r.dream.last[2]>=0)k.add(r.dream.last[2]); return k; }
+const res={}; const missing=[];
+for(const s of SEEDS){ res[s]={}; for(const a of ARMS){ const f=path.join(DIR,a+'.'+s+'.jsonl'); if(!fs.existsSync(f)){ missing.push(a+'.'+s); continue; }
+  const rows=UN.readRows(f).filter(r=>r.chem); const LQ=lastQuarter(rows), N=LQ.reduce((x,r)=>x+r.N,0)/Math.max(1,LQ.length);
+  const s1=UN.S(rows,{WIN,MIN,LAG}), s2=Sfloor(rows), RK=relKeys(rows), s3=UN.S(rows.map(r=>Object.assign({},r,{chem:Object.assign({},r.chem,{flux:(r.chem.flux||[]).filter(([k])=>!RK.has(k))})})),{WIN,MIN,LAG});
+  res[s][a]={rows:rows.length,S:s1.late,Smid:s1.middle,Sf:s2.late,Sfmid:s2.middle,usedEver:s1.usedEver,collapse:N<200,Nlate:Math.round(N),Snat:s3.late,relKeys:RK.size,...secondary(rows)}; } }
+if(missing.length)console.log('MISSING: '+missing.join(' '));
+const nulls=ARMS.filter(a=>a!=='X'), plain=nulls.filter(a=>/^P/.test(a)), blind=nulls.filter(a=>/^B/.test(a));
+const beats=(A,key,set)=>!A.X.collapse&&set.every(n=>A.X[key]>A[n][key]);
+function verdictOn(key){ let readable=0, all=0, vsPlain=0, vsBlind=0, blindVsPlain={}; const per=[];
+  for(const b of blind)blindVsPlain[b]=0;
+  for(const s of SEEDS){ const A=res[s]; if(!A.X||nulls.some(n=>!A[n]))continue; const nc=nulls.filter(n=>A[n].collapse);
+    if(nc.length){ per.push(s+': UNREADABLE (null collapsed: '+nc.join(',')+')'); continue; } readable++;
+    if(beats(A,key,nulls))all++; if(beats(A,key,plain))vsPlain++; if(beats(A,key,blind))vsBlind++;
+    for(const b of blind) if(plain.every(n=>A[b][key]>A[n][key]))blindVsPlain[b]++;
+    const lost=A.X.collapse?['(X collapsed)']:nulls.filter(n=>!(A.X[key]>A[n][key]));
+    per.push(s+': X '+A.X[key].toFixed(2)+' | '+nulls.map(n=>n+' '+A[n][key].toFixed(2)).join(' ')+(lost.length?' | loses/ties to '+lost.join(','):' | beats all')); }
+  const rs=SEEDS.filter(s=>res[s].X&&nulls.every(n=>res[s][n]&&!res[s][n].collapse)), m=a=>rs.reduce((x,s)=>x+res[s][a][key],0)/Math.max(1,rs.length);
+  const rel=rs.length?Math.min(...nulls.map(n=>(m('X')+1)/(m(n)+1))):NaN;
+  return {key,readable,all,vsPlain,vsBlind,blindVsPlain,rel:+rel.toFixed(3),means:Object.fromEntries(ARMS.map(a=>[a,+m(a).toFixed(3)])),per}; }
+for(const s of SEEDS) for(const a of ARMS) if(res[s][a]){ const r=res[s][a]; console.log(`${s} ${a.padEnd(3)} rows ${r.rows} N ${r.Nlate}${r.collapse?' COLLAPSED':''} | S ${r.S.toFixed(2)} (mid ${r.Smid.toFixed(2)}) Sf ${r.Sf.toFixed(2)} (mid ${r.Sfmid.toFixed(2)}) | usedEver ${r.usedEver} | lastQ new-windows ${r.lqNewWindows} everActive ${r.everActive} top ${r.topShareLate} metab ${r.metabLate} | released ${r.opened} enzymes ${r.skips} released-earning-late ${r.openEarningLate} | Snat ${r.Snat.toFixed(2)}`); }
+const v1=verdictOn('S'), v2=verdictOn('Sf');
+for(const v of [v1,v2]){ console.log(`\n== ${v.key}: readable ${v.readable}; X beats every null on ${v.all}, the plain band on ${v.vsPlain}, both blind dreamers on ${v.vsBlind}; rel ${v.rel}; blind beats plain band: ${JSON.stringify(v.blindVsPlain)}; means ${JSON.stringify(v.means)}`); v.per.forEach(l=>console.log('  '+l)); }
+let verdict;
+if(v1.readable<2)verdict='INCONCLUSIVE (fewer than 2 readable seeds)';
+else if(v1.all>=2&&v2.all>=2&&v1.rel>=REL&&v2.rel>=REL)verdict='GO (candidate)';
+else if(v1.vsPlain<2)verdict='NO-GO: DISCOVERY KILLED (the dreamer does not beat the plain band P0,P1,P2 on S on 2 readable seeds)';
+else if(v1.vsBlind<2)verdict='NO-GO: IMAGINATION NOT SHOWN (X beats the plain band, but not both blind dreamers B and BE, on 2 readable seeds)';
+else verdict='NO-GO: NOT SHOWN (X beats plain and blind on S on 2 seeds, but fails Sf or the 1.10 mean ratio)';
+{ const sn=a=>{ const rs=SEEDS.filter(s=>res[s][a]); return rs.length?(rs.reduce((x,s)=>x+res[s][a].Snat,0)/rs.length).toFixed(3):'-'; }; console.log('\nReported, not ruling - Snat means (released enzyme keys removed): '+ARMS.map(a=>a+' '+sn(a)).join(' ')); }
+console.log('\nVERDICT: '+verdict);
