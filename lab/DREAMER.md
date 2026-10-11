@@ -74,3 +74,24 @@ worktree at this commit: `lab/dreamer/chain.sh OUT` (deciding -> score.js).
 **Written before, so it can be wrong:** I expect X to beat the plain band easily (handed enzymes earned within 10k ticks on 7490)
 and the real risk is BE: blind enzyme drafts already earn (the scratch BE-like picks earned too). If BE ties X, that is
 IMAGINATION NOT SHOWN, and I will report it as such — with "discovery is the limit" as a lead, not a win.
+
+## Deciding round (seeds 7411–7413, 1,200,000 ticks, D_EVERY 10,000) — finished 11 Oct ~20:50 BST
+
+Full printout `lab/dreamer/SCORE.txt` (score.js, unchanged). Readable 3 (no null collapse).
+
+| seed | X S | P0 | P1 | P2 | B | BE | note |
+|---|---|---|---|---|---|---|---|
+| 7411 | 0.00 | 0.00 | 0.08 | 0.08 | 0.00 | 0.58 | loses/ties every null |
+| 7412 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | loses/ties every null |
+| 7413 | 0.00 | 0.00 | 0.08 | 0.00 | 0.25 | 0.00 | loses/ties every null |
+
+Sf matches S on every seed. Means: X 0.000, P0 0.000, P1 0.056, P2 0.028, B 0.083, BE 0.194.
+X beats the plain band on 0 seeds; beat every null on 0. Blind beats plain on 1 seed each for B and BE.
+BE mean S 0.194 beat X and the plain band on means (reported, not a GO for enzyme-handing alone — the pre-reg said that would be a lead for its own round).
+
+**VERDICT: NO-GO, DISCOVERY KILLED.** X does not beat the plain band (P0, P1, P2) on S on 2 readable seeds.
+Per the pre-reg: DREAM is deleted from `lab/oee-core.js` on this branch. FLUXALL, NULLSHIFT, the CHEM_BIG
+load-salt fix, the scorer, the chain and these results stay. Read: even tricks screened to earn from unused
+chemistry and handed in every 10k ticks do not raise lasting novelty — the limit is retention (or the metric's
+horizon), not discovery; minds and directed mutation are dead for this metric in this core. Core matches
+cos/locksmith f7750d4 when off.

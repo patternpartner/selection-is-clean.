@@ -151,17 +151,6 @@ class World{
     if(P.CHEM&&P.CHEM_BIG){ this.big={layers:new Map(),e:new Map(),pr:new Map(),salt:h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4)}; this.molTmp=new Float32Array(C); this.ev.metab=0; this.ev.metabN=0; this.rxE=new Map(); }
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); this.molLive=new Uint8Array(S); }   // molLive: species that may be nonzero, so diffusion can skip the rest   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
-    // DREAM (lab/DREAMER.md), needs CHEM_BIG, not in DEF so a world without it saves exactly as before. The DREAMER, an agent
-    // outside the world, works UPSTREAM of selection, on discovery: every D_EVERY ticks it takes one living organism, drafts
-    // D_K variants of its program (enzyme proposals for unused runnable reactions on molecules lying around its clone-mates,
-    // then ordinary mutants), and writes ONE variant into the organism and up to D_F-1 nearby clone-mates (same functional
-    // genotype, within 2 cells). Energy, place, tag and template are kept; no energy is added. DREAM 1 IMAGINES: each variant
-    // is tried in a private copy of the world (save/load, same random stream for every copy) for D_T ticks, and the one whose
-    // lineage earned the most from reactions NOT in use (under 1% of metabolic income last period) is released; ties by the
-    // lineage's size at the end, then draft order. DREAM 2 BLIND: the same drafts, one released uniformly at random, no dream.
-    // DREAM 3 BLIND-ENZYME: the same drafts, one of the ENZYME drafts released uniformly at random (any draft if there is none), no dream.
-    // Own random stream (the world's is untouched; dreams run on copies).
-    if(P.DREAM){ if(!P.CHEM_BIG)throw new Error('DREAM needs CHEM_BIG'); this.dr=mulberry32(this.seed0^0xd2ea4d01); this.dEv=0; this.dRel=[]; this.dSkips=0; }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
@@ -263,7 +252,7 @@ class World{
                    if(op===24){ R[r4]=this.tin[c*3+this.tic[c]]; this.tic[c]=(this.tic[c]+1)%3; } else if(op===25)this.taskOut(c,R[r4]>>>0);
                    else if(op===26)R[r4]=(~((R[r4]>>>0)&(R[r4+(arg&3)]>>>0)))>>>0; else R[r4]=R[r4+(arg&3)]; }
                  else if(P.CHEM_BIG){ const q=arg|(this.prog[o+((pc+1)%n)*2+1]<<8), Lq=this.big.layers.get(q);   // METABj, two-byte species
-                   if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); if(this.dHook)this.dHook(c,id,x*d); } } }
+                   if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
                    if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.molLive[pr]=1; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
         case 28: if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
@@ -292,30 +281,7 @@ class World{
     for(let c=0;c<C;c++){ if(!this.alive[c])continue; if(this.E[c]<=0)this.kill(c,'starve'); else if(this.age[c]>P.MAX_AGE)this.kill(c,'old'); }
     if(!this.count())this.reseed();
     this.neutralStep();
-    if(P.DREAM&&this.tick%(P.D_EVERY||10000)===0)this.dreamUpdate();
   }
-  // ---- the DREAMER (lab/DREAMER.md) ----
-  dUsed(){ let ft=0; for(const v of this.rxE.values())ft+=v; const U=new Set(); for(const [x,v] of this.rxE) if(ft>0&&v>=0.01*ft)U.add(x); return U; }   // reactions in use this period (read only)
-  dDrafts(par,F,U){ const P=this.p, L=P.MAXLEN*2, o=par*L, n=this.len[par], r=this.dr, K=P.D_K||8, src=[]; for(let i=0;i<n;i++)src.push([this.prog[o+i*2],this.prog[o+i*2+1]]);
-    const val=new Map(), cells=new Set(); for(const c of F){ cells.add(c); for(let f=0;f<8;f++)cells.add(this.ahead(c,f)); }
-    for(const [q,m] of this.big.layers){ let t=0; for(const c of cells)t+=m[c]; if(!(t>0))continue; for(let j=0;j<4;j++){ const id=q*4+j; if(U.has(id))continue; const d=this.be(q)-this.be(this.bprod(q,j)); if(d>0&&d<=P.CHEM_DMAX)val.set(id,t*d); } }
-    const enz=[...val].sort((a,b)=>b[1]-a[1]||a[0]-b[0]).slice(0,Math.floor(K/2)), out=[];
-    for(const [id] of enz){ const q=id>>2, j=id&3, c=src.map(x=>x.slice()), at=(r()*(c.length+1))|0; if(c.length+2<=P.MAXLEN)c.splice(at,0,[24+j,q&255],[0,q>>8]); else { const a=Math.min(at,c.length-2); c[a]=[24+j,q&255]; c[a+1]=[0,q>>8]; } out.push({prog:c,enz:id}); }
-    const h0=fnHashList(src,this.n0); while(out.length<K){ let c=null; for(let g=0;g<50;g++){ c=this.mutateInto(src.map(x=>x.slice()),r); if(fnHashList(c,this.n0)!==h0)break; } out.push({prog:c,enz:-1}); }
-    return out; }
-  dWrite(w,F,prog){ const L=w.p.MAXLEN*2; for(const c of F){ const o=c*L; w.len[c]=prog.length; for(let i=0;i<prog.length;i++){ w.prog[o+i*2]=prog[i][0]; w.prog[o+i*2+1]=prog[i][1]; } w.pc[c]=0; } }
-  dDream(txt,F,prog,U){ const w=World.load(txt); w.p.DREAM=0; const lab=new Uint8Array(w.C); for(const c of F)lab[c]=1; this.dWrite(w,F,prog);   // a private copy: nothing here touches this world
-    const od=w.divide, om=w.moveOrg, ok=w.kill; let nov=0;
-    w.divide=function(c){ let t=-1; const f0=this.face[c]; for(let k=0;k<8;k++){ const n=this.ahead(c,f0+k); if(!this.alive[n]){ t=n; break; } } const b0=this.ev.births; const r=od.call(this,c); if(this.ev.births>b0&&t>=0)lab[t]=lab[c]; return r; };
-    w.moveOrg=function(a,b){ lab[b]=lab[a]; lab[a]=0; return om.call(this,a,b); }; w.kill=function(c,why){ lab[c]=0; return ok.call(this,c,why); };
-    w.dHook=(c,id,e)=>{ if(lab[c]&&!U.has(id))nov+=e; };
-    const T=this.p.D_T||1000; for(let s=0;s<T;s++)w.step(); let n=0; for(let c=0;c<w.C;c++) if(w.alive[c]&&lab[c])n++; return {nov,n}; }
-  dreamUpdate(){ const P=this.p, r=this.dr, L=P.MAXLEN*2, liv=[]; for(let c=0;c<this.C;c++) if(this.alive[c])liv.push(c); this.dEv++;
-    if(!liv.length){ this.dSkips++; return; } const par=liv[(r()*liv.length)|0], h=fnHash(this.prog,par*L,this.len[par],this.n0), F=[par], W=P.W, px=par%W, py=(par/W)|0;
-    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ if(!dx&&!dy)continue; if(F.length>=(P.D_F||8))break; const c=((py+dy+P.H)%P.H)*W+((px+dx+W)%W); if(this.alive[c]&&fnHash(this.prog,c*L,this.len[c],this.n0)===h)F.push(c); }
-    const U=this.dUsed(), D=this.dDrafts(par,F,U), u=r(), EZ=D.map((d,i)=>d.enz>=0?i:-1).filter(i=>i>=0); let k=P.DREAM===3&&EZ.length?EZ[(u*EZ.length)|0]:(u*D.length)|0, sc=null;   // every mode draws the pick, so the streams stay aligned; 3 BLIND-ENZYME: uniform among the enzyme drafts
-    if(P.DREAM===1){ const txt=this.save(); sc=D.map(d=>this.dDream(txt,F,d.prog,U)); k=0; for(let i=1;i<D.length;i++) if(sc[i].nov>sc[k].nov||(sc[i].nov===sc[k].nov&&sc[i].n>sc[k].n))k=i; }
-    this.dWrite(this,F,D[k].prog); this.dRel.push([this.tick,F.length,D[k].enz,sc?+sc[k].nov.toFixed(3):null,sc?sc.filter(x=>x.nov>0).length:null,D.filter(d=>d.enz>=0).length]); }
   be(q){ if(q===0)return 1; const B=this.big; let v=B.e.get(q); if(v===undefined){ v=h32(q^B.salt)/4294967296; if((q&(q-1))===0)v=0.7+0.2*v; B.e.set(q,v); } return v; }   // species 0's one-bit neighbours sit at 0.7-0.9, so every first step pays 0.1-0.3 (seed 2 had none worth running)
   bprod(q,j){ const B=this.big, P=this.p; let a=B.pr.get(q); if(a)return a[j];   // products are one bit-flip from the substrate (an enzyme's specificity moves in small steps), so the next step is one byte change away
     const eq=this.be(q), tgt=eq-P.CHEM_STEP, bits=[]; for(let b=0;b<16;b++)bits.push(b); let hs=h32(q^B.salt^0x51ed27);
@@ -451,20 +417,19 @@ class World{
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
       progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
-      reseeds:this.reseeds||0, ...(P.DREAM?{dream:{mode:P.DREAM,events:this.dEv,released:this.dRel.length,enzReleased:this.dRel.filter(x=>x[2]>=0).length,last:this.dRel.length?this.dRel[this.dRel.length-1]:null,earning:chem?(()=>{ const k=new Set(this.dRel.filter(x=>x[2]>=0).map(x=>x[2])); return chem.flux.filter(([x,v])=>k.has(x)&&v>=0.01).length; })():0}}:{}), ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
+      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
 const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'];
-World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.DREAM?{dream:{rnd:this.dr.s,ev:this.dEv,rel:this.dRel,skips:this.dSkips}}:{}),...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
+World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
   for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
   for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
-  if(o.dream&&w.p.DREAM){ w.dr.s=o.dream.rnd; w.dEv=o.dream.ev; w.dRel=o.dream.rel; w.dSkips=o.dream.skips; }
   if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
   if(o.mindPos&&w.mindPos)new Uint8Array(w.mindPos.buffer).set(Buffer.from(o.mindPos,'base64'));
