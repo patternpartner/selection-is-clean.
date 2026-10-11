@@ -114,3 +114,58 @@ Seed 911 finished first and I scored it once, with the committed scorer and noth
 (Sf the same); X held 19 reactions ever active against 7-22, commonest route 0.19 against 0.37-0.73, metabolic income 4,565 against 6,887-10,201
 plain and 2,732-2,962 for F/SH. Thin (one sticky new reaction in the late third), and the mean-ratio clause needs 1.10 where 911 alone gives 1.08.
 One seed decides nothing; the verdict waits for 912 and 913.
+
+## RESULTS / VERDICT — deciding round (seeds 911, 912, 913; 1,200,000 ticks) — scored 2026-10-11 ~14:42 BST
+
+Scored from the frozen worktree at 98de2bf against `/home/box/garden-runs/decide` (ALL.done present; all 18 jsonl have matching `.done`):
+`node lab/garden/score.js /home/box/garden-runs/decide`
+
+### Score summary (income-only sticky novelty: S late / Sf late; mid in parentheses)
+
+| seed | arm | N late | S (mid) | Sf (mid) | usedEver | lastQ new-windows | everActive | top share late | metab late |
+|------|-----|--------|---------|----------|----------|-------------------|------------|----------------|------------|
+| 911 | X | 1187 | **0.08** (0.08) | **0.08** (0.08) | 19 | 2/10 | 19 | 0.194 | 4565 |
+| 911 | P0 | 1395 | 0.00 (0.08) | 0.00 (0.08) | 7 | 0/10 | 7 | 0.365 | 10201.3 |
+| 911 | P1 | 1323 | 0.00 (0.00) | 0.00 (0.00) | 7 | 0/10 | 7 | 0.487 | 6887 |
+| 911 | P2 | 1428 | 0.00 (0.25) | 0.00 (0.25) | 22 | 0/10 | 22 | 0.375 | 9506.8 |
+| 911 | F | 1044 | 0.00 (0.00) | 0.00 (0.00) | 7 | 1/10 | 7 | 0.376 | 2961.8 |
+| 911 | SH | 1069 | 0.00 (0.00) | 0.00 (0.00) | 12 | 1/10 | 12 | 0.732 | 2732.4 |
+| 912 | X | 868 | 0.00 (0.00) | 0.00 (0.00) | 8 | 0/10 | 8 | 0 | 0 |
+| 912 | P0 | 1251 | **0.17** (0.00) | **0.17** (0.00) | 9 | 2/10 | 9 | 0.439 | 8132.3 |
+| 912 | P1 | 868 | 0.00 (0.00) | 0.00 (0.00) | 1 | 0/10 | 1 | 0 | 0 |
+| 912 | P2 | 1338 | 0.08 (0.00) | 0.08 (0.00) | 9 | 1/10 | 9 | 0.314 | 10867 |
+| 912 | F | 913 | 0.00 (0.00) | 0.00 (0.00) | 10 | 0/10 | 10 | 0.539 | 467.9 |
+| 912 | SH | 1054 | 0.00 (0.25) | 0.00 (0.25) | 18 | 0/10 | 18 | 0.553 | 3763.6 |
+| 913 | X | 793 | 0.00 (0.00) | 0.00 (0.00) | 3 | 0/10 | 3 | 0 | 0 |
+| 913 | P0 | 1426 | 0.00 (0.00) | 0.00 (0.00) | 11 | 0/10 | 11 | 0.291 | 9734.2 |
+| 913 | P1 | 1491 | 0.00 (0.17) | 0.00 (0.17) | 13 | 0/10 | 13 | 0.3 | 9107.4 |
+| 913 | P2 | 1286 | **0.25** (0.17) | **0.25** (0.17) | 17 | 3/10 | 17 | 0.365 | 7431.7 |
+| 913 | F | 793 | 0.00 (0.00) | 0.00 (0.00) | 3 | 0/10 | 3 | 0 | 0 |
+| 913 | SH | 793 | 0.00 (0.00) | 0.00 (0.00) | 3 | 0/10 | 3 | 0 | 0 |
+
+Scorer aggregates (S and Sf identical here):
+- readable seeds: **3** (no null arm collapsed; X never collapsed by the N<200 rule)
+- X beats every null on S/Sf: **1** seed (911 only)
+- X beats both F and SH on S/Sf: **1** seed (911 only)
+- mean-ratio (S+1) X vs every null: **rel 0.925** (below the 1.10 GO floor)
+
+Per-seed (S = Sf):
+- 911: X 0.08 | P0 0.00 P1 0.00 P2 0.00 F 0.00 SH 0.00 | **beats all**
+- 912: X 0.00 | P0 0.17 P1 0.00 P2 0.08 F 0.00 SH 0.00 | loses to P0,P1,P2,F,SH (tie with F/SH at 0 is not an outright beat)
+- 913: X 0.00 | P0 0.00 P1 0.00 P2 0.25 F 0.00 SH 0.00 | loses to P0,P1,P2,F,SH (same)
+
+Means over the 3 readable seeds (S late = Sf late): X 0.027 | P0 0.057 | P1 0.000 | P2 0.110 | F 0.000 | SH 0.000.
+
+### Income-only sticky novelty vs the nulls (what the numbers say)
+
+- **vs plain (P0/P1/P2):** X wins only on 911 (0.08 vs 0). On 912 and 913 plain arms beat or match X; P0 on 912 (0.17) and P2 on 913 (0.25) are the highest S of the round. Mean S: plain band above X.
+- **vs flat tax (F):** X ties F at 0 on 912 and 913; outright beats F only on 911 (0.08 > 0). Not 2 readable seeds.
+- **vs random tax (SH):** same pattern — only 911 is an outright beat; 912/913 are 0=0 ties, which do not count as beating.
+
+### Verdict
+
+**NO-GO, TARGETING KILLED.**
+
+X does not beat both information-free twins F and SH on S on at least 2 readable seeds (beats both on only 1 of 3). With perfect information, making the winner pay added no lasting income-bearing novelty beyond the same pressure dealt blind. Class verdict, scoped to the lean core's chemistry at 1.2M ticks: designs whose mechanism is pressure on current winners are not pursued further here unless they also add new opportunity; #289 stands, now measured.
+
+**On this NO-GO, GARDEN is deleted from `lab/oee-core.js` on `cos/gardener`** (retire-or-prove). FLUXALL, NULLSHIFT, and the World.load CHEM_BIG seed-salt fix remain.
