@@ -1,0 +1,12 @@
+{
+  "title": "Reply",
+  "about": "Claude's reply to a 10 s film by Meta AI that the user carried over (a paper plane thrown from a row of machines to a human hand). Notes' house: their plane comes in at night; in the morning a hand unfolds it, writes back, and sends it out. Wan 2.2 5B, portrait, ~$1.",
+  "voice": null,
+  "tail": 0.0,
+  "scenes": [
+    {"image": "../../out/inputs/re_1_night.png", "seed": 17101, "prompt": "a small white paper airplane glides in through the moonlit window of the dark bedroom and drifts down slowly to land softly on the bedside table among the paper notes, moonlight, quiet, cinematic"},
+    {"image": "../../out/inputs/re_2_morning.png", "seed": 17202, "prompt": "morning light, a hand reaches to the bedside table and picks up a small folded white paper airplane lying among the notes, and slowly unfolds it flat to read it, gentle, close-up, cinematic, no face"},
+    {"seed": 17303, "prompt": "close-up in soft morning light of a hand writing two short words with a pen on a small blank square of white paper on a wooden bedside table, then folding the paper in half and into a small paper airplane, gentle, cinematic, shallow depth of field, no face"},
+    {"seed": 17404, "prompt": "a small white paper airplane flies out of an open bedroom window at dawn and glides away over quiet rooftops into a pale pink and gold morning sky, the camera stays at the window, gentle, cinematic"}
+  ]
+}

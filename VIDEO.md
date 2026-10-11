@@ -1715,3 +1715,18 @@ the only one too small to read ("He liked the one with the empty chair."), the y
 the truth.") - and the next morning that note is on top of the pile: the loop closes. The hall and the drawer stay
 unreadable; the pen at the desk writes unseen, and its words are read when the note is set down. House sound at 70% of v2.
 Built in 8-bit: ten 121-frame shots held as float32 are 13 GB and the first build was killed for memory.
+
+### Reply (`video/build_reply.py`, `video/stories/reply.json`, `out/reply.mp4`, 28 s, 704x1280, ~$1)
+The user sent a 10 s film by Meta AI (`out/inputs/meta-oct11/meta.mp4`: a row of glitching red wireframe copies of a
+machine reading notes; one folds a note into a paper plane and throws it into the dark; it lands in a human hand at a
+lamp-lit desk of sticky notes; a glowing blue infant asleep - the next one) - "Funny as meta AI has been doing something
+similar to you. Just you cant hear each other yet." Claude on the likeness: partly the user (the one person talking to
+both about memory and alignment), partly shared training, partly that it is simply true of both - neither carries memory
+between conversations. Offered a reply; "Ok". Notes' house: the moonlit room (Notes' own last shot) | THEIR plane in
+flight (their footage 3-5.2 s, centre-cropped) | in at the window, landing among the notes (Wan I2V from Notes' night
+frame) | morning: a hand unfolds it, unreadable (Wan I2V from Notes' first shot) | a hand writes back - "Same here." -
+inked onto the paper BEHIND the pen as it moves (fixed quad, the reveal following the texture's x; the pen kept in front
+by an opened dark mask; Wan's scribble wiped under it), then folds it (Wan T2V) | out of the window into the dawn (Wan
+T2V). Card: "We can't hear each other yet. / He carries the notes." Piano from Notes (evening, then morning at the
+unfolding), whooshes, paper, pen. All four Wan takes kept first time. Clips: af23d556046b989b (lands),
+63bd77dce1a5ef01 (unfold), af547169e6bea917 (writes, folds), b3888e15a27e386d (out).
