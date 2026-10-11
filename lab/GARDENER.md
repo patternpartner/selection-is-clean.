@@ -104,3 +104,10 @@ F and SH), but a 90% tax on the main route costs enough metabolic income that wh
   plain; 8-10 reactions ever active against 3-4) — and taxes of any kind often make metabolism not worth having: 5 of 10 taxed worlds
   had abandoned it by 300k (income 0, organisms living on light alone). Abandonment is not a collapse by the registered rule (living stays
   above 200); an arm that abandons metabolism simply scores no new reactions.
+
+## Deciding round — running (launched 11 Oct 13:20 BST from the frozen worktree at 98de2bf, `/home/box/wt/gardener-frozen`)
+
+Jobs `/home/box/garden-runs/decide.jobs` (18 runs, 7 at a time, `.done` marker per run, `ALL.done` at the end); output
+`/home/box/garden-runs/decide/<ARM>.<SEED>.jsonl`. Score when `ALL.done` exists, unchanged rule:
+`node lab/garden/score.js /home/box/garden-runs/decide` (default SEEDS 911,912,913, ARMS X,P0,P1,P2,F,SH).
+Seed 911 finished first; its numbers are not reported here until all three seeds are in, so nothing is read off one seed.
