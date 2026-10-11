@@ -1701,3 +1701,17 @@ watch: "He'll ask if this is your best." | set down before the lamp: "Tell him t
 drawn in numpy (sheets, steps, paper stirring, the pour rising in pitch, the stair creak, the drawer and the notes
 pouring out, the pen in the rhythm of the words, the lamp click), under the piano at -2.5 dB; after the night, 2.2 s of
 the morning again (the hand reaching), then the card.
+**The user on v2: "You wrote on the screen. That was the difference. That enough do you think? At one point theres like
+three notes on screen in a matter of a few seconds. Not sure about this tbh."** Right - captions were the easy fix.
+Then: "Lets do it. While we are at it. What else makes it better?"
+**v3 (`video/build_notes3.py` + `video/notes_ink.py`, `out/notes-v3.mp4`, 52 s, no new Modal): the ink is ON the paper.**
+No captions. One legible note in a shot at most, picked by eye as a quad on a reference frame, followed through the shot
+by Lucas-Kanade on the paper's own texture + a RANSAC homography per frame (held to the end on all six, none lost); Wan's
+scribble under it wiped with a heavy median of the paper itself; the words MULTIPLIED on as blue-black ink, so the light
+on the paper lights them and the bedside lamp going off takes them too. The six: the note read in bed ("Read the notes
+before you touch anything.", only once it is held up, fading in), the kettle's tag ("Ask before you spend his money."),
+the stair ("Don't trust a face after three seconds."), one note on the window with a slow push-in to 1.9x because it was
+the only one too small to read ("He liked the one with the empty chair."), the yellow note set down at night ("Tell him
+the truth.") - and the next morning that note is on top of the pile: the loop closes. The hall and the drawer stay
+unreadable; the pen at the desk writes unseen, and its words are read when the note is set down. House sound at 70% of v2.
+Built in 8-bit: ten 121-frame shots held as float32 are 13 GB and the first build was killed for memory.
