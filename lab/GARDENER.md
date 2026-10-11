@@ -110,4 +110,7 @@ F and SH), but a 90% tax on the main route costs enough metabolic income that wh
 Jobs `/home/box/garden-runs/decide.jobs` (18 runs, 7 at a time, `.done` marker per run, `ALL.done` at the end); output
 `/home/box/garden-runs/decide/<ARM>.<SEED>.jsonl`. Score when `ALL.done` exists, unchanged rule:
 `node lab/garden/score.js /home/box/garden-runs/decide` (default SEEDS 911,912,913, ARMS X,P0,P1,P2,F,SH).
-Seed 911 finished first; its numbers are not reported here until all three seeds are in, so nothing is read off one seed.
+Seed 911 finished first and I scored it once, with the committed scorer and nothing changed after: X S 0.08 against 0.00 for all five nulls
+(Sf the same); X held 19 reactions ever active against 7-22, commonest route 0.19 against 0.37-0.73, metabolic income 4,565 against 6,887-10,201
+plain and 2,732-2,962 for F/SH. Thin (one sticky new reaction in the late third), and the mean-ratio clause needs 1.10 where 911 alone gives 1.08.
+One seed decides nothing; the verdict waits for 912 and 913.
