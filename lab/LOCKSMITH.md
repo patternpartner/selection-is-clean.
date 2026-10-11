@@ -108,9 +108,20 @@ Full printout `lab/locksmith/trial/PICK.txt` (pick.js, unchanged). S late (Sf th
   BN = P0 exactly. In the deciding round BN is therefore a duplicate of P0, not a separate blind null; the rule stands as written
   (it only makes "beat every null" no harder than "beat the plain band"), and BP is the one real targeting control.
 
-## Deciding round — running (launched 11 Oct 15:04 BST by chain.sh from the frozen worktree at ec50027, `/home/box/wt/locksmith-frozen`)
+## Deciding round (seeds 7311–7313, 1,200,000 ticks, R_EVERY 20,000) — finished 11 Oct ~18:00 BST
 
-Jobs `/home/box/locksmith-runs/decide.jobs` (copied to `lab/locksmith/decide.jobs`), 18 runs, 9 at a time, `.done` per run; output
-`/home/box/locksmith-runs/decide/<ARM>.<SEED>.jsonl`; chain.sh writes `/home/box/locksmith-runs/SCORE.txt` (score.js, unchanged) when
-`decide/ALL.done` exists. If the chain is reaped: rerun `bash lab/locksmith/chain.sh /home/box/locksmith-runs` from the frozen
-worktree — finished runs are skipped. Then apply the verdict above; on any NO-GO delete REACH from `lab/oee-core.js` on this branch.
+Full printout `lab/locksmith/SCORE.txt` (score.js, unchanged). Readable 3 (no null collapse).
+
+| seed | X S | P0 | P1 | P2 | BP | BN | note |
+|---|---|---|---|---|---|---|---|
+| 7311 | 0.00 | 0.08 | 0.08 | 0.00 | 0.00 | 0.08 | loses/ties every null |
+| 7312 | 0.00 | 0.00 | 0.00 | 0.17 | 0.08 | 0.00 | loses/ties every null |
+| 7313 | 0.17 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | beats all |
+
+Sf matches S on every seed. Means: X 0.056, P0/P1/BP/BN 0.028, P2 0.056. Blind arms beat the plain band on 0 seeds.
+BN again matched P0 exactly on every seed (exits on never-present species).
+
+**VERDICT: NO-GO, REACH KILLED.** X beats the plain band (P0, P1, P2) on S on only 1 readable seed (need 2). Per the
+pre-reg: REACH is deleted from `lab/oee-core.js` on this branch. FLUXALL, NULLSHIFT, the CHEM_BIG load-salt fix, the scorer
+and these results stay. Together with the GARDENER: neither punishing the winner nor unlocking idle chemistry moves S in
+the lean core at 1.2M ticks; the next bet belongs upstream (discovery / mutational supply, or the metric's horizon).
