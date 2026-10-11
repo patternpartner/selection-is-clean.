@@ -10684,20 +10684,9 @@ function cloneProg(p){
 // mutation operator here draws them). The K=6 tokens before a position are embedded (16 numbers each), passed through
 // one tanh layer of 64 units and read out by an operation head and a register head; plain SGD every 50 ticks on 100
 // random positions of the last 1,024 parents. Not saved with the universe: a reload starts a newborn mind.
-// cos/wild-mind-3 (lab/WILD-MIND-3.md), off unless MIND_MODE=6 (#mindmode=earner) or 7 (#mindmode=esham): an EXPLORER AND
-// AN EARNER-JUDGE. The explorer drafts CAND uniformly random edits (position, operation, registers) for a child it writes;
-// the judge, a logistic model over whole programs (each instruction, adjacent pairs, instruction by quarter, instruction by
-// registers), installs the ONE draft whose child program it predicts most likely to be INCOME-BEARING NOVELTY: a program
-// this world has never carried, whose creature then takes from the world, over its first LAG ticks of life, at least the
-// population's running intake per creature-tick (INCOME above; intake, not offspring). It learns only from this world:
-// every parented birth is a record (the child's program, whether it is new; a mark moves with the creature through compact),
-// each census reads the living creatures' lifetime intake, and LAG ticks after birth the record is labelled and scored
-// before one gradient step (prequential). ESHAM is the same machinery trained on labels drawn at the true labels' running
-// rate from its own stream: as many positives, no information. One edit per written child at the same rate as every
-// mind, so supply is matched to UNIFORM. Draws only from the mind's own stream. Turns INCOME on (it reads it).
 function __mindRng(a){ const f=function(){ f.s|=0; f.s=f.s+0x6D2B79F5|0; let t=Math.imul(f.s^f.s>>>15,1|f.s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; f.s=a|0; return f; }
 class EngineMind{
-  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform',null,null,null,'earner','esham'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
+  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
     this.K=6; this.D=16; this.H=64; this.LR=0.05; this.BUF=1024; this.EVERY=50; this.STEPS=100; this.V=this.NOPS+this.NREG+1; this.BOS=this.V-1;
     this.rnd=__mindRng(((o.seed>>>0)||1)^0x6d696e64);
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,sc)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*sc; return a; };
@@ -10708,28 +10697,7 @@ class EngineMind{
     // WHAT IT IS DOING, for the readout: children born [ordinary, written by the mind], the children those two kinds of
     // creature went on to have, and which operations it writes. A mind whose children have fewer children than ordinary
     // ones is costing its world; more, and it is helping. Kept across saves.
-    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS);
-    if(this.MODE==='earner'||this.MODE==='esham'){ this.CAND=8; this.LAG=1000; this.CENSUS=125; this.CLR=0.02; this.NF=4096;
-      this.cw=new Float32Array(this.NF); this.cb=0; this.edits=new Map(); this.nextEdit=1; this.last=null;
-      this.seenK=new Set(); this.nNov=0; this.nRec=0; this.popRate=0; this.lastTot=-1;
-      this.lab=[0,0]; this.rate=0; this.llK=0; this.llB=0; this.llN=0; this.sP=0; this.nP=0; this.sN=0; this.nN=0; } }
-  score(f){ let z=this.cb; for(const k of f)z+=this.cw[k]; return z; }
-  // the features of a whole program (each instruction, each adjacent pair, each instruction by quarter)
-  pfeats(t){ const n=t.length, f=[], H=(a,b,c)=>{ let h=Math.imul(a+7,0x9E3779B1)^Math.imul(b+13,0x85EBCA77)^Math.imul(c+29,0xC2B2AE3D); h^=h>>>15; h=Math.imul(h,0x27D4EB2F); h^=h>>>13; return (h>>>0)%this.NF; };
-    for(let i=0;i<n;i++){ const op=t[i][0]; f.push(H(11,op,0),H(12,op,i+1<n?t[i+1][0]:-2),H(13,(4*i/n)|0,op),H(14,op,t[i][1])); } return f; }
-  // an edit LAG ticks old gets its label; the judge is scored on it before it learns from it (prequential), then steps
-  settle(e,held){ const y=held?1:0; this.lab[y]++; const nl=this.lab[0]+this.lab[1]; this.rate+=(y-this.rate)/Math.min(nl,500);
-    const p=1/(1+Math.exp(-this.score(e.f))), pb=Math.min(1-1e-6,Math.max(1e-6,this.rate)), q=Math.min(1-1e-6,Math.max(1e-6,p));
-    this.llK-=y?Math.log(q):Math.log(1-q); this.llB-=y?Math.log(pb):Math.log(1-pb); this.llN++; if(y){ this.sP+=p; this.nP++; } else { this.sN+=p; this.nN++; }
-    const t=this.MODE==='esham'?(this.rnd()<this.rate?1:0):y, g=p-t; this.cb-=this.CLR*g; for(const k of e.f)this.cw[k]-=this.CLR*g; }
-  // a program's key: its operation sequence, what harness-sweep's program layer and INCOME's engine.flux key on
-  pkey(prog){ let ps=''; for(const r of prog)ps+=(r?(r[0]|0):-1)+'.'; return ps; }
-  // every CENSUS ticks: the living records' lifetime intake; the population's intake per creature-tick; settle records LAG old
-  // live: [record id, lifetime intake, program] per living creature; tot: the world's total intake so far; n: the living count
-  census(now,live,tot,n){ for(const [id,inc,prog] of live){ const e=this.edits.get(id); if(e){ e.inc=inc; e.seen=now; } if(Array.isArray(prog))this.seenK.add(this.pkey(prog)); }
-    if(this.lastTot>=0&&n>0){ const r=(tot-this.lastTot)/(n*this.CENSUS); this.popRate=this.popRate>0?0.9*this.popRate+0.1*r:r; } this.lastTot=tot;
-    for(const [id,e] of this.edits) if(now-e.at>=this.LAG){ const life=Math.min(this.LAG,e.seen-e.at), rate=life>0?e.inc/life:0;
-      this.settle(e,e.nov&&this.popRate>0&&rate>=this.popRate); this.edits.delete(id); } }
+    this.born=[0,0]; this.kids=[0,0]; this.wroteOp=new Int32Array(this.NOPS); }
   // an instruction as [operation token, register token]; an operation it cannot write (a migrant's, past OPCODE_DRAW) is -1
   tok(ins){ const op=ins[0]|0, d=((ins[1]|0)%12+12)%12, s=((ins[2]|0)%12+12)%12; return [op>=0&&op<this.NOPS?op:-1, d*12+s]; }
   // the K tokens before token position j of a tokenised program, padded with BOS (which also stands in for a -1)
@@ -10761,13 +10729,8 @@ class EngineMind{
   propose(prog){ if(!(this.P>0)||!Array.isArray(prog)||!prog.length||this.rnd()>=this.P)return false; this.uses++;
     const t=prog.map(x=>this.tok(x||[0,0,0,0])), i=(this.rnd()*prog.length)|0, o0=t[i][0], r0=t[i][1]; let op=o0, rg=r0;
     for(let k=0;k<16&&op===o0&&rg===r0;k++){
-      if(this.MODE==='earner'||this.MODE==='esham'){ break; }
       if(this.MODE==='uniform'){ op=(this.rnd()*this.NOPS)|0; rg=(this.rnd()*this.NREG)|0; }
       else { this.forward(this.ctx(t,2*i),false); op=this.sample(false); this.forward(this.ctx(t,2*i,op),true); rg=this.sample(true); } }
-    if(this.cw){ let best=-Infinity, bf=null, bi=0;   // explorer and judge: CAND uniform drafts, the best-scored one is installed
-      for(let c=0;c<this.CAND;c++){ const ci=(this.rnd()*prog.length)|0; let co=(this.rnd()*this.NOPS)|0, cr=(this.rnd()*this.NREG)|0;
-        if(co===t[ci][0]&&cr===t[ci][1])cr=(cr+1)%this.NREG; const u=t.slice(); u[ci]=[co,cr]; const f=this.pfeats(u), z=this.score(f); if(z>best){ best=z; bf=f; bi=ci; op=co; rg=cr; } }
-      prog[bi]=[op,(rg/12)|0,rg%12,+((prog[bi]||[0,0,0,0])[3])||0]; this.wroteOp[op]++; this.last={i:bi,op,rg,f:bf}; fired('mind.propose'); return true; }
     if(op===o0&&rg===r0)rg=(rg+1+((this.rnd()*(this.NREG-1))|0))%this.NREG;
     if(op<0)op=(this.rnd()*this.NOPS)|0;
     prog[i]=[op,(rg/12)|0,rg%12,+((prog[i]||[0,0,0,0])[3])||0]; this.wroteOp[op]++; fired('mind.propose'); return true; }
@@ -10777,11 +10740,7 @@ class EngineMind{
   report(){ const sc=this.success();
     return {mode:this.MODE,p:this.P,uses:this.uses,seen:this.seen,trained:this.nTrain,lossOp:+this.lossO.toFixed(3),lossReg:+this.lossR.toFixed(3),
     uniformOp:+Math.log(this.NOPS).toFixed(3),uniformReg:+Math.log(this.NREG).toFixed(3),buf:this.buf.length,
-    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),
-    ...(this.cw?{earner:{labelled:this.lab[0]+this.lab[1],pos:this.lab[1],posRate:(this.lab[0]+this.lab[1])?+(this.lab[1]/(this.lab[0]+this.lab[1])).toFixed(4):null,pending:this.edits.size,
-      novRate:this.nRec?+(this.nNov/this.nRec).toFixed(4):null,popRate:+this.popRate.toFixed(5),
-      logLoss:this.llN?+(this.llK/this.llN).toFixed(4):null,baseLogLoss:this.llN?+(this.llB/this.llN).toFixed(4):null,
-      predPos:this.nP?+(this.sP/this.nP).toFixed(4):null,predNeg:this.nN?+(this.sN/this.nN).toFixed(4):null}}:{}),topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
+    born:this.born.slice(),kids:this.kids.slice(),success:sc===null?null:+sc.toFixed(3),topOps:this.topOps(5),restored:!!this.restored,savedAt:this.savedAt||0}; }
   // SAVED WITH THE UNIVERSE (the user: "if we save the field we should also save the mind at the same time. No resets").
   // Everything it has learned (every weight, quantised to 8 bits per weight with one scale per array: about 70 KB, so
   // eighteen of them fit beside the field's genomes in one origin's storage), its counters and its random stream. Not
@@ -10807,7 +10766,7 @@ function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis
   const h=(typeof location!=='undefined'&&location.hash)||''; const m=h.match(/(^|[#,])mind(=(\d+))?(,|$)/); if(m&&!p)p=m[3]?parseInt(m[3],10):20;
   const node=(typeof process!=='undefined')&&!!(process.versions&&process.versions.node);   // a rig, not a page
   if(/(^|[#,])nomind(,|$)/.test(h)||g.__MIND===0||(m&&m[3]==='0'))p=0; else if(!m&&g.__MIND===undefined&&!node)p=20;   // the browser default
-  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform|earner|esham)(,|$)/); if(mm&&!mode)mode=({frozen:1,uniform:2,earner:6,esham:7})[mm[2]];
+  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform)(,|$)/); if(mm&&!mode)mode=mm[2]==='frozen'?1:2;
   return p>0?{P:Math.min(100,p)/100,mode,seed:seed||(((Math.random()*4294967296)>>>0)||1)}:null; }catch(_){ return null; } }
 function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false;
     if(__mindLatch){ let sv=null; try{ sv=localStorage.getItem('selection_mind'); }catch(_){}   // this universe's own mind, saved beside its genome
@@ -10823,42 +10782,11 @@ function mindHud(){ const M=__mind; if(!M)return ''; const sc=M.success();
   return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+')')+': learned from '+M.seen+' · wrote '+M.uses+' children'+
     (M.MODE==='learn'&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
     (sc===null?'':' · its children have '+sc.toFixed(2)+'x the children of ordinary ones'); }
-// === cos/wild-mind-3 INCOME (lab/WILD-MIND-3.md): what each creature takes from the world, and which of its own instructions ran.
-// Off unless INCOME=1 (harness-env KNOBS); off, every site below computes exactly what it did (the helper is not called).
-// INCOME here is GROSS INTAKE FROM THE WORLD at the nine sites where a creature's energy (amp) rises because of what it did or
-// where it is: predation take, detritus, local resources, the field, niche harvest (and its pioneer and Allee shares), the
-// niche food web's predator gain, and an aim's pay. NOT income: energy handed over a bond (counted apart, as transfer.in),
-// the engineered bonuses (negative-frequency, genotype-frequency and novelty pay), observer and ghost boosts, and numerical
-// corrections. No instruction in this engine pays energy itself (the VM's cases only spend it): instructions move and steer
-// the creature and the world pays where it is. So income is attributable to a CREATURE and a TICK, and execution to a
-// creature and an instruction SLOT; joining them is association (the income of creatures that ran that instruction), not cause.
-const __INC=(typeof globalThis!=='undefined')&&(((globalThis.__INCOME|0)===1)||((globalThis.__MIND_MODE|0)===6)||((globalThis.__MIND_MODE|0)===7)||
-  (typeof location!=='undefined'&&/(^|[#,])(income|mindmode=(earner|esham))(,|$)/.test(location.hash||'')));   // the earner reads it, so it turns it on
-const INC_SRC=['predation','detritus','resource','field','niche','niche.pioneer','niche.allee','niche.predgain','aim','transfer.in'];
-const pInc=new Float64Array(CAP), pIncW=new Float64Array(CAP), pExLo=new Uint32Array(CAP), pExHi=new Uint32Array(CAP), incSrc=new Float64Array(INC_SRC.length);
-function __inc(i,s,x){ if(x>0){ if(s<9){ pInc[i]+=x; pIncW[i]+=x; } incSrc[s]+=x; } return x; }   // returns x: the site adds exactly what it always added
-function __exec(i,ip){ if(ip<32)pExLo[i]|=1<<ip; else if(ip<64)pExHi[i]|=1<<(ip-32); }   // slots 0..63 of the running program that have executed since birth
-// the harness's window read: each living creature's intake since the last read, its executed slots and its program's operations; resets the window
-function incTake(idx){ const o=[]; for(const i of idx){ const p=pProg[i]; o.push([pIncW[i],pExLo[i]>>>0,pExHi[i]>>>0,Array.isArray(p)?p.map(r=>r?(r[0]|0):-1):[]]); pIncW[i]=0; } return {rows:o,src:Object.fromEntries(INC_SRC.map((n,k)=>[n,+incSrc[k].toFixed(4)]))}; }
-// cos/wild-mind-3 NOSEL_PROG=1 (lab/WILD-MIND-3.md): the PROGRAM-FECUNDITY-BLIND TWIN. A parented child's program is copied (with the
-// ordinary birth mutation, inheritProg) from a uniformly random living creature instead of from its parent; everything else is
-// inherited as before. So who reproduces no longer decides which programs are copied. Viability is NOT removed: a creature whose
-// program fails still dies sooner. The pick draws from its own stream; inheritProg draws Math.random as any birth does.
-const __NOSELP=(typeof globalThis!=='undefined')&&((globalThis.__NOSEL_PROG|0)===1); const __noselRnd=__mindRng(0x6e6f73);
-function noselProg(i){ let n=0; for(let p=0;p<N;p++) if(palive[p]&&p!==i)n++; if(!n)return; let k=(__noselRnd()*n)|0, r=-1;
-  for(let p=0;p<N;p++){ if(!palive[p]||p===i)continue; if(k--===0){ r=p; break; } }
-  if(r<0||!Array.isArray(pProg[r])||!pProg[r].length)return; pGenome[i].vmProgram=inheritProg(pProg[r],pGenome[i].vmMaxInstructions||16); pProg[i]=pGenome[i].vmProgram; }
-const pMindE=new Int32Array(CAP);   // cos/wild-mind-3: the judge's record of this creature (0 none). Moves with it in compact
 const pMindW=new Uint8Array(CAP);   // 2: born carrying an instruction the mind wrote; 1: born ordinary while the mind watched; 0: a founder (not compared). Moves with it in compact
 function mindReport(){ const M=mindOn(); return M?M.report():{mode:'off'}; }
 // the birth hook, called from both reproduction chokepoints (addParticle and addCompound) after the child's program is made
-function mindBirth(i,parentA){ const M=mindOn(); if(!M)return; M.see(pProg[parentA]);
-  const w=M.propose(pGenome[i].vmProgram)?1:0;
-  M.born[w]++; const f=pMindW[parentA]; if(f)M.kids[f-1]++; pMindW[i]=w?2:1;
-  if(M.cw){   // every parented birth is a record: the child's whole program, whether this world has carried it before, its intake by LAG
-    const ch=pGenome[i].vmProgram;
-    if(Array.isArray(ch)&&ch.length){ const key=M.pkey(ch), nov=!M.seenK.has(key); M.seenK.add(key); M.nRec++; if(nov)M.nNov++;
-      const id=M.nextEdit++; M.edits.set(id,{f:M.pfeats(ch.map(x=>M.tok(x||[0,0,0,0]))),at:tick,nov,inc:0,seen:tick}); pMindE[i]=id; } else pMindE[i]=0; } }   // only parents born under the mind are compared
+function mindBirth(i,parentA){ const M=mindOn(); if(!M)return; M.see(pProg[parentA]); const w=M.propose(pGenome[i].vmProgram)?1:0;
+  M.born[w]++; const f=pMindW[parentA]; if(f)M.kids[f-1]++; pMindW[i]=w?2:1; }   // only parents born under the mind are compared
 function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child = copy of parent's program + birth mutation (rate from the self's genes)
   const p=cloneProg((Array.isArray(parentProg)&&parentProg.length)?parentProg:genome.vmProgram);
   const rate=genome.mutationRate||0.06,scale=genome.mutationScale||1,cap=inheritedCap||(genome.vmMaxInstructions||16);
@@ -21594,9 +21522,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
-  if(__NOSELP&&parentA>=0&&parentA<N)noselProg(i);   // cos/wild-mind-3: the twin
-  if(__INC){ pInc[i]=0; pIncW[i]=0; pExLo[i]=0; pExHi[i]=0; }   // cos/wild-mind-3
-  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else { pMindW[i]=0; pMindE[i]=0; } }   // #296: the mind sees the parent and may write one instruction of the child
+  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
@@ -21699,9 +21625,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   }
   pGenome[i]=mutateChildGenome(_bg);}
   pProg[i]=pGenome[i].vmProgram;
-  if(__NOSELP&&parentA>=0&&parentA<N)noselProg(i);   // cos/wild-mind-3: the twin
-  if(__INC){ pInc[i]=0; pIncW[i]=0; pExLo[i]=0; pExHi[i]=0; }   // cos/wild-mind-3
-  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else { pMindW[i]=0; pMindE[i]=0; } }   // #296: the mind sees the parent and may write one instruction of the child
+  if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
   if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
@@ -21811,7 +21735,7 @@ function applyEntropy(){
             // fallback for a particle whose genome predates this gene's existence.
             const _pr=finiteOr(pGenome[i]&&pGenome[i].predateRate,PREDATE_RATE);
             const take=amp[j]*_pr*0.5;
-            if(take>0){ amp[j]-=take; amp[i]+=__INC?__inc(i,0,take*0.7):take*0.7; } // 30% lost to the transfer — predation is not free
+            if(take>0){ amp[j]-=take; amp[i]+=take*0.7; } // 30% lost to the transfer — predation is not free
           }
         }
       }
@@ -21843,7 +21767,7 @@ function applyEntropy(){
        const _dt=detritalField[_di];
        if(_dt>0.02&&DIMS>DETRITUS_TRAIT_DIM){
          const _fit=1-Math.min(1,Math.abs(tend[i*DIMS+DETRITUS_TRAIT_DIM]-0.8)); // decomposer register
-         if(_fit>0.15){ const _take=Math.min(_dt,_fit*DETRITUS_YIELD); detritalField[_di]-=_take; amp[i]+=__INC?__inc(i,1,_take*0.85):_take*0.85; }
+         if(_fit>0.15){ const _take=Math.min(_dt,_fit*DETRITUS_YIELD); detritalField[_di]-=_take; amp[i]+=_take*0.85; }
        }}
       amp[i]-=densityCost;
       // LEAP 9 (#52) — carried machinery is billed at the same economy instructions already pay. The
@@ -21866,7 +21790,7 @@ function applyEntropy(){
        const _ua=genome.userAtoms;
        if(_ua&&_ua.length){ let _dead=0; for(let _q=0;_q<_ua.length;_q++) if(!((_ua[_q].uses|0)>0))_dead++;
          if(_dead>0)amp[i]-=_dead*CARRY_COST_ATOM; }}
-      amp[i]+=__INC?__inc(i,2,localRes[i]*genome.entropyK):localRes[i]*genome.entropyK;
+      amp[i]+=localRes[i]*genome.entropyK;
       {const _txi=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1),_tyi=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1),_tox=inhibitorField[_tyi*FIELD_W+_txi];if(_tox>0.05){const _dmg=_tox*Math.max(0,1-pResistance[i])*0.018/MODE_DEFENCE[pMode[i]];amp[i]-=_dmg;}pResistance[i]*=0.997;} // INHIBITOR DAMAGE + RESISTANCE DECAY: inhibitor deals up to 1.8% amp/tick at zero resistance; resistance decays 0.3%/tick — must be actively maintained via RESISTANCE_BOOST (op215)
       { const _ea=SUN_ON?pAdq[i]:energyAdequacy; if(_ea<1)amp[i]-=(1-_ea)*STARVE_DRAIN; } // #272: per particle under SUN. starvation: the world couldn't feed everyone this tick
       if(REPL_ON&&pAdq[i]<0.5)amp[i]=-1e6;   // #278b: a replicator that cannot pay half its upkeep starves to death. Without this a dry store only drained amp, which interactions top up, so starving particles cost no energy, never died, and a world without predators grew to 1,700 on sunlight for about 500
@@ -24958,7 +24882,7 @@ function executeVM(i,j,sim,d){
     const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
     const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
 
-    if(__INC)__exec(i,ip); ip=vmStep(op,src,dst,k,si,di,i,j,ip);   // #231: one dispatch for all four machines
+    ip=vmStep(op,src,dst,k,si,di,i,j,ip);   // #231: one dispatch for all four machines
   }
 
   const bond=sim*phaseAlign*proximity;
@@ -25118,7 +25042,7 @@ function executeVM(i,j,sim,d){
 
   const atrans=vmActions[2]*influence*0.5;
   if(Math.abs(atrans)>0.000001){
-    amp[i]-=atrans;amp[j]+=__INC?__inc(j,9,atrans):atrans;
+    amp[i]-=atrans;amp[j]+=atrans;
   }
 
   const tbleed=vmActions[3]*influence;
@@ -25307,7 +25231,7 @@ function executeClusterVM(i,j,sim,d){
 
   const atrans=vmActions[2]*influence*0.5;
   if(Math.abs(atrans)>0.000001){
-    amp[i]-=atrans;amp[j]+=__INC?__inc(j,9,atrans):atrans;
+    amp[i]-=atrans;amp[j]+=atrans;
   }
 
   const tbleed=vmActions[3]*influence;
@@ -25659,7 +25583,7 @@ function updateParticles(){
     const localField=field[lfIdx];
     const affinity=fieldAffinity(lfIdx,getParticleSig(i));
     localRes[i]+=localField*(pGenome[i]?pGenome[i].fieldInfluence:genome.fieldInfluence)*affinity; // per-lineage field coupling: each lineage's evolved fieldInfluence now governs its own resource harvest
-    amp[i]+=__INC?__inc(i,3,localField*0.0008*affinity):localField*0.0008*affinity;
+    amp[i]+=localField*0.0008*affinity;
     // LEAP 8 (#52) — the trait wall is a toll booth. Beyond TEND_SOFT a particle keeps drifting but pays
     // amplitude for the distance, so genuinely new niche territory is reachable at a price instead of
     // being unreachable at any price. This is the bound swing #11 identified as the real ceiling.
@@ -25752,7 +25676,7 @@ function executeSoloVM(){
       const inst=prog[ip];if(!inst)continue;
       const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
       const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
-      if(__INC)__exec(i,ip); ip=vmStep(op,src,dst,k,si,di,i,-1,ip);   // #231: j=-1, no partner
+      ip=vmStep(op,src,dst,k,si,di,i,-1,ip);   // #231: j=-1, no partner
     }
 
     for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=vmRegs[4+m];
@@ -26082,7 +26006,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pMindE[w]=pMindE[r];if(__INC){pInc[w]=pInc[r];pIncW[w]=pIncW[r];pExLo[w]=pExLo[r];pExHi[w]=pExHi[r];}pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -26849,17 +26773,17 @@ function applyNicheEconomy(){ fired('niche.economy');
     // harvest: occupants of a cell split its take equally (each cell its own carrying capacity); REAL income; cross-feed to an offset cell
     const LOCAL=(typeof globalThis!=='undefined'&&((globalThis.__NICHE_LOCAL|0)===1&&!__mechOff.NICHE_LOCAL)); // swing #14: per-cell crowding cost
     for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], occ=nicheCellOcc[c]; if(occ<=0)continue;
-      const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=__INC?__inc(i,4,NICHE_GAIN_REAL*got):NICHE_GAIN_REAL*got;
+      const got=nicheCellRes[c]*NICHE_HARVEST/occ; amp[i]+=NICHE_GAIN_REAL*got;
       if(__COLO.pioneer){
         // SWING #20 knob C (colonization): a GROWTH term, orthogonal to knob S's death relief. Two self-limiting
         // parts, both pointed at the 244 empty cells so a rare pioneer's per-capita growth goes positive:
         //  • pioneer income — while a cell is still under-occupied the first arrivals harvest its accrued stock
         //    at a bonus rate (got already scales with the stock an empty cell built up). Ends once the cell fills
         //    past pioneerOcc → reduced competition for first arrivals, not a permanent subsidy.
-        if(occ<=__COLO.pioneerOcc) amp[i]+=__INC?__inc(i,5,NICHE_GAIN_REAL*got*__COLO.pioneerK):NICHE_GAIN_REAL*got*__COLO.pioneerK;
+        if(occ<=__COLO.pioneerOcc) amp[i]+=NICHE_GAIN_REAL*got*__COLO.pioneerK;
         //  • Allee relief — a sub-minsize minted lineage gets a per-capita income uplift so rarity itself isn't
         //    penalised; fades to zero as the founder reaches viable size. (linSize is refreshed each cadence.)
-        if(__SPEC.on){ const _ls=linSize.get(pLin[i])||0; if(_ls>0&&_ls<__SPEC.minsize) amp[i]+=__INC?__inc(i,6,NICHE_GAIN_REAL*got*__COLO.alleeK):NICHE_GAIN_REAL*got*__COLO.alleeK; }
+        if(__SPEC.on){ const _ls=linSize.get(pLin[i])||0; if(_ls>0&&_ls<__SPEC.minsize) amp[i]+=NICHE_GAIN_REAL*got*__COLO.alleeK; }
       }
       if(LOCAL&&occ>NICHE_CELL_FLOOR) amp[i]-=NICHE_LOCAL_COST*(occ-NICHE_CELL_FLOOR); // local carrying capacity: crowding your own niche hurts
       nicheCellCross[(c+NICHE_ND_OFFSET)%NICHE_ND_CELLS]+=got*NICHE_CROSSFEED; }
@@ -26874,7 +26798,7 @@ function applyNicheEconomy(){ fired('niche.economy');
           const pm=nicheCellBio[c], rm=nicheCellBio[preyC]; if(pm<=0||rm<=0)continue;
           const transfer=Math.min(rm*RQ_MAXFRAC, pm*(genome.rqRate??RQ_RATE));    // conserved: predators gain exactly what prey lose; rate evolvable (#35)
           nicheCellPredGain[c]+=transfer/pm; nicheCellPreyLoss[preyC]+=transfer/rm; }
-        for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=__INC?__inc(i,7,a*(nicheCellPredGain[c]-nicheCellPreyLoss[c])):a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
+        for(let i=0;i<N;i++){ if(!palive[i])continue; const c=pDietCell[i], a=amp[i]>0?amp[i]:0; if(a>0) amp[i]+=a*(nicheCellPredGain[c]-nicheCellPreyLoss[c]); }
       }
     }
     // #249f: SWING #32 mutualism deleted - BETTER against one control in #249, beat every null on 0 of 3 seeds in #249b.
@@ -26942,7 +26866,7 @@ function applyNicheEconomy(){ fired('niche.economy');
         const _pay=_sat*2/(1+_tol);   // #218k: precision is priced — wide aims pay less at the peak
         // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
-        amp[i]+=__INC?__inc(i,8,_w*(_pay*_mv-AIM_TAX)):_w*(_pay*_mv-AIM_TAX);   // #228: a still sense pays nothing; the tax stands
+        amp[i]+=_w*(_pay*_mv-AIM_TAX);   // #228: a still sense pays nothing; the tax stands
         fired('aim.pull');
         }
       }
@@ -27029,8 +26953,7 @@ function loop(){
   const frameStart=lastLoopTime;
   tick++;
   genome.totalTicks++;
-  if(__mindLatch!==false){ const _M=mindOn(); if(_M&&tick%_M.EVERY===0)_M.train();
-    if(_M&&_M.cw&&tick%_M.CENSUS===0){ const lv=[]; let n=0; for(let p=0;p<N;p++){ if(!palive[p])continue; n++; lv.push([pMindE[p],pInc[p],pProg[p]]); } let tot=0; for(let k=0;k<9;k++)tot+=incSrc[k]; _M.census(tick,lv,tot,n); } }   // cos/wild-mind-3: the judge's outcomes   // #296: the mind learns from the parents it has seen
+  if(__mindLatch!==false){ const _M=mindOn(); if(_M&&tick%_M.EVERY===0)_M.train(); }   // #296: the mind learns from the parents it has seen
   updateWorldSignal();   // #136: read the real world before deciding what the sunlight is
   // #183: the world's own legislature. One proposal on probation at a time; the population is the
   // fitness function, because the population is the only thing at this level that can die. Called

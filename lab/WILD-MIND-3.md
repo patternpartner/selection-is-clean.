@@ -96,3 +96,40 @@ The judge learns past the sham on both replicates (log loss under base and under
 not a decision: the positive rate of EARNER's records (0.151) is not above ESHAM's (0.149) - learning has not yet shown up
 as more income-bearing novel children; the deciding round says whether it shows in S. Deciding round launched 21:18 BST
 from /home/box/wt/wild-mind-3-frozen (bc8d2bb), seeds 3541-3543, PAR=4, output /home/box/wild-runs/decide3, SCORE.txt + ALL-DONE.
+
+## Deciding round result (seeds 3541-3543, 2026-10-11 07:42 BST, scored by lab/wild/score3.js from frozen bc8d2bb)
+
+```
+3541: earner LEARNED (log loss 0.430 v base 0.451 v esham 0.492, pos-minus-neg score 0.122 v esham 0.026) | positive rate EARNER 0.171 ESHAM 0.170 | novel-child rate EARNER 0.330
+   EARNER  S [3.667,2.833,3.167,3.6,2.667,2] mean 2.989 | alive 390,398,364,363,406,384 | real prog/1k 5.5,4.25,3.625,5,3.625,4.25
+   TWIN    S [2,0.5,1,1.667,1.667,0.167] mean 1.167 | alive 408,324,383,369,395,614 | real prog/1k 5.125,2.625,3.25,4,4.625,4.25
+   ESHAM   S [3.167,2.167,3.5,3.333,3.5,2.833] mean 3.083 | alive 392,386,328,625,357,321 | real prog/1k 5.625,3.125,3.875,3.75,5.625,3
+   UNIFORM S [3.333,2.833,2.5,3.667,2.667,1.5] mean 2.750 | alive 389,490,312,399,393,416 | real prog/1k 5,4.625,3.25,4.75,2.625,3.25
+   LEARN   S [2,2.833,3.333,3.167,3.167,2.833] mean 2.889 | alive 652,413,375,344,384,392 | real prog/1k 4.25,3.625,3.875,4.125,4.625,4.5
+   OFF     S [2.167,3.5,1.167,2.333,2.6,2.833] mean 2.433 | alive 383,583,299,433,0,415 | real prog/1k 3.625,5.75,1.75,3.375,3.375,3.75
+   twin (mean, and paired >=4 of 6): PASS | controls (above every ESHAM and UNIFORM replicate, above LEARN and OFF means): fail (ESHAM band, UNIFORM band)
+3542: earner did not learn (log loss 0.550 v base 0.512 v esham 0.496, pos-minus-neg score 0.136 v esham 0.028) | positive rate EARNER 0.239 ESHAM 0.174 | novel-child rate EARNER 0.426
+   EARNER  S [4,4.333,0,2.667,2.5,3.333] mean 2.806 | alive 409,400,399,390,366,388 | real prog/1k 6.75,5.625,0,4.75,3.25,4.25
+   TWIN    S [1.667,1.167,1.333,2,2,2.333] mean 1.750 | alive 404,377,366,367,413,399 | real prog/1k 4.25,3.5,2.5,4.5,5.25,4.875
+   ESHAM   S [3.667,2,3.167,3,2.667,2.833] mean 2.889 | alive 413,404,620,389,395,272 | real prog/1k 5.875,4.25,4.625,4.125,3.5,3.25
+   UNIFORM S [3,0.8,3.333,3.833,1.8,0] mean 2.128 | alive 402,389,403,393,299,300 | real prog/1k 5.125,1.625,4.5,4.5,2.875,0
+   LEARN   S [2.167,2.667,2.333,3.167,2.833,4.167] mean 2.889 | alive 234,419,395,404,594,400 | real prog/1k 3.75,4.125,2.875,5.25,6.25,4.625
+   OFF     S [3,3.333,3.833,3,4,3.333] mean 3.417 | alive 383,409,678,389,392,405 | real prog/1k 4.25,3.625,6.25,3,4.875,4.75
+   twin (mean, and paired >=4 of 6): PASS | controls (above every ESHAM and UNIFORM replicate, above LEARN and OFF means): fail (ESHAM band, UNIFORM band, LEARN mean, OFF mean) | GUARD FAIL
+3543: earner LEARNED (log loss 0.438 v base 0.457 v esham 0.448, pos-minus-neg score 0.134 v esham 0.030) | positive rate EARNER 0.175 ESHAM 0.147 | novel-child rate EARNER 0.343
+   EARNER  S [3.333,1.833,2.8,2.667,2.833,3] mean 2.744 | alive 374,391,329,281,251,310 | real prog/1k 4.625,2.625,3,2.875,2.5,4.125
+   TWIN    S [0.667,1.833,1.667,1,1.667,1.5] mean 1.389 | alive 387,388,382,411,377,381 | real prog/1k 3.375,4.5,4.125,5,5,4.25
+   ESHAM   S [2.667,3.667,3.333,2,3.5,2.833] mean 3.000 | alive 302,402,394,379,415,346 | real prog/1k 4.125,4.5,5.375,3.125,4.25,3.25
+   UNIFORM S [3.167,2.833,2.833,2.833,3.5,2] mean 2.861 | alive 388,391,380,401,477,318 | real prog/1k 4.625,4.875,5,5.125,5.875,3
+   LEARN   S [3,3.5,2.833,1.8,2.167,3] mean 2.717 | alive 371,371,385,14,369,301 | real prog/1k 4.875,4.875,4.75,3,5,4.625
+   OFF     S [2.5,3.667,2.667,3,3.667,3] mean 3.083 | alive 361,400,354,413,332,400 | real prog/1k 4.375,4,3.25,4.125,4.5,3.375
+   twin (mean, and paired >=4 of 6): PASS | controls (above every ESHAM and UNIFORM replicate, above LEARN and OFF means): fail (ESHAM band, UNIFORM band, OFF mean) | GUARD FAIL
+earner learned on 2 | twin pass 2 | controls pass 0 | all three 0 (need 2 of 3) | twin rel (S+1) 1.579
+VERDICT: NO-GO (guard failed on 3542,3543)
+ALL-DONE Sun Oct 11 07:42:20 BST 2026
+```
+
+## After NO-GO (2026-10-11 ~07:42 BST)
+
+Earner, esham, NOSEL_PROG, and INCOME deleted from `engine.html` and `harness-env.js` (restored to `51a59e5` / cos/wild-mind-2 tip after keeper delete). Modes 6 and 7 and the income instrumentation are gone. Reason: deciding round on seeds 3541–3543 failed the bar — earner learned on 2 of 3 seeds and beat the twin (rel 1.579), but controls pass 0 and guard failed on 3542 and 3543 (extinctions in EARNER where OFF stayed clean; need learning+twin+controls on ≥2 of 3 with guard clean). The frozen worktree at `/home/box/wt/wild-mind-3-frozen` (bc8d2bb) still reproduces the scored arms. `run3.sh` refuses EARNER/TWIN/ESHAM unless `ALLOW_DELETED=1`.
+

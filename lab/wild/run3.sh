@@ -4,6 +4,11 @@
 # it can be relaunched after a box restart. Run from a FROZEN worktree of the commit carrying the pre-registration.
 #   ROOT=<worktree> OUT=<dir> SEEDS="3541 3542 3543" REPS="0 1 2 3 4 5" PAR=4 TICKS=20000 bash lab/wild/run3.sh
 set -u
+# EARNER/TWIN/ESHAM (MIND_MODE=6/7, NOSEL_PROG) and INCOME were DELETED after the NO-GO (lab/WILD-MIND-3.md).
+# The engine no longer has those modes, so those arms would be wrong: refuse them.
+case " ${ARMS:-EARNER TWIN ESHAM UNIFORM LEARN OFF} " in
+  *" EARNER "*|*" TWIN "*|*" ESHAM "*) [ "${ALLOW_DELETED:-0}" = 1 ] || { echo 'run3.sh: EARNER/TWIN/ESHAM were deleted from engine.html; use frozen worktree bc8d2bb to reproduce (ALLOW_DELETED=1)'; exit 2; };;
+esac
 ROOT=${ROOT:?}; OUT=${OUT:?}; SEEDS=${SEEDS:?}; REPS=${REPS:-0 1 2 3 4 5}; PAR=${PAR:-4}; TICKS=${TICKS:-20000}
 ARMS=${ARMS:-EARNER TWIN ESHAM UNIFORM LEARN OFF}
 mkdir -p "$OUT"
