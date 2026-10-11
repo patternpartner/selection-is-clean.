@@ -151,6 +151,17 @@ class World{
     if(P.CHEM&&P.CHEM_BIG){ this.big={layers:new Map(),e:new Map(),pr:new Map(),salt:h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4)}; this.molTmp=new Float32Array(C); this.ev.metab=0; this.ev.metabN=0; this.rxE=new Map(); }
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); this.molLive=new Uint8Array(S); }   // molLive: species that may be nonzero, so diffusion can skip the rest   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
+    // ARCHIVE (lab/ARCHIVIST.md), needs CHEM_BIG, not in DEF so a world without it saves exactly as before. The ARCHIVIST, an
+    // agent outside the world, works on RETENTION: it remembers, for every reaction that ever earned >= 1% of metabolic income
+    // in a period, the program of that reaction's top earner at the reaction's best period, and the world's total of the
+    // substrate then. When the reaction dies (under 1% for A_DEAD checks running) it may write the remembered program back into
+    // up to A_F living organisms (energy, place, tag and template kept; pc reset; no energy added), at most A_MAX times a key.
+    // ARCHIVE 1 ARCHIVIST: waits until the substrate's world total is back to its archived level, then writes at the cell with
+    // the most substrate. 2 BLIND-TIME: writes the same program at death, around a uniformly drawn living organism. 3 WRONG-
+    // GENOME: the archivist's trigger and place, another key's archived program (uniform). 4 WATCH: the coroner only, no writes.
+    // Own random stream; the world's is untouched. Checks every A_EVERY ticks at the end of the step, before the sample.
+    if(P.ARCHIVE){ if(!P.CHEM_BIG)throw new Error('ARCHIVE needs CHEM_BIG'); this.ar=mulberry32(this.seed0^0xa4c41fe5); this.arK=new Map(); this.arAcc=new Map(); this.arWrites=0; this.arWNew=[]; this.arWKeys=new Set(); this.arDeaths=[]; this.arRev=[];
+      this.aHook=(c,id,e)=>{ let m=this.arAcc.get(id); if(!m){ m=new Map(); this.arAcc.set(id,m); } m.set(c,(m.get(c)||0)+e); }; }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
@@ -252,7 +263,7 @@ class World{
                    if(op===24){ R[r4]=this.tin[c*3+this.tic[c]]; this.tic[c]=(this.tic[c]+1)%3; } else if(op===25)this.taskOut(c,R[r4]>>>0);
                    else if(op===26)R[r4]=(~((R[r4]>>>0)&(R[r4+(arg&3)]>>>0)))>>>0; else R[r4]=R[r4+(arg&3)]; }
                  else if(P.CHEM_BIG){ const q=arg|(this.prog[o+((pc+1)%n)*2+1]<<8), Lq=this.big.layers.get(q);   // METABj, two-byte species
-                   if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
+                   if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); if(this.aHook)this.aHook(c,id,x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
                    if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.molLive[pr]=1; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
         case 28: if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
@@ -281,7 +292,39 @@ class World{
     for(let c=0;c<C;c++){ if(!this.alive[c])continue; if(this.E[c]<=0)this.kill(c,'starve'); else if(this.age[c]>P.MAX_AGE)this.kill(c,'old'); }
     if(!this.count())this.reseed();
     this.neutralStep();
+    if(P.ARCHIVE&&this.tick%(P.A_EVERY||1000)===0)this.archiveUpdate();
   }
+  // ---- the ARCHIVIST (lab/ARCHIVIST.md) ----
+  aSub(q){ const L=this.big.layers.get(q); if(!L)return 0; let t=0; for(let c=0;c<this.C;c++)t+=L[c]; return t; }
+  aCarriers(id){ const L=this.p.MAXLEN*2, q=id>>2, op=24+(id&3), lo=q&255, hi=q>>8; let k=0;
+    for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; const o=c*L, n=this.len[c]; for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&this.prog[o+i*2+1]===lo&&this.prog[o+((i+1)%n)*2+1]===hi){ k++; break; } } return k; }
+  aProg(c){ const L=this.p.MAXLEN*2, o=c*L, out=[]; for(let i=0;i<this.len[c];i++)out.push([this.prog[o+i*2],this.prog[o+i*2+1]]); return out; }
+  aKeys(prog){ const n=prog.length, k=[]; for(let i=0;i<n;i++){ const op=prog[i][0]; if(op>=24&&op<=27)k.push(((prog[i][1]|(prog[(i+1)%n][1]<<8))*4)+op-24); } return k; }
+  aWrite(F,prog){ const L=this.p.MAXLEN*2; for(const c of F){ const o=c*L; this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; } this.pc[c]=0; }
+    this.arWrites++; for(const k of this.aKeys(prog)) if(!this.arWKeys.has(k)){ this.arWKeys.add(k); this.arWNew.push(k); } }
+  aAround(c0){ const P=this.p, W=P.W, R=P.A_RAD||2, px=c0%W, py=(c0/W)|0, F=[], cand=[];
+    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){ const c=((py+dy+P.H)%P.H)*W+((px+dx+W)%W); if(this.alive[c])cand.push([Math.max(Math.abs(dx),Math.abs(dy)),dy,dx,c]); }
+    cand.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]); for(const x of cand){ if(F.length>=(P.A_F||8))break; F.push(x[3]); } return F; }
+  aRichest(q){ const L=this.big.layers.get(q); if(!L)return -1; let b=-1, v=0; for(let c=0;c<this.C;c++) if(L[c]>v){ v=L[c]; b=c; } return b; }
+  archiveUpdate(){ const P=this.p, M=P.ARCHIVE, DEAD=P.A_DEAD||5, MAX=P.A_MAX||3; let ft=0; for(const v of this.rxE.values())ft+=v;
+    for(const [id,v] of this.rxE){ if(!(ft>0&&v>=0.01*ft))continue; const sh=v/ft, q=id>>2; let e=this.arK.get(id);
+      if(!e||sh>=e.share){ let best=-1, bv=0; const m=this.arAcc.get(id); if(m) for(const [c,x] of m) if(this.alive[c]&&(x>bv||(x===bv&&c<best))){ bv=x; best=c; }
+        if(best>=0){ const ne={prog:this.aProg(best),share:sh,sub:this.aSub(q),car:this.aCarriers(id),t:this.tick,state:1,below:0,revs:e?e.revs:0,deadAt:e?e.deadAt:-1,re:e?e.re:0}; if(e&&e.state===2)ne.re=(e.re||0)+1; this.arK.set(id,ne); e=ne; } }
+      if(e){ if(e.state===2)e.re=(e.re||0)+1; e.state=1; e.below=0; e.lastOn=this.tick; } }
+    const toWrite=[];
+    for(const [id,e] of this.arK){ const v=this.rxE.get(id)||0; if(ft>0&&v>=0.01*ft)continue; if(e.state===0)continue;
+      if(e.state===1||e.state===2){ e.below++; if(e.below>=DEAD){ e.state=0; e.deadAt=this.tick; const sub=this.aSub(id>>2), car=this.aCarriers(id); this.arDeaths.push([this.tick,id,+(sub/Math.max(1e-9,e.sub)).toFixed(3),e.car>0?+(car/e.car).toFixed(3):null,e.lastOn||e.t]); if(M===2&&e.revs<MAX)toWrite.push(id); } } }
+    if(M===1||M===3) for(const [id,e] of this.arK){ if(e.state!==0||e.revs>=MAX||e.deadAt===this.tick)continue; if(this.aSub(id>>2)>=e.sub)toWrite.push(id); }
+    for(const id of toWrite){ const e=this.arK.get(id); let c0=-1, prog=e.prog;
+      if(M===2){ const liv=[]; for(let c=0;c<this.C;c++) if(this.alive[c])liv.push(c); if(!liv.length)continue; c0=liv[(this.ar()*liv.length)|0]; }
+      else c0=this.aRichest(id>>2);
+      if(M===3){ const other=[...this.arK.keys()].filter(k=>k!==id).sort((a,b)=>a-b); if(!other.length)continue; prog=this.arK.get(other[(this.ar()*other.length)|0]).prog; }
+      if(c0<0)continue; const F=this.aAround(c0); if(!F.length)continue;
+      this.aWrite(F,prog); e.revs++; e.state=2; e.below=0; this.arRev.push([this.tick,id,F.length]); }
+    this.arAcc.clear(); }
+  archReport(){ const wn=this.arWNew; this.arWNew=[]; let st=[0,0,0]; for(const e of this.arK.values())st[e.state]++;
+    return {mode:this.p.ARCHIVE,archived:this.arK.size,dead:st[0],alive:st[1],revived:st[2],writes:this.arWrites,wnew:wn,deaths:this.arDeaths.length,lastDeath:this.arDeaths.length?this.arDeaths[this.arDeaths.length-1]:null,revs:this.arRev.length,lastRev:this.arRev.length?this.arRev[this.arRev.length-1]:null,
+      deathsNew:this.arDeaths.filter(x=>x[0]>this.tick-(this.p.A_EVERY||1000)*1).map(x=>x.slice(1)),revsNew:this.arRev.filter(x=>x[0]>this.tick-1000).map(x=>x.slice(1))}; }
   be(q){ if(q===0)return 1; const B=this.big; let v=B.e.get(q); if(v===undefined){ v=h32(q^B.salt)/4294967296; if((q&(q-1))===0)v=0.7+0.2*v; B.e.set(q,v); } return v; }   // species 0's one-bit neighbours sit at 0.7-0.9, so every first step pays 0.1-0.3 (seed 2 had none worth running)
   bprod(q,j){ const B=this.big, P=this.p; let a=B.pr.get(q); if(a)return a[j];   // products are one bit-flip from the substrate (an enzyme's specificity moves in small steps), so the next step is one byte change away
     const eq=this.be(q), tgt=eq-P.CHEM_STEP, bits=[]; for(let b=0;b<16;b++)bits.push(b); let hs=h32(q^B.salt^0x51ed27);
@@ -417,19 +460,20 @@ class World{
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
       progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
-      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
+      reseeds:this.reseeds||0, ...(P.ARCHIVE?{arch:this.archReport()}:{}), ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
 const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'];
-World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
+World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.ARCHIVE?{arch:{rnd:this.ar.s,K:[...this.arK],acc:[...this.arAcc].map(([k,m])=>[k,[...m]]),writes:this.arWrites,wnew:this.arWNew,wkeys:[...this.arWKeys],deaths:this.arDeaths,rev:this.arRev}}:{}),...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
   for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
   for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
+  if(o.arch&&w.p.ARCHIVE){ const a=o.arch; w.ar.s=a.rnd; w.arK=new Map(a.K); w.arAcc=new Map(a.acc.map(([k,m])=>[k,new Map(m)])); w.arWrites=a.writes; w.arWNew=a.wnew; w.arWKeys=new Set(a.wkeys); w.arDeaths=a.deaths; w.arRev=a.rev; }
   if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
   if(o.mindPos&&w.mindPos)new Uint8Array(w.mindPos.buffer).set(Buffer.from(o.mindPos,'base64'));
