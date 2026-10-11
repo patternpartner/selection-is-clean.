@@ -83,3 +83,34 @@ The whole round runs unattended from a frozen worktree: `lab/locksmith/chain.sh 
 **Written before, so it can be wrong:** I expect X to beat the plain band (the first opened exits on 7290 earned within 20k ticks)
 and the honest risk is BP: present locked species are few, so a blind pick among them often lands on the same big stores. If BP
 ties X, that is TARGETING NOT SHOWN, and I will say so rather than argue it up.
+
+## Trial result (seeds 7301, 7302, 300,000 ticks) — R_EVERY 20,000 chosen; deciding round launched by its rule
+
+Full printout `lab/locksmith/trial/PICK.txt` (pick.js, unchanged). S late (Sf the same except BP10@7301 0.00/0.50):
+
+| arm | 7301 S | 7302 S | exits opened (skips) 7301 / 7302 | opened exits earning >= 1% late 7301 / 7302 |
+|---|---|---|---|---|
+| X5 | 1.00 | 0.00 | 21 (39) / 20 (40) | 1.24 / 0.33 |
+| X10 | 0.50 | 0.00 | 18 (12) / 18 (12) | 1.40 / 0 |
+| X20 | 0.50 | 0.50 | 10 (5) / 14 (1) | 1.39 / 0.87 |
+| P0 | 0.50 | 0.50 | — | — |
+| BP10 | 0.00 | 0.00 | 8 (22) / 18 (12) | 1.15 / 0 |
+| BN10 | 0.50 | 0.50 | 30 / 30 | 0 / 0 |
+
+- **The rule picks X20** (X5 and X20 tie on mean S 0.50 and Sf 0.50; reactions ever active 10 against 9). BP and BN run at R_EVERY 20,000.
+- **Gate passed** (X20 is not below P0 on both seeds — it ties P0 on both). Said now: the trial shows NO edge over plain; the loose gate
+  was written so the rate gets set, and that is all this launch is.
+- **What the trial does show (not ruling):** opened exits are used — the targeted locksmith's exits earn at least 1% of income in
+  1-1.4 rows on average late on 7301; X5 opened 20 exits but most periods found nothing eligible (39-40 skips): the world has few
+  present, unharvested, locked stores at any time.
+- **A control turned out degenerate, and I say so before the deciding data:** BN's rows are IDENTICAL to P0's on both trial seeds.
+  Exits opened on species that are never present change nothing, and the locksmith's own stream leaves the world's untouched, so
+  BN = P0 exactly. In the deciding round BN is therefore a duplicate of P0, not a separate blind null; the rule stands as written
+  (it only makes "beat every null" no harder than "beat the plain band"), and BP is the one real targeting control.
+
+## Deciding round — running (launched 11 Oct 15:04 BST by chain.sh from the frozen worktree at ec50027, `/home/box/wt/locksmith-frozen`)
+
+Jobs `/home/box/locksmith-runs/decide.jobs` (copied to `lab/locksmith/decide.jobs`), 18 runs, 9 at a time, `.done` per run; output
+`/home/box/locksmith-runs/decide/<ARM>.<SEED>.jsonl`; chain.sh writes `/home/box/locksmith-runs/SCORE.txt` (score.js, unchanged) when
+`decide/ALL.done` exists. If the chain is reaped: rerun `bash lab/locksmith/chain.sh /home/box/locksmith-runs` from the frozen
+worktree — finished runs are skipped. Then apply the verdict above; on any NO-GO delete REACH from `lab/oee-core.js` on this branch.
