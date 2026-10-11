@@ -83,3 +83,24 @@ null band), **F**, **SH** — 18 runs.
 
 **Written before, so it can be wrong:** I expect NOT SHOWN or GO — that a tax on the incumbent opens the unused CHEM_BIG routes (X beats
 F and SH), but a 90% tax on the main route costs enough metabolic income that whether X beats the plain band is a coin flip.
+
+## Trial result (seeds 91, 92, 300,000 ticks) — G_K = 2 chosen; deciding round launched by its rule
+
+| arm | 91: S / Sf / reactions ever active / commonest share late / metabolic income late | 92: same |
+|---|---|---|
+| X, G_K 0.5 | 0 / 0 / 8 / 0.61 / 2,760 | 0 / 0 / 8 / 0.39 / 3,233 |
+| X, G_K 1 | 0 / 0 / 10 / 0.37 / 2,872 | 0 / 0 / 4 / — / **0 (metabolism abandoned)** |
+| X, G_K 2 | **0.5 / 0.5** / 10 / 0.44 / 1,681 | 0 / 0 / 4 / — / **0** |
+| P0 | 0 / 0 / 3 / 0.98 / 3,372 | 0 / 0 / 4 / 0.96 / 2,958 |
+| F (G_K 1) | 0 / 0 / 6 / — / **0** | 0 / 0 / 3 / — / **0** |
+| SH (G_K 1) | 0 / 0 / 3 / — / **0** | 0.5 / 0.5 / 9 / 0.37 / 3,087 |
+
+- **The rule picks G_K 2** (mean S 0.25 against 0 for 0.5 and 1; nothing collapsed — living 820-1,213 everywhere). F and SH run at G_K 2 in
+  the deciding round, as registered.
+- **Launch condition met, thinly:** X(2) beats P0, F and SH on seed 91 (0.5 against 0). One sticky new reaction in the late third of a
+  300k run is close to the floor of what S can show; the trial horizon (10 windows) is too short for S to separate arms. Said now, before
+  the deciding data: this launch is a rule being followed, not a signal being chased.
+- **What the trial does show (not ruling):** the targeted tax spreads metabolic income (commonest route 0.37-0.61 against 0.96-0.98
+  plain; 8-10 reactions ever active against 3-4) — and taxes of any kind often make metabolism not worth having: 5 of 10 taxed worlds
+  had abandoned it by 300k (income 0, organisms living on light alone). Abandonment is not a collapse by the registered rule (living stays
+  above 200); an arm that abandons metabolism simply scores no new reactions.
