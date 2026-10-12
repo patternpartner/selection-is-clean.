@@ -16,3 +16,31 @@ Rule, per arm in {L,B,BR}: MOVES if >= 2 readable seeds, S late > 0 on every rea
 VERDICT GO (score can move) if any arm MOVES; else NO-GO FLOOR. Twin gaps and B-vs-L are descriptive only.
 GO -> the next intervention runs on the arm that moved, against that arm's own nulls. NO-GO -> stop interventions on this
 core under this metric; the next step changes the core's chemistry or the metric's resolution, pre-registered as such.
+
+## Result (deciding round, scored 2026-10-12 11:53 BST)
+
+```
+7921 L  rows 1200 N 1528 | S 0.00 (mid 0.08) K 7 usedEver 12
+7921 LP rows 1200 N 1514 | S 0.00 (mid 0.00) K 12 usedEver 21
+7921 B  rows 1200 N 1380 | S 0.00 (mid 0.00) K 5 usedEver 10
+7921 BP rows 1200 N 1408 | S 0.00 (mid 0.17) K 6 usedEver 10
+7921 BR rows 1200 N 106 COLLAPSED | S 0.00 (mid 0.00) K 0 usedEver 0
+7922 L  rows 1200 N 1562 | S 0.00 (mid 0.00) K 9 usedEver 18
+7922 LP rows 1200 N 1588 | S 0.00 (mid 0.00) K 17 usedEver 22
+7922 B  rows 1200 N 1539 | S 0.17 (mid 0.25) K 11 usedEver 22
+7922 BP rows 1200 N 1435 | S 0.17 (mid 0.25) K 13 usedEver 15
+7922 BR rows 1200 N 1151 | S 0.33 (mid 0.25) K 9 usedEver 20
+7923 L  rows 1200 N 1424 | S 0.00 (mid 0.00) K 9 usedEver 17
+7923 LP rows 1200 N 1418 | S 0.00 (mid 0.00) K 7 usedEver 18
+7923 B  rows 1200 N 1382 | S 0.17 (mid 0.08) K 9 usedEver 14
+7923 BP rows 1200 N 1435 | S 0.00 (mid 0.33) K 13 usedEver 20
+7923 BR rows 1200 N 102 COLLAPSED | S 0.00 (mid 0.00) K 0 usedEver 1
+L: readable 3, S>0 on 0, mean S 0.000, mean K 8.3 -> floor
+B: readable 3, S>0 on 2, mean S 0.111, mean K 8.3 -> floor
+BR: unreadable
+descriptive: twin gaps |L-LP| S 0.000, |B-BP| S 0.056; B-L mean S 0.111, K 0.0
+
+VERDICT: NO-GO - FLOOR: no chemistry arm, lean, big or rich, lifts S late off zero; the metric cannot rank interventions on this core
+```
+
+NO-GO FLOOR. BR collapsed on 2 of 3 seeds (N ~100), so it is unreadable. L and B never reach the 0.5 bar (best seed S 0.17-0.33; means 0.000 and 0.111). Per the pre-registration: stop interventions on this core under this metric; the next step changes the core chemistry or the metric resolution, pre-registered as such.
