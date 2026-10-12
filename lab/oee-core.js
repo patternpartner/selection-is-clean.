@@ -78,6 +78,12 @@ const DEF={
   // of the same substrate, or a step downstream), and an immigrant is keyed to a molecule actually present. The 256-species
   // network ran out (#287): this one is too large to exhaust in a run.
   CHEM_BIG:0, V_PRESENT:0.05,
+  // FORGE (cos/forge), with CHEM_BIG, off by default: METAB3 becomes LIGATE, a two-substrate reaction. Substrate q is the
+  // usual two-byte species, partner p the most abundant other species in the cell; both are consumed and 2x of a product k is made, k drawn
+  // from a hash of (q,p) - a species anywhere in the 65,536, not one bit from q. Pays be(q)+be(p)-2be(k) when that is in
+  // (0,CHEM_DMAX]. So every pair of molecules that coexist opens a new region of the network: the chemistry generates
+  // new food from what organisms make. FORGE 2 is the sham: same consumption and pay, product discarded (no new molecules). No pair: plain METAB3.
+  FORGE:0, FORGE_TRY:24,
   // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
   // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
   // them) only if its bits agree wherever a row repeats - every row is made to occur at least twice, so a constant cannot. (With 8-bit inputs every row
@@ -251,6 +257,7 @@ class World{
         case 24: case 25: case 26: case 27: if(P.TASKS){   // TASKS: 24 INPUT, 25 OUTPUT, 26 NAND, 27 GET
                    if(op===24){ R[r4]=this.tin[c*3+this.tic[c]]; this.tic[c]=(this.tic[c]+1)%3; } else if(op===25)this.taskOut(c,R[r4]>>>0);
                    else if(op===26)R[r4]=(~((R[r4]>>>0)&(R[r4+(arg&3)]>>>0)))>>>0; else R[r4]=R[r4+(arg&3)]; }
+                 else if(P.FORGE&&op===27&&this.forge(c,arg|(this.prog[o+((pc+1)%n)*2+1]<<8))){}   // LIGATE (FORGE); falls back to plain METAB3 when nothing ligates
                  else if(P.CHEM_BIG){ const q=arg|(this.prog[o+((pc+1)%n)*2+1]<<8), Lq=this.big.layers.get(q);   // METABj, two-byte species
                    if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
@@ -288,6 +295,13 @@ class World{
     for(let i=15;i>0;i--){ hs=h32(hs+i); const k=hs%(i+1); const t=bits[i]; bits[i]=bits[k]; bits[k]=t; }
     const ok=[], rest=[]; for(const b of bits){ const t=q^(1<<b); (Math.abs(this.be(t)-tgt)<P.CHEM_SPREAD?ok:rest).push(t); }
     rest.sort((x,y)=>Math.abs(this.be(x)-tgt)-Math.abs(this.be(y)-tgt)); a=ok.concat(rest).slice(0,4); B.pr.set(q,a); return a[j]; }
+  forge(c,q){ const P=this.p, Lq=this.big.layers.get(q); if(!Lq||!(Lq[c]>0))return false; let p=-1, best=0;   // partner: the most abundant other species in the cell
+    for(const [r,m] of this.big.layers) if(r!==q&&m[c]>best){ best=m[c]; p=r; } if(p<0)return false; const k=this.fprod(q,p); if(k<0)return false;
+    const Lp=this.big.layers.get(p), d=this.be(q)+this.be(p)-2*this.be(k), x=Math.min(Lq[c],Lp[c])*P.EAT_F; Lq[c]-=x; Lp[c]-=x; if(P.FORGE===1)this.layer(k)[c]+=2*x;
+    const id=262144+q*65536+p; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); return true; }
+  fprod(q,p){ const B=this.big; if(!B.fp)B.fp=new Map(); const key=q*65536+p; let k=B.fp.get(key); if(k!==undefined)return k;   // FORGE product of (q,p), or -1 if no draw pays
+    const s=this.be(q)+this.be(p), D=this.p.CHEM_DMAX; k=-1; let h=h32(key^B.salt^0x0f0f9e); for(let i=0;i<this.p.FORGE_TRY;i++){ h=h32(h+i+1); const t=h&65535; if(t===q||t===p||t===0)continue; const d=s-2*this.be(t); if(d>0&&d<=D){ k=t; break; } }
+    B.fp.set(key,k); return k; }
   layer(q){ let L=this.big.layers.get(q); if(!L){ L=new Float32Array(this.C); this.big.layers.set(q,L); } return L; }
   chemStepBig(){ const P=this.p, C=this.C, W=P.W, H=P.H, t=this.molTmp, D=P.CHEM_D, k=Math.pow(1-P.CHEM_DECAY,P.CHEM_EVERY);
     for(const [q,m] of this.big.layers){ let tot=0;
@@ -430,7 +444,7 @@ World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.t
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
   for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
-  if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
+  if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); if(w.big.fp)w.big.fp.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
   if(o.mindPos&&w.mindPos)new Uint8Array(w.mindPos.buffer).set(Buffer.from(o.mindPos,'base64'));
   if(o.pool&&w.pool){ w.pool=o.pool.map(e=>e?{...e,m:Mind.load(e.m)}:null); new Uint8Array(w.mindId.buffer).set(Buffer.from(o.mindId,'base64')); w.prnd.s=o.prnd; for(const k of ['mindNext','mindBirths','mindDeaths','mindRetired','mindLife'])w[k]=o[k]; }
