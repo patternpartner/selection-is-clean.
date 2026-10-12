@@ -151,15 +151,6 @@ class World{
     if(P.CHEM&&P.CHEM_BIG){ this.big={layers:new Map(),e:new Map(),pr:new Map(),salt:h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4)}; this.molTmp=new Float32Array(C); this.ev.metab=0; this.ev.metabN=0; this.rxE=new Map(); }
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); this.molLive=new Uint8Array(S); }   // molLive: species that may be nonzero, so diffusion can skip the rest   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
-    // SCATTER (lab/SCATTERER.md), needs CHEM_BIG, not in DEF so a world without it saves exactly as before. The SCATTERER, an agent
-    // outside the world, works on CARRIER WIPEOUT: every S_EVERY ticks, for every reaction earning >= 1% of this period's metabolic
-    // income, it finds the cells of the reaction's living carriers, then up to S_F destination cells holding the substrate that lie
-    // more than S_RAD cells (Chebyshev, torus) from every carrier and from each other, richest substrate first. It SWAPS whole
-    // organisms: a carrier drawn uniformly goes to each destination, the organism there goes to the carrier's cell. Nothing is
-    // written, made or killed; no energy is added; only places change. SCATTER 1 SCATTERER. 2 BLIND-SWAP: the same number of swaps,
-    // between two uniformly drawn living organisms. 3 WRONG-MOVER: the same destinations, but the organism moved there is drawn
-    // uniformly from the living NON-carriers. 4 WATCH: the census only, no swaps. Own random stream; the world's is untouched.
-    if(P.SCATTER){ if(!P.CHEM_BIG)throw new Error('SCATTER needs CHEM_BIG'); this.sr=mulberry32(this.seed0^0x5ca77e12); this.scPrev=[]; this.scSwaps=0; this.scWiped=0; this.scNew=[]; this.scKeys=new Set(); this.scEarn=0; this.scActed=0; }
     if(P.VIRUS){ this.vc=new Int32Array(P.V_MAX); this.vk=P.CHEM_BIG?new Uint32Array(P.V_MAX):new Uint16Array(P.V_MAX); this.vn=0; this.vrnd=mulberry32(((seed>>>0)||1)^0x7e577e57); this.ev.lysed=0; this.ev.infections=0; }
     this.updateCap(); for(let c=0;c<C;c++)this.light[c]=this.cap[c];
     // the ancestor: eat light, try to divide, turn. Nothing else is given.
@@ -290,33 +281,7 @@ class World{
     for(let c=0;c<C;c++){ if(!this.alive[c])continue; if(this.E[c]<=0)this.kill(c,'starve'); else if(this.age[c]>P.MAX_AGE)this.kill(c,'old'); }
     if(!this.count())this.reseed();
     this.neutralStep();
-    if(P.SCATTER&&this.tick%(P.S_EVERY||1000)===0)this.scatterUpdate();
   }
-  // ---- the SCATTERER (lab/SCATTERER.md) ----
-  sCarriers(id){ const L=this.p.MAXLEN*2, op=24+(id&3), q=id>>2, lo=q&255, hi=q>>8, out=[];
-    for(let c=0;c<this.C;c++){ if(!this.alive[c])continue; const o=c*L, n=this.len[c]; for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&this.prog[o+i*2+1]===lo&&this.prog[o+((i+1)%n)*2+1]===hi){ out.push(c); break; } } return out; }
-  sMark(m,c0,R){ const P=this.p, W=P.W, H=P.H, x=c0%W, y=(c0/W)|0; for(let dy=-R;dy<=R;dy++){ const yy=((y+dy+H)%H)*W; for(let dx=-R;dx<=R;dx++)m[yy+((x+dx+W)%W)]=1; } }
-  swapOrg(a,b){ if(a===b)return; const L=this.p.MAXLEN*2, sw=(A,i,j)=>{ const t=A[i]; A[i]=A[j]; A[j]=t; };
-    for(const A of [this.alive,this.E,this.age,this.pc,this.face,this.len,this.slen,this.tag,this.tmpl,this.gen,this.stamp])sw(A,a,b);
-    for(let k=0;k<4;k++)sw(this.R,a*4+k,b*4+k); for(let i=0;i<L;i++){ sw(this.prog,a*L+i,b*L+i); sw(this.sprog,a*L+i,b*L+i); }
-    if(this.bodyF) for(const f of this.bodyF)sw(f.A,a,b);
-    if(this.p.TASKS){ for(let k=0;k<3;k++)sw(this.tin,a*3+k,b*3+k); sw(this.tic,a,b); for(let k=0;k<8;k++)sw(this.tdone,a*8+k,b*8+k); } }
-  scatterUpdate(){ const P=this.p, M=P.SCATTER, C=this.C, R=P.S_RAD||8, F=P.S_F||3, r=this.sr; let ft=0; for(const v of this.rxE.values())ft+=v;
-    const keys=ft>0?[...this.rxE].filter(([,v])=>v>=0.01*ft).map(([id])=>id).sort((a,b)=>a-b):[], now=new Set(keys);
-    for(const id of this.scPrev) if(!now.has(id)&&this.sCarriers(id).length===0)this.scWiped++;   // census: an earner of the last check whose carriers are all gone
-    this.scPrev=keys; this.scEarn=keys.length;
-    for(const id of keys){ const car=this.sCarriers(id); if(!car.length)continue; const Lq=this.big.layers.get(id>>2); if(!Lq)continue;
-      const m=new Uint8Array(C); for(const c of car)this.sMark(m,c,R);
-      const cand=[]; for(let d=0;d<C;d++) if(this.alive[d]&&!m[d]&&Lq[d]>0)cand.push(d); cand.sort((a,b)=>Lq[b]-Lq[a]||a-b);
-      const dest=[]; for(const d of cand){ if(dest.length>=F)break; if(m[d])continue; dest.push(d); this.sMark(m,d,R); }
-      if(!dest.length)continue; this.scActed++; if(!this.scKeys.has(id)){ this.scKeys.add(id); this.scNew.push(id); }
-      if(M===4)continue;
-      if(M===1){ const pool=car.slice(); for(const d of dest){ if(!pool.length)break; const i=(r()*pool.length)|0, c=pool[i]; pool[i]=pool[pool.length-1]; pool.pop(); this.swapOrg(c,d); this.scSwaps++; } }
-      else if(M===3){ const cs=new Set(car), ds=new Set(dest), pool=[]; for(let c=0;c<C;c++) if(this.alive[c]&&!cs.has(c)&&!ds.has(c))pool.push(c);
-        for(const d of dest){ if(!pool.length)break; const i=(r()*pool.length)|0, c=pool[i]; pool[i]=pool[pool.length-1]; pool.pop(); this.swapOrg(c,d); this.scSwaps++; } }
-      else if(M===2){ const liv=[]; for(let c=0;c<C;c++) if(this.alive[c])liv.push(c); if(liv.length<2)continue;
-        for(let k=0;k<dest.length;k++){ const a=liv[(r()*liv.length)|0]; let b=a; while(b===a)b=liv[(r()*liv.length)|0]; this.swapOrg(a,b); this.scSwaps++; } } } }
-  scatReport(){ const sn=this.scNew; this.scNew=[]; return {mode:this.p.SCATTER,earn:this.scEarn,acted:this.scActed,swaps:this.scSwaps,wiped:this.scWiped,keys:this.scKeys.size,snew:sn}; }
   be(q){ if(q===0)return 1; const B=this.big; let v=B.e.get(q); if(v===undefined){ v=h32(q^B.salt)/4294967296; if((q&(q-1))===0)v=0.7+0.2*v; B.e.set(q,v); } return v; }   // species 0's one-bit neighbours sit at 0.7-0.9, so every first step pays 0.1-0.3 (seed 2 had none worth running)
   bprod(q,j){ const B=this.big, P=this.p; let a=B.pr.get(q); if(a)return a[j];   // products are one bit-flip from the substrate (an enzyme's specificity moves in small steps), so the next step is one byte change away
     const eq=this.be(q), tgt=eq-P.CHEM_STEP, bits=[]; for(let b=0;b<16;b++)bits.push(b); let hs=h32(q^B.salt^0x51ed27);
@@ -452,20 +417,19 @@ class World{
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
       progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
-      reseeds:this.reseeds||0, ...(P.SCATTER?{scat:this.scatReport()}:{}), ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
+      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
 const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'];
-World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.SCATTER?{scat:{rnd:this.sr.s,prev:this.scPrev,swaps:this.scSwaps,wiped:this.scWiped,snew:this.scNew,keys:[...this.scKeys],earn:this.scEarn,acted:this.scActed}}:{}),...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
+World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
   for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
   for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
-  if(o.scat&&w.p.SCATTER){ const a=o.scat; w.sr.s=a.rnd; w.scPrev=a.prev; w.scSwaps=a.swaps; w.scWiped=a.wiped; w.scNew=a.snew; w.scKeys=new Set(a.keys); w.scEarn=a.earn; w.scActed=a.acted; }
   if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
   if(o.mindPos&&w.mindPos)new Uint8Array(w.mindPos.buffer).set(Buffer.from(o.mindPos,'base64'));

@@ -1,0 +1,35 @@
+7811 X   rows 1200 N 1432 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 18 metab 11045.5 | acted 1508 on 22 keys, swaps 3062, earners wiped 17
+7811 P0  rows 1200 N 1440 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 14 metab 10692.1 | acted 1267 on 18 keys, swaps 0, earners wiped 12
+7811 P1  rows 1200 N 1437 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 12 metab 11400.8 | acted 0 on 0 keys, swaps 0, earners wiped null
+7811 P2  rows 1200 N 1450 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 11 metab 10395.6 | acted 0 on 0 keys, swaps 0, earners wiped null
+7811 BS  rows 1200 N 1405 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 8 metab 11761.2 | acted 644 on 13 keys, swaps 1385, earners wiped 10
+7811 BW  rows 1200 N 1436 | S 0.00 (mid 0.25) Sf 0.00 Sn 0.00 (mid 0.25) | usedEver 17 metab 11815.9 | acted 1889 on 24 keys, swaps 4482, earners wiped 8
+7812 X   rows 1200 N 1208 | S 0.08 (mid 0.00) Sf 0.08 Sn 0.00 (mid 0.00) | usedEver 8 metab 6611 | acted 622 on 11 keys, swaps 1724, earners wiped 28
+7812 P0  rows 1200 N 1415 | S 0.00 (mid 0.17) Sf 0.00 Sn 0.00 (mid 0.17) | usedEver 12 metab 9986.8 | acted 2298 on 14 keys, swaps 0, earners wiped 24
+7812 P1  rows 1200 N 1174 | S 0.08 (mid 0.17) Sf 0.08 Sn 0.08 (mid 0.17) | usedEver 15 metab 6320.6 | acted 0 on 0 keys, swaps 0, earners wiped null
+7812 P2  rows 1200 N 1096 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 5 metab 3482 | acted 0 on 0 keys, swaps 0, earners wiped null
+7812 BS  rows 1200 N 1287 | S 0.25 (mid 0.08) Sf 0.25 Sn 0.25 (mid 0.08) | usedEver 12 metab 9564.9 | acted 994 on 13 keys, swaps 2506, earners wiped 31
+7812 BW  rows 1200 N 1379 | S 0.00 (mid 0.25) Sf 0.00 Sn 0.00 (mid 0.25) | usedEver 10 metab 9974.9 | acted 2359 on 15 keys, swaps 5963, earners wiped 14
+7813 X   rows 1200 N 893 | S 0.17 (mid 0.00) Sf 0.17 Sn 0.00 (mid 0.00) | usedEver 7 metab 1241.3 | acted 170 on 7 keys, swaps 439, earners wiped 8
+7813 P0  rows 1200 N 1171 | S 0.08 (mid 0.00) Sf 0.08 Sn 0.08 (mid 0.00) | usedEver 5 metab 5653.5 | acted 200 on 6 keys, swaps 0, earners wiped 7
+7813 P1  rows 1200 N 1088 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 4 metab 3558.6 | acted 0 on 0 keys, swaps 0, earners wiped null
+7813 P2  rows 1200 N 1061 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 3 metab 3480.1 | acted 0 on 0 keys, swaps 0, earners wiped null
+7813 BS  rows 1200 N 1375 | S 0.00 (mid 0.17) Sf 0.00 Sn 0.00 (mid 0.17) | usedEver 9 metab 10226.6 | acted 562 on 12 keys, swaps 1020, earners wiped 7
+7813 BW  rows 1200 N 843 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 2 metab 0 | acted 1 on 1 keys, swaps 3, earners wiped 2
+
+== S: readable 3; X beats every null on 1, the plain band on 1, both blind arms on 1; rel 1; means {"X":0.083,"P0":0.028,"P1":0.028,"P2":0,"BS":0.083,"BW":0}
+  7811: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BS 0.00 BW 0.00 | loses/ties to P0,P1,P2,BS,BW
+  7812: X 0.08 | P0 0.00 P1 0.08 P2 0.00 BS 0.25 BW 0.00 | loses/ties to P1,BS
+  7813: X 0.17 | P0 0.08 P1 0.00 P2 0.00 BS 0.00 BW 0.00 | beats all
+
+== Sf: readable 3; X beats every null on 1, the plain band on 1, both blind arms on 1; rel 1; means {"X":0.083,"P0":0.028,"P1":0.028,"P2":0,"BS":0.083,"BW":0}
+  7811: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BS 0.00 BW 0.00 | loses/ties to P0,P1,P2,BS,BW
+  7812: X 0.08 | P0 0.00 P1 0.08 P2 0.00 BS 0.25 BW 0.00 | loses/ties to P1,BS
+  7813: X 0.17 | P0 0.08 P1 0.00 P2 0.00 BS 0.00 BW 0.00 | beats all
+
+== Sn: readable 3; X beats every null on 0, the plain band on 0, both blind arms on 0; rel 0.923; means {"X":0,"P0":0.028,"P1":0.028,"P2":0,"BS":0.083,"BW":0}
+  7811: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BS 0.00 BW 0.00 | loses/ties to P0,P1,P2,BS,BW
+  7812: X 0.00 | P0 0.00 P1 0.08 P2 0.00 BS 0.25 BW 0.00 | loses/ties to P0,P1,P2,BS,BW
+  7813: X 0.00 | P0 0.08 P1 0.00 P2 0.00 BS 0.00 BW 0.00 | loses/ties to P0,P1,P2,BS,BW
+
+VERDICT: NO-GO: SPREAD KILLED (the scatterer does not beat the plain band P0,P1,P2 on S on 2 readable seeds)

@@ -79,3 +79,26 @@ from a frozen worktree at this commit: `lab/scatterer/chain.sh OUT` (deciding ->
 round every arm scored S 0-0.08 at 1.2M, so the metric sits near its floor and X must beat five nulls outright — ties at zero lose;
 (2) the scratch look shows the rule acts on only ~1-2 earners per check with ~3 swaps per 1,000 ticks, a light touch. I am not
 raising the dose after seeing that: the parameters above were fixed before any deciding data, and a stronger dose would be a new round.
+
+## Result (deciding round, scored 2026-10-12 08:21 BST) — NO-GO: SPREAD KILLED
+
+Full scorer output: `lab/scatterer/SCORE.txt`. All 18 runs finished (1.2M ticks); no collapse, so all 3 seeds readable.
+
+| seed | X | P0 | P1 | P2 | BS | BW |
+|---|---|---|---|---|---|---|
+| 7811 S | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 7812 S | 0.08 | 0.00 | 0.08 | 0.00 | 0.25 | 0.00 |
+| 7813 S | 0.17 | 0.08 | 0.00 | 0.00 | 0.00 | 0.00 |
+| mean S | 0.083 | 0.028 | 0.028 | 0 | 0.083 | 0 |
+| mean Sn | 0 | 0.028 | 0.028 | 0 | 0.083 | 0 |
+
+- X beats the plain band (P0, P1, P2) outright on S on 1 seed (7813), not the 2 required: **SPREAD KILLED**. Sf identical to S.
+- Sn: X scores 0 on every seed. Every bit of novelty X earned was a trick the scatterer itself moved; nothing new grew downstream.
+- The blind swap (BS) matched X's mean S (0.083) with half the swaps, so even the one X win is not evidence that moving carriers specifically matters.
+- Earners wiped (census, summed over 3 seeds): X 53, P0 43, BS 48, BW 24 (P1, P2 have no census). Scattering carriers did not cut wipeouts; X lost slightly more earners than the plain world.
+- Prediction written beforehand (NO-GO, most likely SPREAD KILLED) held; the metric sits near its floor (all arms 0-0.25).
+
+Read, as registered: keeping carriers of earning tricks apart does not make lasting novelty; wipeout is not geographic, and
+migration / island / dispersal ideas are dead for this metric in this core. Retire or prove: **SCATTER deleted from
+`lab/oee-core.js`** (core restored byte-for-byte to cos/archivist b8712ad). The census scripts, scorer and results stay; the
+`lab/scatterer/*.sh` drivers no longer run against this core since the flag is gone.
