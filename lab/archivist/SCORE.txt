@@ -1,0 +1,35 @@
+7611 X   rows 1200 N 1057 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 7 metab 4833.6 | writes 12 written keys 4 | coroner {"deaths":65,"subRatioMed":0.454,"subRecovered":0.31,"carriersGone":0.69,"revs":12,"reEarn5k":3,"on20to30k":1}
+7611 P0  rows 1200 N 1062 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 5 metab 4930 | writes 0 written keys 0 | coroner {"deaths":58,"subRatioMed":0.252,"subRecovered":0.16,"carriersGone":0.53,"revs":0,"reEarn5k":0,"on20to30k":0}
+7611 P1  rows 1200 N 1072 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 11 metab 5054.4 | writes 0 written keys 0 | coroner null
+7611 P2  rows 1200 N 1057 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 14 metab 4972.6 | writes 0 written keys 0 | coroner null
+7611 BT  rows 1200 N 1078 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 8 metab 4812 | writes 36 written keys 18 | coroner {"deaths":92,"subRatioMed":0.499,"subRecovered":0.2,"carriersGone":0.77,"revs":36,"reEarn5k":6,"on20to30k":5}
+7611 BG  rows 1200 N 1228 | S 0.08 (mid 0.08) Sf 0.08 Sn 0.08 (mid 0.00) | usedEver 15 metab 7384.2 | writes 39 written keys 15 | coroner {"deaths":109,"subRatioMed":0.601,"subRecovered":0.33,"carriersGone":0.75,"revs":39,"reEarn5k":1,"on20to30k":7}
+7612 X   rows 1200 N 1038 | S 0.08 (mid 0.00) Sf 0.08 Sn 0.00 (mid 0.00) | usedEver 8 metab 3340.2 | writes 19 written keys 12 | coroner {"deaths":61,"subRatioMed":0.795,"subRecovered":0.46,"carriersGone":0.88,"revs":19,"reEarn5k":10,"on20to30k":5}
+7612 P0  rows 1200 N 1204 | S 0.00 (mid 0.08) Sf 0.00 Sn 0.00 (mid 0.08) | usedEver 9 metab 5746.2 | writes 0 written keys 0 | coroner {"deaths":37,"subRatioMed":0.759,"subRecovered":0.38,"carriersGone":0.8,"revs":0,"reEarn5k":0,"on20to30k":0}
+7612 P1  rows 1200 N 1135 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 11 metab 4532.1 | writes 0 written keys 0 | coroner null
+7612 P2  rows 1200 N 1179 | S 0.08 (mid 0.08) Sf 0.08 Sn 0.08 (mid 0.08) | usedEver 12 metab 6730.5 | writes 0 written keys 0 | coroner null
+7612 BT  rows 1200 N 1375 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 9 metab 10343.7 | writes 27 written keys 11 | coroner {"deaths":44,"subRatioMed":0.373,"subRecovered":0.23,"carriersGone":0.85,"revs":27,"reEarn5k":1,"on20to30k":5}
+7612 BG  rows 1200 N 1060 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 7 metab 3252.4 | writes 15 written keys 10 | coroner {"deaths":71,"subRatioMed":0.517,"subRecovered":0.31,"carriersGone":0.85,"revs":15,"reEarn5k":2,"on20to30k":4}
+7613 X   rows 1200 N 1470 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 11 metab 10372 | writes 39 written keys 21 | coroner {"deaths":67,"subRatioMed":1.08,"subRecovered":0.57,"carriersGone":0.91,"revs":39,"reEarn5k":20,"on20to30k":7}
+7613 P0  rows 1200 N 1448 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 8 metab 10911.4 | writes 0 written keys 0 | coroner {"deaths":14,"subRatioMed":1.834,"subRecovered":0.79,"carriersGone":0.93,"revs":0,"reEarn5k":0,"on20to30k":0}
+7613 P1  rows 1200 N 1395 | S 0.00 (mid 0.08) Sf 0.00 Sn 0.00 (mid 0.08) | usedEver 10 metab 9916.4 | writes 0 written keys 0 | coroner null
+7613 P2  rows 1200 N 1427 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 9 metab 10724.5 | writes 0 written keys 0 | coroner null
+7613 BT  rows 1200 N 1440 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 7 metab 10813.1 | writes 36 written keys 12 | coroner {"deaths":57,"subRatioMed":1.055,"subRecovered":0.53,"carriersGone":0.93,"revs":36,"reEarn5k":1,"on20to30k":0}
+7613 BG  rows 1200 N 1040 | S 0.00 (mid 0.00) Sf 0.00 Sn 0.00 (mid 0.00) | usedEver 8 metab 11209.8 | writes 18 written keys 8 | coroner {"deaths":27,"subRatioMed":1.211,"subRecovered":0.7,"carriersGone":0.89,"revs":18,"reEarn5k":0,"on20to30k":0}
+
+== S: readable 3; X beats every null on 0, the plain band on 0, both blind archivists on 1; rel 1; means {"X":0.028,"P0":0,"P1":0,"P2":0.028,"BT":0,"BG":0.028}
+  7611: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BT 0.00 BG 0.08 | loses/ties to P0,P1,P2,BT,BG
+  7612: X 0.08 | P0 0.00 P1 0.00 P2 0.08 BT 0.00 BG 0.00 | loses/ties to P2
+  7613: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BT 0.00 BG 0.00 | loses/ties to P0,P1,P2,BT,BG
+
+== Sf: readable 3; X beats every null on 0, the plain band on 0, both blind archivists on 1; rel 1; means {"X":0.028,"P0":0,"P1":0,"P2":0.028,"BT":0,"BG":0.028}
+  7611: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BT 0.00 BG 0.08 | loses/ties to P0,P1,P2,BT,BG
+  7612: X 0.08 | P0 0.00 P1 0.00 P2 0.08 BT 0.00 BG 0.00 | loses/ties to P2
+  7613: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BT 0.00 BG 0.00 | loses/ties to P0,P1,P2,BT,BG
+
+== Sn: readable 3; X beats every null on 0, the plain band on 0, both blind archivists on 0; rel 0.973; means {"X":0,"P0":0,"P1":0,"P2":0.028,"BT":0,"BG":0.028}
+  7611: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BT 0.00 BG 0.08 | loses/ties to P0,P1,P2,BT,BG
+  7612: X 0.00 | P0 0.00 P1 0.00 P2 0.08 BT 0.00 BG 0.00 | loses/ties to P0,P1,P2,BT,BG
+  7613: X 0.00 | P0 0.00 P1 0.00 P2 0.00 BT 0.00 BG 0.00 | loses/ties to P0,P1,P2,BT,BG
+
+VERDICT: NO-GO: RETENTION KILLED (the archivist does not beat the plain band P0,P1,P2 on S on 2 readable seeds)

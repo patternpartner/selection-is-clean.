@@ -83,3 +83,24 @@ from a frozen worktree at this commit: `lab/archivist/chain.sh OUT` (deciding ->
 **Written before, so it can be wrong:** I expect NO-GO. The scratch look says handed-back tricks rarely re-take (3 of 18), and
 the blind arms led on S there, so MEMORY NOT SHOWN is the likeliest ending if X beats plain at all. Whatever the verdict, the
 coroner answers the user's question directly: do useful tricks die by losing carriers or by emptying their food.
+
+## Deciding round (seeds 7611–7613, 1,200,000 ticks) — finished 12 Oct ~00:17 BST
+
+Full printout `lab/archivist/SCORE.txt` (score.js, unchanged). Readable 3 (no null collapse).
+
+| seed | X S | P0 | P1 | P2 | BT | BG | note |
+|---|---|---|---|---|---|---|---|
+| 7611 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.08 | loses/ties to P0,P1,P2,BT,BG |
+| 7612 | 0.08 | 0.00 | 0.00 | 0.08 | 0.00 | 0.00 | loses/ties to P2 |
+| 7613 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | loses/ties to P0,P1,P2,BT,BG |
+
+Sf matches S on every seed. Means: X 0.028, P0 0, P1 0, P2 0.028, BT 0, BG 0.028.
+X beats the plain band on 0 seeds; beats both blind archivists on 1; rel 1.
+
+Coroner (plain words): at death, carriersGone medians/shares are high (~0.53–0.93 across arms; often ~0.7–0.9),
+substrate often partly/mostly back (subRecovered ~0.16–0.79; subRatioMed varies 0.25–1.8). So deaths are mostly
+gene/carrier loss, not empty food — yet handing programs back when food recovered still did not raise lasting novelty.
+
+**VERDICT: NO-GO, RETENTION KILLED.** X does not beat P0,P1,P2 on S on 2 readable seeds.
+Per the pre-reg: ARCHIVE is deleted from `lab/oee-core.js` on this branch. FLUXALL, NULLSHIFT, the CHEM_BIG
+load-salt fix, the scorer, the chain and these results stay. Core matches cos/dreamer 4eb9b84 when off.
