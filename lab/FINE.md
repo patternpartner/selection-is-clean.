@@ -14,3 +14,25 @@ Stage 2 (only on GO; pre-registered in this file in a separate commit before its
 history) on CHEM_BIG vs its own nulls (plain, blind-reach, NULLSHIFT twin), FINE S, fresh seeds 7941-7943, used-novelty.js bar
 (beat every null outright on 2/3 seeds, mean rel >= 1.10, no collapse). Locksmith picked over Dreamer: cheaper, and Dreamer
 scored zero even with private screening, so Locksmith is the fairer test of whether the old metric hid a real effect.
+
+## Result (deciding round, scored 2026-10-12 16:41 BST)
+
+```
+7931 L  N 1343 | S 0.03 (mid 0.10) usedEver 34
+7931 LP N 1375 | S 0.05 (mid 0.00) usedEver 29
+7931 B  N 1343 | S 0.00 (mid 0.00) usedEver 21
+7931 BP N 1400 | S 0.00 (mid 0.03) usedEver 30
+7932 L  N 1484 | S 0.05 (mid 0.00) usedEver 33
+7932 LP N 1615 | S 0.03 (mid 0.00) usedEver 14
+7932 B  N 1480 | S 0.00 (mid 0.05) usedEver 20
+7932 BP N 1471 | S 0.03 (mid 0.10) usedEver 27
+7933 L  N 1491 | S 0.03 (mid 0.00) usedEver 16
+7933 LP N 1430 | S 0.00 (mid 0.05) usedEver 36
+7933 B  N 1415 | S 0.05 (mid 0.03) usedEver 26
+7933 BP N 1439 | S 0.00 (mid 0.03) usedEver 26
+B moves false (mean 0.017); L moves false (mean 0.034); B!=L on 3/3; twins BP 0.009 LP 0.026
+
+VERDICT: NO-GO - FINE FLOOR: delete lab/fine; next step changes the chemistry, not the metric
+```
+
+NO-GO FLOOR. Finer resolution (MIN 0.002, WIN 10) still leaves every arm near zero (B mean S 0.017, L mean S 0.034; neither MOVES; B!=L on 3/3 is noise at the floor). Per the pre-registration: delete lab/fine; next step changes the chemistry, not the metric.
