@@ -21,3 +21,32 @@ late third), income only. Collapse = mean N last quarter < 200.
 GO iff used-novelty.js bar(X vs XP,SH,B) passes (X beats every null outright on >=2/3 seeds, mean rel on S+1 >= 1.10, no
 collapse in any arm) AND X MOVES (S>0 on every readable seed, mean S >= 0.5). GO = candidate only; flag stays off.
 NO-GO: delete FORGE from oee-core.js and lab/forge runners; this file and the result stay as the record.
+
+## Result - deciding round (seeds 7961-7963, 1.2M ticks): NO-GO (X does not MOVE enough)
+
+```
+7961 X  rows 1200 N 1221 | S 0.256 (mid 0.077) usedEver 147 | late ligation share 0.340
+7961 XP rows 1200 N 1449 | S 0.000 (mid 0.333) usedEver 164 | late ligation share 0.004
+7961 SH rows 1200 N 1505 | S 0.000 (mid 0.000) usedEver 27 | late ligation share 0.003
+7961 B  rows 1200 N 1398 | S 0.000 (mid 0.000) usedEver 12 | late ligation share 0.000
+7962 X  rows 1200 N 1298 | S 0.667 (mid 0.590) usedEver 289 | late ligation share 0.104
+7962 XP rows 1200 N 1257 | S 0.410 (mid 1.256) usedEver 240 | late ligation share 0.093
+7962 SH rows 1200 N 1191 | S 0.154 (mid 0.231) usedEver 52 | late ligation share 0.117
+7962 B  rows 1200 N 1397 | S 0.000 (mid 0.179) usedEver 17 | late ligation share 0.000
+7963 X  rows 1200 N 1140 | S 0.205 (mid 0.051) usedEver 172 | late ligation share 0.312
+7963 XP rows 1200 N 1220 | S 0.000 (mid 0.872) usedEver 115 | late ligation share 0.340
+7963 SH rows 1200 N 1141 | S 0.000 (mid 0.026) usedEver 13 | late ligation share 0.072
+7963 B  rows 1200 N 1460 | S 0.026 (mid 0.103) usedEver 25 | late ligation share 0.000
+[{"seed":"7961","X":0.2564102564102564,"XP":0,"SH":0,"B":0,"beatsAll":true,"lostTo":[]},{"seed":"7962","X":0.6666666666666666,"XP":0.41025641025641024,"SH":0.15384615384615385,"B":0,"beatsAll":true,"lostTo":[]},{"seed":"7963","X":0.20512820512820512,"XP":0,"SH":0,"B":0.02564102564102564,"beatsAll":true,"lostTo":[]}]
+bar: wins 3/3 (need 2) rel 1.211 (>=1.10 true) collapse [] | X moves false (mean S 0.376) | means {"X":0.37606837606837606,"XP":0.13675213675213674,"SH":0.05128205128205129,"B":0.008547008547008546}
+
+VERDICT: NO-GO - FORGE KILLED: delete FORGE from oee-core.js and lab/forge runners; branch keeps the record
+```
+
+Read: the bar passed - X beat its noise twin (XP), the sham (SH) and plain CHEM_BIG (B) outright on 3/3 seeds, mean rel 1.21,
+no collapse. X also lifted S off zero on every seed (0.256, 0.667, 0.205), the first arm in eight rounds to do so, with ligation
+carrying 10-34% of late income. But the locked MOVES clause needed mean S >= 0.5 and X's mean is 0.376, so by the
+pre-registration this is NO-GO. FORGE is deleted from oee-core.js (back to f2fa3af) and lab/forge runners removed; this file
+and the score stay as the record. Note for whatever comes next: generative chemistry is the first change that moved the score
+at all; the shortfall is size, not direction. Any follow-up must be a fresh pre-registration on new unseen seeds, not a
+re-reading of this one.
