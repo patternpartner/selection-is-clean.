@@ -26662,3 +26662,29 @@ refuses it), which would make the routes compete for one budget. That is a readi
 **Next, if anyone picks this up.** (1) Test what the programs do change, with a measure other than births and survival (trait spread, lineage count, what the next generation looks
 like) in the same blank-versus-null design. (2) Run the same design with REPL on, where programs are the only reproducers. (3) Test the energy-pool reading directly (raise or lower the
 birth cost and see whether total births track it).
+
+#### #302b — DO PROGRAMS MATTER TO TRAIT SPREAD OR LINEAGES? Not to spread or lineages alive; to lineage minting on one seed in eight. And a measure of mine read the wrong variable.
+
+Pre-registered, same design as #302's population test (every alive program set to [] at tick 1,500 and re-emptied every 20 ticks, against four draw-order nulls per seed, measured at tick 4,000).
+Files: `lab/inlife/PREREG-popblank-traits.md` (`7ad1c6ed9f526055`), `PREREG-popblank-traits-b.md` (`d5f9ca93999787d4`).
+
+**An instrument error, kept on the page.** The first run's third measure, "lineages minted", was defined as `_linNext(4000) - _linNext(1500)`. `_linNext` is a retired variable (a comment at
+`engine.html:21486` records the namespace fix); the live counter is `nextLineageID`, which climbs by about 320 per 1,000 ticks. The first run reported 0 minted in all 40 runs and a "DOES NOT
+MATTER" that was nothing of the kind. I caught it because `_linNext` sat at 1 on every seed while hundreds of distinct lineages were alive. The other two first-run measures are valid.
+
+| measure (BLANK / mean of four NUDGE) | seeds | ratio | 95% CI (Bonferroni, three measures) | verdict |
+|---|---|---|---|---|
+| trait dispersion (sum of tend variance, alive) | 16 pooled (61-68, 71-78) | 0.99 | [0.79, 1.23] | INCONCLUSIVE (lower bound 0.79 against 0.80 required) |
+| lineages alive | 16 pooled | 1.04 | [0.96, 1.12] | DOES NOT MATTER |
+| lineages minted, tick 1,500-4,000 | 71-78 | 0.75 | [0.35, 1.62] | INCONCLUSIVE |
+
+Placebo (one null against the other three) includes 1.0 on every measure. The written prediction was that minting would fall, partially; it fell on one seed, hugely, and not on the others.
+
+**Where the minting effect lives.** Seed 71 minted 121 lineages under BLANK against 779-1,033 under the four NUDGE runs, and had more lineages alive (330 against 217-232); the other seven seeds
+sit near their nulls. A source split (exploratory, three seeds, `probe12.js`): about 90% of newly minted lineages carry the tag `cluster` and about 10% `speciate` (tendency distance from the
+parent). On seed 71, cluster mints were 97 under BLANK against 707-798 under NUDGE; on seeds 72 and 76 BLANK made as many as the nulls (946 against 860; 713). So there is a seed in which
+cluster formation depends on programs, as there was a seed in which a birth route did (#302, seed 54), and the pooled effect is unreadable because most seeds do not have it.
+
+**Reading.** Programs do not set births, survival, trait spread (within about +/-23%) or the number of lineages alive in this window. They can set how many cluster lineages are made, on some seeds.
+That is the first thing in this series that blanking moved, and it is one seed of eight, from an exploratory split, which is a lead and not a result. Not tested: why seed 71 differs; whether
+the same seeds show program dependence in both births and clusters; any window other than ticks 1,500-4,000.
