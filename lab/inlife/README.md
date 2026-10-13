@@ -16,6 +16,8 @@ Raw run outputs are not committed (the session scratchpad held them); every numb
 | the same, corrected counter (`nextLineageID`), dispersion and lineages alive pooled with the first run | PREREG-popblank-traits-b (d5f9ca93999787d4) | probe10b.js | analyse10b.js | 71-78 (+ 61-68 pooled) |
 | is a new lineage ever minted, and by what source (exploratory, no rule) | - | probe11.js, probe12.js | - | 1-3; 71, 72, 76 |
 | are births limited by the shared energy pool? (halve / double BIRTH_ENERGY_COST) | PREREG-birthcost (1ab3bc3d27107a9c) | probe13.js | analyse13.js | 81-88 |
+| VM retire-or-prove, first attempt (BLANKVM=1, empty programs): INCONCLUSIVE | PREREG-vm-retire-or-prove (e1e203d6fc547229) | harness-oee.js (BLANKVM) | analyse14.js d14 | 91-95 |
+| VM retire-or-prove, second attempt (BLANKVM=2, one inert instruction): DECORATION | PREREG-vm-retire-or-prove-b (4a8bd26bf90eba8d) | harness-oee.js (BLANKVM=2) | analyse14.js d15 | 96-101 |
 
 Usage: `SEED=11 T=1500 END=4000 OUT=run.json node lab/inlife/probe5.js`; the population probes also take `MODE=BLANK|NUDGE K=1..4`.
 Analysis: `node lab/inlife/analyse8.js <dir>` where `<dir>` holds a `d8/` folder of `<seed>-<MODE>-<K>.json` files (the analysis scripts name the folder they read).

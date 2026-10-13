@@ -26711,7 +26711,7 @@ not behave there; I did not look into why. It stays in the statistic (the pre-re
 
 **Not tested:** the pool in isolation (changing the cost also changes the energy returned on death, `BIRTH_ENERGY_COST * DEATH_ENERGY_RETURN`); the regenerating influx (`WORLD_ENERGY_REGEN`), which is the other lever; windows other than ticks 1,500-4,000.
 
-### #303 — RETIRE-OR-PROVE THE PER-PARTICLE VM PROGRAMS, FIRST ATTEMPT: INCONCLUSIVE (2 of 5 seeds counted). The attempt found a latent crash and that the default world sometimes goes extinct. DRAFT RESULT, no engine change.
+### #303 — RETIRE-OR-PROVE THE PER-PARTICLE VM PROGRAMS, FIRST ATTEMPT: INCONCLUSIVE (2 of 5 seeds counted). The attempt found a latent crash and that the default world sometimes goes extinct. No engine change.
 
 Pre-registered and committed before the first decision run (`lab/inlife/PREREG-vm-retire-or-prove.md`, `e1e203d6fc547229`, commit `0f09364`, 20:18 UTC; the harness change `BLANKVM` / `popProgLen` rode in the same commit and is
 byte-identical when unset, checked by hash). Shape: the retire-or-prove template with grid-free measures (centredEntropyRatio, spread_late, estFrac), a null band of six draw-order replicates per seed (`NULLSHIFT` 0-5), the
@@ -26737,3 +26737,28 @@ the same way on both. **The control band itself is huge:** across six draw-order
 **Why I did not rescue the verdict.** The template says fewer than three counted seeds is INCONCLUSIVE, and a changed rule is a new experiment. My counting rule was at fault (it disqualified a seed if any control went extinct, which
 luck alone does for about a third of seeds), and the ablation was at fault (empty programs crash the engine). Both are fixed in a second, separately pre-registered attempt (`PREREG-vm-retire-or-prove-b.md`, `4a8bd26bf90eba8d`):
 the BLANK arm becomes `BLANKVM=2` (one inert instruction per particle, no crash path), a crashed control is excluded from the band and listed, and seeds 96-101 are new. Its result will be appended here as #303b.
+
+#### #303b — THE PER-PARTICLE VM PROGRAMS, SECOND ATTEMPT: DECORATION by the rule as written, on the project's own measures. Not a recommendation to delete. No engine change.
+
+Pre-registered and committed before the run (`lab/inlife/PREREG-vm-retire-or-prove-b.md`, `4a8bd26bf90eba8d`, commit `54c43f5`, 21:55 UTC). Fixes the two faults #303 found (the ablation became `BLANKVM=2`, one inert instruction `[-1,0,0,0]` per
+particle, with no crash path; a control that ends extinct or errors is excluded from the band and listed, not a reason to drop the seed). Seeds 96-101, six control replicates (`NULLSHIFT` 0-5) and one BLANK run each,
+20,000 ticks, measures and thresholds as in #303 (centredEntropyRatio 0.05, spread_late 10%, estFrac 25% relative; BLANK must be beyond the threshold AND outside every control; the same measure must move the same way on
+at least two thirds of counted seeds). Horizon: 20,000 ticks, about ten generations by #302's count.
+
+**Verdict by the rule: DECORATION.** Counted seeds 5 of 6 (96, 97, 98, 99, 101; all BLANK runs clean, popProgLen 1.0 against 14-16 in the controls). On 4 of 5 seeds no ruling measure moved. Seed 97 moved
+(centredEntropyRatio 0.10 against a band of 0.27-0.68, spread_late 0.19 against 0.20-0.35), both DOWN. Tallies: centredEntropyRatio DOWN 1, spread_late DOWN 1, estFrac 0; two thirds of five is four seeds.
+
+**Robustness (not a re-ruling).** Seed 100 was not counted only because one control replicate's mean program length was 4.81, under my cutoff of 5. Its BLANK run moved DOWN on centredEntropyRatio (0.12 against 0.24-1.05) and
+spread_late (0.17 against 0.22-0.53) and UP on estFrac. Counted, the tallies would be 2, 2 and 1 of six, and the verdict would still be DECORATION (four of six seeds with nothing moving, four needed).
+
+**The one pattern worth saying aloud.** Where BLANK moved a diversity measure it moved it DOWN: seeds 97 and 100 here, 92 and 95 in #303, against one seed UP (93, #303). So the programs may add a little grid-free diversity on a minority of seeds
+(about four in eleven across both attempts, 92, 95, 97, 100), which is not two thirds of anything and is a lead, not a result.
+
+**Control extinctions.** 0 of 36 control runs ended extinct here; 2 of 30 did in #303. Across both attempts, 2 of 66 control runs (3%) went extinct within 20,000 ticks. BLANK went extinct 0 of 11 times with the crash fixed.
+
+**What the template says, and why I am not following it to deletion.** DECORATION means "ran, no effect" and the template deletes, "unless the note names something else that depends on it". From code I read this session (not tested here), things that depend on programs
+exist: the mind writes an instruction into each child's program (`mindBirth`, #296); newly authored atoms and verbs are handed to a living particle's program (#80, #132); the `REPL` mode makes programs the only reproducers (default off, so
+not exercised by any of this); and the draw VM that composes a particle's FORM (`__DRAW_VM`, LIVE) may or may not share the program store (I did not check). So the rule's DELETE is conditional on those, and CLAUDE.md's step 6 applies besides: deleting or defaulting off the programs alters every saved universe on reload. **The verdict goes
+to the user. Nothing was shipped.**
+
+**Not tested:** any horizon past 20,000 ticks; programs removed from tick 1,500 on already covered in #302 / #302b; the REPL mode; whether the mind and the authored atoms need programs to do their job (they could only be tested by a design in which they act).
