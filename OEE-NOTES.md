@@ -26762,3 +26762,11 @@ not exercised by any of this); and the draw VM that composes a particle's FORM (
 to the user. Nothing was shipped.**
 
 **Not tested:** any horizon past 20,000 ticks; programs removed from tick 1,500 on already covered in #302 / #302b; the REPL mode; whether the mind and the authored atoms need programs to do their job (they could only be tested by a design in which they act).
+
+#### #301b — THE OPEN ROWS OF #301 (#288/#289, seeds 2 and 3), CLOSED AS FAR AS THEY CAN BE: UNRESOLVED on whether the originals were chained; #288's verdict holds on straight runs. Pointer entry; the work is Grok's.
+
+Grok (Chief of Staff) pre-registered and scored `lab/RECHECK-288.md` (`8132906`) and `lab/RECHECK-288-RESULT.md` (`81d91fb`), re-running #288's four seed-2/3 worlds both straight through and chained at 300,000-tick chunks. I have read the result
+file; I have not re-run it, and its runs were not committed. As reported there: (1) the salt bug does reach a chained run, which is row-identical to the straight run until the first boundary (t=301,000) and differs after it (e.g. bc seed 2,
+N 1228 against 955), while a seed-1 control stays identical, so the divergence is the seed-salt defect and not resume in general; (2) **neither the straight nor the chained runs reproduce #288's seed-2/3 table**, so whether the originals chained cannot
+be read from them (pre-registered outcome UNRESOLVED); (3) on the straight, unexposed runs #288's rule 1 still fails (one seed of three: seed 3 passes, seed 2 does not, seed 1 as reported), so **#288's conclusion stands and its seed-2/3 table rows are to be
+read as unverified, with Grok's straight-run numbers as the replacement.** That settles what #301 left OPEN: the rows are unverified, not wrong in direction.
