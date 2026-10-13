@@ -28,6 +28,7 @@
 //       NULLSHIFT=<k>  (#249b: burn k draws before the first tick - a null replicate of the same world)
 //       FORCE=a,b  (#257: trait-homogeniser knockouts, re-installed every tick - see trait-force.js)
 //       MECHOFF=a,b  (#261b: #253's mechanism switches held OFF every tick - names from MECH_DECLARED)
+//       BLANKVM=1  (#303: every alive particle's VM program emptied every 20 ticks from tick 0 - the retire-or-prove arm for the VM)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
 // real number is 39 node-side rigs that boot engine.html in-process and silently drop every
@@ -674,11 +675,13 @@ const driver = `
       globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
       globalThis.__applyForce(globalThis.__FORCE);   // #257: trait-homogeniser knockouts, every tick
       for(const n of globalThis.__MECHOFF) mechSet(n,0);   // #261b: mechanism switches held off, every tick
+      if(globalThis.__BLANKVM&&(s%20)===0){ for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&pProg[i]&&pProg[i].length>0){ const c=[]; pProg[i]=c; pGenome[i].vmProgram=c; } } }   // #303: BLANKVM=1 empties every alive particle's VM program every 20 ticks from tick 0 (newborns included); unset = untouched
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if(es&&(s+1)%EST===0) es.census();
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
     }
   };
+  globalThis.__popProgLen=function(){ let n=0,l=0; for(let i=0;i<N;i++){ if(palive[i]&&pProg[i]){ n++; l+=pProg[i].length; } } return +(l/Math.max(n,1)).toFixed(2); };   // #303: mean VM program length over the LIVING (the vmLen series reads the germline); a read, no draws
   globalThis.__lvCensus=function(){ try{ return livenessCensus(); }catch(e){ return null; } };   // #249: the never-fired list, read not drawn
   globalThis.__mindReport=function(){ try{ return mindReport(); }catch(e){ return null; } };   // #296: the mind's own counters, read not drawn
 })();
@@ -727,6 +730,7 @@ const EST_EVERY = parseInt(process.env.ESTABLISH || '0', 10) || 0;
 globalThis.__EST_EVERY = EST_EVERY;
 const EC = require(__dirname + '/establish-census.js');
 globalThis.__FORCE = FORCE;
+globalThis.__BLANKVM = process.env.BLANKVM === '1' ? 1 : 0;   // #303
 // #261b: MECHOFF=a,b holds #253's mechanism switches OFF every tick (as harness-variant.js does), so the retire-or-prove
 // template can rule on a mechanism the evolutionary search voted against. Unset, the list is empty and nothing changes.
 const MECHOFF = String(process.env.MECHOFF || '').split(',').filter(Boolean);
@@ -961,9 +965,10 @@ const verdict = {
 };
 
 console.log(JSON.stringify({
-  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT, FORCE, MECHOFF },
+  config: { TICKS, SAMPLE, SEED: process.env.SEED || null, INDEX: process.env.INDEX || 'engine.html', NULLSHIFT, FORCE, MECHOFF, BLANKVM: globalThis.__BLANKVM },
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
+  popProgLen: globalThis.__popProgLen ? globalThis.__popProgLen() : undefined,   // #303
   switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253
   armHits: globalThis.__armHit || undefined,
   mind: (globalThis.__mindReport && globalThis.__mindReport()) || undefined,   // #296
