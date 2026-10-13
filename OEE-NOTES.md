@@ -26611,3 +26611,54 @@ other than 1 as far as is established. It makes #291 item 6 wrong, and it leaves
 - `a3c973a` placed 11+ documents in `lab/` that are byte-identical to copies already in `lab/cos/`, and `lab/cos/README.md` still ends at 6 Oct. Pick
   one directory and index the 10-12 Oct rounds (GARDENER, LOCKSMITH, DREAMER, ARCHIVIST, SCATTERER, CEILING, FINE, FORGE, WILD-MIND 1-3).
 - Not changed by this entry: `engine.html`, any harness, or any saved world. The fix is in the lab core only.
+
+### #302 — DO AN INDIVIDUAL'S PROGRAM, OR THE POPULATION'S, MATTER TO WHO REPRODUCES OR SURVIVES? Measured from the engine alone: not in this window, at defaults.
+
+Written without relying on any earlier entry. Engine `engine.html` at 8795752, defaults (the LIVE stack, which the engine fills in wherever a flag is undefined, so headless and
+artwork agree). Every experiment below was pre-registered before its deciding run (files and sha256 given); the seeds were never run in any probe. Scripts and pre-registrations are committed in `lab/inlife/` (README there maps each experiment to its probe and analysis); raw run
+outputs are not committed.
+
+**What the engine does (measured, three seeds, 6,000-8,000 ticks).**
+- Founders do not start dying in numbers until about tick 2,500. Successful parented births are about 175 per 1,000 ticks at about 375 alive: roughly 0.5 generations per 1,000
+  ticks and about 1.7 in 6,000. Any claim about "keeps arriving" at 20,000 ticks or less stands on roughly 10 generations or fewer.
+- A founder's program changes during its own life (own VM opcodes) and children inherit the changed program. About 53-67% of true founders had changed by tick 2,000; none of ~400
+  children of changed founders matched the parent's original program.
+- 100% of successful births on seed 41, ticks 1,500-3,500, in a normal world and in an all-blank world, come from one site: `interferenceCreate` (`engine.html:25406`), a
+  phase-interference rule (aligned phases, tendency similarity > 0.1, combined amplitude) with no VM output involved.
+
+**Individual level (randomized: REVERT / SHAM / CONTROL, then BLANK / SHAM / CONTROL; changed founders at tick 1,500, followed to 4,000).**
+
+| experiment (sha256) | seeds | primary difference vs SHAM, survival | 95% CI | verdict |
+|---|---|---|---|---|
+| revert to tick-1 program (`3f197fe0fc732829`) | 11-15 | +0.060 | [-0.024, +0.145] | INCONCLUSIVE |
+| temporary blank + random code (`52e3d0a5c0655e41`) | 21-28 | +0.014 | [-0.065, +0.093] | INCONCLUSIVE (blank refilled by neighbours) |
+| permanent blank, re-emptied every 20 ticks (`90a3013201ad1f37`) | 31-38 | -0.010 | [-0.076, +0.054] | INSENSITIVE |
+
+"Reproduced at all" (about 7% of founders) did not differ either (BLANK - SHAM +0.005, CI [-0.029, +0.042]). Offspring counts are a lottery: 90-94% of founders have none and the top three
+individuals in an arm produce about half of its offspring. The permanent-blank manipulation was marginally diluted at tick 3,000 (89.5% empty against the 90% required).
+
+**Population level (every alive program set to [] and re-emptied every 20 ticks, against four draw-order nulls per seed; births and alive count over 2,500 / 2,000 ticks).**
+
+| experiment (sha256) | window | seeds | births BLANK / NUDGE | alive BLANK / NUDGE | verdict |
+|---|---|---|---|---|---|
+| `a0176d7243af8c93` | 1,500-4,000 | 41-48 | 0.94x [0.81, 1.10] | 0.99x [0.92, 1.06] | DOES NOT MATTER |
+| `b2c882cb6ce8130b` | 6,000-8,000 | 51-56 | 0.97x [0.86, 1.10] | 1.01x [0.97, 1.04] | DOES NOT MATTER |
+
+Placebo (one draw-order null against the other three) includes 1.0 on every measure. **My written prediction for the first was wrong**: I expected births to fall by more than half
+because the code reads as needing a program output. They did not.
+
+**Why not: births are carried by whichever route is available.** In the late window the program-driven route (`addParticle` with a parent) carries 0-9 births in five of six seeds and
+about 77 of 174 on seed 54; with programs removed, that route goes to 0 and the phase-interference route rises (seed 54: 164 against 97) to the same total (164 against 174). Seed 1
+(seen earlier, reported apart): 165 against 201-215, a fall of about 20%, with the program route halving. A global energy pool pays for every birth (`worldEnergy < BIRTH_ENERGY_COST`
+refuses it), which would make the routes compete for one budget. That is a reading of the code that fits the data; I have not tested it.
+
+**What this does and does not say.**
+- In this window, at defaults, the population's programs do not set how many are born or how many are alive, and an individual's own program does not set its survival or its
+  chance of reproducing. By this project's own test (does it change who has offspring?) the VM programs fail in this window.
+- It does not say programs are useless: they could matter for what is born (traits, lineages), for later generations, for settings other than the defaults, or in the REPL mode
+  where "only programs reproduce". It does not say the in-life changes are adaptive or neutral; it says survival and births cannot tell.
+- Eight, eight, eight and six seeds; one window per experiment; four nulls per seed is a coarse noise estimate.
+
+**Next, if anyone picks this up.** (1) Test what the programs do change, with a measure other than births and survival (trait spread, lineage count, what the next generation looks
+like) in the same blank-versus-null design. (2) Run the same design with REPL on, where programs are the only reproducers. (3) Test the energy-pool reading directly (raise or lower the
+birth cost and see whether total births track it).
