@@ -26558,3 +26558,56 @@ same site's INPUT on today's engine: `video/pinned_capture.js`, seed 776, 6,000 
   Same shape as #217n and #262: a live mechanism answering with a constant. **Not measured here:** whether any evolved program actually reads `R[4]`, or whether
   amp's 1.2 ceiling is the thing that pins it. Neither changes the engine; no mechanism is kept or deleted by this entry.
 - **Shipped as:** `video/pinned.html`, an interactive page (hold to see the true values, drag to move through time).
+
+### #301 — CORRECTION TO #291 ITEM 6: A RESUMED CHEM_BIG WORLD ON ANY SEED BUT 1 CONTINUED ON SEED 1'S CHEMISTRY. Fixed in c5f1d5d; what it reaches is not yet established.
+
+**What #291 said (left in place above, not edited):** "On save/load: main's core resumes exactly for every option it has (CHEM, VIRUS, CHEM_BIG and
+TASKS re-checked)." **That held for seed 1 only.** The re-check was run on the default seed, the trap this file names under SEED.
+
+**The defect.** `World.load` rebuilds the world with seed 1, and CHEM_BIG's network is a hash salted by the seed (`big.salt`). The save did not carry
+the salt, so every CHEM_BIG world resumed from a save on any seed other than 1 kept its layers and then looked up energies and products in SEED 1'S
+network. Found by the cos/gardener round (the CoS lane, Grok), fixed on that branch in `98de2bf` and brought to main in `c5f1d5d`, with one line in `World.load` that rebuilds the salt from
+`CHEM_SEED` or `seed0` and clears the memoised `big.e` / `big.pr`. Fresh (never-resumed) runs were never affected.
+
+**Checked here, not taken from the branch.** Old core (615e05f) against new (a3c973a), a CHEM+CHEM_BIG world on a 32x32 grid, 50 ticks, saved and loaded,
+then `big.salt` and `be(q)` / `bprod(q,0)` at q = 3, 77, 4096, 60000 compared with the continuous world:
+
+| seed | old core: salt same / chemistry same | new core: salt same / chemistry same |
+|---|---|---|
+| 1 | yes / yes | yes / yes |
+| 2 | **no / no** | yes / yes |
+| 7 | **no / no** | yes / yes |
+
+Flag-off identity: a plain world, seed 2, 400 ticks, fingerprints equal on both cores (1c9b25f0426e). **The first thing I tried to test it with could not
+see the bug.** Fingerprinting alive count, energy and RNG state after a 300-tick resume came out identical on old and new for seed 2, because no
+METAB instruction had run yet. A resume check on a CHEM_BIG world has to read the chemistry itself, or run until the chemistry has been used.
+
+**What it reaches.**
+
+| work | CHEM_BIG? | ever resumed from a save? | status |
+|---|---|---|---|
+| #288 and #289 (CHEM_BIG, seeds 1-3, 1,200,000 ticks; the in-world replays) | yes | **not established** (#289 mentions "only chunk-end saves exist"). Grok: no run files or chain script survive; the pre-registration and result commits are about an hour apart, which fits one straight run but proves nothing | **OPEN.** Seed 1 is safe. Seeds 2 and 3 are exposed if any segment was resumed with `core-run.js LOAD=`. |
+| #291's reading of #288/#289 | yes | follows the row above | OPEN, same question |
+| cos GARDENER, LOCKSMITH, DREAMER, ARCHIVIST, SCATTERER, CEILING, FINE, FORGE round 1 (11-12 Oct; Grok also names a live Forge-2, not on any branch yet) | yes | **no, per Grok** | **Not exposed.** Checked here: the fix is `98de2bf` (11 Oct 09:15 BST, the GARDENER pre-registration commit) and all eight branch tips descend from it. Stated by Grok, not checked here, because the run files are not committed: every round launched after the fix (earliest, GARDENER, 11 Oct 13:20); no deciding run resumed through `World.load`; the runners never set `LOAD=`, an unfinished run restarts from tick 0, and every deciding .jsonl starts at t=1000; `resume.sh` is a self-test on scratch seeds only |
+| cos 1-6 Oct: sticky-*, heritable-body, cross-feeding, scarcity, chance-engine, local-renewal, meta-search, niche, skin, random-lysis | **no, on the evidence in their write-ups** | sticky-* resume via `lab/sticky/fullsave.js`, which does not call `World.load` | **Not exposed as far as the documents show.** CHEM_BIG appears in them only as an identity check with the flag unset, and in LOCAL-RENEWAL as "Not supported (the constructor throws)". Their configs were not re-read |
+
+**An earlier claim of mine that this table corrects.** In the review of the merge I first listed the 1-6 Oct rounds as exposed. That count came from
+`oee-core.js` itself, which mentions CHEM_BIG 16-19 times on every branch, so it said nothing about what a round ran. Recorded because it is the
+name-search failure this file already describes (`#216k`, `#217c`, `#258b`): the string was found, and the question was never asked of the run.
+
+**What would settle the OPEN rows, cheaply.** For #288 seeds 2 and 3: did any segment start from a save? If the run directories survive, the first
+sample after each segment boundary against a seed-2 CHEM_BIG world run straight through to the same tick decides it. **Grok reports that no run files or
+chain script survive**, so this cannot be settled from the record; treat the seed-2 and seed-3 CHEM_BIG rows as unverified rather than wrong, and a
+fresh straight-through re-run (a 1,200,000-tick world is a long job and was not timed here; per CLAUDE.md a harness job is stopped at about 30 minutes, so it would have to be
+sized to that) is the only way to close them; the direction in #288 (bounded, plateauing) does not rest on one seed's exact numbers
+but the table does.
+
+**What this does not change.** Nothing here moves the novelty verdicts of #299e or the cos NO-GOs, none of which run a resumed CHEM_BIG world on a seed
+other than 1 as far as is established. It makes #291 item 6 wrong, and it leaves two rows of #288/#289 unconfirmed.
+
+**Housekeeping that rides with it.**
+- Add to `substrate-test` or the lab's own identity checks: a CHEM_BIG save/load on a seed other than 1, comparing `big.salt` and `be()` / `bprod()`, not
+  only the world's counts. The old check passed on seed 1 and would still pass on the broken core.
+- `a3c973a` placed 11+ documents in `lab/` that are byte-identical to copies already in `lab/cos/`, and `lab/cos/README.md` still ends at 6 Oct. Pick
+  one directory and index the 10-12 Oct rounds (GARDENER, LOCKSMITH, DREAMER, ARCHIVIST, SCATTERER, CEILING, FINE, FORGE, WILD-MIND 1-3).
+- Not changed by this entry: `engine.html`, any harness, or any saved world. The fix is in the lab core only.
