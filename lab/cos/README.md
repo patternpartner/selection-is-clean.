@@ -1,4 +1,4 @@
-# lab/cos — the cos/* rounds (1-6 October 2026): write-ups only
+# lab/cos — CoS write-ups: the cos/* rounds of 1-6 October 2026 (below), and an index of the 10-13 October rounds (end)
 
 These are the result documents from 17 `cos/*` branches, copied unedited from the branch where each was finished. **The code
 and the run data stay on those branches.** Paths inside the documents (`lab/autocat/…`, `lab/sticky/…`, `lab/chance/…`) refer to
@@ -33,3 +33,24 @@ or NOT SHOWN. The only code brought into main is the speedup (`SPEEDUP.md`), por
 | `STICKY-SEARCH.md` | cos/sticky-search | search for "used novelty that sticks" | c055 "GO (re-confirmed)". **Superseded:** the metric counted carriers, the design never beat its drift twin outright, and c055 failed on seeds 501-503 (#291) |
 | `STICKY-LONGRUN.md` | cos/sticky-longrun | c055 to 1.5M ticks, plus ±25% nudges | NOT SHOWN: late S below middle S (fades); FRAGILE, 5/12 nudges pass; the centre failed at 450k on 501-503 |
 | `STICKY-ROBUST.md` | cos/sticky-robust | search for a robust neighbourhood of c055 | no configuration ROBUST-GO |
+
+## 10-13 October 2026 rounds (scored with income-only use, `lab/used-novelty.js`; documents in `lab/`)
+
+Canonical copies: the 1-6 Oct documents live only in `lab/cos/` (duplicates once placed in `lab/` by a3c973a were removed);
+the 10-13 Oct documents live only in `lab/`. Every NO-GO mechanism was deleted from the core; only the write-ups are on main.
+All of these rounds ran with the CHEM_BIG load fix (98de2bf); see OEE-NOTES #301.
+
+| document | branch | question | verdict |
+|---|---|---|---|
+| `../WILD-MIND.md` | cos/wild-mind | "surprise" pressure | NO-GO |
+| `../WILD-MIND-2.md` | cos/wild-mind-2 | "keeper" | NO-GO |
+| `../WILD-MIND-3.md` | cos/wild-mind-3 | "earner" | NO-GO (guard failed on 2/3 seeds) |
+| `../GARDENER.md` | cos/gardener | tax winning tricks | NO-GO (GARDEN deleted; FLUXALL, NULLSHIFT, CHEM_BIG load fix kept) |
+| `../LOCKSMITH.md` | cos/locksmith | unlock stuck chemistry | NO-GO, REACH KILLED |
+| `../DREAMER.md` | cos/dreamer | directed discovery | NO-GO, DISCOVERY KILLED |
+| `../ARCHIVIST.md` | cos/archivist | hand lost earners back | NO-GO, RETENTION KILLED |
+| `../SCATTERER.md` | cos/scatterer | keep carriers spread | NO-GO, SPREAD KILLED |
+| `../CEILING.md` | cos/chem-ceiling | can any chemistry move S at all? | NO-GO FLOOR (S ~0 on every arm) |
+| `../FINE.md` | cos/fine-metric | finer metric (MIN 0.2%, WIN 10k) | NO-GO FINE FLOOR |
+| `../FORGE.md` | cos/forge | organisms join molecules into new food | NO-GO: beat every null on every seed (mean S 0.376 v 0.137/0.051/0.009) but below the 0.5 bar |
+| `../FORGE-2.md` | cos/forge-2 | FORGE at 2.4M ticks | NO-GO: mean S fell to 0.300; late S below mid-run on all seeds |
