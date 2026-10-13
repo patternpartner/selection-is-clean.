@@ -26688,3 +26688,25 @@ cluster formation depends on programs, as there was a seed in which a birth rout
 **Reading.** Programs do not set births, survival, trait spread (within about +/-23%) or the number of lineages alive in this window. They can set how many cluster lineages are made, on some seeds.
 That is the first thing in this series that blanking moved, and it is one seed of eight, from an exploratory split, which is a lead and not a result. Not tested: why seed 71 differs; whether
 the same seeds show program dependence in both births and clusters; any window other than ticks 1,500-4,000.
+
+#### #302c — ARE BIRTHS LIMITED BY THE SHARED ENERGY POOL? Partly. Doubling the cost cuts births by a fifth; halving it adds a sixth. The pool is a limit, not the limit.
+
+Pre-registered (`lab/inlife/PREREG-birthcost.md`, `1ab3bc3d27107a9c`; seeds 81-88, never run). At tick 1,500 `BIRTH_ENERGY_COST` is halved (HALF) or doubled (DOUBLE), against four draw-order nulls per seed;
+births counted over ticks 1,500-4,000. Why: #302 found that removing the program birth routes left total births unchanged because another route took over, which a shared budget would explain.
+
+| arm | births vs mean of four nulls | 95% CI (Bonferroni, two arms) | alive | verdict |
+|---|---|---|---|---|
+| DOUBLE cost | 0.80x | [0.73, 0.87] | 0.92x [0.90, 0.93] | BINDS in the predicted direction (the rule's floor of 25% is cleared by a hair: ln 0.80 against ln 1.25) |
+| HALF cost | 1.17x | [1.00, 1.38] | 1.11x [1.05, 1.17] | INCONCLUSIVE (up, but under the 25% bar) |
+
+Placebo (one null against the other three) 0.98x [0.85, 1.12]. Mean `worldEnergy` over ticks 1,500-4,000: HALF about 0.2-0.3, nulls about 0.45, DOUBLE about 0.8-0.9 (seeds 81-88 except 86): the pool is nearly empty at the
+default cost, and rises as births get dearer, which is the sign a shared budget should give.
+
+**Reading.** If births were limited only by the pool, doubling the cost would halve them (elasticity -1). Measured, it is about -0.3 for DOUBLE (ln 0.80 / ln 2) and about -0.2 for HALF (ln 1.17 / ln 0.5). So the pool
+binds, but the phase-interference condition (aligned phases, similar tendencies, enough amplitude, #302) limits births too, and which one binds probably varies by seed and moment. This fits #302's
+compensation between routes (they draw on the same pool) without proving it. My written prediction (HALF up by well over 25%, DOUBLE down by well over 25%) was right in direction on both arms and too large on both.
+
+**Seed 86 is a different regime.** `worldEnergy` reads 0.00 in every arm there, one null produced 550 births against 271-292 for the others, and DOUBLE gave 318 births, more than HALF's 280. The cost lever does
+not behave there; I did not look into why. It stays in the statistic (the pre-registered rule has no exclusions).
+
+**Not tested:** the pool in isolation (changing the cost also changes the energy returned on death, `BIRTH_ENERGY_COST * DEATH_ENERGY_RETURN`); the regenerating influx (`WORLD_ENERGY_REGEN`), which is the other lever; windows other than ticks 1,500-4,000.
