@@ -1,0 +1,32 @@
+7411 X   rows 1200 N 1052 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 11 | lastQ new-windows 0/10 everActive 11 top 0.599 metab 2991.6 | released 120 enzymes 120 released-earning-late 1.43 | Snat 0.00
+7411 P0  rows 1200 N 1043 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 7 | lastQ new-windows 0/10 everActive 7 top 0.606 metab 3056.6 | released - enzymes - released-earning-late - | Snat 0.00
+7411 P1  rows 1200 N 1434 | S 0.08 (mid 0.00) Sf 0.08 (mid 0.00) | usedEver 10 | lastQ new-windows 0/10 everActive 10 top 0.366 metab 9723.3 | released - enzymes - released-earning-late - | Snat 0.08
+7411 P2  rows 1200 N 1415 | S 0.08 (mid 0.50) Sf 0.08 (mid 0.50) | usedEver 19 | lastQ new-windows 0/10 everActive 19 top 0.367 metab 9164.9 | released - enzymes - released-earning-late - | Snat 0.08
+7411 B   rows 1200 N 1457 | S 0.00 (mid 0.25) Sf 0.00 (mid 0.25) | usedEver 27 | lastQ new-windows 1/10 everActive 27 top 0.294 metab 11645.3 | released 120 enzymes 55 released-earning-late 4.15 | Snat 0.00
+7411 BE  rows 1200 N 1410 | S 0.58 (mid 0.08) Sf 0.58 (mid 0.08) | usedEver 22 | lastQ new-windows 5/10 everActive 22 top 0.319 metab 10971.9 | released 120 enzymes 120 released-earning-late 5.05 | Snat 0.17
+7412 X   rows 1200 N 1384 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 11 | lastQ new-windows 1/10 everActive 11 top 0.326 metab 10352.4 | released 120 enzymes 119 released-earning-late 3.12 | Snat 0.00
+7412 P0  rows 1200 N 1380 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 13 | lastQ new-windows 1/10 everActive 13 top 0.357 metab 10122.3 | released - enzymes - released-earning-late - | Snat 0.00
+7412 P1  rows 1200 N 1379 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 9 | lastQ new-windows 0/10 everActive 9 top 0.344 metab 10063.1 | released - enzymes - released-earning-late - | Snat 0.00
+7412 P2  rows 1200 N 1345 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 5 | lastQ new-windows 0/10 everActive 5 top 0.347 metab 10454.4 | released - enzymes - released-earning-late - | Snat 0.00
+7412 B   rows 1200 N 1373 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 16 | lastQ new-windows 0/10 everActive 16 top 0.346 metab 9976.8 | released 120 enzymes 59 released-earning-late 2.08 | Snat 0.00
+7412 BE  rows 1200 N 1160 | S 0.00 (mid 0.33) Sf 0.00 (mid 0.33) | usedEver 23 | lastQ new-windows 0/10 everActive 23 top 0.271 metab 7892.2 | released 120 enzymes 120 released-earning-late 5.28 | Snat 0.00
+7413 X   rows 1200 N 1358 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 16 | lastQ new-windows 0/10 everActive 16 top 0.295 metab 10484.2 | released 120 enzymes 118 released-earning-late 4.37 | Snat 0.00
+7413 P0  rows 1200 N 1358 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 22 | lastQ new-windows 0/10 everActive 22 top 0.312 metab 10159.2 | released - enzymes - released-earning-late - | Snat 0.00
+7413 P1  rows 1200 N 1320 | S 0.08 (mid 0.25) Sf 0.08 (mid 0.25) | usedEver 17 | lastQ new-windows 1/10 everActive 17 top 0.315 metab 10581.9 | released - enzymes - released-earning-late - | Snat 0.08
+7413 P2  rows 1200 N 1249 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 10 | lastQ new-windows 0/10 everActive 10 top 0.314 metab 10129.4 | released - enzymes - released-earning-late - | Snat 0.00
+7413 B   rows 1200 N 1295 | S 0.25 (mid 0.17) Sf 0.25 (mid 0.17) | usedEver 32 | lastQ new-windows 4/10 everActive 32 top 0.299 metab 10514 | released 120 enzymes 60 released-earning-late 3.06 | Snat 0.08
+7413 BE  rows 1200 N 1363 | S 0.00 (mid 0.25) Sf 0.00 (mid 0.25) | usedEver 20 | lastQ new-windows 1/10 everActive 20 top 0.234 metab 10461.2 | released 120 enzymes 120 released-earning-late 4.45 | Snat 0.00
+
+== S: readable 3; X beats every null on 0, the plain band on 0, both blind dreamers on 0; rel 0.837; blind beats plain band: {"B":1,"BE":1}; means {"X":0,"P0":0,"P1":0.056,"P2":0.028,"B":0.083,"BE":0.194}
+  7411: X 0.00 | P0 0.00 P1 0.08 P2 0.08 B 0.00 BE 0.58 | loses/ties to P0,P1,P2,B,BE
+  7412: X 0.00 | P0 0.00 P1 0.00 P2 0.00 B 0.00 BE 0.00 | loses/ties to P0,P1,P2,B,BE
+  7413: X 0.00 | P0 0.00 P1 0.08 P2 0.00 B 0.25 BE 0.00 | loses/ties to P0,P1,P2,B,BE
+
+== Sf: readable 3; X beats every null on 0, the plain band on 0, both blind dreamers on 0; rel 0.837; blind beats plain band: {"B":1,"BE":1}; means {"X":0,"P0":0,"P1":0.056,"P2":0.028,"B":0.083,"BE":0.194}
+  7411: X 0.00 | P0 0.00 P1 0.08 P2 0.08 B 0.00 BE 0.58 | loses/ties to P0,P1,P2,B,BE
+  7412: X 0.00 | P0 0.00 P1 0.00 P2 0.00 B 0.00 BE 0.00 | loses/ties to P0,P1,P2,B,BE
+  7413: X 0.00 | P0 0.00 P1 0.08 P2 0.00 B 0.25 BE 0.00 | loses/ties to P0,P1,P2,B,BE
+
+Reported, not ruling - Snat means (released enzyme keys removed): X 0.000 P0 0.000 P1 0.056 P2 0.028 B 0.028 BE 0.056
+
+VERDICT: NO-GO: DISCOVERY KILLED (the dreamer does not beat the plain band P0,P1,P2 on S on 2 readable seeds)

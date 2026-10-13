@@ -1,0 +1,30 @@
+7311 X   rows 1200 N 1396 | S 0.00 (mid 0.08) Sf 0.00 (mid 0.08) | usedEver 15 | lastQ new-windows 1/10 everActive 15 top 0.368 metab 9798.5 | opened 20 skips 40 opened-earning-late 0.04
+7311 P0  rows 1200 N 1416 | S 0.08 (mid 0.00) Sf 0.08 (mid 0.00) | usedEver 13 | lastQ new-windows 1/10 everActive 13 top 0.35 metab 10276.6 | opened - skips - opened-earning-late -
+7311 P1  rows 1200 N 1404 | S 0.08 (mid 0.00) Sf 0.08 (mid 0.00) | usedEver 11 | lastQ new-windows 3/10 everActive 11 top 0.367 metab 10161.4 | opened - skips - opened-earning-late -
+7311 P2  rows 1200 N 1381 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 6 | lastQ new-windows 1/10 everActive 6 top 0.369 metab 9774.9 | opened - skips - opened-earning-late -
+7311 BP  rows 1200 N 1422 | S 0.00 (mid 0.17) Sf 0.00 (mid 0.17) | usedEver 17 | lastQ new-windows 1/10 everActive 17 top 0.399 metab 8741.3 | opened 28 skips 32 opened-earning-late 0
+7311 BN  rows 1200 N 1416 | S 0.08 (mid 0.00) Sf 0.08 (mid 0.00) | usedEver 13 | lastQ new-windows 1/10 everActive 13 top 0.35 metab 10276.6 | opened 60 skips 0 opened-earning-late 0
+7312 X   rows 1200 N 1426 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 14 | lastQ new-windows 0/10 everActive 14 top 0.398 metab 9005.9 | opened 18 skips 42 opened-earning-late 1.69
+7312 P0  rows 1200 N 1455 | S 0.00 (mid 0.17) Sf 0.00 (mid 0.17) | usedEver 11 | lastQ new-windows 0/10 everActive 11 top 0.309 metab 11049.4 | opened - skips - opened-earning-late -
+7312 P1  rows 1200 N 1521 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 9 | lastQ new-windows 0/10 everActive 9 top 0.364 metab 9743.6 | opened - skips - opened-earning-late -
+7312 P2  rows 1200 N 1424 | S 0.17 (mid 0.08) Sf 0.17 (mid 0.08) | usedEver 13 | lastQ new-windows 0/10 everActive 13 top 0.355 metab 9564 | opened - skips - opened-earning-late -
+7312 BP  rows 1200 N 1318 | S 0.08 (mid 0.17) Sf 0.08 (mid 0.17) | usedEver 21 | lastQ new-windows 3/10 everActive 21 top 0.36 metab 7394.2 | opened 28 skips 32 opened-earning-late 1.21
+7312 BN  rows 1200 N 1455 | S 0.00 (mid 0.17) Sf 0.00 (mid 0.17) | usedEver 11 | lastQ new-windows 0/10 everActive 11 top 0.309 metab 11049.4 | opened 60 skips 0 opened-earning-late 0
+7313 X   rows 1200 N 1446 | S 0.17 (mid 0.25) Sf 0.17 (mid 0.25) | usedEver 12 | lastQ new-windows 2/10 everActive 12 top 0.263 metab 10197.5 | opened 22 skips 38 opened-earning-late 0.02
+7313 P0  rows 1200 N 1309 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 5 | lastQ new-windows 0/10 everActive 5 top 0.51 metab 7217.4 | opened - skips - opened-earning-late -
+7313 P1  rows 1200 N 1309 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 10 | lastQ new-windows 1/10 everActive 10 top 0.51 metab 7167.5 | opened - skips - opened-earning-late -
+7313 P2  rows 1200 N 1306 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 7 | lastQ new-windows 0/10 everActive 7 top 0.51 metab 7189.6 | opened - skips - opened-earning-late -
+7313 BP  rows 1200 N 1458 | S 0.00 (mid 0.08) Sf 0.00 (mid 0.08) | usedEver 9 | lastQ new-windows 0/10 everActive 9 top 0.343 metab 11053.5 | opened 16 skips 44 opened-earning-late 0.18
+7313 BN  rows 1200 N 1309 | S 0.00 (mid 0.00) Sf 0.00 (mid 0.00) | usedEver 5 | lastQ new-windows 0/10 everActive 5 top 0.51 metab 7217.4 | opened 60 skips 0 opened-earning-late 0
+
+== S: readable 3; X beats every null on 1, the plain band on 1, both blind locksmiths on 1; rel 1; blind beats plain band: {"BP":0,"BN":0}; means {"X":0.056,"P0":0.028,"P1":0.028,"P2":0.056,"BP":0.028,"BN":0.028}
+  7311: X 0.00 | P0 0.08 P1 0.08 P2 0.00 BP 0.00 BN 0.08 | loses/ties to P0,P1,P2,BP,BN
+  7312: X 0.00 | P0 0.00 P1 0.00 P2 0.17 BP 0.08 BN 0.00 | loses/ties to P0,P1,P2,BP,BN
+  7313: X 0.17 | P0 0.00 P1 0.00 P2 0.00 BP 0.00 BN 0.00 | beats all
+
+== Sf: readable 3; X beats every null on 1, the plain band on 1, both blind locksmiths on 1; rel 1; blind beats plain band: {"BP":0,"BN":0}; means {"X":0.056,"P0":0.028,"P1":0.028,"P2":0.056,"BP":0.028,"BN":0.028}
+  7311: X 0.00 | P0 0.08 P1 0.08 P2 0.00 BP 0.00 BN 0.08 | loses/ties to P0,P1,P2,BP,BN
+  7312: X 0.00 | P0 0.00 P1 0.00 P2 0.17 BP 0.08 BN 0.00 | loses/ties to P0,P1,P2,BP,BN
+  7313: X 0.17 | P0 0.00 P1 0.00 P2 0.00 BP 0.00 BN 0.00 | beats all
+
+VERDICT: NO-GO: REACH KILLED (the targeted locksmith does not beat the plain band P0,P1,P2 on S on 2 readable seeds)
