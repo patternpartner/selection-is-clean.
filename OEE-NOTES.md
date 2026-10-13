@@ -26710,3 +26710,30 @@ compensation between routes (they draw on the same pool) without proving it. My 
 not behave there; I did not look into why. It stays in the statistic (the pre-registered rule has no exclusions).
 
 **Not tested:** the pool in isolation (changing the cost also changes the energy returned on death, `BIRTH_ENERGY_COST * DEATH_ENERGY_RETURN`); the regenerating influx (`WORLD_ENERGY_REGEN`), which is the other lever; windows other than ticks 1,500-4,000.
+
+### #303 — RETIRE-OR-PROVE THE PER-PARTICLE VM PROGRAMS, FIRST ATTEMPT: INCONCLUSIVE (2 of 5 seeds counted). The attempt found a latent crash and that the default world sometimes goes extinct. DRAFT RESULT, no engine change.
+
+Pre-registered and committed before the first decision run (`lab/inlife/PREREG-vm-retire-or-prove.md`, `e1e203d6fc547229`, commit `0f09364`, 20:18 UTC; the harness change `BLANKVM` / `popProgLen` rode in the same commit and is
+byte-identical when unset, checked by hash). Shape: the retire-or-prove template with grid-free measures (centredEntropyRatio, spread_late, estFrac), a null band of six draw-order replicates per seed (`NULLSHIFT` 0-5), the
+BLANK arm outside EVERY replicate and beyond the threshold, and a verdict needing the same measure to move the same way on at least 2/3 of counted seeds (a deliberate tightening: three measures against a band of six would
+otherwise fire by luck on about 2/7 of seeds each). Seeds 91-95, 20,000 ticks. Raw run outputs not committed.
+
+**Verdict by the rule as written: INCONCLUSIVE. Counted seeds: 2 of 5 (93 and 95). The default does not change either way.**
+- Seed 91 was not counted: a control replicate (`NULLSHIFT=1`) went extinct, collapsing from 385 to 18 to 0 around tick 19,000 with no loop error.
+- Seed 92 was not counted: a control replicate (`NULLSHIFT=3`) crashed repeatedly from about tick 14,000 (N 72, 159, 1, 300, 340, 0) and logged 43 extinction events, also with no loop error.
+- Seed 94 was not counted: its BLANK run threw `pProg[i][_pgSrc144] is not iterable` 99 times, then went extinct and reseeded 57 times.
+
+**What the two counted seeds say (descriptive, not a ruling).** They disagree. Seed 93: BLANK above the control band on all three measures (centredEntropyRatio 2.21 against a band of 0.06-0.57; spread_late 1.13 against 0.18-0.36;
+estFrac 0.017 against 0.001-0.004; kinds_late 30 against 3-12). Seed 95: BLANK below the band on centredEntropyRatio (0.11 against 0.24-1.14) and spread_late (0.20 against 0.23-0.58) and above it on estFrac. No measure moves
+the same way on both. **The control band itself is huge:** across six draw-order replicates of one world, centredEntropyRatio runs 0.06-0.57 (seed 93) and 0.15-1.08 (seed 92). At this horizon a single run is not a measurement.
+
+**Two findings that are about the world, not the VM.**
+1. *The default world is fragile.* 2 of 30 control runs ended extinct within 20,000 ticks (one collapsed to zero at 19,000; one crashed repeatedly from 14,000), neither with a loop error. That is a rate of about 7% per run
+   at this horizon, from one batch. BLANK (empty programs) went extinct in 1 of 5 runs, but only by way of the crash below, so that is not evidence about the VM.
+2. *A latent crash.* `engine.html:24357`, opcode 144 (grow a program): `pProg[i].length<Math.min(...)` admits length 0, then `pProg[i][Math.floor(Math.random()*pProg[i].length)]` is `pProg[i][0]` = undefined, and the spread
+   throws. Reaching it needs a particle with an empty program; I think that does not happen in a normal world (not verified: I have not looked for an empty program in a normal run), so the defect is probably unreachable by
+   default. A one-line guard (`pProg[i].length>0`) would close it. NOT applied: it is an engine change, and byte-identical only if the case is never reached, which I have not shown.
+
+**Why I did not rescue the verdict.** The template says fewer than three counted seeds is INCONCLUSIVE, and a changed rule is a new experiment. My counting rule was at fault (it disqualified a seed if any control went extinct, which
+luck alone does for about a third of seeds), and the ablation was at fault (empty programs crash the engine). Both are fixed in a second, separately pre-registered attempt (`PREREG-vm-retire-or-prove-b.md`, `4a8bd26bf90eba8d`):
+the BLANK arm becomes `BLANKVM=2` (one inert instruction per particle, no crash path), a crashed control is excluded from the band and listed, and seeds 96-101 are new. Its result will be appended here as #303b.
