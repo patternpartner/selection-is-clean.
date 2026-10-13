@@ -15,3 +15,23 @@ SH FORGE 2 (sham); B plain CHEM_BIG. Score LOCKED and unchanged: FINE S (used-no
 income only. Collapse = mean N last quarter < 200. Bar unchanged: X beats every null outright on >=2/3 seeds, mean rel on
 S+1 >= 1.10, no collapse in any arm, AND S>0 on every readable seed, mean S >= 0.5. No seeds 7961-7963 re-read.
 GO = candidate only; flag stays off; never main. NO-GO: delete FORGE from oee-core.js and lab/forge; this file stays as the record.
+
+## Result (deciding round, seeds 7971-7973, 2.4M ticks) - NO-GO
+
+Scored by lab/forge/score.js against the locked bar above, no reinterpretation. Late-third FINE S, income only:
+
+| seed | X | XP | SH | B | X beats all? |
+|---|---|---|---|---|---|
+| 7971 | 0.063 | 0.076 | 0.038 | 0.000 | no (lost to XP) |
+| 7972 | 0.506 | 0.000 | 0.101 | 0.000 | yes |
+| 7973 | 0.329 | 0.000 | 0.051 | 0.000 | yes |
+| mean | 0.300 | 0.025 | 0.063 | 0.000 | 2/3 |
+
+Bar: wins 2/3 (need 2) PASS; mean rel on S+1 1.222 (>= 1.10) PASS; no collapse (min last-quarter N 872) PASS;
+S>0 on every seed PASS; mean X S 0.300 >= 0.5 FAIL. Late ligation share of X income 0.115 / 0.046 / 0.216.
+
+VERDICT: NO-GO. Doubling run length did not lift X: mean S fell from 0.376 (1.2M) to 0.300 (2.4M), and late S was below
+middle-third S on all three seeds (0.063 vs 0.190, 0.506 vs 0.582, 0.329 vs 0.367) - the "still growing" reading behind
+this variant did not hold. X still clearly beats the shift twin, sham and plain baseline on average, but stays short of
+the movement bar. Per pre-registration: FORGE removed from lab/oee-core.js (restored to afc290d) and lab/forge deleted.
+This file stays as the record.
