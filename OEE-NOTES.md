@@ -26866,3 +26866,33 @@ Of the 59 named sensor opcodes executed, 30 are credited somewhere, **5 in two o
 This agrees with #305: one sensor, MODE, matters repeatably.
 
 **Limits.** One validation seed and window; the skip test measures "has any downstream consumer within the window", and a change in a chaotic system can be tiny. The two misses (FIELD_TOTAL_ENERGY, op114) act by a path the sinks do not cover; the two false alarms are over-tainting (the union of the source and destination registers is conservative). The tracer says where an opcode's output goes, not how much it matters: an action is scaled by roughly 0.0006 before it moves anything.
+
+### #307 — REPL MODE: THE VM IS LOAD-BEARING WHERE PROGRAMS ARE THE ONLY REPRODUCERS. The population is held up by the refill floor, not by reproduction.
+
+Pre-registered in `lab/inlife/PREREG-repl.md` (committed f5033d8 before any deciding run). Engine unchanged. `engine.html` at default REPL=1 (no ARMS/ATOMS/SEX/COST), seeds 111-115 (never run), 10,000 ticks (about 25 REPL generations), each seed: NOVM (`BLANKVM=3`), BLANK (`BLANKVM=2`) and three draw-order controls. 25 runs, all finished, no loop errors. Analysis `lab/inlife/analyse15.js`; births-by-route probe `lab/inlife/probe20.js`.
+
+**Pilot (seed 1, 3,000 ticks, not evidence).** VM on: 564 alive, 3,609 parented births, 0 parentless. VM off: 48 alive, 0 parented, 287 PARENTLESS. The no-VM population is held near 50 by the engine's refill floor.
+
+**Result (all 5 seeds counted, all manipulation checks took: NOVM vmNoopCalls 0.5-0.7 million, BLANK program length about 2).**
+
+| seed | alive_late controls | alive_late NOVM | alive_late BLANK | births controls | births NOVM / BLANK |
+|---|---|---|---|---|---|
+| 111 | 535, 1099, 284 | 51 | 46 | 2924-5167 | 1519 / 1522 |
+| 112 | 525, 842, 263 | 60 (ended N=0 once, refilled) | 46 | 2967-3692 | 5965* / 1552 |
+| 113 | 1570, 470, 285 | 49 | 46 | 3095-5055 | 1531 / 1554 |
+| 114 | 266, 1682, 1657 | 47 | 47 | 4125-4283 | 1517 / 1522 |
+| 115 | 289, 526, 363 | 52 | 48 | 3502-5023 | 1539 / 1480 |
+
+(*seed 112 NOVM's birth count is anomalous and unexplained: the run hit N=0 at the final sample, so its refill counts are not comparable. Not investigated.)
+
+Both ablated arms sit at 46-60 alive on every seed, against 263-1682 for every control: 5 of 5 seeds, both arms. The ablated births (about 1,500) are the refill floor, not reproduction (pilot: 0 parented).
+
+**Pre-registered ruling measures, applied as written** (same measure, same direction, at least 4 of 5 seeds):
+- NOVM: spread_late DOWN on 4/5 -> LOAD-BEARING on spread_late; cER and estFrac DOWN on 3/5 only.
+- BLANK: cER, spread_late and estFrac DOWN on 3/5 each -> by the written rule, "changes the world, no consistent direction". I am not re-ruling it.
+
+**My prediction was partly wrong.** I wrote "worse on every measure on every counted seed". The population collapse is 5/5, but the three ruling measures are not: with 46-50 alive the diversity measures are noisy, and on seed 114 the controls are themselves low (spread 0.85) so NOVM and BLANK land beside them (cER, spread inside the band). Estimation fraction is 0 in the ablated arms everywhere but "none" on two seeds because a control was also 0 there. The alive count (the guard) says what the ruling measures say only weakly.
+
+**What this says.** Under REPL the programs are the replicator and the VM runs them, so removing either removes reproduction. That is the design, and it confirms the manipulation can detect a VM effect: the rig that found "no effect" without REPL (#303c) finds a collapse here. It is NOT a finding about the sensor opcodes or the 237-opcode set: the one ancestor instruction `[4,2,4,1.0]` needs only the original ops. The question "which opcodes under REPL are used, and do they matter" is untested here.
+
+**Not said.** Five seeds, 10,000 ticks, REPL defaults, VM removed wholesale. Default does not move; REPL stays a knob. No saved universe changes.
