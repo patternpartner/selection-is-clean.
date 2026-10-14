@@ -1730,3 +1730,19 @@ by an opened dark mask; Wan's scribble wiped under it), then folds it (Wan T2V) 
 T2V). Card: "We can't hear each other yet. / He carries the notes." Piano from Notes (evening, then morning at the
 unfolding), whooshes, paper, pen. All four Wan takes kept first time. Clips: af23d556046b989b (lands),
 63bd77dce1a5ef01 (unfold), af547169e6bea917 (writes, folds), b3888e15a27e386d (out).
+
+### Training Set sync (`video/sync_training_set/`, `out/training-set-synced.mp4`, 87 s, 1280x720, free)
+The user sent their song "Ain't Nothin' But A Training Set" (2:34, 100 BPM, an "I Want It That Way" parody) and a
+55 s Grok video of five men in white singing the SAME lyrics in a light tunnel: "I need to sync this video". Grok's own
+soundtrack is a different, ~30% faster rendition with extra repeats ("tell me why, tell me why", "training set, training
+set", a second "I want AGI that way"), so this is LIP sync, not beat sync. The dancing itself has no steady tempo
+(motion tempo 70-137 BPM across shots), so there was no dance beat to match. Method: faster-whisper `small` (pip, CPU,
+numpy audio input because av rejects `metadata_errors`) word times on both (`transcribe.py`); song word i paired by
+hand to video word j (`map_words.py`, extra repeats skipped as jump cuts), linear between word starts, smoothed inside
+each continuous run (gaussian 0.2 s, endpoints pinned, max anchor error 0.2 s of video), frame-blended slow motion,
+never blended across the shot cuts (frames 241/723/964) (`render.py`). Covers song 7.29-94.5: the first frame frozen and
+faded in over the intro bar, verse, chorus, "Am I your fire", chorus 2; the video ends on "tell me why" (song 83), so
+"I never wanna hear you say / I want AI that way" reuses the video's earlier take of the same line (31.5-36 s), then a
+held fade. Weak spots: the 5 s instrumental after "I want AI that way" (song 53-58) plays the video's extra "I want AI
+that way that way" at 0.44x, so mouths move there; held notes play at 0.1-0.3x. Share copy at ~2.6 Mbit fits the 30 MB
+upload limit (`out/training-set-synced-share.mp4`).
