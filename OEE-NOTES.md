@@ -26918,3 +26918,23 @@ No arm reaches 4 of 5 on any measure, so by the pre-registered rule: **no verdic
 **The finding that matters more than the arms: REPL nulls are very wide.** Same seed, same settings, only draw order different: alive_late 311, 1298, 338 (seed 122); 1795, 1795, 1246 (seed 121); spread_late 0.66 to 1.17 on seed 123. This design cannot see anything under about a 2x change in population. Two further oddities, not investigated: on seed 121 two nulls came out identical in every reported number (alive 1795, 1795), and on seed 122 all three have the same cER 1.1, so those band widths may be understated or the measures may be saturating.
 
 **What this does not say.** It does not say the mind is useless under REPL, only that at 20%, five seeds and 10,000 ticks nothing separates it from a random rewrite or from nothing. Not tested: a higher rate, longer horizons, more seeds (the null spread says it needs many), or the other REPL layers (ARMS/ATOMS/SEX). No saved universe or default changes; the mind stays on by default in the browser (the user's #296 call), unaffected by this result.
+
+### #309 — TWO THINGS FOUND WHILE READING #307/#308: a one-draw null that changes nothing, and what the VM's reach looks like under REPL. Descriptive; nothing pre-registered, nothing ruled.
+
+**1. NULLSHIFT=1 is sometimes the same world as NULLSHIFT=0, to the unit.** In #308, seed 121's nulls 0 and 1 came out identical in every sampled number for 10,000 ticks (alive 1795 in both). Reproduced at 1,500 ticks (`SEED=121 REPL=1`, N, births, meanAmp identical at all 7 samples; NULLSHIFT=2 differs from tick ~500). Then asked how often: 20 fresh seeds (201-220), NULLSHIFT 0 against 1, 1,500 ticks, series of N / births / meanAmp / kinds compared byte for byte: **REPL 1 of 20 pairs identical (seed 211); default world 0 of 20.** Together with seed 121, REPL is 2 of 25 pairs seen (the 111-115 and 122-125 pairs all differed). Mechanism NOT found: the generator is a plain mulberry32 stream and the burn is counted (draw totals per run are equal, 6,066,642 at 300 ticks on both arms, so the shifted run drew one fewer in the loop), nothing reassigns `Math.random` after `harness-oee.js:104`, and I did not trace why a one-position shift leaves the sampled series unchanged. Consequence: a REPL null band is sometimes two replicates, not three. It cannot change #307/#308 (a duplicate adds no new minimum or maximum; the "outside every null" test is unchanged), but it can tighten a band's mean. Use NULLSHIFT values that are not adjacent, or check for duplicate nulls before counting a band.
+
+**2. The reach tracer (probe19, #306) run under REPL** (seeds 1-4, 2,500 ticks, `REPL=1`). Note the tracer's `applyKnobs` call was missing until now, so every earlier tracer run was non-REPL by construction (added here; the earlier numbers stand for the world they measured).
+
+| | non-REPL (#306, seeds 1-4) | REPL (this entry) |
+|---|---|---|
+| non-original opcodes executed, per seed | not restated here | 174-236 (union 384) |
+| credited at a consumed sink, per seed | 62 across seeds | 64-85 |
+| credited in >= 2 seeds | 16 | **71** |
+| credited in all 4 | 9 | 9 (235, 234, 232 MODE, 233, 144 PROG_GROW, 237, 429, 11 BROADCAST_WRITE, 24) |
+| credited in exactly 1 seed | n/a | 107 |
+
+(The #306 column is quoted from that entry; the horizon there and here may not match exactly, so read the ratio as "several-fold wider reach under REPL", not a measured factor.) Top credit by volume: 235, 232 MODE, 233, 14 BRANCH, 237, 234, 157 SIGNAL_EMIT, 196 ABS, 203 PARTNER_MEM_WRITE, 176 HOME_DIST. Names for 233/234/235/237/429/24 did not parse from the `case N: // NAME` scan and are left unnamed rather than guessed.
+
+**What stands out: the REPL-specific verbs are barely used.** DETRITAL_HARVEST (146, the REPL scavenging op, `fired('repl.scavenge')`) was not executed in any of the four seeds in 2,500 ticks; ENERGY_DRAIN (155, predation) executed on 1 of 4 seeds and was credited on 1; ENERGY_DONATE (156) executed on 2, credited on 1. The food-web ops #273-#277 describe exist, but this early in a run they are rare. That is an early-window observation (2,500 ticks); #275-#277 report the food web at 20,000-30,000 ticks.
+
+**Not said:** that reach equals importance (a credited op is one whose output reaches a sink, not one whose removal changes the run; the skip-test is the ground truth, #306), or anything about horizons past 2,500 ticks. Four seeds, tracer misses and false alarms as listed in #306.

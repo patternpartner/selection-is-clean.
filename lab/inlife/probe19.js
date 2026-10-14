@@ -6,6 +6,7 @@
 // Sinks: emitted actions (magnitude), the participants' state, the field cells under them, and births / deaths / program changes. Reads state only; draws no random numbers.
 const fs=require('fs'), path=require('path'); const R=path.join(__dirname,'..','..');
 require(path.join(R,'harness-env.js'))(globalThis);
+try{ require(path.join(R,'harness-env.js')).applyKnobs(globalThis); }catch(_){}   // REPL etc.: an env knob with no applyKnobs call is a no-op that reads like a control
 const code=fs.readFileSync(path.join(R,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module'); const m=new Module('/tmp/p19.js'); m.filename='/tmp/p19.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
