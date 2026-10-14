@@ -26816,3 +26816,25 @@ About 255-269 million instructions are executed per seed per 8,000 ticks (roughl
 
 **What this does and does not say.** "Executed" is not "effective": an instruction that reads a sensor into a register runs, and may feed nothing. This counts instructions, not consequences. Four seeds, one horizon. It agrees with #302-#303c, where emptying the programs or switching the VM off moved little: three quarters of the
 execution is the original five operations, and the 100-odd sensor opcodes added in the May-June bursts together make up a small slice of what runs. It does not show that the rare opcodes do nothing: a 0.01% instruction could be the one that matters on one seed, and the seed-104 / seed-105 differences in #303c may sit there.
+
+### #305 — WHICH SENSOR OPCODES EVER MATTER? One of them carries any weight (MODE). The tracer undercounts, and a skip test shows by how much. Exploratory, no rule.
+
+"Matter" needs a definition that can be measured. Outcome tests are useless per opcode (#302-#303c: the whole VM off moves little), so this asks the narrower, measurable question: does an opcode's output ever flow into an emitted action? `lab/inlife/probe17.js` wraps
+`vmStep` and keeps, per register, the set of non-original opcodes (anything but 0-4) whose output reached it; whenever an emitted action changes, those opcodes are credited with the reach and its magnitude. Seeds 1-4, 4,000 ticks. It follows registers only: values that
+go through `pMem`, branch conditions, or ops that act on the world directly (SPAWN_CHILD, INSCRIBE, field writes) are not followed, so **reach is a lower bound**.
+
+**Results (pooled, four seeds).** 222 non-original opcodes executed: 103 never changed a register (they act elsewhere, or did nothing; the tracer cannot tell); 62 changed a register but have no traced path to an action; **57 reached an action**, 51 core and 6 bound slots.
+- **Three opcodes carry 90% of the traced reach magnitude:** EFFECT_EMIT (op236) 78.3% (an emitter of authored verbs, not a sensor), MODE (op232) 8.9% (reads the particle's strategy mode, #57), and the first bound slot (op237) 4.7%.
+- **80% of the action magnitude had no other opcode in its chain at all**: the original five and the context registers.
+- **Of the 74 named core sensor opcodes executed, 73 wrote a register, 30 ever reached an action, only 9 did so in two or more of the four seeds, and together they carry 9.2% of the traced reach**, of which 8.85 points are MODE alone.
+  The other 29 sensors that reach share 0.36%. The sensors with a traced reach, besides MODE, are SELF_READ_PROGRAM, BROADCAST_READ, SEASON_PHASE, SPORE_SPEED, SELF_CLUSTER_AMP, CLUSTER_COUNT, SELF_CLUSTER_COHERENCE, AVG_POPULATION_AMPLITUDE, CLOCK_PHASE and a tail, each under 0.2%, most in one seed.
+- **44 named sensors executed with no traced path to any action**, including the most executed of them: COMMONS_READ (5.4M executions) and EXTINCTION_COUNT (2.6M).
+
+**How wrong "no traced path" can be.** `lab/inlife/probe18.js` skips the effect of a chosen set of opcodes and prints a state fingerprint every 500 ticks; identical to a control means those opcodes changed nothing in that run.
+(1) Skipping all 62 "no traced reach" opcodes together changed the run on every seed: first divergence at tick 500 on seeds 2, 3 and 4, and at tick 2,000 on seed 1. (2) Skipping each of the 62 alone on seed 2 for 500 ticks: **only 8 of the 62 executed at all in that window.** Of those 8,
+five changed nothing (op39, POPULATION_FLOW, FREQ_READ, bound slots 344 and 403) and **three changed the run: READ_INSCRIPTION, FIELD2_TEMPORAL and op114**. The other 54 never ran in those 500 ticks, so their "unchanged" says nothing. So the tracer misses real influence (probably through memory, branches
+or direct writes), and the honest reading of "no traced reach" is "not shown to matter", not "inert".
+
+**Answer, as far as this goes.** Of the roughly 100 sensor opcodes, the evidence that any single one matters is thin: MODE has a substantial, repeatable traced influence on emitted actions (4 of 4 seeds); about a dozen more reach actions at under 0.2% each, mostly in one seed; two others (READ_INSCRIPTION, FIELD2_TEMPORAL) are shown
+to change a run by a path the tracer cannot see; the rest are executed without any demonstrated effect, and most of the 62 tested were not even reached in the window. Reach is not consequence: an action is scaled by roughly 0.0006 (#304's influence factor) before it moves anything, and #303c found the VM as a whole moves little on average.
+**Not tested:** per-opcode effects at world level (undetectable against the noise); other windows and seeds for the skip test; a tracer that follows memory and control flow, which is the obvious next step.
