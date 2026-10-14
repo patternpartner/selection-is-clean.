@@ -28,6 +28,7 @@
 //       NULLSHIFT=<k>  (#249b: burn k draws before the first tick - a null replicate of the same world)
 //       FORCE=a,b  (#257: trait-homogeniser knockouts, re-installed every tick - see trait-force.js)
 //       MECHOFF=a,b  (#261b: #253's mechanism switches held OFF every tick - names from MECH_DECLARED)
+//       BLANKVM=3  (#303c: NO VM AT ALL - executeVM, executeClusterVM and executeSoloVM become no-ops from tick 0; programs untouched)
 //       BLANKVM=1|2  (#303: every alive particle's VM program emptied (1) or replaced by one inert instruction (2) every 20 ticks from tick 0 - the retire-or-prove arm for the VM)
 const fs = require('fs');
 // #217b: KNOBS honoured. #216x fixed four rigs and I called the class swept; a review found the
@@ -668,6 +669,7 @@ const driver = `
 
   globalThis.__SERIES=[];
   globalThis.__runOEE=function(ticks,every){
+    if(globalThis.__BLANKVM===3){ globalThis.__vmNoopCalls=0; executeVM=function(){ globalThis.__vmNoopCalls++; }; executeClusterVM=function(){ globalThis.__vmNoopCalls++; }; executeSoloVM=function(){ globalThis.__vmNoopCalls++; }; }   // #303c: BLANKVM=3 = no VM at all: the three entry points do nothing (programs untouched, never executed); calls counted so a run can show the call sites were reached
     let m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10));
     const EST=globalThis.__EST_EVERY|0, es=EST>0?globalThis.__esNew():null; globalThis.__ESOUT=es; if(es)es.census();   // #249: ESTABLISH=<every>
     for(let s=0;s<ticks;s++){
@@ -675,7 +677,7 @@ const driver = `
       globalThis.__applyPin();   // hold the knockout dead against re-mutation, every tick
       globalThis.__applyForce(globalThis.__FORCE);   // #257: trait-homogeniser knockouts, every tick
       for(const n of globalThis.__MECHOFF) mechSet(n,0);   // #261b: mechanism switches held off, every tick
-      if(globalThis.__BLANKVM&&(s%20)===0){ const inert=globalThis.__BLANKVM===2; for(let i=0;i<N;i++){ if(!(palive[i]&&pGenome[i]&&pProg[i]))continue; const isBlank=inert?(pProg[i].length===1&&pProg[i][0][0]===-1):(pProg[i].length===0); if(!isBlank){ const c=inert?[[-1,0,0,0]]:[]; pProg[i]=c; pGenome[i].vmProgram=c; } } }   // #303: BLANKVM=1 empties every alive particle's VM program every 20 ticks from tick 0 (newborns included); unset = untouched
+      if((globalThis.__BLANKVM===1||globalThis.__BLANKVM===2)&&(s%20)===0){ const inert=globalThis.__BLANKVM===2; for(let i=0;i<N;i++){ if(!(palive[i]&&pGenome[i]&&pProg[i]))continue; const isBlank=inert?(pProg[i].length===1&&pProg[i][0][0]===-1):(pProg[i].length===0); if(!isBlank){ const c=inert?[[-1,0,0,0]]:[]; pProg[i]=c; pGenome[i].vmProgram=c; } } }   // #303: BLANKVM=1 empties every alive particle's VM program every 20 ticks from tick 0 (newborns included); unset = untouched
       try{loop();}catch(e){globalThis.__driverErr=(globalThis.__driverErr||0)+1;}
       if(es&&(s+1)%EST===0) es.census();
       if((s+1)%every===0){ m=metrics(); globalThis.__SERIES.push(m); if(STREAM)process.stdout.write(JSON.stringify(m)+String.fromCharCode(10)); }
@@ -730,7 +732,7 @@ const EST_EVERY = parseInt(process.env.ESTABLISH || '0', 10) || 0;
 globalThis.__EST_EVERY = EST_EVERY;
 const EC = require(__dirname + '/establish-census.js');
 globalThis.__FORCE = FORCE;
-globalThis.__BLANKVM = process.env.BLANKVM === '1' ? 1 : (process.env.BLANKVM === '2' ? 2 : 0);   // #303: 1 = empty programs, 2 = one inert instruction (op -1 is a no-op; an EMPTY program makes op 144 throw, see #303)
+globalThis.__BLANKVM = process.env.BLANKVM === '1' ? 1 : (process.env.BLANKVM === '2' ? 2 : (process.env.BLANKVM === '3' ? 3 : 0));   // #303: 1 = empty programs, 2 = one inert instruction (op -1 is a no-op; an EMPTY program makes op 144 throw, see #303)
 // #261b: MECHOFF=a,b holds #253's mechanism switches OFF every tick (as harness-variant.js does), so the retire-or-prove
 // template can rule on a mechanism the evolutionary search voted against. Unset, the list is empty and nothing changes.
 const MECHOFF = String(process.env.MECHOFF || '').split(',').filter(Boolean);
@@ -969,6 +971,7 @@ console.log(JSON.stringify({
   timing_ms: { boot: tBoot - t0, run: tDone - tBoot, perKtick: +(((tDone - tBoot) / TICKS) * 1000).toFixed(1) },
   loopErrors, lastErr, driverErr: globalThis.__driverErr || 0,
   popProgLen: globalThis.__popProgLen ? globalThis.__popProgLen() : undefined,   // #303
+  vmNoopCalls: globalThis.__BLANKVM === 3 ? (globalThis.__vmNoopCalls || 0) : undefined,   // #303c
   switchboard: (globalThis.__swbState && globalThis.__swbState().on) ? globalThis.__swbState() : undefined,   // #253
   armHits: globalThis.__armHit || undefined,
   mind: (globalThis.__mindReport && globalThis.__mindReport()) || undefined,   // #296

@@ -17,6 +17,8 @@ Raw run outputs are not committed (the session scratchpad held them); every numb
 | is a new lineage ever minted, and by what source (exploratory, no rule) | - | probe11.js, probe12.js | - | 1-3; 71, 72, 76 |
 | are births limited by the shared energy pool? (halve / double BIRTH_ENERGY_COST) | PREREG-birthcost (1ab3bc3d27107a9c) | probe13.js | analyse13.js | 81-88 |
 | VM retire-or-prove, first attempt (BLANKVM=1, empty programs): INCONCLUSIVE | PREREG-vm-retire-or-prove (e1e203d6fc547229) | harness-oee.js (BLANKVM) | analyse14.js d14 | 91-95 |
+| VM switched off (BLANKVM=3: executeVM / executeClusterVM / executeSoloVM are no-ops), pilot: seen seeds 1-3, exploratory | - | probe14.js | - | 1-3 |
+| VM retire-or-prove, third attempt (BLANKVM=3, VM switched off) | PREREG-vm-retire-or-prove-c (e69cc6f6c34d0c0c) | harness-oee.js (BLANKVM=3) | analyse14.js d17 | 102-106 |
 | VM retire-or-prove, second attempt (BLANKVM=2, one inert instruction): DECORATION | PREREG-vm-retire-or-prove-b (4a8bd26bf90eba8d) | harness-oee.js (BLANKVM=2) | analyse14.js d15 | 96-101 |
 
 Usage: `SEED=11 T=1500 END=4000 OUT=run.json node lab/inlife/probe5.js`; the population probes also take `MODE=BLANK|NUDGE K=1..4`.
