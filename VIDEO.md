@@ -1746,3 +1746,4 @@ faded in over the intro bar, verse, chorus, "Am I your fire", chorus 2; the vide
 held fade. Weak spots: the 5 s instrumental after "I want AI that way" (song 53-58) plays the video's extra "I want AI
 that way that way" at 0.44x, so mouths move there; held notes play at 0.1-0.3x. Share copy at ~2.6 Mbit fits the 30 MB
 upload limit (`out/training-set-synced-share.mp4`).
+**The user: "Think you worked miracles. Its meant to be bad anyway"** - a deliberately bad parody, so slow motion and jump cuts are fine; lip sync was the point.
