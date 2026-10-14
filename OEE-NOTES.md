@@ -26896,3 +26896,25 @@ Both ablated arms sit at 46-60 alive on every seed, against 263-1682 for every c
 **What this says.** Under REPL the programs are the replicator and the VM runs them, so removing either removes reproduction. That is the design, and it confirms the manipulation can detect a VM effect: the rig that found "no effect" without REPL (#303c) finds a collapse here. It is NOT a finding about the sensor opcodes or the 237-opcode set: the one ancestor instruction `[4,2,4,1.0]` needs only the original ops. The question "which opcodes under REPL are used, and do they matter" is untested here.
 
 **Not said.** Five seeds, 10,000 ticks, REPL defaults, VM removed wholesale. Default does not move; REPL stays a knob. No saved universe changes.
+
+### #308 — THE MIND UNDER REPL: no effect the design can resolve. Learning is not shown to matter; the REPL nulls are too wide to rule a 20% rewrite rate either way.
+
+Pre-registered in `lab/inlife/PREREG-mind-repl.md` (committed before any deciding run). Engine and harness unchanged. REPL=1, seeds 121-125 (never run), 10,000 ticks. Per seed: M (MIND=20, learning), U (uniform random rewrites, same rate), F (frozen random weights), three mind-off nulls (NULLSHIFT 0-2). 30 runs, all finished, no errors. `lab/inlife/analyse16.js`.
+
+**Executed first:** every mind arm wrote children on every seed (1,454-8,428 rewrites per run); the learning mind's operation loss was 0.84-1.24 against 6.06 blind, so it learned under REPL. All 5 seeds counted for all three arms.
+
+**Result (arm outside every null AND beyond threshold; need the same measure and direction on 4 of 5):**
+
+| arm | alive_late | centredEntropyRatio | spread_late | estFrac |
+|---|---|---|---|---|
+| M (learning) | 3 DOWN, 0 UP | 2 UP, 1 DOWN | 1 UP | 1 DOWN |
+| U (uniform) | 2 DOWN, 1 UP | 3 UP, 1 DOWN | 3 UP, 1 DOWN | 1 DOWN |
+| F (frozen) | 2 DOWN, 1 UP | 2 UP | 1 UP | 2 DOWN |
+
+No arm reaches 4 of 5 on any measure, so by the pre-registered rule: **no verdict for any arm (the "ran, no effect" / no-direction branch); the default does not move.** The learning mind has alive_late below the null band on 3 of 5 seeds and above it on none (M alive_late 259-550; null means about 336-1,612). That is a tilt, not a ruling: 3 of 5 is under the bar and I do not upgrade it.
+
+**My predictions, scored:** "U WORSE" was wrong (U is not consistently worse; on seed 124 it is the highest alive_late). "M not worse" holds by the rule but with the tilt above. "If M beats U and F on alive_late on 4 of 5 seeds, learning matters" is false: M beat U on 2 of 5 seeds and F on 1 of 5. The pilot (U at 211 alive, seed 1, 3,000 ticks) did not carry over: one seed at one horizon.
+
+**The finding that matters more than the arms: REPL nulls are very wide.** Same seed, same settings, only draw order different: alive_late 311, 1298, 338 (seed 122); 1795, 1795, 1246 (seed 121); spread_late 0.66 to 1.17 on seed 123. This design cannot see anything under about a 2x change in population. Two further oddities, not investigated: on seed 121 two nulls came out identical in every reported number (alive 1795, 1795), and on seed 122 all three have the same cER 1.1, so those band widths may be understated or the measures may be saturating.
+
+**What this does not say.** It does not say the mind is useless under REPL, only that at 20%, five seeds and 10,000 ticks nothing separates it from a random rewrite or from nothing. Not tested: a higher rate, longer horizons, more seeds (the null spread says it needs many), or the other REPL layers (ARMS/ATOMS/SEX). No saved universe or default changes; the mind stays on by default in the browser (the user's #296 call), unaffected by this result.
