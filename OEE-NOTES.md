@@ -26838,3 +26838,31 @@ or direct writes), and the honest reading of "no traced reach" is "not shown to 
 **Answer, as far as this goes.** Of the roughly 100 sensor opcodes, the evidence that any single one matters is thin: MODE has a substantial, repeatable traced influence on emitted actions (4 of 4 seeds); about a dozen more reach actions at under 0.2% each, mostly in one seed; two others (READ_INSCRIPTION, FIELD2_TEMPORAL) are shown
 to change a run by a path the tracer cannot see; the rest are executed without any demonstrated effect, and most of the 62 tested were not even reached in the window. Reach is not consequence: an action is scaled by roughly 0.0006 (#304's influence factor) before it moves anything, and #303c found the VM as a whole moves little on average.
 **Not tested:** per-opcode effects at world level (undetectable against the noise); other windows and seeds for the skip test; a tracer that follows memory and control flow, which is the obvious next step.
+
+### #306 — A TRACER THAT FOLLOWS MEMORY AND CONTROL FLOW, VALIDATED AGAINST SKIPPING EACH OPCODE. Recall 0.73 -> 0.91. Memory is real, control flow is not, and "reaches the actions array" overstated EFFECT_EMIT. Exploratory, no rule.
+
+#305's tracer followed registers into the actions array only and said so: "lower bound". `lab/inlife/probe19.js` (tracer v2) follows more, and this entry checks it against the ground truth that #305's skip test supplied.
+
+**What v2 follows.** Taint elements are an opcode id plus flags (passed through memory, control-dependent). A register changed by an instruction takes the union of its operand registers' taint, the control taint and the op itself (ops 0-4 are not recorded).
+*Memory*: after every instruction the driver's and the partner's `pMem` slots are diffed into a shadow memory keyed by the particle's genome object (it survives compaction); registers 4 and up are reloaded from it at the start of a main or solo run (slots 6 and 7 are re-derived from the world each run, so they
+carry nothing; the solo VM's write-back at run end is applied when the next run starts). *Control flow*: when `vmStep` returns a different `ip` (COND_SKIP), the condition register's taint joins a per-run control taint. *Sinks*: the eight consumed action slots, the unconsumed authored-verb slots (8 and up, `EFFECT_SLOT0`, reported apart), the participants' state
+(position, velocity, amplitude, phase, tendency, broadcast and others), the field cells under them, and births / deaths / program changes. It reads state only: a traced 500-tick run's fingerprints equal an untraced run's. Cost about 5x in time.
+
+**Validation (seed 2, 4,000 ticks).** For each of the 57 non-original opcodes executed, `probe18.js` skips that opcode alone and fingerprints the run every 250 ticks: 22 change the run, 35 do not.
+
+| tracer | recall (of the 22) | precision (of those flagged) | missed | false alarms |
+|---|---|---|---|---|
+| v1: registers -> action array | 16/22 = 0.73 | 16/18 = 0.89 | 6 | 2 |
+| v2: + memory, control, state/field/global sinks | 20/22 = 0.91 | 20/22 = 0.91 | FIELD_TOTAL_ENERGY, op114 | CLUSTER_COUNT, EFFECT_EMIT |
+
+v2 recovers READ_INSCRIPTION, FIELD2_TEMPORAL, SELF_CLUSTER_AGE and bound slot 429. **None of those four came through memory or control flow**: they came from crediting the destination register's taint and direct state changes. So the thing that improved recall was not the thing I set out to build.
+
+**What the new channels carry.** On seed 2, memory carries 435,000 of the 2.5 million action-credit events (about 17%) and 16,000 state events, via 9 opcodes; across seeds 1-4, 15 opcodes reach a consumed sink via memory. **Control flow carried nothing on seed 2 (0 events) and gave credit to one opcode across all four seeds**: COND_SKIP is almost never taken on a tainted value in these worlds. The field-cell sink fired for one opcode in four seeds.
+
+**A correction to #305.** EFFECT_EMIT, which #305 credited with 78% of the traced reach, is a false alarm: skipping it changes nothing in 4,000 ticks (72,904 skipped executions). It writes the authored-verb drive slots and with no authored verbs nothing consumes them. "Reached the actions array" was not "had a consequence"; the sink has to be a slot something reads.
+
+**The answer, seeds 1-4 (3,000 ticks; seed 2 4,000).** Of 193 non-original opcodes executed, 62 are credited at a consumed sink in at least one seed, 16 in two or more and 9 in all four: EFFECT_EMIT (a false alarm on seed 2), bound slots 237, 238 and 429, op233 / op234 / op235 (the mode and cosmos-sense family), MODE (232) and USER_ATOM (22).
+Of the 59 named sensor opcodes executed, 30 are credited somewhere, **5 in two or more seeds (MODE in all four; FIELD_TOTAL_ENERGY, AGE_LERP, SAME_CLUSTER_DIRECT and CLUSTER_COUNT in two, and the last was a false alarm on seed 2)** and 25 in a single seed. 29 named sensors executed with no traced consumed sink, the most-executed being EXTINCTION_COUNT (2.6M) and COMMONS_READ (1.5M).
+This agrees with #305: one sensor, MODE, matters repeatably.
+
+**Limits.** One validation seed and window; the skip test measures "has any downstream consumer within the window", and a change in a chaotic system can be tiny. The two misses (FIELD_TOTAL_ENERGY, op114) act by a path the sinks do not cover; the two false alarms are over-tainting (the union of the source and destination registers is conservative). The tracer says where an opcode's output goes, not how much it matters: an action is scaled by roughly 0.0006 before it moves anything.

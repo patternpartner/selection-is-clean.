@@ -16,6 +16,7 @@ Raw run outputs are not committed (the session scratchpad held them); every numb
 | the same, corrected counter (`nextLineageID`), dispersion and lineages alive pooled with the first run | PREREG-popblank-traits-b (d5f9ca93999787d4) | probe10b.js | analyse10b.js | 71-78 (+ 61-68 pooled) |
 | which opcodes are carried and which are executed (exploratory, no rule; wraps vmStep) | - | probe16.js | (inline, see OEE-NOTES #304) | 1-4 |
 | causal reach of each opcode into the emitted actions (taint tracer over vmStep; exploratory, no rule) | - | probe17.js | (inline, OEE-NOTES #305) | 1-4 |
+| TRACER v2: registers + memory + control flow, credited at every sink; validated against single-opcode skips (exploratory, no rule) | - | probe19.js (+ probe18.js for the ground truth) | (inline, OEE-NOTES #306) | 2 (validation), 1-4 |
 | provable inertness: skip a set of opcodes and compare state fingerprints with a control | - | probe18.js | (inline, OEE-NOTES #305) | 1-4, seed 2 |
 | is a new lineage ever minted, and by what source (exploratory, no rule) | - | probe11.js, probe12.js | - | 1-3; 71, 72, 76 |
 | are births limited by the shared energy pool? (halve / double BIRTH_ENERGY_COST) | PREREG-birthcost (1ab3bc3d27107a9c) | probe13.js | analyse13.js | 81-88 |
