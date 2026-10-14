@@ -26770,3 +26770,33 @@ file; I have not re-run it, and its runs were not committed. As reported there: 
 N 1228 against 955), while a seed-1 control stays identical, so the divergence is the seed-salt defect and not resume in general; (2) **neither the straight nor the chained runs reproduce #288's seed-2/3 table**, so whether the originals chained cannot
 be read from them (pre-registered outcome UNRESOLVED); (3) on the straight, unexposed runs #288's rule 1 still fails (one seed of three: seed 3 passes, seed 2 does not, seed 1 as reported), so **#288's conclusion stands and its seed-2/3 table rows are to be
 read as unverified, with Grok's straight-run numbers as the replacement.** That settles what #301 left OPEN: the rows are unverified, not wrong in direction.
+
+#### #303c — THE VM SWITCHED OFF, NOT JUST EMPTIED: it changes the world on some seeds, in no consistent direction. KEEP, the default does not move. This corrects my reading of #302-#303b.
+
+The user asked: "have you tried runs without it?" I had not. #302 through #303b emptied or neutered the PROGRAMS and left the VM machinery running around them, and I summarised that as "decoration". This round switches the VM off.
+Pre-registered and committed before the run (`lab/inlife/PREREG-vm-retire-or-prove-c.md`, `e69cc6f6c34d0c0c`, commit `da60118`, 05:32 UTC); the harness switch `BLANKVM=3` makes `executeVM`, `executeClusterVM` and `executeSoloVM`
+(the three entry points through which the VM acts on the world) no-ops from tick 0, programs untouched and never executed. With `BLANKVM` unset the harness output is hash-identical to before. Seeds 102-106 (never run), six
+draw-order controls each, 20,000 ticks, same measures and thresholds as #303 / #303b, the same measure moving the same way on two thirds of counted seeds for a verdict.
+
+**Manipulation.** All five no-VM runs were clean (no loop errors) and the entry points were called 45-55 million times each and did nothing; none went extinct. They ran about 2.5-3.5 times faster than their controls (351-497 s against
+a control mean of 1,015-1,280 s per 20,000 ticks, under the same machine load; the 3,000-tick pilot said 1.85x).
+
+| seed | centredEntropyRatio | spread_late | estFrac |
+|---|---|---|---|
+| 102 | 0.57, inside the band | inside | inside |
+| 103 | 0.31, inside | inside | inside |
+| 104 | **UP**: 0.74 against a band of 0.19-0.42 | **UP**: 0.42 against 0.18-0.26 | inside |
+| 105 | **DOWN**: 0.12 against 0.16-0.70 | inside | **UP**: 0.0059 against 0-0.0044 |
+| 106 | 0.52, inside | inside | inside |
+
+Tallies: centredEntropyRatio UP 1, DOWN 1; spread_late UP 1; estFrac UP 1; two thirds of five is four seeds. **Verdict by the rule: KEEP, the default does not move** (3 of 5 seeds had nothing move, 4 were needed for DECORATION).
+My written prediction was DECORATION (at least four of five seeds with nothing moving); it was missed by one seed.
+
+**What changes about #302-#303b.** Those rounds found no effect of emptied programs on births, survival, trait spread or lineages alive, and read DECORATION on the ruling measures. That stands for what it tested. But "the VM does nothing" does not follow:
+with the VM actually off, two seeds of five sit outside every one of six controls on a diversity measure, one up and one down, and the 3,000-tick pilot found lineage IDs minted about 20-35% lower on two seeds. The best summary of all five VM rounds is:
+the VM does not set how many are born, how many survive or how many lineages are alive on average; on a minority of seeds it moves how diverse the world looks, and it moves it either way. The earlier word "decoration" was too strong and I withdraw it.
+
+**Something that is not in doubt:** the VM is expensive. It is the machinery that makes a tick take two to three times as long, and a world without it ran at the same population and birth rate. Whether that cost buys anything the measures here can see is what this series could not show.
+
+**Not tested:** any horizon past 20,000 ticks (about ten generations); the REPL mode where programs are the only reproducers; measures other than the three ruling ones and the reported entropyRatio / kinds_late; what the seed-104 and seed-105 differences consist of.
+Saved worlds belong to the user: no engine change was shipped.
