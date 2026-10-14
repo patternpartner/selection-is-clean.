@@ -26800,3 +26800,19 @@ the VM does not set how many are born, how many survive or how many lineages are
 
 **Not tested:** any horizon past 20,000 ticks (about ten generations); the REPL mode where programs are the only reproducers; measures other than the three ruling ones and the reported entropyRatio / kinds_late; what the seed-104 and seed-105 differences consist of.
 Saved worlds belong to the user: no engine change was shipped.
+
+### #304 — WHICH OPCODES ARE ACTUALLY USED? Five of them do three quarters of the work. Measured, four seeds, 8,000 ticks; exploratory, no rule.
+
+`lab/inlife/probe16.js` wraps `vmStep`, the single dispatch for all four VMs, and tallies every executed instruction by opcode (no random draws), then snapshots which opcodes the living programs carry at the end. Seeds 1-4, defaults.
+About 255-269 million instructions are executed per seed per 8,000 ticks (roughly 32,000 per tick).
+
+- **Five original opcodes carry 76% of everything executed:** op4 EMIT 29.9%, op1 11.7%, op3 11.5%, op2 11.5%, op0 11.5% (the original MOVE / ADD / MUL / COMP / EMIT of the first file, by its Layer-6 header). The first ten carry 88%, the first twenty 97%, the first forty 99.5%.
+  Per seed the shape is the same: top 1 / 5 / 10 / 20 = 29-31% / 74-78% / 90-95% / 98.5-99.6%.
+- **After the five:** the bound slots op237 (3.0%) and op235 (2.6%, cosmos sense), USER_ATOM op22 (2.3%), COMMONS_READ op19 (2.0%), EFFECT_EMIT op236 (1.9%), EXTINCTION_COUNT op88 (1.7%), then slots 238 and 233 (MODE) at about 1% each.
+- **The long tail is touched but negligible.** Across the four seeds 366 distinct opcodes were executed at least once: 230 of the 237 core opcodes (0-236) and 136 bound slots (237 and above). Only 7 core opcodes were never executed in any seed, but 208 core opcodes are under 0.01% of
+  instructions each. Per seed 117-203 distinct opcodes are executed, against 35-50 distinct carried by the living programs at the end of the run (executions also come from plasmid and cluster programs and from programs that have since died; the snapshot is one moment).
+- **The repertoire grows with time.** 133 distinct opcodes were executed in the first 2,000 ticks and 209 in the last 2,000 (pooled), so programs do reach further over a run, at tiny frequency.
+- **Everything carried was executed:** no opcode in a living program at the end was one that never ran.
+
+**What this does and does not say.** "Executed" is not "effective": an instruction that reads a sensor into a register runs, and may feed nothing. This counts instructions, not consequences. Four seeds, one horizon. It agrees with #302-#303c, where emptying the programs or switching the VM off moved little: three quarters of the
+execution is the original five operations, and the 100-odd sensor opcodes added in the May-June bursts together make up a small slice of what runs. It does not show that the rare opcodes do nothing: a 0.01% instruction could be the one that matters on one seed, and the seed-104 / seed-105 differences in #303c may sit there.

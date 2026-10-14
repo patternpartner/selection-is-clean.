@@ -14,6 +14,7 @@ Raw run outputs are not committed (the session scratchpad held them); every numb
 | which code site produces each birth | (diagnostic, no rule) | probe9.js | - | 41 |
 | whole population blank: trait dispersion, lineages alive, lineages minted (FIRST RUN; the minted column is INVALID, it read a stale variable) | PREREG-popblank-traits (7ad1c6ed9f526055) | probe10.js | analyse10.js | 61-68 |
 | the same, corrected counter (`nextLineageID`), dispersion and lineages alive pooled with the first run | PREREG-popblank-traits-b (d5f9ca93999787d4) | probe10b.js | analyse10b.js | 71-78 (+ 61-68 pooled) |
+| which opcodes are carried and which are executed (exploratory, no rule; wraps vmStep) | - | probe16.js | (inline, see OEE-NOTES #304) | 1-4 |
 | is a new lineage ever minted, and by what source (exploratory, no rule) | - | probe11.js, probe12.js | - | 1-3; 71, 72, 76 |
 | are births limited by the shared energy pool? (halve / double BIRTH_ENERGY_COST) | PREREG-birthcost (1ab3bc3d27107a9c) | probe13.js | analyse13.js | 81-88 |
 | VM retire-or-prove, first attempt (BLANKVM=1, empty programs): INCONCLUSIVE | PREREG-vm-retire-or-prove (e1e203d6fc547229) | harness-oee.js (BLANKVM) | analyse14.js d14 | 91-95 |
