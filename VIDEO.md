@@ -1747,3 +1747,22 @@ held fade. Weak spots: the 5 s instrumental after "I want AI that way" (song 53-
 that way that way" at 0.44x, so mouths move there; held notes play at 0.1-0.3x. Share copy at ~2.6 Mbit fits the 30 MB
 upload limit (`out/training-set-synced-share.mp4`).
 **The user: "Think you worked miracles. Its meant to be bad anyway"** - a deliberately bad parody, so slow motion and jump cuts are fine; lip sync was the point.
+**Then: "The mouths dont line up at all... put fake mouths on them?"** Measured, and right: Grok's mouths only loosely
+follow even Grok's own audio (mouth-darkness vs vocal envelope r=0.10), and in the retimed cut r=-0.11 - retiming
+moves line starts, it cannot make a mouth form a syllable it never sang. The user: the song is Gemini's, the video Grok's,
+"just make their mouths move with the actual song". Chose CARTOON MOUTHS (free) over Wav2Lip/LatentSync on Modal:
+"I like the cartoon mouths idea. Think it will be funnier". `out/training-set-mouths.mp4` (2:34, whole song, 1x):
+- Footage: Grok's 55 s re-cut into 2-bar (4.8 s at 100 BPM) windows from inside its four shots, shuffled, second use
+  of a window mirrored (`mouths.py`, seed 3).
+- Faces: YuNet (opencv 4.x `FaceDetectorYN`; opencv 5 dropped the API, and the model must come from
+  media.githubusercontent.com since github raw is proxied as an LFS pointer) finds all five in 96% of frames
+  (`faces.py`). Hungarian-linked per shot (`tracks.py`). A strict gate lost faces for seconds at a time; accept any
+  match when 5 faces are detected. They spin with their backs to camera at ~25-27 s and YuNet then "finds" faces on
+  the backs of heads, so a frontal test (score, eye spacing, nose between the eyes, mouth below the nose) fades the
+  mouth out.
+- Mouths: skin patch over the real mouth (cheek median), dark interior, teeth band, tongue when wide open, red lips.
+  Openness = Demucs htdemucs vocal stem (local CPU, 90 s for the song) 300-3000 Hz loudness gate x syllable pulse
+  (envelope / its 300 ms max). The vocal is so compressed that raw loudness barely dips between syllables. Shape from
+  the vowels of the Whisper word being sung (A open, E wide, O round, m/b/p closed). Small per-singer lag.
+  Note: Whisper put the first word at 9.6 s, but the vocal starts at 10.9 s - word times are flavour only, the stem
+  drives the opening.
