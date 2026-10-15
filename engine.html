@@ -26071,6 +26071,105 @@ function replenish(){
 // the same object and this is a no-op. In a POOLED worker several universes share one isolate, so
 // a bare `innerWidth` would be one number for all of them; `window` is the per-universe shim and
 // gives each one its own canvas back. This is the only place the engine read a bare dimension.
+// === LUMINOUS RENDERER (#311, the user: "the visuals have stayed pretty basic ... let it really fly") ===
+// A second way to DRAW the same universe. It reads the arrays render() reads and writes nothing the simulation reads, and it
+// draws no random numbers (jitter comes from the particle index), so a world is byte-identical whichever renderer shows it.
+// What changes on screen: additive light instead of flat dots (bodies, halos and bonds add up where they overlap), the
+// resource fields smoothed into a glowing medium instead of blocks, a soft bloom (the picture drawn small and added back, so
+// there is no blur filter to depend on), a bright core on the strongest, newborn ripples where a birth just happened, and a
+// vignette. #classic in the page address brings the old drawing back. Browser only: under node, in a rig, nothing here runs.
+let __artBroken=false, __artS=null;
+function __artWanted(){
+  if(__artBroken)return false;
+  try{ if(/classic/i.test(location.hash||''))return false; }catch(_){}
+  if(typeof navigator==='undefined'||!/Mozilla/.test(navigator.userAgent||''))return false;
+  return typeof OffscreenCanvas!=='undefined'||(typeof document!=='undefined'&&typeof document.createElement==='function');
+}
+function __artCanvas(w,h){ const k=(typeof OffscreenCanvas!=='undefined')?new OffscreenCanvas(w,h):document.createElement('canvas'); k.width=w; k.height=h; return k; }
+function __artInit(){
+  const s={w:W,h:H,spr:new Map(),b1:null,b2:null,f:null,fx:null,fade:null,id:null};
+  s.b1=__artCanvas(Math.max(8,W>>2),Math.max(8,H>>2)); s.b2=__artCanvas(Math.max(4,W>>4),Math.max(4,H>>4));
+  s.f=__artCanvas(FIELD_W,FIELD_H); s.fx=s.f.getContext('2d'); s.id=s.fx.createImageData(FIELD_W,FIELD_H);
+  { const gr=X.createRadialGradient(W/2,H/2,Math.min(W,H)*0.1,W/2,H/2,Math.hypot(W,H)*0.55); gr.addColorStop(0,'rgba(1,1,5,0.10)'); gr.addColorStop(1,'rgba(1,1,5,0.30)'); s.fade=gr; }   // trails last longest in the middle and die at the edges: a vignette that cannot show a seam
+  return s;
+}
+function __artSprite(s,r,g,b){
+  const k=((r>>5)<<6)|((g>>5)<<3)|(b>>5); let sp=s.spr.get(k); if(sp)return sp;
+  const R=((r>>5)*36+18)|0, G=((g>>5)*36+18)|0, B=((b>>5)*36+18)|0;   // centre of the colour bucket
+  sp=__artCanvas(64,64); const q=sp.getContext('2d'); const gr=q.createRadialGradient(32,32,0,32,32,32);
+  gr.addColorStop(0,`rgba(${Math.min(255,R+45)},${Math.min(255,G+45)},${Math.min(255,B+45)},1)`);
+  gr.addColorStop(0.18,`rgba(${R},${G},${B},0.85)`); gr.addColorStop(0.5,`rgba(${R},${G},${B},0.22)`); gr.addColorStop(1,`rgba(${R},${G},${B},0)`);
+  q.fillStyle=gr; q.fillRect(0,0,64,64); s.spr.set(k,sp); return sp;
+}
+function renderArt(){
+  if(!__artS||__artS.w!==W||__artS.h!==H)__artS=__artInit();
+  const s=__artS;
+  X.globalCompositeOperation='source-over'; X.globalAlpha=1;
+  X.fillStyle=s.fade; X.fillRect(0,0,W,H);
+  X.imageSmoothingEnabled=true;
+  const dens=Math.min(1,Math.pow(450/Math.max(1,N),0.9));   // a crowded world adds up to white; thin each body's light as the crowd grows
+  // the medium: every field layer into one small image, stretched smooth and added
+  { const d=s.id.data; let n=0;
+    for(let i=0;i<FIELD_W*FIELD_H;i++,n+=4){
+      let r=0,g=0,b=0;
+      const rv=rootField[i]; if(rv>0.04){ const k=Math.min(1,rv*0.6); r+=170*k; g+=90*k; b+=22*k; }
+      const val=field[i]; if(val>0.03){ const own=fieldOwnership[i],ci=i*3,k=Math.min(1,val*0.9);
+        r+=(fieldLineageCache[ci]*own+100*(1-own))*k; g+=(fieldLineageCache[ci+1]*own+240*(1-own))*k; b+=(fieldLineageCache[ci+2]*own+220*(1-own))*k; }
+      const v2=field2[i]; if(v2>0.05){ const k=Math.min(1,v2*0.7); r+=230*k; g+=80*k; b+=150*k; }
+      const cs=cellProgStr[i]; if(cs>0.1){ r+=255*cs*0.5; g+=220*cs*0.5; b+=120*cs*0.5; }
+      d[n]=r>255?255:r; d[n+1]=g>255?255:g; d[n+2]=b>255?255:b; d[n+3]=255;
+    }
+    s.fx.putImageData(s.id,0,0);
+    X.globalCompositeOperation='lighter'; X.globalAlpha=0.05; X.drawImage(s.f,0,0,W,H); X.globalAlpha=1; }
+  X.globalCompositeOperation='lighter';
+  // bonds: slow curves, brighter where the phases agree
+  clearGrid();
+  if(!s.occ||s.occ.length!==gW*gH)s.occ=new Uint16Array(gW*gH); else s.occ.fill(0);
+  for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i;s.occ[k]++}
+  X.lineWidth=0.6;
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const gx=(px[i]/CELL)|0,gy=(py[i]/CELL)|0;
+    for(let dy=0;dy<=1;dy++)for(let dx=(dy===0?1:-1);dx<=1;dx++){
+      const nx=gx+dx,ny=gy+dy; if(nx<0||ny<0||nx>=gW||ny>=gH)continue;
+      let j=grid[ny*gW+nx],lc=0;
+      while(j>=0&&j<CAP&&lc++<CAP){
+        if(palive[j]){ const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy;
+          if(d2<2200&&d2>0){ const sim=tendSim(i,j),pa=Math.cos(phase[i]-phase[j]),bond=sim*Math.max(0,pa);
+            if(bond>0.2){ const d=Math.sqrt(d2),al=bond*(1-d/47)*0.06*dens*(amp[i]+amp[j]);
+              const r=(pR[i]+pR[j])>>1,g=(pG[i]+pG[j])>>1,b=(pB[i]+pB[j])>>1, mx=(px[i]+px[j])/2, my=(py[i]+py[j])/2, bend=Math.sin(phase[i]-phase[j])*d*0.35;
+              X.beginPath();X.moveTo(px[i],py[i]);X.quadraticCurveTo(mx-ddy/d*bend,my+ddx/d*bend,px[j],py[j]);X.strokeStyle=`rgba(${r},${g},${b},${al>0.5?0.5:al})`;X.stroke(); } } }
+        j=pnext[j]; } }
+  }
+  // bodies: halo, core, hot centre; the sprite already carries all three
+  for(let i=0;i<N;i++){
+    if(!palive[i])continue;
+    const a=Math.min(1,amp[i]*0.8); if(a<0.01)continue;
+    const sz=Math.max(0.6,pSz[i]), col=collapse[i], smear=1-col;
+    const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0, sp=__artSprite(s,r,g,b);
+    const oc=s.occ[gKey(px[i],py[i])], lw=oc>5?Math.sqrt(5/oc):1;   // light thins where bodies pile up, so a crowd stays colour and shape instead of a white blob
+    if(smear>0.12){ for(let e=0;e<EL;e+=2){ const ei=(echoIdx[i]-1-e+EL*100)%EL; X.globalAlpha=a*smear*0.05*lw*(1-e/EL); const q=sz*1.6; X.drawImage(sp,echox[i*EL+ei]-q,echoy[i*EL+ei]-q,q*2,q*2); } }
+    const hr=sz*(2.4+smear*3.2); X.globalAlpha=a*lw*(0.04+smear*0.04); X.drawImage(sp,px[i]-hr,py[i]-hr,hr*2,hr*2);     // halo
+    const cr=sz*(1.1+col*0.5); X.globalAlpha=Math.min(1,a*lw*(0.13+col*0.1)); X.drawImage(sp,px[i]-cr,py[i]-cr,cr*2,cr*2); // core
+    if(page[i]<20){ const t=page[i]/20, rr=sz*2+t*sz*7; X.globalAlpha=(1-t)*(1-t)*0.45*lw; X.lineWidth=0.7; X.strokeStyle=`rgb(${Math.min(255,r+70)},${Math.min(255,g+70)},${Math.min(255,b+70)})`; X.beginPath(); X.arc(px[i],py[i],rr,0,6.283); X.stroke(); } // a birth just happened here
+    if(pPlasmidLen[i]>0){ X.globalAlpha=a*0.5; X.lineWidth=0.7; X.strokeStyle=pPlasmidLen[i]===1?'rgb(80,220,220)':pPlasmidLen[i]===2?'rgb(220,220,80)':'rgb(240,160,60)'; X.beginPath(); X.arc(px[i],py[i],sz*1.9,0,6.283); X.stroke(); }
+  }
+  X.globalAlpha=1;
+  // flashes where two interact
+  for(let f=flashN-1;f>=0;f--){
+    flashAge[f]++;
+    if(flashAge[f]>flashLife){ flashN--;flashX1[f]=flashX1[flashN];flashY1[f]=flashY1[flashN];flashX2[f]=flashX2[flashN];flashY2[f]=flashY2[flashN];flashAge[f]=flashAge[flashN]; continue; }
+    const fa=1-flashAge[f]/flashLife, bright=fa*fa;
+    X.strokeStyle=`rgba(255,225,130,${bright*0.8})`; X.lineWidth=1.4*bright+0.3; X.beginPath(); X.moveTo(flashX1[f],flashY1[f]); X.lineTo(flashX2[f],flashY2[f]); X.stroke();
+  }
+  // bloom: the picture drawn small and added back, twice, at two scales
+  { const c1=s.b1.getContext('2d'),c2=s.b2.getContext('2d');
+    c1.globalCompositeOperation='copy'; c1.imageSmoothingEnabled=true; c1.drawImage(c,0,0,s.b1.width,s.b1.height);
+    c2.globalCompositeOperation='copy'; c2.imageSmoothingEnabled=true; c2.drawImage(s.b1,0,0,s.b2.width,s.b2.height);
+    X.globalCompositeOperation='lighter'; X.globalAlpha=0.02; X.drawImage(s.b1,0,0,W,H); X.globalAlpha=0.035; X.drawImage(s.b2,0,0,W,H); X.globalAlpha=1; }
+  X.globalCompositeOperation='source-over'; X.globalAlpha=1;
+}
+
 function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;initGrid()}
 
 function init(){
@@ -29470,7 +29569,7 @@ function loop(){
   // world nobody is watching. That is what the layers underneath are made of.
   // The sim is byte-identical either way; only the canvas goes unused.
   if(!DARK&&tabVisible&&__turboLeft===0&&tick%renderEvery===0){
-    render();
+    if(__artWanted()){ try{ renderArt(); }catch(e){ __artBroken=true; render(); } } else render();
     if(!__cleanArt())renderDashboard();   // #144: cleanart means the art, not the art plus the readouts
   }
   replenish();
