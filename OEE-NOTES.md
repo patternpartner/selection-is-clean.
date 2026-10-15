@@ -26952,3 +26952,19 @@ No arm reaches 4 of 5 on any measure, so by the pre-registered rule: **no verdic
 **What this changes.** (1) Any REPL result about population size or anything that rides on it is a result about a bistable system, and its threshold has to be set for that: the project's 25% relative alive threshold is below the noise floor. (2) For the mind question, a pre-registered round needs on the order of 10 runs per arm at a 2x threshold, or an outcome that is not population size. (3) The bistability itself is a candidate finding: it suggests a positive feedback near a carrying-capacity cap, which is the thing to explain, not average over.
 
 **Not said.** Thirty runs, ten seeds, one horizon, REPL defaults; sampled variables only (energy-pool level and per-lineage state are not in the series); the occupancy association is not a mechanism. The identical early samples across seeds may be partly an artefact of the shared founding population rather than evidence the physics ignores the seed.
+
+### #311 — THE ARTWORK GETS A RENDERER (the user: "if the engine is to be the artwork then instead of chasing OEE we finally let it create art ... let it really fly"). `engine.html` renders differently; the simulation is byte-identical.
+
+**What changed.** A second drawing path, `renderArt()`, beside the old `render()`, chosen in the frame loop; `#classic` in the page address brings the old drawing back; under node (every rig) nothing changes because `navigator.userAgent` is not a browser. It reads the arrays `render()` reads and writes nothing the simulation reads; it draws no random numbers.
+- **Additive light** instead of flat dots: a halo, a core and a hot centre per body (cached colour sprites), so overlaps glow instead of covering.
+- **A medium**: every resource field (lineage-owned, the pink layer, roots, program marks on cells) goes into one small image, stretched smooth and added, instead of blocky squares.
+- **Bloom** with no blur filter (the picture drawn small and added back at two scales), so it works in a worker's OffscreenCanvas and in Safari.
+- **Curved bonds**, **newborn ripples** (where `page[i]` is under 20), and trails that last longest in the middle and die at the edges (a vignette made of the fade itself, which cannot show a seam; the first version drew a vignette each frame and left a visible grey disc).
+- **Crowd-aware light**: per-cell occupancy thins each body's light as bodies pile up. Without it the dense worlds (2,500+ alive) added up to white blobs; with it they keep colour and filaments.
+- Before/after pictures: `lab/art/before-*.png`, `after-*.png`.
+
+**Checked.** Headless world fingerprints (N, births, mean amplitude, kinds at 200, 400 and 600 ticks, seed 3) identical between the pre-change and post-change engine. `browser-test.js` passes in Chromium. The field (`index.html` over http, nine worker-hosted universes) draws in the new style. **Not checked:** a phone, Safari, a long run's frame rate (the old path drew every 2-4 ticks and so does this one; I did not measure the cost against the old drawing), and the other pages (`universe.html`, `metabolism.html`) beyond that they load the same engine.
+
+**Not changed:** the HUD. `#cleanart` already hides the text; I did not make it the default, which is a taste call for the user.
+
+**Also in this entry: a design draft** for the next open-ended-evolution bench, `lab/next-core/DESIGN.md` (code-keyed parasitism in the lean core, with a kill rule). It is a proposal, not pre-registered and not built.
