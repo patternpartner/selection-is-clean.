@@ -183,6 +183,20 @@ class World{
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
     { const bf=this.bodyF; if(bf) for(const f of bf){ f.A[b]=f.A[a]; f.A[a]=0; } }   // and so do its module body fields
     if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
+  // ---- migration between worlds (lab/migration.js). Draw-free and never called unless a runner calls it, so a world that
+  // does not migrate is byte-identical to before. u is a number in [0,1) given by the caller, never drawn here. The plain
+  // core only (no TASKS, CHEM or mind: their per-organism state would have to travel too). An emigrant is a death to the
+  // neutral population, an immigrant a birth with a NEW label: from the destination's side it is a new genotype, and has to
+  // outgrow the neutral labels to count as adaptive there. Energy: the emigrant leaves with its store AND its body, and
+  // the immigrant's body is returned at its death, so a migration moves energy and does not make any. ----
+  emigrate(u){ const P=this.p, C=this.C, L=P.MAXLEN*2; if(P.TASKS||P.CHEM||this.mind||(this.bodyF&&this.bodyF.length))throw new Error('migration: plain core only');
+    let c=Math.floor(u*C)%C, k=0; while(!this.alive[c]&&k<C){ c=(c+1)%C; k++; } if(!this.alive[c])return null;
+    const o=c*L, prog=[], sh=[]; for(let i=0;i<this.len[c];i++)prog.push([this.prog[o+i*2],this.prog[o+i*2+1]]); for(let i=0;i<this.slen[c];i++)sh.push([this.sprog[o+i*2],this.sprog[o+i*2+1]]);
+    const rec={prog,sh,E:this.E[c],tag:this.tag[c],tmpl:this.tmpl[c],gen:this.gen[c]};
+    this.alive[c]=0; this.E[c]=0; this.tickDeaths++; this.ev.emig=(this.ev.emig||0)+1; return rec; }
+  immigrate(rec,u){ const C=this.C; let c=Math.floor(u*C)%C, k=0; while(this.alive[c]&&k<C){ c=(c+1)%C; k++; }
+    if(this.alive[c]){ this.ev.immigLost=(this.ev.immigLost||0)+1; return false; }
+    this.place(c,rec.prog,rec.E,rec.tag,rec.tmpl,rec.gen,rec.sh); this.tickBirths.push(1); this.tickBirthsF.push(1); this.ev.immig=(this.ev.immig||0)+1; return true; }
   mutateInto(src,r){ const P=this.p; for(const ins of src){ if(r()<P.MU_SUB){ if(r()<0.5)ins[0]=(r()*(this.nops||NOPS))|0; else ins[1]=(r()*256)|0; } }
     if(src.length<P.MAXLEN&&r()<P.MU_INS)src.splice((r()*(src.length+1))|0,0,[(r()*(this.nops||NOPS))|0,(r()*256)|0]);
     if(src.length>1&&r()<P.MU_DEL)src.splice((r()*src.length)|0,1); return src; }
