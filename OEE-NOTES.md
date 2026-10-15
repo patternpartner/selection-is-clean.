@@ -26968,3 +26968,29 @@ No arm reaches 4 of 5 on any measure, so by the pre-registered rule: **no verdic
 **Not changed:** the HUD. `#cleanart` already hides the text; I did not make it the default, which is a taste call for the user.
 
 **Also in this entry: a design draft** for the next open-ended-evolution bench, `lab/next-core/DESIGN.md` (code-keyed parasitism in the lean core, with a kill rule). It is a proposal, not pre-registered and not built.
+
+### #312 — MOVING WHOLE ORGANISMS BETWEEN WORLDS (the multi-tab idea, in the lean core): it does not raise adaptive novelty per world, and it LOWERS the set's total. Pre-registered (`lab/PREREG-migration.md`, committed 0450075 before the deciding runs); 70 rings, all counted.
+
+**Design as registered.** Ring of 4 `oee-core` worlds, whole organisms (program, shadow program, tag, template, generation, energy store; body energy leaves and returns, checked) exchanged every 50 ticks. 10 ring-sets (seeds 2400-2439, never run), 300,000 ticks (about 2,000 generations), arms NOMIG, and for rates 0.001 / 0.01 / 0.1 of the living per 1,000 ticks (about 0.2, 2 and 24 migrants per world per generation): SHAM (removed and put back into its own world, the same disturbance and labelling, nothing exchanged) and RING. Primary measure EVER: distinct functional genotypes adaptive in at least one of the ring's worlds, each counted once (a genotype adaptive in two worlds is one). `lab/migration-analyse.js`, permutation tests over ring means, 20,000 shuffles.
+
+**Result (mean over 10 rings; EVER / LATE):**
+
+| arm | EVER | LATE | per-world adaptive | union / sum of worlds | Jaccard overlap, last window |
+|---|---|---|---|---|---|
+| NOMIG | 215.1 | 65.9 | 54.5 | 0.99 | 0.000 |
+| SHAM 0.001 | 227.9 | 71.3 | 57.9 | 0.98 | 0.000 |
+| RING 0.001 | 194.1 | 57.3 | 55.4 | 0.87 | 0.049 |
+| SHAM 0.01 | 248.7 | 79.6 | 62.9 | 0.99 | 0.001 |
+| RING 0.01 | 201.1 | 55.7 | 64.8 | 0.77 | 0.161 |
+| SHAM 0.1 | 459.6 | 147.8 | 116.2 | 0.99 | 0.001 |
+| RING 0.1 | 358.6 | 104.4 | 115.8 | 0.78 | 0.253 |
+
+**By the registered rule (RING against SHAM at the same rate, ratio at least 1.25 or at most 0.8 with p < 0.05):** rate 0.001 NOT DIFFERENT (EVER 0.85, p 0.044; LATE 0.80, p 0.086); rate 0.01 EVER NOT DIFFERENT (0.81, p 0.004, a hair above the 0.8 line) and LATE WORSE (0.70, p 0.001); rate 0.1 WORSE on both (EVER 0.78, LATE 0.71, p under 0.001). RING 0.01 against RING 0.1 EVER: WORSE (0.56). **Outcome: NONE, with exchange worse than the control at the high rate.** My registered prediction (about 25% HUMP, 40% any BETTER) was wrong: nothing came out better.
+
+**Why (read from the "per-world adaptive" column, which is not a registered measure and is described here, not ruled on):** per-world novelty is the same in RING and SHAM at every rate (55.4 against 57.9, 64.8 against 62.9, 115.8 against 116.2). What exchange changes is how much the worlds overlap: with exchange 13-23% of the adaptive set is shared between worlds (Jaccard 0.16-0.25 against about 0), so the union shrinks (0.77-0.87 of the sum against 0.99). Exchange does not make any world find more; it makes the worlds find the same things, so the set of worlds holds fewer different ones. That is island-model homogenisation, measured here, in the direction #45 and #294 hinted.
+
+**A second finding that matters more for method: the novelty measure is not robust to migration.** SHAM (nothing exchanged) at rate 0.1 scores 2.14 times NOMIG on EVER (p under 0.001), and per-world adaptive doubles (116 against 55). The cause is the one named in the pre-registration: each reinserted or arriving organism takes a NEW label in the neutral population, which fragments the neutral labels and lowers the bar every genotype must beat. Any future bench that inserts organisms (migration, founders, rescue, immigration) and scores novelty against the neutral-label bar will inflate it by this; compare only against a SHAM at the same rate, as this round did. This was not in the notes before.
+
+**Not said.** Symmetric ages (the user's asymmetric-age idea is untested), a ring of 4, random migrants (not chosen by fitness or by what the destination lacks), a one-round transit delay, the plain core (no CHEM, TASKS or mind), one horizon (about 2,000 generations), one measure family (adaptive functional genotypes by the neutral-shadow rule), and nothing about real browser tabs, which differ in speed, size and attention. The closest positive hint in the repo (#294: a mind that hears ONE partner world, rank sum p = 0.056, BETTER on 2 of 4 worlds) is about exchanging information, not organisms; this result does not bear on it.
+
+**What follows.** The default does not move; nothing in the engine changed. Organism exchange as built is not a source of novelty in this core at this horizon. The variants this leaves open, in the order I'd try them: (1) the asymmetric-age ring (one old world among young), (2) migrants chosen by what the destination lacks rather than at random, (3) exchanging information instead of organisms (the #294 line, now with run counts sized from its null band), (4) code-keyed parasites crossing worlds (`lab/next-core/DESIGN.md`).
