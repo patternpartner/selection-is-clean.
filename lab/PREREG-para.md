@@ -34,3 +34,6 @@ Successions per quarter, wins and losses, injection hits and distinct keys over 
 
 ## Step 6
 Lab only. `engine.html`, saved universes and every default are untouched. `TASKS` leaves the lab core; no committed result depends on rerunning it, and the code stays in git history.
+
+## Addendum, written after the first 20 runs and before any added run (template step 2)
+The first 20 runs (seeds 3101-3110) gave 7 counted runs in each arm, under the floor of 8: INCONCLUSIVE, and no ruling was made. As the template directs ("extend the horizon or add unseen seeds; do not rule on it"), seeds 3111-3114 (never run) are added to BOTH arms, with every other setting, the counting rule and the ruling unchanged; the analysis is re-run over all 14 seeds. If an arm still has fewer than 8 counted runs, the result stays INCONCLUSIVE.

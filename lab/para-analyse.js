@@ -3,7 +3,8 @@ const fs=require('fs'), path=require('path'); const dir=process.argv[2]; const m
 function perm(a,b,n=20000){ const all=a.concat(b), na=a.length, d0=Math.abs(mean(a)-mean(b)); let c=0, s=99991; const rnd=()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; };
   for(let i=0;i<n;i++){ const x=all.slice(); for(let j=x.length-1;j>0;j--){ const k=Math.floor(rnd()*(j+1)); [x[j],x[k]]=[x[k],x[j]]; } if(Math.abs(mean(x.slice(0,na))-mean(x.slice(na)))>=d0-1e-12)c++; } return (c+1)/(n+1); }
 const R={para:[],ctrl:[]};
-for(let s=3101;s<=3110;s++) for(const arm of ['para','ctrl']){ const base=path.join(dir,`${arm}_${s}`); const r={arm,s,counted:false};
+const SEEDS=(process.env.SEEDS||'3101 3102 3103 3104 3105 3106 3107 3108 3109 3110').split(/[ ,]+/).map(Number);   // PREREG-para.md step 2: unseen seeds may be ADDED when an arm has fewer than 8 counted runs
+for(const s of SEEDS) for(const arm of ['para','ctrl']){ const base=path.join(dir,`${arm}_${s}`); const r={arm,s,counted:false};
   try{ const rows=fs.readFileSync(base+'.all.jsonl','utf8').trim().split('\n').map(JSON.parse); r.ticks=rows.at(-1).t; r.N=rows.at(-1).N; r.len=rows.at(-1).meanLen;
     const last=rows.slice(-250); r.injLast=last.reduce((a,x)=>a+((x.ev&&x.ev.injHit)||0),0); r.keysLast=mean(last.map(x=>(x.para&&x.para.keys)||0));
     const txt=fs.readFileSync(base+'.assay.txt','utf8'); const m=txt.match(/Q1 (\d+)\/(\d+)\/(\d+)\/(\d+)\/(\d+)\s+Q2 (\d+)\/(\d+)\/(\d+)\/(\d+)\/(\d+)\s+Q3 (\d+)\/(\d+)\/(\d+)\/(\d+)\/(\d+)\s+Q4 (\d+)\/(\d+)\/(\d+)\/(\d+)\/(\d+)/);
