@@ -37,8 +37,6 @@ function fnHash(a,o,m,n0){ n0=n0||NEUTRAL0; let h=2166136261|0, k=0; for(let i=0
 function fnHashList(src,n0){ n0=n0||NEUTRAL0; let h=2166136261|0, k=0; for(const [op,arg] of src){ if(op===0||(op>=n0&&op<NOPS))continue; h=Math.imul(h^op,16777619); h=Math.imul(h^(arg&ARGMASK[op]),16777619); k++; } return (h^k)>>>0; }
 
 // NAND formula size of each three-input function (inputs 0xF0, 0xCC, 0xAA cost 0; NAND(x,y) costs size x + size y + 1)
-const TASK_SZ=(()=>{ const S=new Float64Array(256).fill(Infinity); S[0xF0]=0; S[0xCC]=0; S[0xAA]=0;
-  for(let ch=true;ch;){ ch=false; for(let x=0;x<256;x++){ if(S[x]===Infinity)continue; for(let y=x;y<256;y++){ if(S[y]===Infinity)continue; const z=(~(x&y))&255, v=S[x]+S[y]+1; if(v<S[z]){ S[z]=v; ch=true; } } } } return S; })();
 function h32(a){ a|=0; a=Math.imul(a^(a>>>16),0x45d9f3b); a=Math.imul(a^(a>>>16),0x45d9f3b); return (a^(a>>>16))>>>0; }
 
 const DEF={
@@ -78,20 +76,14 @@ const DEF={
   // of the same substrate, or a step downstream), and an immigrant is keyed to a molecule actually present. The 256-species
   // network ran out (#287): this one is too large to exhaust in a run.
   CHEM_BIG:0, V_PRESENT:0.05,
-  // TASKS (#290), exclusive of CHEM, off by default: Avida's logic tasks. Each organism is born with three random 32-bit
-  // inputs (redrawn until all eight truth-table rows occur), so an output names one three-input boolean function (256 of
-  // them) only if its bits agree wherever a row repeats - every row is made to occur at least twice, so a constant cannot. (With 8-bit inputs every row
-  // appeared once, any byte was some function, and a LOADK constant earned all 251 within 10,000 ticks.) INPUT reads the next input into R0, NAND sets
-  // R0 to NOT(R0 AND Rk), GET copies Rk into R0, OUTPUT pays the function its output computes, once per life: a share
-  // TASK_F of that function's own regenerating pool (TASK_CAP, TASK_RATE), so a function few organisms compute pays well.
-  // Echoes of an input and constants pay nothing. With VIRUS on, a virion's key is a function and it infects a host that
-  // has computed it this life (after Zaman et al. 2014, where coevolving parasites drove complex tasks in Avida).
-  // TASK_MAX: how many functions one life can be paid for. Unlimited, a short loop of INPUT, NAND and OUTPUT computes a new
-  // genuine function every pass and one program collected all 251 within a few thousand generations; at 1 each lineage
-  // specialises, and reaching a hard function means building its circuit.
-  // TASK_SCALE: 1 makes each function's pool cap TASK_CAP times its NAND formula size, so a harder function is a richer
-  // niche (Avida pays harder tasks more); 0 gives every function the same cap.
-  TASKS:0, TASK_CAP:20, TASK_RATE:0.02, TASK_F:0.2, TASK_MAX:1, TASK_SCALE:0,
+  // PARA (#313, lab/next-core/DESIGN.md), exclusive of CHEM, off by default: CODE-KEYED PARASITISM. Op 24 becomes INJECT and
+  // the neutral markers are 25-31 (under PARA=2 as well, so both arms are measured with the same alphabet). INJECT copies a
+  // window of INJ_W of the injector's own instructions, starting at arg, into the organism it faces, but only where that
+  // organism's program holds a BINDING SITE: INJ_K consecutive instructions whose ops match the first INJ_K ops of the
+  // window (INJ_MATCH: the same ops, or their complements op^1). The window replaces the site, so the host now carries (and its descendants inherit) the
+  // injector's code. Every attempt costs C_INJ. A host escapes only by changing its code; every change is a new set of sites.
+  // PARA=1 live; PARA=2 the control: op 24 is executed and charged identically and does nothing else.
+  PARA:0, INJ_K:3, INJ_W:6, C_INJ:0.002, INJ_MATCH:'same',   // INJ_MATCH 'same': the site is the same op sequence as the window's head; 'comp': its complement (op^1)
 };
 
 // 64x64 diffusion (ported from cos/speedup). The stored value is the same expression as the general loop, including /4
@@ -108,7 +100,7 @@ function diffuse64(m,b,t,D,k){
 }
 
 class World{
-  constructor(seed,opts){
+  constructor(seed,opts){ if(opts&&opts.TASKS)throw new Error('oee-core: TASKS was deleted (#313; it failed every rule of #290)');
     this.p=Object.assign({},DEF,opts||{});
     const P=this.p, C=P.W*P.H;
     this.rnd=mulberry32((seed>>>0)||1); this.C=C; this.tick=0; this.seed0=(seed>>>0)||1;
@@ -128,7 +120,7 @@ class World{
       this.pool=new Array(P.MIND_POOL).fill(null); this.mindId=new Float32Array(C); (this.bodyF=this.bodyF||[]).push({A:this.mindId,energy:false});
       this.prnd=mulberry32(this.seed0^0x6d706f6f); this.mindNext=1; this.mindBirths=0; this.mindDeaths=0; this.mindRetired=0; this.mindLife=0; }
     this.alive=new Uint8Array(C); this.E=new Float32Array(C); this.age=new Int32Array(C);
-    this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=(opts&&opts.TASKS)?new Float64Array(C*4):new Float32Array(C*4);   // TASKS needs registers that hold a 32-bit word exactly
+    this.pc=new Uint8Array(C); this.face=new Uint8Array(C); this.R=new Float32Array(C*4);
     this.len=new Uint8Array(C); this.prog=new Uint8Array(C*P.MAXLEN*2);
     this.sprog=new Uint8Array(C*P.MAXLEN*2); this.slen=new Uint8Array(C); this.srnd=mulberry32(((seed>>>0)||1)^0x5eed5eed);   // the SHADOW genome: same genealogy, same mutation process, never executed
     // the NEUTRAL SHADOW POPULATION (Bedau and Packard): genotype labels only. Each tick it gets the real world's number of
@@ -146,8 +138,7 @@ class World{
     this.nb=new Int32Array(C*8); for(let c=0;c<C;c++){ const x=c%P.W, y=(c/P.W)|0, o=c*8; for(let f=0;f<8;f++) this.nb[o+f]=((y+DY[f]+P.H)%P.H)*P.W+((x+DX[f]+P.W)%P.W); }   // the eight neighbours of every cell, filled once with the old formula
     this.patch=[]; for(let k=0;k<P.PATCHES;k++){ const a=this.rnd()*Math.PI*2; this.patch.push({x:this.rnd()*P.W,y:this.rnd()*P.H,vx:Math.cos(a)*P.PATCH_V,vy:Math.sin(a)*P.PATCH_V}); }
     this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0};
-    this.n0=P.CHEM?NEUTRAL0_CHEM:P.TASKS?28:NEUTRAL0;
-    if(P.TASKS){ this.tin=new Uint32Array(C*3); this.tic=new Uint8Array(C); this.tdone=new Uint32Array(C*8); this.tcap=new Float64Array(256); for(let T=0;T<256;T++)this.tcap[T]=P.TASK_CAP*(P.TASK_SCALE?TASK_SZ[T]:1); this.tres=Float64Array.from(this.tcap); this.tE=new Float64Array(256); this.tN=new Uint32Array(256); }
+    this.n0=P.CHEM?NEUTRAL0_CHEM:P.PARA?25:NEUTRAL0; if(P.PARA&&P.CHEM)throw new Error('oee-core: PARA is exclusive of CHEM'); if(P.PARA){ this.ev.injTry=0; this.ev.injHit=0; this.injKeys=new Set(); } this.tickConv=0; this.tickConvF=0;
     if(P.CHEM&&P.CHEM_BIG){ this.big={layers:new Map(),e:new Map(),pr:new Map(),salt:h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4)}; this.molTmp=new Float32Array(C); this.ev.metab=0; this.ev.metabN=0; this.rxE=new Map(); }
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); this.molLive=new Uint8Array(S); }   // molLive: species that may be nonzero, so diffusion can skip the rest   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
@@ -165,31 +156,32 @@ class World{
     for(let y=0;y<P.H;y++)for(let x=0;x<P.W;x++){ let v=P.L_MIN;
       for(const q of this.patch){ let dx=Math.abs(x-q.x); dx=Math.min(dx,P.W-dx); let dy=Math.abs(y-q.y); dy=Math.min(dy,P.H-dy); v+=P.L_PEAK*Math.exp(-(dx*dx+dy*dy)/r2); }
       this.cap[y*P.W+x]=v; } }
-  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; if(P.TASKS)this.taskBirth(c); sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
+  place(c,prog,E,tag,tmpl,gen,sh){ const P=this.p, o=c*P.MAXLEN*2; sh=sh||prog; this.slen[c]=sh.length; for(let i=0;i<sh.length;i++){ this.sprog[o+i*2]=sh[i][0]; this.sprog[o+i*2+1]=sh[i][1]; } this.alive[c]=1; this.E[c]=E; this.age[c]=0; this.pc[c]=0; this.face[c]=(this.rnd()*8)|0;
     this.R.fill(0,c*4,c*4+4); this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; }
     this.tag[c]=tag; this.tmpl[c]=tmpl; this.gen[c]=gen; this.stamp[c]=this.tick; }
-  taskBirth(c){ const r=this.rnd, cnt=new Uint8Array(8); let a,b,d, ok;   // redrawn until every truth-table row occurs at least twice, so a constant always meets a repeat it disagrees with
-    do{ a=(r()*4294967296)>>>0; b=(r()*4294967296)>>>0; d=(r()*4294967296)>>>0; cnt.fill(0); for(let i=0;i<32;i++)cnt[(((a>>>i)&1)<<2)|(((b>>>i)&1)<<1)|((d>>>i)&1)]++; ok=true; for(let k=0;k<8;k++) if(cnt[k]<2)ok=false; }while(!ok);
-    this.tin[c*3]=a; this.tin[c*3+1]=b; this.tin[c*3+2]=d; this.tic[c]=0; this.tdone.fill(0,c*8,c*8+8); }
-  taskOut(c,v){ const a=this.tin[c*3], b=this.tin[c*3+1], d=this.tin[c*3+2]; let T=0, set=0;   // which function of (a,b,d) the output v is: each bit position holds one row of the truth table, and repeated rows must agree
-    for(let i=0;i<32;i++){ const k=(((a>>>i)&1)<<2)|(((b>>>i)&1)<<1)|((d>>>i)&1), o=(v>>>i)&1; if(set&(1<<k)){ if(((T>>k)&1)!==o)return; } else { set|=1<<k; if(o)T|=1<<k; } }
-    if(T===0||T===255||T===0xF0||T===0xCC||T===0xAA)return; if(this.p.TASK_MAX&&this.tcount(c)>=this.p.TASK_MAX)return; const w=c*8+(T>>5), bit=1<<(T&31); if(this.tdone[w]&bit)return; this.tdone[w]|=bit;
-    const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; }
-  tcount(c){ let n=0; for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ x&=x-1; n++; } } return n; }
   kill(c,why){ const P=this.p; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++;
     const bf=this.bodyF; if(bf) for(const f of bf){ if(f.energy)this.corpse[c]+=f.A[c]; f.A[c]=0; } }   // a module's body fields die with the body: energy to the corpse, the rest cleared
   moveOrg(a,b){ const P=this.p, L=P.MAXLEN*2; this.alive[b]=1; this.alive[a]=0; this.E[b]=this.E[a]; this.age[b]=this.age[a]; this.pc[b]=this.pc[a]; this.face[b]=this.face[a];
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
-    { const bf=this.bodyF; if(bf) for(const f of bf){ f.A[b]=f.A[a]; f.A[a]=0; } }   // and so do its module body fields
-    if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; } }
+    { const bf=this.bodyF; if(bf) for(const f of bf){ f.A[b]=f.A[a]; f.A[a]=0; } } }   // and so do its module body fields
+  // ---- INJECT (#313): draw-free. Finds the first binding site in the faced organism and overwrites it with the window. ----
+  inject(c,arg){ const P=this.p, L=P.MAXLEN*2, K=P.INJ_K, t=this.ahead(c,this.face[c]); if(!this.alive[t]||t===c)return;
+    const n=this.len[c], oc=c*L, m=this.len[t], ot=t*L; if(n<K||m<K)return; const s=arg%n, cx=P.INJ_MATCH==='comp'?1:0;
+    for(let j=0;j+K<=m;j++){ let ok=true; for(let q=0;q<K;q++){ if(this.prog[ot+(j+q)*2]!==(this.prog[oc+((s+q)%n)*2]^cx)){ ok=false; break; } }
+      if(!ok)continue;
+      const W=Math.max(K,Math.min(P.INJ_W,n,P.MAXLEN-(m-K))), win=[]; for(let q=0;q<W;q++)win.push([this.prog[oc+((s+q)%n)*2],this.prog[oc+((s+q)%n)*2+1]]);
+      const host=[]; for(let i=0;i<m;i++)host.push([this.prog[ot+i*2],this.prog[ot+i*2+1]]); const nw=host.slice(0,j).concat(win,host.slice(j+K));
+      const fOld=fnHash(this.prog,ot,m,this.n0); for(let i=0;i<nw.length;i++){ this.prog[ot+i*2]=nw[i][0]; this.prog[ot+i*2+1]=nw[i][1]; } this.len[t]=nw.length; if(this.pc[t]>=nw.length)this.pc[t]=0;
+      this.tickConv++; if(fnHash(this.prog,ot,nw.length,this.n0)!==fOld)this.tickConvF++;   // the neutral populations mirror every conversion (below)
+      this.ev.injHit++; { let k=0; for(let q=0;q<Math.min(3,win.length);q++)k=k*32+win[q][0]; this.injKeys.add(k); } return; } }
   // ---- migration between worlds (lab/migration.js). Draw-free and never called unless a runner calls it, so a world that
   // does not migrate is byte-identical to before. u is a number in [0,1) given by the caller, never drawn here. The plain
-  // core only (no TASKS, CHEM or mind: their per-organism state would have to travel too). An emigrant is a death to the
+  // core only (no CHEM or mind: their per-organism state would have to travel too). An emigrant is a death to the
   // neutral population, an immigrant a birth with a NEW label: from the destination's side it is a new genotype, and has to
   // outgrow the neutral labels to count as adaptive there. Energy: the emigrant leaves with its store AND its body, and
   // the immigrant's body is returned at its death, so a migration moves energy and does not make any. ----
-  emigrate(u){ const P=this.p, C=this.C, L=P.MAXLEN*2; if(P.TASKS||P.CHEM||this.mind||(this.bodyF&&this.bodyF.length))throw new Error('migration: plain core only');
+  emigrate(u){ const P=this.p, C=this.C, L=P.MAXLEN*2; if(P.CHEM||this.mind||(this.bodyF&&this.bodyF.length))throw new Error('migration: plain core only');
     let c=Math.floor(u*C)%C, k=0; while(!this.alive[c]&&k<C){ c=(c+1)%C; k++; } if(!this.alive[c])return null;
     const o=c*L, prog=[], sh=[]; for(let i=0;i<this.len[c];i++)prog.push([this.prog[o+i*2],this.prog[o+i*2+1]]); for(let i=0;i<this.slen[c];i++)sh.push([this.sprog[o+i*2],this.sprog[o+i*2+1]]);
     const rec={prog,sh,E:this.E[c],tag:this.tag[c],tmpl:this.tmpl[c],gen:this.gen[c]};
@@ -262,9 +254,7 @@ class World{
         case 21: { const a=this.ahead(c,this.face[c]); if(this.alive[a]){ const g=this.E[c]*P.SHARE_F; this.E[c]-=g; this.E[a]+=g; this.ev.shares++; } } break;   // SHARE
         case 22: { const a=this.ahead(c,this.face[c]); R[r4]=this.light[a]-this.light[c]; } break;   // SENSE_GRAD
         case 23: R[r4]=this.rnd(); break;                                    // RAND
-        case 24: case 25: case 26: case 27: if(P.TASKS){   // TASKS: 24 INPUT, 25 OUTPUT, 26 NAND, 27 GET
-                   if(op===24){ R[r4]=this.tin[c*3+this.tic[c]]; this.tic[c]=(this.tic[c]+1)%3; } else if(op===25)this.taskOut(c,R[r4]>>>0);
-                   else if(op===26)R[r4]=(~((R[r4]>>>0)&(R[r4+(arg&3)]>>>0)))>>>0; else R[r4]=R[r4+(arg&3)]; }
+        case 24: case 25: case 26: case 27: if(P.PARA){ if(op===24){ this.E[c]-=P.C_INJ; this.ev.injTry++; if(P.PARA===1)this.inject(c,arg); } }   // INJECT (#313); 25-27 stay neutral
                  else if(P.CHEM_BIG){ const q=arg|(this.prog[o+((pc+1)%n)*2+1]<<8), Lq=this.big.layers.get(q);   // METABj, two-byte species
                    if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
@@ -281,7 +271,6 @@ class World{
     if(this.pool&&this.tick%500===0)this.mindCensus();
     if(this.tick%10===0)this.updateCap();
     if(P.CHEM&&this.tick%P.CHEM_EVERY===0)this.chemStep();
-    if(P.TASKS){ const tr=this.tres, cp=this.tcap; for(let T=0;T<256;T++)tr[T]+=P.TASK_RATE*(cp[T]-tr[T]); }   // each function's pool regrows toward its cap
     if(this.mods) for(const m of this.mods) if(m.spec.step&&!m.disarmed)m.spec.step(m.api);
     { const rate=P.L_RATE, kd=1-P.CORPSE_DECAY, light=this.light, cap=this.cap, corpse=this.corpse;
       for(let c=0;c<C;c++){ const l=light[c]; light[c]=l+rate*(cap[c]-l); if(corpse[c]>0)corpse[c]*=kd; } }
@@ -315,12 +304,12 @@ class World{
       else for(let y=0;y<H;y++){ const yu=b+((y+H-1)%H)*W, yd=b+((y+1)%H)*W, y0=y*W; for(let x=0;x<W;x++){ const xl=(x+W-1)%W, xr=(x+1)%W, c=y0+x, v=m[b+c];
         t[c]=(v+D*((m[b+y0+xl]+m[b+y0+xr]+m[yu+x]+m[yd+x])/4-v))*k; } }
       m.set(t,b); let nz=0; for(let c=0;c<C;c++) if(t[c]>0){ nz=1; break; } live[q]=nz; } }
-  carries(c,key){ if(this.p.TASKS)return (this.tdone[c*8+(key>>5)]&(1<<(key&31)))!==0;   // TASKS: the host computed that function this life
+  carries(c,key){
     const L=this.p.MAXLEN*2, o=c*L, n=this.len[c], op=24+(key&3), q=key>>2;
     if(this.p.CHEM_BIG){ for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&(this.prog[o+i*2+1]|(this.prog[o+((i+1)%n)*2+1]<<8))===q)return true; return false; }
     for(let i=0;i<n;i++) if(this.prog[o+i*2]===op&&this.prog[o+i*2+1]===q)return true; return false; }
-  vmutate(k,r){ if(this.p.TASKS)return (r()*256)|0; if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const q=k>>>2, j=k&3; return r()<0.5?q*4+((r()*4)|0):this.bprod(q,j)*4+((r()*4)|0); }   // big: along the network
-  vimmigrant(r){ if(this.p.TASKS)return (r()*256)|0; if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const B=this.big.layers; if(!B.size||r()>=this.p.V_PRESENT)return (r()*262144)|0; let i=(r()*B.size)|0; for(const q of B.keys()){ if(i--===0)return q*4+((r()*4)|0); } return 0; }   // big: mostly a random key, as in #287; keyed to a molecule present only V_PRESENT of the time (always so, first steps were hit 50x as often as in #287)
+  vmutate(k,r){ if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const q=k>>>2, j=k&3; return r()<0.5?q*4+((r()*4)|0):this.bprod(q,j)*4+((r()*4)|0); }   // big: along the network
+  vimmigrant(r){ if(!this.p.CHEM_BIG)return (r()*this.p.CHEM_S*4)|0; const B=this.big.layers; if(!B.size||r()>=this.p.V_PRESENT)return (r()*262144)|0; let i=(r()*B.size)|0; for(const q of B.keys()){ if(i--===0)return q*4+((r()*4)|0); } return 0; }   // big: mostly a random key, as in #287; keyed to a molecule present only V_PRESENT of the time (always so, first steps were hit 50x as often as in #287)
   virusStep(){ const P=this.p, r=this.vrnd, vc=this.vc, vk=this.vk, NR=P.CHEM_S*4;
     if(P.V_SEED&&this.tick===P.V_ONSET) for(const k of P.V_SEED) for(let n=0;n<P.V_SEEDN&&this.vn<P.V_MAX;n++){ vc[this.vn]=(r()*this.C)|0; vk[this.vn]=k; this.vn++; }
     if(r()<P.V_IMMIG&&this.vn<P.V_MAX){ vc[this.vn]=(r()*this.C)|0; vk[this.vn]=this.vimmigrant(r); this.vn++; }   // a trickle of immigrants, so viruses cannot be lost for good
@@ -335,6 +324,9 @@ class World{
     const m=ns.length; for(const ch of this.tickBirths){ const par=m?ns[(r()*m)|0]:0; ns.push(ch||!m?this.nsNext++:par); }
     { const fs=this.fs, fr=this.frnd; for(let d=0;d<this.tickDeaths&&fs.length;d++){ const k=(fr()*fs.length)|0; fs[k]=fs[fs.length-1]; fs.pop(); }
       const fm=fs.length; for(const ch of this.tickBirthsF){ const par=fm?fs[(fr()*fm)|0]:0; fs.push(ch||!fm?this.fsNext++:par); } }
+    for(let k=0;k<this.tickConv&&ns.length;k++)ns[(r()*ns.length)|0]=this.nsNext++;   // #313: an INJECT that changed a host is a genotype change without a birth; the neutral population gets as many, on members picked at random
+    { const fs=this.fs, fr=this.frnd; for(let k=0;k<this.tickConvF&&fs.length;k++)fs[(fr()*fs.length)|0]=this.fsNext++; }
+    this.tickConv=0; this.tickConvF=0;
     this.tickBirths.length=0; this.tickBirthsF.length=0; this.tickDeaths=0; }
   // ---- MODULES (#292): physics installed into a running world ----
   // A module is source text evaluating to {name, fields, init(api), op(api,c,arg), step(api)}. It gets the next free opcode
@@ -416,14 +408,9 @@ class World{
       const rx=new Map(); for(const c of liv){ const o=c*L, seen=new Set(); for(let i=0;i<this.len[c];i++){ const op=this.prog[o+i*2]; if(op>=24&&op<=27){ const q=this.prog[o+i*2+1]&(S-1), pr=this.prod[q*4+op-24]; { const d=this.eMol[q]-this.eMol[pr]; if(d>0&&d<=P.CHEM_DMAX)seen.add(q*4+op-24); } } } for(const x of seen)rx.set(x,(rx.get(x)||0)+1); }
       const fl=[]; let ft=0; for(let x=0;x<S*4;x++) if(this.rxE[x]>0){ fl.push([x,this.rxE[x]]); ft+=this.rxE[x]; } fl.sort((a,b)=>b[1]-a[1]); this.rxE.fill(0);
       chem={molE:+molE.toFixed(1),present,flux:(P.FLUXALL?fl.filter(([x,v])=>v/ft>=0.001):fl.slice(0,24)).map(([x,v])=>[x,+(v/ft).toFixed(4)]),fluxN:fl.length,reactions:rx.size,topRx:[...rx.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12).map(([x,v])=>[x,+(v/liv.length).toFixed(3)]),metab:+(this.ev.metab||0).toFixed(1),metabN:this.ev.metabN||0}; }
-    let tasks=null; if(P.TASKS){ let tot=0, on=0; for(let T=0;T<256;T++){ tot+=this.tE[T]; if(this.tN[T])on++; }
-      const held=new Float64Array(256); for(const c of liv) for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ const b=31-Math.clz32(x); held[k*32+b]++; x&=~(1<<b); } }
-      const fl=[]; for(let T=0;T<256;T++) if(this.tE[T]>0)fl.push([T,this.tE[T]]); fl.sort((a,b)=>b[1]-a[1]);
-      tasks={income:+tot.toFixed(1),performed:on,flux:fl.slice(0,32).map(([T,v])=>[T,+(v/tot).toFixed(4)]),held:[...held.entries()].filter(([T,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,32).map(([T,v])=>[T,+(v/liv.length).toFixed(3)])};
-      this.tE.fill(0); this.tN.fill(0); }
     let vir=null; if(P.VIRUS){ const km=new Map(); for(let i=0;i<this.vn;i++)km.set(this.vk[i],(km.get(this.vk[i])||0)+1); const top=[...km.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
       vir={virions:this.vn,keys:km.size,top:top.map(([k,v])=>{ let h=0; for(const c of liv) if(this.carries(c,k))h++; return [k,v,h]; })}; }   // top keys: [key, virions, living hosts carrying it]
-    const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; } if(P.VIRUS){ this.ev.lysed=0; this.ev.infections=0; }
+    const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.PARA){ this.ev.injTry=0; this.ev.injHit=0; } if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; } if(P.VIRUS){ this.ev.lysed=0; this.ev.infections=0; }
     return {t:this.tick,N:n,meanLen:n?+(len/n).toFixed(2):0,meanGen:n?+(gsum/n).toFixed(1):0,maxGen:gmax,energy:{stores:+E.toFixed(1),light:+ground.toFixed(1),corpses:+dead.toFixed(1)},
       genotypes:geno.size,topGenoShare:n?+(gTop/n).toFixed(3):0,ev,race:{meanMatch:mn?+(mt/mn).toFixed(4):0,tags:tags.size,newTags,everTags:this.everTags.size,attackers:n?+(atk/n).toFixed(3):0},
       opShare:Array.from(opC,v=>n?+(v/n).toFixed(4):0),
@@ -431,18 +418,18 @@ class World{
       shadowOpShare:Array.from(sopC,v=>n?+(v/n).toFixed(4):0),
       progGeno:[...pg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), shadowGeno:[...spg.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60), progGenoN:pg.size, shadowGenoN:spg.size, neutralGeno:(()=>{ const m=new Map(); for(const l of this.ns)m.set(l,(m.get(l)||0)+1); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,60); })(), neutralN:this.ns.length, fnGeno:fgTop, fnGenoN:fg.size, fnNeutral, fnNeutralN:this.fs.length, fnNew,
       shadowBigrams:Object.fromEntries([...sbgC.entries()].filter(([b,v])=>v/n>=0.01).map(([b,v])=>[b,+(v/n).toFixed(4)])),
-      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(tasks?{tasks,n0:this.n0}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
+      reseeds:this.reseeds||0, ...(chem?{chem,n0:this.n0}:{}), ...(P.PARA?{para:{keys:(()=>{ const k=this.injKeys.size; this.injKeys.clear(); return k; })()}}:{}), ...(vir?{vir}:{}), ...(this.mods?{mods:this.modSample(ev)}:{}), ...(this.mind?{mind:this.mind.report(this.nops||NOPS)}:{}), ...(this.pool?{pool:this.mindPoolReport(n)}:{})}; }
 }
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
-const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'];
+const CHEM_ARRAYS=['mol','eMol','prod'];
 World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
-  for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
+  for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
-  for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
+  for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
   if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
@@ -451,4 +438,4 @@ World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.t
   if(o.mods) for(const d of o.mods){ const m=w.installMod(d.src,{disarmed:d.disarmed,noInit:true}); m.at=d.at; m.rnd.s=d.rnd; for(const [k,b] of Object.entries(d.fields)) new Uint8Array(m.fields[k].buffer).set(Buffer.from(b,'base64')); }   // modules re-installed in order, so each gets its old opcode
   if(w.molLive){ const S=w.p.CHEM_S, C=w.C, m=w.mol, live=w.molLive; for(let q=0;q<S;q++){ const b=q*C; let on=0; for(let c=0;c<C;c++) if(m[b+c]>0){ on=1; break; } live[q]=on; } }   // rebuilt from the restored molecules, so a resume skips nothing that is present
   return w; };
-module.exports={TASK_SZ,World,OPS,OP,NOPS,NEUTRAL0,isNeutral,DEF,fnHash,fnHashList,ARGMASK,OPS_CHEM,NEUTRAL0_CHEM};
+module.exports={World,OPS,OP,NOPS,NEUTRAL0,isNeutral,DEF,fnHash,fnHashList,ARGMASK,OPS_CHEM,NEUTRAL0_CHEM};

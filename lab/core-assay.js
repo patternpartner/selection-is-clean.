@@ -8,6 +8,8 @@
 // 2.2 (LOSES below -2.2); STRICT also asks that its mean beat every null replicate. The null is wide (sd about 0.17 at
 // T=3000: drift in a structured world, not founding - placing each challenger next to an incumbent did not narrow it).
 //   WIN=60 REPS=6 T=3000 NPER=200 [PICK=8] [Q=4] node lab/core-assay.js seed.all.jsonl
+// SUCC=1 (#313): the challengers are each window's commonest functional genotype whenever it differs from the last window's
+// (succession), picked the same way in every arm and without the neutral-label bar, which collapses when INJECT rewrites genotypes.
 //   a chemistry run: OPTS='{"CHEM":1,"CHEM_SEED":2}' ... (the representatives' functional hashes use the run's neutral boundary)
 // PICK caps how many challengers are replayed in each of Q equal parts of the run (evenly spaced), so the cost is bounded.
 // VIRUS_REPLAY=1 (a CHEM+VIRUS run, OPTS with CHEM and VIRUS): each pair is replayed twice - with the viruses that were
@@ -40,7 +42,8 @@ for(const f of process.argv.slice(2)){
     for(const r of W){ for(const [g,c] of r.fnGeno) a.set(g,(a.get(g)||0)+c/r.N/W.length); for(const [g,c] of r.fnNeutral) na.set(g,(na.get(g)||0)+c/Math.max(1,r.fnNeutralN)/W.length); }
     let bar=0; for(const v of na.values()) if(v>bar)bar=v;
     let top=null, tv=-1; for(const [g,v] of a) if(v>tv){ tv=v; top=g; }
-    for(const [g,v] of a) if(v>bar&&!ever.has(g)){ ever.add(g); if(prevTop!==null&&g!==prevTop)events.push({w:w0/WIN,t:W[0].t,g,inc:prevTop,share:v,keys:prevKeys}); }
+    if(E.SUCC){ if(prevTop!==null&&top!==prevTop)events.push({w:w0/WIN,t:W[0].t,g:top,inc:prevTop,share:tv,keys:prevKeys}); }   // #313 SUCC=1: each window's commonest genotype against the last window's, no neutral bar (it collapses under PARA)
+    else for(const [g,v] of a) if(v>bar&&!ever.has(g)){ ever.add(g); if(prevTop!==null&&g!==prevTop)events.push({w:w0/WIN,t:W[0].t,g,inc:prevTop,share:v,keys:prevKeys}); }
     { const km=new Map(); for(const r of W) if(r.vir) for(const [k,n] of r.vir.top) km.set(k,(km.get(k)||0)+n); prevKeys=[...km.entries()].sort((x,y)=>y[1]-x[1]).slice(0,3).map(([k])=>k); }
     prevTop=top; }
   const nW=Math.floor(rows.length/WIN), chosen=[];
