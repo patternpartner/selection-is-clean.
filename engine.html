@@ -26087,7 +26087,7 @@ function __artWanted(){
 }
 function __artCanvas(w,h){ const k=(typeof OffscreenCanvas!=='undefined')?new OffscreenCanvas(w,h):document.createElement('canvas'); k.width=w; k.height=h; return k; }
 function __artInit(){
-  const s={w:W,h:H,spr:new Map(),b1:null,b2:null,f:null,fx:null,fade:null,id:null};
+  const s={w:W,h:H,spr:new Map(),b1:null,b2:null,f:null,fx:null,fade:null,id:null,ox:new Float32Array(CAP).fill(-1),oy:new Float32Array(CAP),tr:2,tg:2,tb:7,tick:0};
   s.b1=__artCanvas(Math.max(8,W>>2),Math.max(8,H>>2)); s.b2=__artCanvas(Math.max(4,W>>4),Math.max(4,H>>4));
   s.f=__artCanvas(FIELD_W,FIELD_H); s.fx=s.f.getContext('2d'); s.id=s.fx.createImageData(FIELD_W,FIELD_H);
   { const gr=X.createRadialGradient(W/2,H/2,Math.min(W,H)*0.1,W/2,H/2,Math.hypot(W,H)*0.55); gr.addColorStop(0,'rgba(1,1,5,0.10)'); gr.addColorStop(1,'rgba(1,1,5,0.30)'); s.fade=gr; }   // trails last longest in the middle and die at the edges: a vignette that cannot show a seam
@@ -26095,9 +26095,10 @@ function __artInit(){
 }
 function __artSprite(s,r,g,b){
   const k=((r>>5)<<6)|((g>>5)<<3)|(b>>5); let sp=s.spr.get(k); if(sp)return sp;
-  const R=((r>>5)*36+18)|0, G=((g>>5)*36+18)|0, B=((b>>5)*36+18)|0;   // centre of the colour bucket
+  let R=((r>>5)*36+18)|0, G=((g>>5)*36+18)|0, B=((b>>5)*36+18)|0;   // centre of the colour bucket
+  { const m=(R+G+B)/3, k=1.7; R=Math.max(0,Math.min(255,m+(R-m)*k))|0; G=Math.max(0,Math.min(255,m+(G-m)*k))|0; B=Math.max(0,Math.min(255,m+(B-m)*k))|0; }   // #311b: more colour, less white - the engine's palettes are pastel
   sp=__artCanvas(64,64); const q=sp.getContext('2d'); const gr=q.createRadialGradient(32,32,0,32,32,32);
-  gr.addColorStop(0,`rgba(${Math.min(255,R+45)},${Math.min(255,G+45)},${Math.min(255,B+45)},1)`);
+  gr.addColorStop(0,`rgba(${Math.min(255,R+20)},${Math.min(255,G+20)},${Math.min(255,B+20)},1)`);
   gr.addColorStop(0.18,`rgba(${R},${G},${B},0.85)`); gr.addColorStop(0.5,`rgba(${R},${G},${B},0.22)`); gr.addColorStop(1,`rgba(${R},${G},${B},0)`);
   q.fillStyle=gr; q.fillRect(0,0,64,64); s.spr.set(k,sp); return sp;
 }
@@ -26105,6 +26106,11 @@ function renderArt(){
   if(!__artS||__artS.w!==W||__artS.h!==H)__artS=__artInit();
   const s=__artS;
   X.globalCompositeOperation='source-over'; X.globalAlpha=1;
+  // #311b: the dark slowly takes the population's colour, so a world reads as its own palette and drifts as its lineages turn over
+  if((s.tick++%30)===0){ let mr=0,mg=0,mb=0,n=0; for(let i=0;i<N;i+=3){ if(!palive[i])continue; mr+=pR[i]; mg+=pG[i]; mb+=pB[i]; n++; }
+    if(n){ const mx=Math.max(mr,mg,mb)/n||1; s.tr+=((mr/n/mx)*6-s.tr)*0.2; s.tg+=((mg/n/mx)*6-s.tg)*0.2; s.tb+=((mb/n/mx)*8-s.tb)*0.2; }
+    const gr=X.createRadialGradient(W/2,H/2,Math.min(W,H)*0.1,W/2,H/2,Math.hypot(W,H)*0.55); const c0=`${s.tr|0},${s.tg|0},${s.tb|0}`;
+    gr.addColorStop(0,`rgba(${c0},0.12)`); gr.addColorStop(1,`rgba(${c0},0.32)`); s.fade=gr; }
   X.fillStyle=s.fade; X.fillRect(0,0,W,H);
   X.imageSmoothingEnabled=true;
   const dens=Math.min(1,Math.pow(450/Math.max(1,N),0.9));   // a crowded world adds up to white; thin each body's light as the crowd grows
@@ -26113,14 +26119,14 @@ function renderArt(){
     for(let i=0;i<FIELD_W*FIELD_H;i++,n+=4){
       let r=0,g=0,b=0;
       const rv=rootField[i]; if(rv>0.04){ const k=Math.min(1,rv*0.6); r+=170*k; g+=90*k; b+=22*k; }
-      const val=field[i]; if(val>0.03){ const own=fieldOwnership[i],ci=i*3,k=Math.min(1,val*0.9);
+      const val=field[i]; if(val>0.03){ const own=fieldOwnership[i],ci=i*3,k0=Math.min(1,val*0.9),k=k0*k0;   // squared: a thin even field stays black, only rich ground glows
         r+=(fieldLineageCache[ci]*own+100*(1-own))*k; g+=(fieldLineageCache[ci+1]*own+240*(1-own))*k; b+=(fieldLineageCache[ci+2]*own+220*(1-own))*k; }
       const v2=field2[i]; if(v2>0.05){ const k=Math.min(1,v2*0.7); r+=230*k; g+=80*k; b+=150*k; }
       const cs=cellProgStr[i]; if(cs>0.1){ r+=255*cs*0.5; g+=220*cs*0.5; b+=120*cs*0.5; }
       d[n]=r>255?255:r; d[n+1]=g>255?255:g; d[n+2]=b>255?255:b; d[n+3]=255;
     }
     s.fx.putImageData(s.id,0,0);
-    X.globalCompositeOperation='lighter'; X.globalAlpha=0.05; X.drawImage(s.f,0,0,W,H); X.globalAlpha=1; }
+    X.globalCompositeOperation='lighter'; X.globalAlpha=0.04; X.drawImage(s.f,0,0,W,H); X.globalAlpha=1; }
   X.globalCompositeOperation='lighter';
   // bonds: slow curves, brighter where the phases agree
   clearGrid();
@@ -26148,11 +26154,13 @@ function renderArt(){
     const sz=Math.max(0.6,pSz[i]), col=collapse[i], smear=1-col;
     const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0, sp=__artSprite(s,r,g,b);
     const oc=s.occ[gKey(px[i],py[i])], lw=oc>5?Math.sqrt(5/oc):1;   // light thins where bodies pile up, so a crowd stays colour and shape instead of a white blob
-    if(smear>0.12){ for(let e=0;e<EL;e+=2){ const ei=(echoIdx[i]-1-e+EL*100)%EL; X.globalAlpha=a*smear*0.05*lw*(1-e/EL); const q=sz*1.6; X.drawImage(sp,echox[i*EL+ei]-q,echoy[i*EL+ei]-q,q*2,q*2); } }
-    const hr=sz*(2.4+smear*3.2); X.globalAlpha=a*lw*(0.04+smear*0.04); X.drawImage(sp,px[i]-hr,py[i]-hr,hr*2,hr*2);     // halo
+    // #311b: the echo smears are gone; the ribbons below draw motion, at a fraction of the cost
+    const hr=sz*(2.4+smear*3.2); X.globalAlpha=a*lw*(0.018+smear*0.02); X.drawImage(sp,px[i]-hr,py[i]-hr,hr*2,hr*2);     // halo
     const cr=sz*(1.1+col*0.5); X.globalAlpha=Math.min(1,a*lw*(0.13+col*0.1)); X.drawImage(sp,px[i]-cr,py[i]-cr,cr*2,cr*2); // core
+    { const ox=s.ox[i], oy=s.oy[i], dx=px[i]-ox, dy=py[i]-oy; if(ox>=0&&dx*dx+dy*dy<400&&dx*dx+dy*dy>0.25){ X.globalAlpha=a*lw*0.35; X.lineWidth=Math.max(0.6,sz*0.9); X.lineCap='round'; X.strokeStyle=`rgb(${r},${g},${b})`; X.beginPath(); X.moveTo(ox,oy); X.lineTo(px[i],py[i]); X.stroke(); } s.ox[i]=px[i]; s.oy[i]=py[i]; }   // #311b: ribbons (a slot reused after compaction jumps, and a jump over 20 px is not drawn)
     if(page[i]<20){ const t=page[i]/20, rr=sz*2+t*sz*7; X.globalAlpha=(1-t)*(1-t)*0.45*lw; X.lineWidth=0.7; X.strokeStyle=`rgb(${Math.min(255,r+70)},${Math.min(255,g+70)},${Math.min(255,b+70)})`; X.beginPath(); X.arc(px[i],py[i],rr,0,6.283); X.stroke(); } // a birth just happened here
-    if(pPlasmidLen[i]>0){ X.globalAlpha=a*0.5; X.lineWidth=0.7; X.strokeStyle=pPlasmidLen[i]===1?'rgb(80,220,220)':pPlasmidLen[i]===2?'rgb(220,220,80)':'rgb(240,160,60)'; X.beginPath(); X.arc(px[i],py[i],sz*1.9,0,6.283); X.stroke(); }
+    if(pPlasmidLen[i]>0&&(s.tick&3)===0){ X.globalAlpha=a*lw*0.12; X.lineWidth=0.5;   // #311b: faint and one frame in four - drawn every frame, a moving ring left a coil through the trails
+      X.strokeStyle=pPlasmidLen[i]===1?'rgb(80,220,220)':pPlasmidLen[i]===2?'rgb(220,220,80)':'rgb(240,160,60)'; X.beginPath(); X.arc(px[i],py[i],sz*1.9,0,6.283); X.stroke(); }
   }
   X.globalAlpha=1;
   // flashes where two interact
@@ -26160,13 +26168,14 @@ function renderArt(){
     flashAge[f]++;
     if(flashAge[f]>flashLife){ flashN--;flashX1[f]=flashX1[flashN];flashY1[f]=flashY1[flashN];flashX2[f]=flashX2[flashN];flashY2[f]=flashY2[flashN];flashAge[f]=flashAge[flashN]; continue; }
     const fa=1-flashAge[f]/flashLife, bright=fa*fa;
-    X.strokeStyle=`rgba(255,225,130,${bright*0.8})`; X.lineWidth=1.4*bright+0.3; X.beginPath(); X.moveTo(flashX1[f],flashY1[f]); X.lineTo(flashX2[f],flashY2[f]); X.stroke();
+    X.strokeStyle=`rgba(255,225,130,${bright*0.4})`; X.lineWidth=1.4*bright+0.3; X.beginPath(); X.moveTo(flashX1[f],flashY1[f]); X.lineTo(flashX2[f],flashY2[f]); X.stroke();
   }
   // bloom: the picture drawn small and added back, twice, at two scales
-  { const c1=s.b1.getContext('2d'),c2=s.b2.getContext('2d');
+  if(s.tick&1){ const c1=s.b1.getContext('2d'),c2=s.b2.getContext('2d');   // #311b: bloom on every other frame at twice the strength - the trails average it, and it was a third of the frame's cost
     c1.globalCompositeOperation='copy'; c1.imageSmoothingEnabled=true; c1.drawImage(c,0,0,s.b1.width,s.b1.height);
+    c1.globalCompositeOperation='multiply'; c1.drawImage(s.b1,0,0); c1.drawImage(s.b1,0,0);   // #311b: cubed, so only the bright cores bloom; a linear bloom fed back through the trails and lifted the dark to grey (measured: median 16 with, 8 without)
     c2.globalCompositeOperation='copy'; c2.imageSmoothingEnabled=true; c2.drawImage(s.b1,0,0,s.b2.width,s.b2.height);
-    X.globalCompositeOperation='lighter'; X.globalAlpha=0.02; X.drawImage(s.b1,0,0,W,H); X.globalAlpha=0.035; X.drawImage(s.b2,0,0,W,H); X.globalAlpha=1; }
+    X.globalCompositeOperation='lighter'; X.globalAlpha=0.1; X.drawImage(s.b1,0,0,W,H); X.globalAlpha=0.14; X.drawImage(s.b2,0,0,W,H); X.globalAlpha=1; }
   X.globalCompositeOperation='source-over'; X.globalAlpha=1;
 }
 
