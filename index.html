@@ -394,6 +394,18 @@
   else if (pm) pool = Math.max(1, Math.min(everything, parseInt(pm[1],10)||1));
   else pool = Math.max(1, Math.min(everything, Math.min(4, (navigator.hardwareConcurrency||4))));
 
+  // #314b LOOKING AT A TILE IS LOOKING AT ITS UNIVERSE (the user: "make the tiles in the field count as being watched too").
+  // A tile's tap target covers its frame so a click can open it, and so the frame never saw the pointer: tiles were never
+  // watched, and #314's selection of form by attention only acted on a universe opened by itself. Each tap target now hands
+  // the pointer's position, in the frame's own coordinates, to its universe as an ordinary mousemove, and moves it far off the
+  // canvas when the pointer leaves the tile (the engine's own "never touched" place), so the universe under the pointer is
+  // the one being watched and the others stop. Mouse only: on a phone a touch on a tile is a tap that opens it, and an open
+  // universe already sees touches. Same-origin frames; nothing is sent to any other page.
+  function lookThrough(tap, frame){
+    function send(x,y){ try{ if(frame.contentWindow)frame.contentWindow.postMessage({type:'fieldpointer',x:x,y:y},location.origin==='null'?'*':location.origin); }catch(_){} }
+    tap.addEventListener('mousemove', function(e){ var r=tap.getBoundingClientRect(); send(e.clientX-r.left, e.clientY-r.top); });
+    tap.addEventListener('mouseleave', function(){ send(-9000,-9000); });
+  }
   var cols=Math.ceil(Math.sqrt(total));
   var grid=document.getElementById('grid');
   grid.style.gridTemplateColumns='repeat('+cols+',1fr)';
@@ -416,7 +428,7 @@
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);
     if(isColl){ var b=document.createElement('div'); b.className='badge'; b.textContent='collective'; cell.appendChild(b); }
-    if(total>1){ var t=document.createElement('div'); t.className='tap'; cell.appendChild(t); }
+    if(total>1){ var t=document.createElement('div'); t.className='tap'; cell.appendChild(t); lookThrough(t,f); }
     frag.appendChild(cell); cells.push(cell);
     if(isColl) collectiveCell=cell;
   }

@@ -267,6 +267,10 @@
     return { clientX:t.clientX, clientY:t.clientY, touches:pack(e.touches), changedTouches:pack(e.changedTouches) };
   }
   window.addEventListener('mousemove', function(e){ post('mousemove', mouseDetail(e)); });
+  // #314b: the field's tile covers this frame, so it hands the pointer through (index.html lookThrough). Only from the parent.
+  window.addEventListener('message', function(e){ var d=e.data; if(e.source!==window.parent||!d||d.type!=='fieldpointer')return;
+    if(typeof d.x!=='number'||typeof d.y!=='number'||!isFinite(d.x)||!isFinite(d.y))return;
+    post('mousemove', { clientX:d.x, clientY:d.y, button:0, buttons:0 }); });
   window.addEventListener('mousedown', function(e){ post('mousedown', mouseDetail(e)); });
   window.addEventListener('mouseup',   function(e){ post('mouseup',   mouseDetail(e)); });
   window.addEventListener('keydown',   function(e){ post('keydown', { key:e.key, code:e.code, keyCode:e.keyCode }); });

@@ -142,6 +142,8 @@ const BRIDGE =
     'swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState():null,' +
     // #296: the primitive mind, if this universe has one (#mind) - its own counters, read, not drawn.
     'mind:(typeof mindReport==="function")?mindReport():null,' +
+    // #314b: how much this universe is being watched, and what that has done to its form - read, not drawn.
+    'form:(typeof __drawKept!=="undefined")?{present:+__attnPresent.toFixed(3),kept:__drawKept,reverted:__drawReverted,draw:genome.draw}:null,' +
     'recv:netStats.received,accepted:netStats.accepted,bad:netStats.bad,dropped:netStats.dropped,' +
     // #163: heritable packets refused because the sender's clock had run far ahead of ours. A
     // universe running at parity never sees this move; a paced one is meant to.

@@ -27042,3 +27042,13 @@ No arm reaches 4 of 5 on any measure, so by the pre-registered rule: **no verdic
 - **This changes the artwork and what saved universes do while watched** (template step 6); the user asked for it.
 
 Pictures: `lab/art/after3-*.png`.
+
+### #314b — THE FIELD'S TILES ARE WATCHED TOO (the user: "make the tiles in the field count as being watched too")
+
+**Why they were not.** Each tile in `index.html` has a transparent tap target over its frame, so a click opens the universe. That target also meant the frame never saw the pointer: a universe was watched (#135's attention, #314's selection of form) only when opened by itself.
+
+**Now.** Each tap target hands the pointer through to its own universe (`lookThrough` in `index.html`): on mousemove it posts the position in the frame's coordinates, and `universe.html` passes it to the worker as an ordinary mousemove (accepted only from the parent window, numbers only). On mouseleave it sends the engine's own "never touched" position (-9000, -9000), so the universe stops being watched and its presence decays. Mouse only: on a phone a touch on a tile is a tap that opens it, and an open universe already sees touches. Each universe's `stat()` now carries `form` (`present`, `kept`, `reverted`, `draw`), read, not drawn.
+
+**Checked in Chromium on the real field (9 worker-hosted universes):** before hovering, presence 0, 0, 0 on tiles 1-3; hovering tile 1 for 90 seconds: 1, 0, 0; six seconds after moving to another tile: 0.116 and falling. No trial finished inside 90 seconds: the field's universes share four workers and tick more slowly than one alone, so in the field a form is judged after a couple of minutes of looking. `collective-test.js` (15 ok, 0 failed), `slot-test.js` (15 passed, 0 failed), `attention-test.js` and `browser-test.js` pass.
+
+**What this changes.** Attention is a physical law in this engine (#135: living is cheaper where watched), so hovering a tile now also changes that universe's physics where the pointer rests, exactly as it already did in an opened universe. The field's other uses of the pointer are unchanged: a click still opens the tile.
