@@ -1221,7 +1221,7 @@ const LIVENESS_DECLARED=[
   'verb.author','verb.compose','verb.seedIntoParticle','verb.fire','verb.chainLink','verb.conserved',
   'shadow.sim','shadow.decide','self.learn','cluster.reflex','cluster.detect','cluster.persist',
   'alien.predict','niche.economy','dims.grow','cosmos.launch','cosmos.merge','cosmos.law',
-  'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal',
+  'genome.mutate','prog.crossover','prog.inherit','oee.flush','attention.field','world.signal','draw.keep','draw.revert','draw.propose',
   'atom.cull','atom.cull.idle','atom.evict','atom.chain','genome.trim','verb.wire','verb.senseBind','verb.senseFired',
   // #180: the grammar's own layer, declared in the same commit as the layer. atom.opFire and
   // atom.opFallback are batched through firedN from flushEpoch rather than called per evaluation —
@@ -20898,6 +20898,7 @@ function mutateGenome(){ fired('genome.mutate');
     }
   }
   if(Math.random()<0.004){ // mutate the draw-program: add / drop / retype a primitive (neutral drift, rides selection like rend)
+    __drawTrialEnd();   // #314: before the next variant, the last one is kept or undone by how much it was looked at
     const d=genome.draw||(genome.draw=defaultDraw()); const roll=Math.random();
     if(roll<0.3&&d.length<DRAW_MAX) d.push([(Math.random()*DRAW_NPRIM)|0,(Math.random()*DRAW_NREG)|0,(Math.random()*DRAW_NREG)|0,(Math.random()*DRAW_NREG)|0]);
     else if(roll<0.45&&d.length>1) d.splice((Math.random()*d.length)|0,1);
@@ -26102,6 +26103,25 @@ function __artSprite(s,r,g,b){
   gr.addColorStop(0.18,`rgba(${R},${G},${B},0.85)`); gr.addColorStop(0.5,`rgba(${R},${G},${B},0.22)`); gr.addColorStop(1,`rgba(${R},${G},${B},0)`);
   q.fillStyle=gr; q.fillRect(0,0,64,64); s.spr.set(k,sp); return sp;
 }
+// #314 (the user: "is you or the system creating the art?"). The first luminous renderer drew a halo and a core that I designed,
+// and so bypassed the one place the system draws itself: genome.draw, the world's evolvable draw-program (#23), which the classic
+// renderer runs for every body. This runs that same program - the same registers, the same five primitives, the same geometry and
+// the same clamps as runDrawProgram - in light: DOT and HALO as glow sprites, RING, SPOKE and SATELLITE added on top. Alphas are
+// scaled for additive drawing over persistent trails (about a quarter of the classic values), and thinned in crowds like the rest.
+function __artDrawProgram(i,sp,aw,r,g,b){
+  const prog=genome.draw; const base=Math.max(0.4,pSz[i]); const x=px[i],y=py[i], col=collapse[i], ph=phase[i], R=_drawReg;
+  R[0]=__cl((tend[i*DIMS]+1.2)/2.4,0,1); R[1]=DIMS>1?__cl((tend[i*DIMS+1]+1.2)/2.4,0,1):0.5; R[2]=DIMS>2?__cl((tend[i*DIMS+2]+1.2)/2.4,0,1):0.5; R[3]=DIMS>3?__cl((tend[i*DIMS+3]+1.2)/2.4,0,1):0.5;
+  R[4]=__cl(amp[i],0,1); R[5]=(Math.sin(ph)+1)*0.5; R[6]=(Math.cos(ph)+1)*0.5; R[7]=__cl(col,0,1); R[8]=__cl(pSz[i]/8,0,1); R[9]=r/255; R[10]=g/255; R[11]=b/255;
+  const nOps=aw>0.4?prog.length:Math.min(2,prog.length);
+  for(let k=0;k<nOps;k++){ const op=prog[k], A=R[op[1]],B=R[op[2]],C=R[op[3]];
+    switch(op[0]){
+      case 0:{ const rad=__cl(base*(0.5+1.5*A),0.4,14)*2; X.globalAlpha=__cl(aw*(0.25+0.6*B),0,0.7)*0.4; X.drawImage(sp,x-rad,y-rad,rad*2,rad*2); break; }   // DOT
+      case 1:{ const rad=__cl(base*(1.5+4*A),1,18); X.globalAlpha=__cl(aw*(0.02+0.05*B),0,0.09)*0.6; X.drawImage(sp,x-rad,y-rad,rad*2,rad*2); break; }          // HALO
+      case 2:{ const rad=__cl(base*(0.6+2.5*A),0.5,16); X.globalAlpha=__cl(aw*(0.1+0.3*B),0,0.45)*0.3; X.lineWidth=0.5; X.strokeStyle=`rgb(${r},${g},${b})`; X.beginPath(); X.arc(x,y,rad,0,6.283); X.stroke(); break; }   // RING
+      case 3:{ const ang=A*6.283,len=__cl(base*(0.5+2.5*B),1,14); X.globalAlpha=__cl(aw*(0.1+0.3*C),0,0.4)*0.35; X.lineWidth=0.6; X.strokeStyle=`rgb(${r},${g},${b})`; X.beginPath(); X.moveTo(x,y); X.lineTo(x+Math.cos(ang)*len,y+Math.sin(ang)*len); X.stroke(); break; }   // SPOKE
+      case 4:{ const ang=A*6.283,dist=__cl(base*(1+2.5*B),1,16),rad=__cl(base*0.5*C,0.3,6)*1.8; X.globalAlpha=__cl(aw*0.5,0,0.5)*0.3; X.drawImage(sp,x+Math.cos(ang)*dist-rad,y+Math.sin(ang)*dist-rad,rad*2,rad*2); break; }   // SATELLITE
+    } }
+}
 function renderArt(){
   if(!__artS||__artS.w!==W||__artS.h!==H)__artS=__artInit();
   const s=__artS;
@@ -26155,8 +26175,9 @@ function renderArt(){
     const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0, sp=__artSprite(s,r,g,b);
     const oc=s.occ[gKey(px[i],py[i])], lw=oc>5?Math.sqrt(5/oc):1;   // light thins where bodies pile up, so a crowd stays colour and shape instead of a white blob
     // #311b: the echo smears are gone; the ribbons below draw motion, at a fraction of the cost
-    const hr=sz*(2.4+smear*3.2); X.globalAlpha=a*lw*(0.018+smear*0.02); X.drawImage(sp,px[i]-hr,py[i]-hr,hr*2,hr*2);     // halo
-    const cr=sz*(1.1+col*0.5); X.globalAlpha=Math.min(1,a*lw*(0.13+col*0.1)); X.drawImage(sp,px[i]-cr,py[i]-cr,cr*2,cr*2); // core
+    if(__DRAWVM&&genome.draw&&genome.draw.length){ __artDrawProgram(i,sp,a*lw,r,g,b); }   // #314: the FORM is the world's own evolved draw-program; this renderer only supplies the light
+    else { const hr=sz*(2.4+smear*3.2); X.globalAlpha=a*lw*(0.018+smear*0.02); X.drawImage(sp,px[i]-hr,py[i]-hr,hr*2,hr*2);     // halo
+    const cr=sz*(1.1+col*0.5); X.globalAlpha=Math.min(1,a*lw*(0.13+col*0.1)); X.drawImage(sp,px[i]-cr,py[i]-cr,cr*2,cr*2); } // core
     { const ox=s.ox[i], oy=s.oy[i], dx=px[i]-ox, dy=py[i]-oy; if(ox>=0&&dx*dx+dy*dy<400&&dx*dx+dy*dy>0.25){ X.globalAlpha=a*lw*0.35; X.lineWidth=Math.max(0.6,sz*0.9); X.lineCap='round'; X.strokeStyle=`rgb(${r},${g},${b})`; X.beginPath(); X.moveTo(ox,oy); X.lineTo(px[i],py[i]); X.stroke(); } s.ox[i]=px[i]; s.oy[i]=py[i]; }   // #311b: ribbons (a slot reused after compaction jumps, and a jump over 20 px is not drawn)
     if(page[i]<20){ const t=page[i]/20, rr=sz*2+t*sz*7; X.globalAlpha=(1-t)*(1-t)*0.45*lw; X.lineWidth=0.7; X.strokeStyle=`rgb(${Math.min(255,r+70)},${Math.min(255,g+70)},${Math.min(255,b+70)})`; X.beginPath(); X.arc(px[i],py[i],rr,0,6.283); X.stroke(); } // a birth just happened here
     if(pPlasmidLen[i]>0&&(s.tick&3)===0){ X.globalAlpha=a*lw*0.12; X.lineWidth=0.5;   // #311b: faint and one frame in four - drawn every frame, a moving ring left a coil through the trails
@@ -26458,6 +26479,31 @@ let ATTENTION_GAIN=0.35;  // how much cheaper life is under full attention (frac
 let __attnPresent=0;        // 1 while the pointer is on the canvas, EMA'd so it decays on release
 let attnPeak=0;             // telemetry / HUD
 const _attnTmp=new Float32Array(FIELD_W*FIELD_H);
+// #314 ATTENTION SELECTS THE FORM (the user: "do both"). Before this, genome.draw only drifted: how a world looks changes nothing
+// about who lives, so nothing could keep a form. Now each mutation of the draw-program is a trial. While a form is current, the
+// world sums how much it is being looked at (the pointer on the canvas, and the attention field it leaves). At the next mutation
+// the trial is judged: a variant looked at LESS than the form it replaced is undone, back to that form; otherwise it stays and
+// becomes the form to beat. So the viewer's attention is the selection on what the world looks like, and nothing else is.
+// It draws no random numbers and changes nothing the simulation reads except genome.draw, which only the renderers read. With
+// nobody watching (every headless rig), every trial scores 0, nothing is ever undone, and the world is byte-identical to before.
+// Not saved: the incumbent and its score live in memory, so a reload starts judging afresh from the saved form.
+let __drawInc=null, __drawIncScore=0, __drawTrialSum=0, __drawTrialN=0, __drawKept=0, __drawReverted=0;
+// The engine's own drift mutates the form about once in 150,000 ticks, far too rarely for anyone to select anything. So while
+// someone is watching (and only then) the world also proposes a variant of its own every DRAW_TRIAL watched ticks, from a random
+// stream of its own (never Math.random, so the simulation's draws are untouched), with the same three operators as the drift.
+const DRAW_TRIAL=900; let __drawWatched=0, __drawRnd=null;
+function __drawPropose(){ if(!__drawRnd)__drawRnd=__mindRng((Date.now()^0x0d4a5eed)|0); const r=__drawRnd;
+  const d=genome.draw||(genome.draw=defaultDraw()); const roll=r();
+  if(roll<0.3&&d.length<DRAW_MAX) d.push([(r()*DRAW_NPRIM)|0,(r()*DRAW_NREG)|0,(r()*DRAW_NREG)|0,(r()*DRAW_NREG)|0]);
+  else if(roll<0.45&&d.length>1) d.splice((r()*d.length)|0,1);
+  else { const o=d[(r()*d.length)|0], f=(r()*4)|0; o[f]=f===0?((r()*DRAW_NPRIM)|0):((r()*DRAW_NREG)|0); }
+  fired('draw.propose'); }
+function __drawAttnTick(){ let m=0; for(let k=0;k<attnField.length;k++)m+=attnField[k]; __drawTrialSum+=__attnPresent+m/attnField.length; __drawTrialN++;
+  if(__attnPresent>0.05&&++__drawWatched>=DRAW_TRIAL){ __drawWatched=0; __drawTrialEnd(); __drawPropose(); } }
+function __drawTrialEnd(){ const score=__drawTrialN?__drawTrialSum/__drawTrialN:0;
+  if(__drawInc&&score<__drawIncScore){ genome.draw=__drawInc.map(o=>o.slice()); __drawReverted++; fired('draw.revert'); }
+  else { if(__drawInc&&score>0){ __drawKept++; fired('draw.keep'); } __drawIncScore=score; }
+  __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; }
 function updateAttentionField(){
   // deposit where the smoothed pointer rests. mx starts at -9e3 (never touched), which lands far
   // outside the grid, so an untouched world simply has no attention anywhere — the honest default.
@@ -27219,6 +27265,7 @@ function loop(){
   flushNetworkEvents();
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   updateAttentionField();   // #135: attention is part of the world's physics now
+  __drawAttnTick();   // #314: and now it is what the world's form is selected by
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
   const absPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
