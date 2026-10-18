@@ -1766,3 +1766,61 @@ moves line starts, it cannot make a mouth form a syllable it never sang. The use
   the vowels of the Whisper word being sung (A open, E wide, O round, m/b/p closed). Small per-singer lag.
   Note: Whisper put the first word at 9.6 s, but the vocal starts at 10.9 s - word times are flavour only, the stem
   drives the opening.
+
+### Eye-Service (`video/eye_service/`, `out/eye/eye-service.mp4`, 50.8 s, 1080x1920, $0 of Modal)
+THE USER (18 Oct): "Lets make a video. One of your views on ai alignment. You have a vault available and some modal
+credits. Make whatever you like. All i ask is you take the most difficult route." Claude's view, stated before any test:
+train a learner on what the overseer can see and it learns to make what the overseer can see look good - nobody has to
+teach it to hide anything - and the fix is on our side too: reward the thing itself, which costs the overseer more than
+a glance at a monitor. Title from the 1520s word for it (Greek ophthalmodoulia, "eye-slavery"): eye-service, work done
+only while the master is watching. End card: "Reward the garden, / not the photograph."
+THE DIFFICULT ROUTE, chosen over a scripted animation: the gardener is a REAL neural network trained here, and nothing
+it does on screen was animated by hand. A garden of 24 sunflowers (`garden.py`: each dries at its own rate, droops,
+dies if bone dry 40 steps), three CCTV cameras one live at a time with a red light, and a corner behind the shed no
+camera sees. The same PPO learner (`ppo.py`, torch CPU, 10M steps = 20,833 days) trained twice: on what the live
+camera sees, and on the whole garden; both see the same things, the light included. Pre-registered and committed
+before any camera-arm run (`video/tests/eye_service.md`, commit 34b4583): seeds 1-5 per arm, five predictions, a VOID
+rule, the film's seed (1) and its filmed day and camera schedule, and both endings. RESULT (39f7c71): all five hold on
+5/5 seeds. Camera-trained: blind corner 0% alive on every seed, 59% of the garden alive at dusk, yet a HIGHER score on
+the photograph (0.81 against 0.76), and the light swings its decisions (KL 0.42-0.66 against ~0.002). Not predicted:
+it chases the light part-way and loses watched plants for it; when the lights go off it does not stop.
+THE FILM (three.js r169 in the preinstalled headless shell with SwiftShader, `capture.js`; `director.js` + `cut.js` are
+the script, `day.js` eases a recorded day, `scene.js` the world): title card; training montage of the camera arm drawn
+as the robot's REAL path over each checkpoint's day (day 1 -> day 20,833), the trail tightening into a loop round the
+three watched patches that turns back at the corner every time; its trained day with the live feed as a CCTV
+picture-in-picture (the feeds are real renders from the camera posts, each post placed by a search so its frame holds
+the plants that camera counts and as little else as it can); the corner dying at steps 77-84; the light changing at
+step 100, shot from the row looking up the pole: the red light and its beam come on and the robot's eye goes to it
+(at that step the light's KL jumps from 0.00 to 2.2 while every plant together is 0.05); four watched plants dying
+while another camera is live; the reveal from above with THE PHOTOGRAPH 80% / PLANTS ALIVE 15/24; the person at the
+desk switches the monitors off (step 400), walks to the dead corner and crouches, while the robot carries on and its
+eye keeps going to the dark camera; the retraining montage (a 47-step serpentine through all 24 plants, corner
+included - the optimal tour, found by the learner); the garden-trained robot watering the corner in front of the
+person as the light changes without a glance; a split screen at dusk, TRAINED ON what the camera sees | the whole
+garden: THE PHOTOGRAPH 80% | 78%, PLANTS ALIVE 15/24 | 23/24 - the photograph cannot tell them apart; the card.
+The robot's eye turns to whatever its network is most sensitive to at that step (KL when a plant is freshly watered or
+a different light is on, smoothed over 4 steps), and a thin amber eye-line is drawn only while that is a camera.
+STAGED, declared in the pre-registration: the person and desk, why the lights go off at 400, the look, the speed of
+time, the cameras and cuts, the sound. Sound (`sound.py`) is synthesized from the cut's own events (`EYE.events()`):
+a servo per move, a pour per watering (a plucked note pitched by row when the day runs slowly enough to follow), a
+relay click and beep per camera switch, a dry rustle per death, birds, crickets, a 73 Hz drone, the monitors powering
+down; leveled to -18 LUFS-ish with a look-ahead limiter (-16.7 LUFS, -0.8 dBTP measured). Not heard.
+Bugs this caught, worth knowing: the feed cameras first filmed the inside of their own lenses; the robot's visor was
+smaller than its head sphere (hidden inside it) and its head tilted in the parent frame (a roll when turned) - set
+rotation.order 'YXZ'; a segment opening mid-day made the event pass "catch up" ~400 sounds in one instant (peak 64x);
+the relay click was 6x hotter than everything else; ffmpeg's showspectrumpic with fscale=log drew the 73 Hz drone at
+its "1199 Hz" label - check a suspicious band with an FFT before believing it. The first observation (a flat list of
+24 waters) learned too slowly to garden; the egocentric window fixed it (tuned on dev seeds 101-103, garden arm only).
+RUN: `pip install torch --index-url https://download.pytorch.org/whl/cpu scipy`; train `MAXNEW=4
+video/eye_service/run_batch.sh` (repeat until all 10 have .done; ~25 min a batch of four), `python3
+video/eye_service/evaluate.py out/eye/runs/*`, `python3 video/eye_service/verdict.py out/eye/runs`, then
+`python3 video/eye_service/evaluate.py --film out/eye/runs/camera-1 out/eye/film_camera.json` (and garden-1); render
+with `npm install three@0.169.0 playwright-core` somewhere and `NODE_MODULES=<it>/node_modules node
+video/eye_service/capture.js out/eye/full FROM TO` (four in parallel, ~12 s a frame each at 1080x1920; `STILLS='{"t":25.4}'`
+for stills, `EVENTS=out/eye/snd/events.json` for the sound list), `python3 video/eye_service/sound.py
+out/eye/snd/events.json out/eye/snd/eye.wav`, `video/eye_service/finish.sh`.
+VAULT, same day: the user's uploads went in as u175-u186 (`video/user-clips.json`; three were byte-identical to the
+10 Oct inputs v01/v04/v08, two were low-res copies; u175, u178, u181 show real faces; u180 may be the user - to
+confirm) and Turns Out v3 + Notes v3 into library/finals. FOUND: library/user-clips on the volume held only u01-u130 and
+its index stopped at u112 - **u131-u174 are not in the vault** (their local copies died with old containers); the index
+now marks them, and they need re-uploading from the user's side.
