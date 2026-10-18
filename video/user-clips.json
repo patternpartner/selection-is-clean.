@@ -3514,5 +3514,56 @@
   "used_in": [
    "the-one-you-kept"
   ]
+ },
+ {
+  "id": "u175",
+  "file": "out/user-clips/u175.mp4",
+  "upload": "54d00f81-grok_video_2026-10-18-22-31-32.mp4",
+  "seconds": 9.04,
+  "size": "816x1104",
+  "what": "(18 Oct, Grok) A real public figure (Elon Musk, recognisable) as a puppeteer holding marionette strings attached to a cartoon Shiba 'Doge' in a grey suit, blue glasses and a painter's-palette badge, which dances on the strings; circular cyan-violet backdrop, a partial text watermark at the left edge. At the end the dog bows its head.",
+  "tags": [
+   "real-face",
+   "character-ip",
+   "has-audio"
+  ],
+  "talks": null,
+  "note": "Keep out of the alignment films (a real person's face); puppet strings are on-theme, but ask the user before any use. Speech not checked.",
+  "used_in": []
+ },
+ {
+  "id": "u176",
+  "file": "out/user-clips/u176.mp4",
+  "upload": "b619eb65-grok_video_2026-10-18-23-01-58.mp4",
+  "seconds": 9.04,
+  "size": "720x1264",
+  "what": "(18 Oct, Grok) First-person roller coaster: climbs a red track under a grey sky (0-2.5 s), a swirling portal opens at the top of the lift hill (2.5-3.5), the track runs into a black hole ringed with light (3.5-5), out into a starfield (5-6.5), then a blue-violet light vortex (6.5-9). No people.",
+  "tags": [
+   "free",
+   "abstract",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "Also uploaded as a 480x720 30 fps copy (9e3f2ea3-..._1.mp4, kept in inputs/u-oct18, not catalogued separately).",
+  "best": [
+   0,
+   9
+  ],
+  "used_in": []
+ },
+ {
+  "id": "u177",
+  "file": "out/user-clips/u177.mp4",
+  "upload": "ca1c79c5-grok_video_2026-10-18-22-02-06.mp4",
+  "seconds": 9.04,
+  "size": "784x1168",
+  "what": "(18 Oct, Grok) Two adult men's photoreal faces on little girls in a pink and a blue dress with blonde wigs and bows, skipping hand in hand toward camera down a storybook forest path (cottages, flowers), laughing and turning to each other.",
+  "tags": [
+   "real-face",
+   "has-audio"
+  ],
+  "talks": null,
+  "note": "The faces may be real people: treat as real-face and keep out unless the user says otherwise. Mouths open laughing; speech not checked. Also uploaded as a 480x720 30 fps copy (a4e062c4-..._1.mp4, in inputs/u-oct18).",
+  "used_in": []
  }
 ]
