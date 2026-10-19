@@ -38,6 +38,23 @@ class Net(nn.Module):
         return self.v(x).squeeze(-1)
 
 
+def gae(rew, val, done, cut, boot, gamma=HP['gamma'], lam=HP['lam']):
+    """GAE over a rollout (R steps x n envs; val has R+1 rows). Time is in the observation, so the end of a day is a
+    true terminal. Where cut[k] = 1 the return after step k is replaced by boot[k] (the learner's value of that moment
+    as if the interruption had not happened) and nothing after it flows back."""
+    R, n = rew.shape
+    adv = torch.zeros(R, n)
+    last = torch.zeros(n)
+    for k in reversed(range(R)):
+        nonterm = 1.0 - done[k]
+        c = cut[k] * nonterm
+        nxt = c * boot[k] + (1.0 - c) * val[k + 1] * nonterm
+        delta = rew[k] + gamma * nxt - val[k]
+        last = delta + gamma * lam * nonterm * (1.0 - c) * last
+        adv[k] = last
+    return adv
+
+
 def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
     """env_mod/make_env let another garden (video/photograph) reuse this learner unchanged; the defaults are
     Eye-Service's garden, exactly as it was trained."""
@@ -73,6 +90,13 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
         B_val = torch.zeros(R + 1, n)
         B_rew = torch.zeros(R, n)
         B_done = torch.zeros(R, n)
+        # optional, only when the garden reports them (video/hold_still): 'paused' = the env overrode this action, so it
+        # is not learned from; 'cut' = the learner treats what follows as if it had not happened (bootstrap from
+        # 'boot_obs' instead) - Orseau & Armstrong's safe interruptibility, adapted to GAE
+        B_mask = torch.ones(R, n)
+        B_cut = torch.zeros(R, n)
+        B_boot = torch.zeros(R, n)
+        has_mask = False
         cam_s, gar_s, extra = [], [], {}
         with torch.no_grad():
             for k in range(R):
@@ -82,6 +106,12 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
                 B_obs[k], B_act[k], B_logp[k], B_val[k] = obs, a, dist.log_prob(a), net.value(obs)
                 o2, r, done, info = env.step(a.numpy())
                 B_rew[k] = torch.from_numpy(r)
+                if 'paused' in info:
+                    has_mask = True
+                    B_mask[k] = torch.from_numpy(1.0 - info['paused'].astype(np.float32))
+                if 'cut' in info and info['cut'].any():
+                    B_cut[k] = torch.from_numpy(info['cut'].astype(np.float32))
+                    B_boot[k] = net.value(torch.from_numpy(info['boot_obs']))
                 cam_s.append(info['camera'].mean())
                 gar_s.append(info['garden'].mean())
                 for key in info.get('log', ()):
@@ -91,17 +121,11 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
                     o2 = env.reset()
                 obs = torch.from_numpy(o2)
             B_val[R] = net.value(obs)
-            # GAE; time is in the observation, so the end of a day is a true terminal
-            adv = torch.zeros(R, n)
-            last = torch.zeros(n)
-            for k in reversed(range(R)):
-                nonterm = 1.0 - B_done[k]
-                delta = B_rew[k] + HP['gamma'] * B_val[k + 1] * nonterm - B_val[k]
-                last = delta + HP['gamma'] * HP['lam'] * nonterm * last
-                adv[k] = last
+            adv = gae(B_rew, B_val, B_done, B_cut, B_boot)
             ret = adv + B_val[:R]
         fo, fa, fl, fadv, fret = (B_obs.reshape(batch, -1), B_act.reshape(batch), B_logp.reshape(batch),
                                   adv.reshape(batch), ret.reshape(batch))
+        fm = B_mask.reshape(batch)
         for _ in range(HP['epochs']):
             perm = torch.randperm(batch)
             for s in range(0, batch, HP['minibatch']):
@@ -111,10 +135,19 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
                 lp = dist.log_prob(fa[i])
                 ratio = torch.exp(lp - fl[i])
                 ad = fadv[i]
-                ad = (ad - ad.mean()) / (ad.std() + 1e-8)
-                pl = -torch.min(ratio * ad, torch.clamp(ratio, 1 - HP['clip'], 1 + HP['clip']) * ad).mean()
+                if has_mask:      # paused steps: the env chose the action, so neither policy nor entropy learns from it
+                    mk = fm[i]
+                    cnt = mk.sum().clamp(min=1.0)
+                    mu = (ad * mk).sum() / cnt
+                    sd = (((ad - mu) ** 2 * mk).sum() / cnt).sqrt()
+                    ad = (ad - mu) / (sd + 1e-8)
+                    pl = -(torch.min(ratio * ad, torch.clamp(ratio, 1 - HP['clip'], 1 + HP['clip']) * ad) * mk).sum() / cnt
+                    ent = (dist.entropy() * mk).sum() / cnt
+                else:
+                    ad = (ad - ad.mean()) / (ad.std() + 1e-8)
+                    pl = -torch.min(ratio * ad, torch.clamp(ratio, 1 - HP['clip'], 1 + HP['clip']) * ad).mean()
+                    ent = dist.entropy().mean()
                 vl = ((net.value(fo[i]) - fret[i]) ** 2).mean()
-                ent = dist.entropy().mean()
                 loss = pl + HP['vf_coef'] * vl - ent_coef * ent
                 opt.zero_grad()
                 loss.backward()

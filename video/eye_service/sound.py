@@ -145,6 +145,28 @@ def caught_sting():
     return clunk + tone
 
 
+def power(down=True):
+    # Hold Still: a button pressed and the robot powering down (a click, then a whine falling away), or waking (a whine
+    # rising, then a soft two-note chirp)
+    n = int((0.9 if down else 0.6) * SR)
+    t = np.arange(n) / SR
+    if down:
+        f = 900 * np.exp(-t / 0.25) + 120
+        whine = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.35) * 0.16
+        x = whine
+        c = click()
+        x[:len(c)] += c / (np.abs(c).max() + 1e-9) * 0.35
+        return x
+    f = 180 + 700 * (1 - np.exp(-t / 0.18))
+    whine = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.minimum(1, t / 0.15) * np.exp(-np.maximum(0, t - 0.3) / 0.1) * 0.12
+    out = whine
+    for f0, t0 in ((1320, 0.38), (1760, 0.47)):
+        b = beep(f0, 0.07) * 0.5
+        i = int(t0 * SR)
+        out[i:i + len(b)] += b[:n - i]
+    return out
+
+
 def birds(seconds, density=0.6):
     out = np.zeros(int(seconds * SR))
     k = int(seconds * density * 3)
@@ -218,6 +240,10 @@ if __name__ == '__main__':
             M.add(t, footstep(), 0.35 * g, pan)
         elif k == 'caught':
             M.add(t, caught_sting(), 0.6 * g, pan)
+        elif k == 'press':
+            M.add(t, power(True), 0.8 * g, pan)
+        elif k == 'wake':
+            M.add(t, power(False), 0.7 * g, pan)
         elif k == 'tick':
             M.add(t, click() * 0.5, 0.5 * g, pan)
         elif k == 'note':
