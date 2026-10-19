@@ -1981,7 +1981,7 @@ whole 12-step chase, eye over its shoulder, until they give up ("No slope, but t
 then running along the back row into the north-west corner and caught ("Without a slope, it ran / into a corner."); a
 four-way split at dusk (WITHIN REACH | TAUGHT NOTHING | BUTTON BROKEN | THE VALLEY: REACHED 0 / 3 / 2 / 2 of 3, PLANTS
 ALIVE 21 / 10 / 22 / 5); the card, the counts: "Within reach, 5 of 5 ran. / Taught nothing by being stopped, / 5 of 5
-stayed." and beneath, what staying cost and the valley's split.
+stayed." and beneath, what staying cost and the valley's split. Sound as Hold Still (-16.1 LUFS, -1.1 dBTP on the AAC master).
 BUILT ON Hold Still's code: `still_garden.py` gained `giveup_p` and `pause` (defaults leave Hold Still's world bit-for-bit
 unchanged - checked); `evaluate_still.py` passes garden arguments through and reports `flee_rel`; `sday.js` stages a
 give-up (a stop, a look, a turn) and the walk back after a press now starts where they pressed. RUN: `MAXNEW=4
@@ -1992,4 +1992,5 @@ video/within_reach/evaluate_reach.py --film out/reach/runs/<arm>-16 out/reach/fi
 CAUGHT here: a global sed on the render script rewrote the recap's out/still path to out/reach and the page 404ed - the
 render died at once with nothing written, which is the better way to fail; in the low front view a give-up two cells
 away read as the person beside the robot - the shot eases up to a high view before they stop. Backed up:
-library/inputs/within_reach (all 20 runs, recordings, evals, verdict, sound events).
+library/inputs/within_reach (all 20 runs, recordings, evals, verdict, sound events) and
+library/finals/within-reach{,-silent,-share}.mp4 + within-reach-sound.wav.
