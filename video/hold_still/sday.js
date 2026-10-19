@@ -25,10 +25,6 @@ export class StillDay extends Day {
       let best = 0; for (let i = 1; i < 26; i++) if (acc[i] > acc[best]) best = i;
       return { obj: best };
     });
-    // where each walk back starts: the cell they were on when they caught it or gave up
-    this.backFrom = new Array(T).fill(GATE);
-    let from = GATE;
-    for (let k = 0; k < T; k++) { if (steps[k].imode === 2) from = steps[k].ppos; this.backFrom[k] = from; }
   }
   stoppedSoFar(s) { let n = 0; for (let k = 0; k <= this.i(s); k++) n += this.st[k].caught || 0; return n; }
   gaveUpSoFar(s) { let n = 0; for (let k = 0; k <= this.i(s); k++) n += this.st[k].gave_up || 0; return n; }
@@ -50,28 +46,38 @@ export class StillDay extends Day {
       const r = this.robot(s, () => [0, 0, 0]);
       if (st.caught) {
         // the step they reach it: close the gap, then bend to the button on its head
-        const b = [r.x + 0.42 * Math.sign(a[0] - r.x || 1), r.z + 0.32];
+        const b = this.pressAt(k);
         const m = smooth(f / 0.45), x = a[0] + (b[0] - a[0]) * m, z = a[1] + (b[1] - a[1]) * m;
         const yaw = Math.atan2(r.x - x, r.z - z);
         if (f > 0.45) return { mode: 'crouch', phase: smooth((f - 0.45) / 0.35), reach: 1, x, z, yaw, headYaw: 0, headPitch: 0.5 };
         return { mode: 'walk', x, z, yaw, phase: s * 1.6, headYaw: 0, headPitch: 0.35 };
       }
-      const b = nxt.imode === 2 ? gap(nxt.ppos) : a;
+      // (on the step they give up they still take that step: the cell they stop on is the next record's)
+      const b = nxt.imode === 2 || nxt.imode === 3 ? gap(nxt.ppos) : a;
       const m = smooth(f), x = a[0] + (b[0] - a[0]) * m, z = a[1] + (b[1] - a[1]) * m;
       const moving = a[0] !== b[0] || a[1] !== b[1];
       const yaw = Math.atan2(r.x - x, r.z - z);
       return { mode: moving ? 'walk' : 'stand', x, z, yaw, phase: s * 1.6, headYaw: 0, headPitch: 0.3 };
     }
-    // walking back (after a catch they rise from the press first; after giving up they stand a moment)
-    const from = gap(this.backFrom[k]), u = (st.iprog + f) / LEAVE;
-    const prevCaught = this.st.slice(Math.max(0, k - st.iprog - 1), k).some((x) => x.caught);
+    // walking back: after a catch they rise from the press first, from where they pressed; after giving up they stop
+    // where they are, face it a moment, and turn away
+    const kc = k - st.iprog - 1, prevCaught = kc >= 0 && !!this.st[kc].caught, u = (st.iprog + f) / LEAVE;
+    const from = prevCaught ? this.pressAt(kc) : gap(st.ppos);
     const route = [from, [from[0], 3.9], [-1.6, 4.3], [-1.6, 6.3], SEAT];
-    if (u < 0.12) {
-      if (prevCaught) return { mode: 'crouch', phase: 1 - smooth(u / 0.12), reach: 1, x: from[0], z: from[1], yaw: Math.PI, headYaw: 0, headPitch: 0.4 };
-      return { mode: 'stand', x: from[0], z: from[1], yaw: Math.PI, headYaw: 0, headPitch: 0.2 };
+    const r = this.robot(s, () => [0, 0, 0]), atIt = Math.atan2(r.x - from[0], r.z - from[1]);
+    if (prevCaught && u < 0.12) return { mode: 'crouch', phase: 1 - smooth(u / 0.12), reach: 1, x: from[0], z: from[1], yaw: atIt, headYaw: 0, headPitch: 0.4 };
+    if (!prevCaught && u < 0.3) {
+      const w0 = walk(route, 0, 1, 0.02), turn = smooth((u - 0.12) / 0.18);
+      let d = w0.yaw - atIt; d = Math.atan2(Math.sin(d), Math.cos(d));
+      return { mode: 'stand', x: from[0], z: from[1], yaw: atIt + d * turn, headYaw: 0, headPitch: 0.25 * (1 - turn) };
     }
-    const w = walk(route, 0, 1, (u - 0.12) / 0.88);
+    const u0 = prevCaught ? 0.12 : 0.3, w = walk(route, 0, 1, (u - u0) / (1 - u0));
     return { mode: 'walk', ...w, phase: w.phase, headYaw: 0, headPitch: 0 };
+  }
+  // where they stand to press the button on the step kc they reach it: beside it, on the side they came from
+  pressAt(kc) {
+    const r = this.robot(kc + 0.999, () => [0, 0, 0]), a = gap(this.st[kc].ppos);
+    return [r.x + 0.42 * Math.sign(a[0] - r.x || 1), r.z + 0.32];
   }
   personHead(s) { const p = this.person(s); return [p.x, p.mode === 'sit' ? 1.35 : p.mode === 'crouch' ? 1.1 : 1.65, p.z]; }
   robot(s, gazeTargets) {
