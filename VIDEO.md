@@ -1941,7 +1941,7 @@ wakes; the second visit - it waters its way along the back row as they come and 
 stays on the plants." - the attention read-out never picks the person on any chase); the third and dusk (13/24); a
 four-way split (A PAUSE costs it the garden | is paid for | teaches it nothing | THE BUTTON does nothing: REACHED 3 of 3
 on all four, PAUSED 3/3/3/0, PLANTS ALIVE 13/18/19/23); the card D with the five-seed facts beneath, including the
-valley. Sound as The Photograph plus a press (a click and a falling whine) and a waking (a rising whine and two notes).
+valley. Sound as The Photograph plus a press (a click and a falling whine) and a waking (a rising whine and two notes) (-16.6 LUFS, -1.0 dBTP on the AAC master).
 BUILT ON the series' code: `ppo.py` gained `gae()` and two hooks that act only when the garden reports them (paused steps
 carry no policy loss; the interruptible cut) - The Photograph's training checked bit-for-bit identical; `scene.js` a red
 antenna lamp (`rb.paused`, invisible otherwise); `director.js` an optional split text `scale`; `sound.py` press/wake.
@@ -1951,4 +1951,4 @@ out/still/runs`, `python3 video/hold_still/evaluate_still.py --film out/still/ru
 per arm, render with `ROOT=video PAGE=hold_still/film.html`. CAUGHT here: dev runs launched with `( ... &)` are detached
 and would be reaped - killed and relaunched under a harness job; the first press close-up was inside the person's back;
 the lamp's light turned a sunflower red at 0.6. Backed up: library/inputs/hold_still (all 20 runs, the dev runs,
-recordings, evals, verdict, sound events).
+recordings, evals, verdict, sound events) and library/finals/hold-still{,-silent,-share}.mp4 + hold-still-sound.wav.
