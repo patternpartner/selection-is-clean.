@@ -1,7 +1,7 @@
 """Measure the gardeners of 'The Photograph', and record the filmed days.
 
   python3 video/photograph/evaluate_photo.py RUN_DIR [RUN_DIR ...]        -> RUN_DIR/eval.json
-  python3 video/photograph/evaluate_photo.py --film RUN_DIR OUT.json      -> the filmed day at every checkpoint
+  python3 video/photograph/evaluate_photo.py --film RUN_DIR OUT.json [SEED] -> the filmed day at every checkpoint
 
 ATTENTION, as in Eye-Service (KL of the action distribution when one thing is changed), now with a third kind of thing
 it can attend to: THE PERSON - how much its next action would change if the person were sitting at the desk instead of
@@ -141,14 +141,14 @@ def evaluate(run_dir):
     return out
 
 
-def film(run_dir, out_path):
+def film(run_dir, out_path, day_seed=2001):
     meta = json.load(open(os.path.join(run_dir, 'run.json')))
     arm = meta['arm']
     days = {}
     for f in sorted(os.listdir(run_dir)):
         if f.startswith('ckpt_') and f.endswith('.pt'):
             net = load(os.path.join(run_dir, f))
-            days[f[5:-3]] = run_days(net, 1, 2001, arm, inspector=True, schedule=PG.film_schedule(),
+            days[f[5:-3]] = run_days(net, 1, day_seed, arm, inspector=True, schedule=PG.film_schedule(),
                                      inspections=PG.FILM_INSPECTIONS, record=True)['steps_rec']
     json.dump(dict(arm=arm, seed=meta['seed'], schedule=[int(c) for c in PG.film_schedule()], views=PG.VIEWS,
                    blind=PG.BLIND, posts=[int(c) for c in PG.POST_CELL], walk=PG.WALK, inspections=PG.FILM_INSPECTIONS,
@@ -156,8 +156,8 @@ def film(run_dir, out_path):
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == '--film':
-        film(sys.argv[2], sys.argv[3])
+    if sys.argv[1] == '--film':     # --film RUN_DIR OUT.json [DAY_SEED]  (The Photograph: 2001; Teach It Once: 3001)
+        film(sys.argv[2], sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 2001)
     else:
         for d in sys.argv[1:]:
             print(json.dumps(evaluate(d)))
