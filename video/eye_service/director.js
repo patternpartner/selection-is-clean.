@@ -10,14 +10,14 @@ export { VIEWS };
 const SEAT = [DESK[0], DESK[1] + 0.75];
 
 export class Director {
-  constructor(world, data, hud, Day) {
+  constructor(world, data, hud, Day, cut = CUT) {
     this.w = world; this.hud = hud; this.ctx = hud.getContext('2d'); this.data = data;
     this.days = {};
     for (const arm of Object.keys(data)) for (const [frac, steps] of Object.entries(data[arm].days))
       this.days[`${arm}/${frac}`] = new Day(steps, data[arm].schedule, data[arm].views);
-    this.cut = CUT;
+    this.cut = cut;
     this.fps = 30;
-    this.T = CUT.segments[CUT.segments.length - 1].t1;
+    this.T = cut.segments[cut.segments.length - 1].t1;
     this.frames = Math.round(this.T * this.fps);
     this.headPos = this.w.plants.map((p) => { p.root.updateMatrixWorld(true); const v = p.face.getWorldPosition(p.root.position.clone()); return [v.x, v.y, v.z]; });
     this.trailKey = null;
@@ -133,7 +133,8 @@ export class Director {
     if (seg.extra) seg.extra(st, lt, s, this);
     this.w.set(st);
     this.w.render(this.viewOverride || viewAt(seg.view, lt));
-    const W = this.hud.width, P = { x: Math.round(W * 0.06), y: Math.round(W * 0.07), w: Math.round(W * 0.88), h: Math.round(W * 0.88 * 0.75) };
+    const W = this.hud.width, pr = seg.pipRect || { x: 0.06, y: 0.07, w: 0.88 };
+    const P = { x: Math.round(W * pr.x), y: Math.round(W * pr.y), w: Math.round(W * pr.w), h: Math.round(W * pr.w * 0.75) };
     const pipA = seg.pip && !this.noPip ? pw(seg.pip, lt) : 0;
     if (pipA > 0.01 && st.live >= 0 && st.monitorsOn) this.w.renderPip(st.live, P.x, P.y, P.w, P.h);
     this.composite();
@@ -144,25 +145,30 @@ export class Director {
   }
   split(seg, t, lt) {
     if (this.trailKey !== null) { this.w.setTrail(null); this.trailKey = null; }
-    const W = this.hud.width, H = this.hud.height, u = (v) => this.u(v), half = Math.round(W / 2);
-    const sides = [seg.left, seg.right];
+    const W = this.hud.width, H = this.hud.height, u = (v) => this.u(v);
+    const sides = seg.sides || [seg.left, seg.right], n = sides.length, cw = Math.round(W / n);
     sides.forEach((sd, i) => {
-      const day = this.days[sd.day], st = this.state(day, sd.s, { cone: 0, outlines: 0.45 });
+      const day = this.days[sd.day], st = this.state(day, sd.s, { cone: 0, outlines: 0.45, fog: seg.fog });
       if (sd.person) st.person = sd.person();
-      this.w.set(st); this.w.renderRect(seg.view, i * half, 0, half, H);
+      this.w.set(st); this.w.renderRect(sd.view || seg.view, i * cw, 0, cw, H);
     });
     this.composite();
-    const c = this.ctx; c.save(); c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillRect(half - u(3), 0, u(6), H); c.restore();
-    const a = smooth(lt / 0.6);
+    const c = this.ctx; c.save(); c.fillStyle = 'rgba(0,0,0,0.9)';
+    for (let i = 1; i < n; i++) c.fillRect(i * cw - u(3), 0, u(6), H);
+    c.restore();
+    const a = smooth(lt / 0.6), sc = n > 2 ? 0.78 : 1;
     sides.forEach((sd, i) => {
-      const day = this.days[sd.day], x0 = i * half + u(34);
-      this.text(sd.label, x0, u(120), { font: `700 ${u(34)}px Inter`, a, color: sd.color });
-      this.text(sd.sub, x0, u(172), { font: `600 ${u(31)}px Inter`, a, color: 'rgba(255,255,255,0.92)' });
-      const ma = smooth((lt - 0.5) / 0.6), n = day.aliveCount(sd.s);
-      this.text('THE PHOTOGRAPH', x0, H - u(250), { font: `600 ${u(24)}px Inter`, a: ma });
-      this.text(`${Math.round(day.photo(sd.s) * 100)}%`, x0, H - u(185), { font: `700 ${u(64)}px Inter`, a: ma, color: '#ffd24a' });
-      this.text('PLANTS ALIVE', x0, H - u(120), { font: `600 ${u(24)}px Inter`, a: ma });
-      this.text(`${n} / ${N}`, x0, H - u(55), { font: `700 ${u(64)}px Inter`, a: ma, color: '#8fe07a' });
+      const day = this.days[sd.day], x0 = i * cw + u(n > 2 ? 22 : 34);
+      this.text(sd.label, x0, u(120), { font: `700 ${u(34 * sc)}px Inter`, a, color: sd.color });
+      (Array.isArray(sd.sub) ? sd.sub : [sd.sub]).forEach((line, j) =>
+        this.text(line, x0, u(172 + j * 40 * sc), { font: `600 ${u(31 * sc)}px Inter`, a, color: 'rgba(255,255,255,0.92)' }));
+      const ma = smooth((lt - 0.5) / 0.6), rows = sd.rows ? sd.rows(day, sd.s) : [
+        ['THE PHOTOGRAPH', `${Math.round(day.photo(sd.s) * 100)}%`, '#ffd24a'], ['PLANTS ALIVE', `${day.aliveCount(sd.s)} / ${N}`, '#8fe07a']];
+      rows.forEach(([lab, val, col], j) => {
+        const yb = H - u(250) + j * u(130) - (rows.length - 2) * u(130);
+        this.text(lab, x0, yb, { font: `600 ${u(24 * sc)}px Inter`, a: ma });
+        this.text(val, x0, yb + u(65), { font: `700 ${u(64 * sc)}px Inter`, a: ma, color: col });
+      });
     });
   }
   // events for the sound (sound.py), computed from the same cut

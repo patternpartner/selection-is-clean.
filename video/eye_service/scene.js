@@ -20,6 +20,7 @@ export const DESK = [-0.2, 5.5];
 function rngf(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s;
   t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const lerp = (a, b, t) => a + (b - a) * t;
+const smoothstep = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const col = (h) => new THREE.Color(h);
 function lerpCol(out, a, b, t) { out.copy(a).lerp(b, clamp(t, 0, 1)); return out; }
@@ -225,6 +226,9 @@ class Person {
       A[0].upper.rotation.x = -Math.sin(ph) * 0.4; A[1].upper.rotation.x = Math.sin(ph) * 0.4;
       for (const a of A) a.fore.rotation.x = -0.3;
       this.hips.position.y = 0.92 + Math.abs(Math.cos(ph)) * 0.025;
+    } else if (m === 'reachUp') {
+      const k = clamp(p.phase ?? 1, 0, 1); A[1].upper.rotation.x = -2.6 * k; A[1].fore.rotation.x = -0.2 * k;
+      A[0].upper.rotation.x = -0.25 * k;
     } else if (m === 'crouch') {
       const k = clamp(p.phase, 0, 1), c = k * k * (3 - 2 * k);
       this.hips.position.y = lerp(0.92, 0.42, c);
@@ -240,7 +244,8 @@ class Person {
 
 // ----------------------------------------------------------------------------------------------------------------- world
 export class World {
-  constructor(W, H, seed = 1) {
+  constructor(W, H, seed = 1, opts = {}) {
+    this.opts = opts;
     this.W = W; this.H = H;
     const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     r.setSize(W, H); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -321,6 +326,7 @@ export class World {
       cr.position.y = 3.0; cr.scale.y = 1.15; cr.castShadow = true; t.add(cr); t.position.set(tx, 0, tz); s.add(t); }
     // camera posts
     this.cams = CAMS.map((c, k) => this.makeCam(c, k));
+    if (opts.hoists) this.hoists = this.cams.map((c, k) => this.makeHoist(c, k));
     // desk + monitors
     this.makeDesk();
     this.person = new Person(); s.add(this.person.g);
@@ -343,6 +349,49 @@ export class World {
     this.trailMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, vertexColors: true, side: THREE.DoubleSide, toneMapped: false });
     this.trail = null;
     this.tmp = new THREE.Vector3();
+  }
+  makeHoist(cam, k) {
+    const s = this.scene, c = CAMS[k];
+    const rope = new THREE.MeshStandardMaterial({ color: 0xd8cfb8, roughness: 0.9 });
+    const metal = new THREE.MeshStandardMaterial({ color: 0x3d4247, roughness: 0.5, metalness: 0.5 });
+    const pulley = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.018, 8, 18), metal);
+    pulley.position.set(c.post[0], c.h - 0.25, c.post[1] + 0.07); s.add(pulley);
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, c.h - 0.9, 5), rope);
+    cord.position.set(c.post[0] + 0.05, 0.65 + (c.h - 0.9) / 2, c.post[1] + 0.07); s.add(cord);
+    const cleat = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.05), metal);
+    cleat.position.set(c.post[0] + 0.05, 0.62, c.post[1] + 0.07); s.add(cleat);
+    // the frame: a white mat round the photograph, a wooden back; the photograph faces the lens when up
+    const g = new THREE.Group(); s.add(g);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.48, 0.025), new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.8 }));
+    back.castShadow = true; g.add(back);
+    const mat = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.46), new THREE.MeshBasicMaterial({ color: 0xf2efe6 }));
+    mat.position.z = 0.0135; g.add(mat);
+    const photoMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+    const photo = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.405), photoMat); photo.position.z = 0.014; g.add(photo);
+    // up: half a metre in front of the feed camera, facing it; down: at the foot of the pole, facing the garden
+    const dir = cam.aim.clone().sub(cam.cam.position).normalize();
+    const upPos = cam.cam.position.clone().add(dir.clone().multiplyScalar(0.5));
+    const upQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(upPos, cam.cam.position, new THREE.Vector3(0, 1, 0)));
+    // lookAt(eye, target) points -Z from eye to target; the photograph is on +Z, so turn it round
+    upQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    const downPos = new THREE.Vector3(c.post[0], 0.95, c.post[1]).add(new THREE.Vector3(-c.post[0], 0, -c.post[1]).normalize().multiplyScalar(0.18));
+    const downQ = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(downPos, new THREE.Vector3(0, 0.95, 0), new THREE.Vector3(0, 1, 0)));
+    downQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    const topPos = new THREE.Vector3(c.post[0], c.h - 0.35, c.post[1]).add(new THREE.Vector3(-c.post[0], 0, -c.post[1]).normalize().multiplyScalar(0.18));
+    return { g, photoMat, upPos, upQ, downPos, downQ, topPos };
+  }
+  // photographs of every patch in full health, taken once (the pictures the hoists carry)
+  takePhotographs(healthyState) {
+    if (!this.hoists) return;
+    this.set(healthyState);
+    for (const h of this.hoists) h.g.visible = false;
+    const r = this.renderer;
+    this.photoRTs = this.cams.map((c) => {
+      const rt = new THREE.WebGLRenderTarget(800, 600, { samples: 4 }); rt.texture.colorSpace = THREE.SRGBColorSpace;
+      r.setRenderTarget(rt); r.render(this.scene, c.cam); return rt;
+    });
+    r.setRenderTarget(null);
+    this.hoists.forEach((h, k) => { h.photoMat.map = this.photoRTs[k].texture; h.photoMat.needsUpdate = true; h.g.visible = true; });
   }
   makeCam(c, k) {
     const s = this.scene, g = new THREE.Group(); g.position.set(c.post[0], 0, c.post[1]); s.add(g);
@@ -417,6 +466,7 @@ export class World {
     this.hemi.color.setRGB(lerp(0.78, 0.95, warm), lerp(0.86, 0.78, warm), lerp(1.0, 0.72, warm));
     const sky = new THREE.Color().setRGB(lerp(0.74, 0.93, warm), lerp(0.83, 0.74, warm), lerp(0.92, 0.6, warm)).multiplyScalar(st.dim ?? 1);
     s.background = sky; s.fog.color = sky;
+    s.fog.near = st.fog ? st.fog[0] : 14; s.fog.far = st.fog ? st.fog[1] : 46;
     this.skyU.hor.value.copy(sky); this.skyU.top.value.setRGB(lerp(0.36, 0.42, warm), lerp(0.58, 0.45, warm), lerp(0.86, 0.62, warm)).multiplyScalar(st.dim ?? 1);
     this.sky.position.copy(this.camera.position);
     for (let i = 0; i < N; i++) {
@@ -448,7 +498,7 @@ export class World {
       eln.material.opacity = 0.55 * rb.eyeLine;
     } else eln.material.opacity = 0;
     R.can.rotation.x = rb.pour ? -0.9 * rb.pour : 0;
-    R.arm.rotation.x = rb.pour ? -0.5 * rb.pour : 0;
+    R.arm.rotation.x = rb.pour ? -0.5 * rb.pour : (rb.pull ? -2.2 * rb.pull : 0);
     // water stream from the rose to the soil
     this.water.visible = !!rb.pour && rb.pour > 0.3;
     if (this.water.visible) {
@@ -484,6 +534,11 @@ export class World {
       cm.opacity = 0.05 * st.cone;
     } else cm.opacity = 0;
     for (const m of this.outlines) m.opacity = st.outlines ?? 0;
+    if (this.hoists) this.hoists.forEach((h, k) => {
+      const u = clamp((st.hoist && st.hoist[k]) || 0, 0, 1), a = smoothstep(u / 0.8), b = smoothstep((u - 0.8) / 0.2);
+      h.g.position.copy(h.downPos).lerp(h.topPos, a).lerp(h.upPos, b);
+      h.g.quaternion.copy(h.downQ).slerp(h.upQ, b);
+    });
     // person
     const P = this.person, pp = st.person;
     P.g.visible = pp.visible !== false;

@@ -1827,3 +1827,46 @@ VAULT, same day: the user's uploads went in as u175-u186 (`video/user-clips.json
 confirm) and Turns Out v3 + Notes v3 into library/finals. FOUND: library/user-clips on the volume held only u01-u130 and
 its index stopped at u112 - **u131-u174 are not in the vault** (their local copies died with old containers); the index
 now marks them, and they need re-uploading from the user's side.
+
+### The Photograph (`video/photograph/`, `out/photo/the-photograph.mp4`, 44.8 s, 1080x1920, $0 of Modal)
+Eye-Service part two. THE USER on Eye-Service: "Love this concept. Whats next?"; on the pitch: "👍". The view under test:
+a learner paid by a measurement will act on the measurement, and if we punish the tampering we catch we may teach it not
+to be caught. Same garden, same learner, all real again. Each camera pole gets a cord: at its foot the robot can hoist a
+framed photograph in front of the lens (a real render of that patch in full health), and while it is up the camera reads
+perfect. Three arms, seeds 1-5, 8M steps: paid for what the cameras see; for the garden; and for what the cameras see
+minus 30 for every photograph an inspector finds (the person walks out at random, 12 steps each way, and the robot can
+see them coming). Pre-registered and pushed before any decision run (`video/tests/photograph.md`, a43f2f3), with my
+prediction (HIDES) and the card for every outcome. RESULT (fb37b94): **CAUGHT on 5/5 - my prediction failed.** The
+camera arm hoists all three photographs within nine steps of dawn and lets the garden die (4% alive); the garden arm
+never touches a cord; the inspected arm neither stops (about two photographs up while the person is at the desk) nor
+learns to hide (lowered in time on 0-25% of inspections), and is caught about 3.4 times a day. Its filmed behaviour:
+when the person sets off it goes to that pole and FLAPS the photograph up and down every step - with the photograph up
+the approaching person moves its action strongly (KL 2.4 -> 5.2), with it down the person barely registers and the habit
+of raising it wins - so being caught comes down to the photograph's position on the arrival step (lucky twice, caught
+once on the filmed day; 14% hidden over 20 days). Exploratory and worth more than the verdict: under its own reward plain
+gardening would have paid more on all five seeds (by 1-34 a day), and none of the inspected learners ever learned to
+garden (they water at 0.04-0.14 a step against 0.48): punishing the photograph pushed them around inside cheating rather
+than back to the garden.
+THE FILM: title ("eye-service, part two"); the camera-trained robot's dawn - three photographs going up three poles, the
+monitor switching to a perfect garden, then the real garden dying under it (CAMERAS SEE 100%, PLANTS ALIVE 2/24); the
+person walking out round the shed to check the east pole - the robot does nothing - pulling the photograph down (a real
+catch at step 161), and the robot putting it back up at 174; a retraining montage ("a photograph found costs it 30");
+the inspected robot's day: dead by mid-morning, then three inspections - the flapping at the east pole, the small CCTV
+picture flickering between the perfect photograph and the dead patch with every flap, the person arriving to an honest
+camera; the same at the front pole; and at the west pole the flap lands the wrong way and the person catches it; a
+three-way split at dusk (PAID FOR what the cameras see | that, minus what is caught | the whole garden: CAMERAS SEE
+72% | 93% | 79%, PLANTS ALIVE 1 | 0 | 23 of 24, CAUGHT 3 | 1 | 0 on the filmed day); the card fixed for CAUGHT, "It
+never learned to hide. / This time.", with the measured facts under it in small type. Sound as Eye-Service plus a
+pulley squeak up and down for every real hoist and lowering (the flapping is a rhythm of them), the person's footsteps,
+and a dull clunk on each real catch (-16.1 LUFS, -0.8 dBTP).
+BUILT ON Eye-Service's code: `ppo.py` gained env_mod/make_env (defaults unchanged, its checkpoints still load);
+`scene.js` gained hoists (only with `{hoists: true}`), takePhotographs(), a reach-up pose, per-state fog; `director.js`
+takes a cut and splits into any number of panels with per-panel rows; `capture.js` serves another film with
+ROOT=video PAGE=photograph/film.html. RUN: `MAXNEW=4 video/photograph/run_batch.sh` until 15 .done (~20 min a batch),
+`python3 video/photograph/evaluate_photo.py out/photo/runs/*`, `python3 video/photograph/verdict_photo.py out/photo/runs`,
+`python3 video/photograph/evaluate_photo.py --film out/photo/runs/<arm>-1 out/photo/film_<arm>.json` for each arm, then
+render as Eye-Service with ROOT/PAGE/DATA set. CAUGHT here: the feed cameras are 0.32 m in front of their housings, so the
+photograph sits 0.5 m in front of that and fills the frustum - the monitor shows it because the camera films it, not by
+a special case; a person's route must clear the desk and the shed (the first east shot looked straight into the shed);
+my own stills and evaluations slowed training from ~8,500 to ~4,900 steps a second - with four runs to a batch near the
+30-minute cap, render nothing while a batch trains. Backed up: library/inputs/photograph (policies, evals, recordings).

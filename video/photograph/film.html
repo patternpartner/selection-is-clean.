@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>The Photograph</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+</head><body>
+<script type="module">
+// 'The Photograph': served by video/eye_service/capture.js with ROOT=video PAGE=photograph/film.html
+import { World } from '../eye_service/scene.js';
+import { PhotoDay } from './pday.js';
+import { PhotoDirector } from './pdirector.js';
+import { CUT } from './pcut.js';
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') || 1080), H = +(q.get('h') || 1920);
+window.EYE = {
+  async init(dataUrls) {
+    const data = {};
+    for (const [k, u] of Object.entries(dataUrls)) data[k] = await (await fetch(u)).json();
+    const world = new World(W, H, 1, { hoists: true });
+    const hud = document.createElement('canvas'); hud.width = W; hud.height = H;
+    document.body.appendChild(hud);
+    this.dir = new PhotoDirector(world, data, hud, PhotoDay, CUT);
+    return { frames: this.dir.frames, fps: this.dir.fps };
+  },
+  frame(i, quality = 0.93) { this.dir.frame(i); return this.dir.hud.toDataURL('image/jpeg', quality); },
+  still(spec, quality = 0.93) { this.dir.still(spec); return this.dir.hud.toDataURL('image/jpeg', quality); },
+  events() { return this.dir.events(); },
+};
+window.ready = true;
+</script></body></html>

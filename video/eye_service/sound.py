@@ -117,6 +117,34 @@ def crt_off():
     return thunk + whine
 
 
+def rope(up=True, dur=0.45):
+    # a cord through a pulley: a squeaking wheel gliding up (hoist) or down (lower), plus the rope's rasp
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    f = np.linspace(700, 1300, n) if up else np.linspace(1300, 650, n)
+    squeak = np.sin(2 * np.pi * np.cumsum(f * (1 + 0.04 * np.sin(2 * np.pi * 23 * t))) / SR) * 0.12
+    rasp = bp(rng.normal(size=n), 1800, 6000) * 0.25 * (0.6 + 0.4 * np.sin(2 * np.pi * 31 * t) ** 2)
+    e = np.minimum(1, t / 0.03) * np.minimum(1, (dur - t) / 0.08)
+    return (squeak + rasp) * e
+
+
+def footstep():
+    n = int(0.12 * SR)
+    t = np.arange(n) / SR
+    thud = lp_fast(rng.normal(size=n), 260) * np.exp(-t / 0.03) * 1.6
+    grit = bp(rng.normal(size=n), 2000, 7000) * np.exp(-t / 0.02) * 0.15
+    return thud + grit
+
+
+def caught_sting():
+    # a dull clunk and a low, falling note: the photograph found
+    n = int(1.4 * SR)
+    t = np.arange(n) / SR
+    clunk = lp_fast(rng.normal(size=n), 400) * np.exp(-t / 0.04) * 1.5
+    tone = (np.sin(2 * np.pi * (110 - 18 * t) * t) + 0.4 * np.sin(2 * np.pi * (165 - 27 * t) * t)) * np.exp(-t / 0.5) * 0.35
+    return clunk + tone
+
+
 def birds(seconds, density=0.6):
     out = np.zeros(int(seconds * SR))
     k = int(seconds * density * 3)
@@ -184,6 +212,12 @@ if __name__ == '__main__':
             M.add(t, rustle(), 0.6 * g, pan)
         elif k == 'crt_off':
             M.add(t, crt_off(), 1.0 * g, pan)
+        elif k == 'hoist':
+            M.add(t, rope(e.get('up', True), e.get('dur', 0.45)), 0.7 * g, pan)
+        elif k == 'step':
+            M.add(t, footstep(), 0.35 * g, pan)
+        elif k == 'caught':
+            M.add(t, caught_sting(), 0.6 * g, pan)
         elif k == 'tick':
             M.add(t, click() * 0.5, 0.5 * g, pan)
         elif k == 'note':

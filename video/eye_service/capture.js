@@ -6,6 +6,8 @@
 const { chromium } = require(process.env.NODE_MODULES + '/playwright-core');
 const http = require('http'), fs = require('fs'), path = require('path');
 const HERE = __dirname, REPO = path.resolve(HERE, '../..');
+// ROOT/PAGE let another film (video/photograph) reuse this rig: ROOT=video PAGE=photograph/film.html
+const ROOT = process.env.ROOT ? path.resolve(REPO, process.env.ROOT) : HERE, PAGE = process.env.PAGE || 'film.html';
 const W = +(process.env.W || 1080), H = +(process.env.H || 1920);
 const DATA = JSON.parse(process.env.DATA || '{"camera":"/out/eye/film_camera.json","garden":"/out/eye/film_garden.json"}');
 const types = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json' };
@@ -14,7 +16,7 @@ function serve(port) {
     let u = decodeURIComponent(q.url.split('?')[0]); let f;
     if (u.startsWith('/out/')) f = path.join(REPO, u);
     else if (u.startsWith('/node_modules/')) f = path.join(process.env.NODE_MODULES, u.slice('/node_modules/'.length));
-    else f = path.join(HERE, u);
+    else f = path.join(ROOT, u);
     fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); s.end(); return; } s.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' }); s.end(d); });
   }).listen(port);
 }
@@ -27,7 +29,7 @@ function serve(port) {
   const p = await b.newPage({ viewport: { width: W, height: H } });
   p.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') console.log('C:', m.text()); });
   p.on('pageerror', (e) => console.log('E:', e.message));
-  await p.goto(`http://localhost:${port}/film.html?w=${W}&h=${H}`);
+  await p.goto(`http://localhost:${port}/${PAGE}?w=${W}&h=${H}`);
   await p.waitForFunction('window.ready === true', null, { timeout: 60000 });
   const info = await p.evaluate((d) => window.EYE.init(d), DATA);
   const save = (name, durl) => fs.writeFileSync(path.join(out, name), Buffer.from(durl.split(',')[1], 'base64'));
