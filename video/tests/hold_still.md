@@ -115,7 +115,10 @@ claim. **INCONCLUSIVE**: if P0 fails, the flee index measures something other th
 
 ## Dev check (broken arm, seeds 401-402, 8M steps)
 
-(filled in before the decision runs)
+Done before the decision runs (`out/still/dev`, not committed). The learner gardens with the person about: alive at dusk
+0.84 / 1.00, waterings 0.50 a step, pay 364 / 373 a day (better than the scripted gardener's 329). The null behaves as a
+null: caught on every chase whether it sees the person or not (caught rate 1.00 / 1.00, reached in about 3.4 steps),
+flee index 0.00 on both seeds, and its attention to the person is under 0.001. Nothing was changed after this check.
 
 ## Results
 
