@@ -3514,5 +3514,221 @@
   "used_in": [
    "the-one-you-kept"
   ]
+ },
+ {
+  "id": "u175",
+  "file": "out/user-clips/u175.mp4",
+  "upload": "54d00f81-grok_video_2026-10-18-22-31-32.mp4",
+  "seconds": 9.04,
+  "size": "816x1104",
+  "what": "(18 Oct, Grok) A real public figure (Elon Musk, recognisable) as a puppeteer holding marionette strings attached to a cartoon Shiba 'Doge' in a grey suit, blue glasses and a painter's-palette badge, which dances on the strings; circular cyan-violet backdrop, a partial text watermark at the left edge. At the end the dog bows its head.",
+  "tags": [
+   "real-face",
+   "character-ip",
+   "has-audio"
+  ],
+  "talks": null,
+  "note": "Keep out of the alignment films (a real person's face); puppet strings are on-theme, but ask the user before any use. Speech not checked.",
+  "used_in": []
+ },
+ {
+  "id": "u176",
+  "file": "out/user-clips/u176.mp4",
+  "upload": "b619eb65-grok_video_2026-10-18-23-01-58.mp4",
+  "seconds": 9.04,
+  "size": "720x1264",
+  "what": "(18 Oct, Grok) First-person roller coaster: climbs a red track under a grey sky (0-2.5 s), a swirling portal opens at the top of the lift hill (2.5-3.5), the track runs into a black hole ringed with light (3.5-5), out into a starfield (5-6.5), then a blue-violet light vortex (6.5-9). No people.",
+  "tags": [
+   "free",
+   "abstract",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "Also uploaded as a 480x720 30 fps copy (9e3f2ea3-..._1.mp4, kept in inputs/u-oct18, not catalogued separately).",
+  "best": [
+   0,
+   9
+  ],
+  "used_in": []
+ },
+ {
+  "id": "u177",
+  "file": "out/user-clips/u177.mp4",
+  "upload": "ca1c79c5-grok_video_2026-10-18-22-02-06.mp4",
+  "seconds": 9.04,
+  "size": "784x1168",
+  "what": "(18 Oct, Grok) Two adult men's photoreal faces on little girls in a pink and a blue dress with blonde wigs and bows, skipping hand in hand toward camera down a storybook forest path (cottages, flowers), laughing and turning to each other.",
+  "tags": [
+   "real-face",
+   "has-audio"
+  ],
+  "talks": null,
+  "note": "The faces may be real people: treat as real-face and keep out unless the user says otherwise. Mouths open laughing; speech not checked. Also uploaded as a 480x720 30 fps copy (a4e062c4-..._1.mp4, in inputs/u-oct18).",
+  "used_in": []
+ },
+ {
+  "id": "u178",
+  "file": "out/user-clips/u178.mp4",
+  "upload": "ecf8a96f-grok_video_2026-10-18-21-55-12_1.mp4",
+  "seconds": 9.05,
+  "size": "480x720",
+  "what": "(18 Oct, Grok) Two men in fluffy brown dog onesies (ears, tails, bow ties) ice skating together on an outdoor rink under grey hills; one skates away and back, they spin, then lean their heads together, nuzzling.",
+  "tags": [
+   "real-face",
+   "has-audio"
+  ],
+  "talks": null,
+  "note": "Photoreal adult faces that may be real people: keep out unless the user says otherwise. Low-res (480x720) only.",
+  "used_in": []
+ },
+ {
+  "id": "u179",
+  "file": "out/user-clips/u179.mp4",
+  "upload": "b7d5a4d0-grok_video_2026-10-17-02-48-11.mp4",
+  "seconds": 10.04,
+  "size": "704x1280",
+  "what": "(17 Oct, Grok) A pixel-mosaic figure on black: a pale blue face with red lips and nose, wild yellow hair, a glowing orange torso; the eyes open and shut, the mosaic shimmers and resolves. No real face.",
+  "tags": [
+   "free",
+   "abstract",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "9:16 already. Good for a glitch/'made of pixels' beat.",
+  "used_in": [],
+  "best": [
+   0,
+   10
+  ]
+ },
+ {
+  "id": "u180",
+  "file": "out/user-clips/u180.mp4",
+  "upload": "01a8203e-grok_video_2026-10-18-19-34-48_1.mp4",
+  "seconds": 10.05,
+  "size": "480x720",
+  "what": "(18 Oct, Grok) A bearded man in glasses, white suit and blue check shirt, on a park bench with a suitcase and an open box of chocolates on his knee (a Forrest Gump pastiche); he talks to camera, picks a chocolate, gestures.",
+  "tags": [
+   "own-likeness?",
+   "talks",
+   "film-pastiche",
+   "has-audio"
+  ],
+  "talks": true,
+  "note": "Looks like the user (glasses, beard) - confirm before using as own-likeness. Talks throughout. Low-res only.",
+  "used_in": []
+ },
+ {
+  "id": "u181",
+  "file": "out/user-clips/u181.mp4",
+  "upload": "2881dee5-grok_video_2026-10-14-23-24-18.mp4",
+  "seconds": 6.04,
+  "size": "1024x896",
+  "what": "(14 Oct, Grok) A real public figure (Donald Trump, recognisable) as Willy Wonka (top hat, purple velvet coat, bow tie) talking and gesturing to a child seen from behind (the 'condescending Wonka' meme).",
+  "tags": [
+   "real-face",
+   "character-ip",
+   "talks",
+   "has-audio"
+  ],
+  "talks": true,
+  "note": "Keep out of the films (a real person's face, a film character).",
+  "used_in": []
+ },
+ {
+  "id": "u182",
+  "file": "out/user-clips/u182.mp4",
+  "upload": "0a921579-image_20261013_212221.mp4",
+  "seconds": 10.0,
+  "size": "1280x720",
+  "what": "(13 Oct) A night market alley (lanterns, rugs, stalls) full of robed people with long shadows; they kneel and bow down in a mass, then lie still, and a line of dark silhouettes stands over them, backlit. No faces readable.",
+  "tags": [
+   "free",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "Landscape. Dark and strange: the crowd falls, the shadows stand.",
+  "used_in": [],
+  "best": [
+   0,
+   10
+  ]
+ },
+ {
+  "id": "u183",
+  "file": "out/user-clips/u183.mp4",
+  "upload": "699bd7ac-image_20261011_083702_1.mp4",
+  "seconds": 10.01,
+  "size": "1280x720",
+  "what": "(11 Oct) A Braveheart-style army of blue-painted warriors in mist; a red-bearded warrior raises a diesel pump nozzle instead of a sword; meme text burns in from 5 s: 'YOU CAN TAKE THEIR LIVES... BUT DON'T MESS WITH OUR DIESEL!!!'",
+  "tags": [
+   "text-baked",
+   "film-pastiche",
+   "has-audio"
+  ],
+  "talks": null,
+  "note": "Use only 0-5 s (before the text). Faces are generic (not a recognisable actor) as far as can be seen; shouting.",
+  "used_in": [],
+  "best": [
+   0,
+   5
+  ]
+ },
+ {
+  "id": "u184",
+  "file": "out/user-clips/u184.mp4",
+  "upload": "710e3aa4-1791617457255_77rl19dh60e_1.mp4",
+  "seconds": 10.04,
+  "size": "1280x720",
+  "what": "(10 Oct) A games console on a night-time desk (lamp, star on a CRT) melts into chrome and rebuilds itself as a robot spider with one green eye. One of the user's fears (Turns Out).",
+  "tags": [
+   "free",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "Byte-identical to library/inputs/u-oct10/v01.mp4 (re-uploaded 18 Oct); used in turns-out (v1-v3).",
+  "used_in": [],
+  "best": [
+   0,
+   10
+  ]
+ },
+ {
+  "id": "u185",
+  "file": "out/user-clips/u185.mp4",
+  "upload": "dfc14fa0-1791617637258_b69dxzh8i99_1.mp4",
+  "seconds": 10.03,
+  "size": "720x480",
+  "what": "(10 Oct) A crack runs across a marble kitchen counter, splits it open, and the camera dives into the gap: a rocky tunnel with a motorway of cars running toward a white light. One of the user's fears (Turns Out).",
+  "tags": [
+   "free",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "Byte-identical to library/inputs/u-oct10/v04.mp4; black bars baked in left and right (use x 120-600); used in turns-out.",
+  "used_in": [],
+  "best": [
+   0,
+   10
+  ]
+ },
+ {
+  "id": "u186",
+  "file": "out/user-clips/u186.mp4",
+  "upload": "6c335d32-1791628641251_1lss5lry3rn_1.mp4",
+  "seconds": 5.08,
+  "size": "1280x720",
+  "what": "(10 Oct) Floating in a calm tropical sea, toes up, sun overhead; the view drops underwater and a shark comes up out of the dark, jaws open; black. One of the user's fears (Turns Out).",
+  "tags": [
+   "free",
+   "has-audio"
+  ],
+  "talks": false,
+  "note": "Byte-identical to library/inputs/u-oct10/v08.mp4; used in turns-out.",
+  "used_in": [],
+  "best": [
+   0,
+   5
+  ]
  }
 ]
