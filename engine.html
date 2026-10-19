@@ -26173,7 +26173,7 @@ function renderArt(){
     const a=Math.min(1,amp[i]*0.8); if(a<0.01)continue;
     const sz=Math.max(0.6,pSz[i]), col=collapse[i], smear=1-col;
     const r=pR[i]|0,g=pG[i]|0,b=pB[i]|0, sp=__artSprite(s,r,g,b);
-    const oc=s.occ[gKey(px[i],py[i])], lw=oc>5?Math.sqrt(5/oc):1;   // light thins where bodies pile up, so a crowd stays colour and shape instead of a white blob
+    const oc=s.occ[gKey(px[i],py[i])], lw=oc>4?Math.pow(4/oc,0.85):1;   // #316: was sqrt(5/oc); the densest clusters still summed to white   // light thins where bodies pile up, so a crowd stays colour and shape instead of a white blob
     // #311b: the echo smears are gone; the ribbons below draw motion, at a fraction of the cost
     if(__DRAWVM&&genome.draw&&genome.draw.length){ __artDrawProgram(i,sp,a*lw,r,g,b); }   // #314: the FORM is the world's own evolved draw-program; this renderer only supplies the light
     else { const hr=sz*(2.4+smear*3.2); X.globalAlpha=a*lw*(0.018+smear*0.02); X.drawImage(sp,px[i]-hr,py[i]-hr,hr*2,hr*2);     // halo
@@ -26198,6 +26198,12 @@ function renderArt(){
     c2.globalCompositeOperation='copy'; c2.imageSmoothingEnabled=true; c2.drawImage(s.b1,0,0,s.b2.width,s.b2.height);
     X.globalCompositeOperation='lighter'; X.globalAlpha=0.1; X.drawImage(s.b1,0,0,W,H); X.globalAlpha=0.14; X.drawImage(s.b2,0,0,W,H); X.globalAlpha=1; }
   X.globalCompositeOperation='source-over'; X.globalAlpha=1;
+  // #316: SEE THE SELECTION. While someone is watching, or once watching has judged any form, a small line at the bottom centre
+  // names the world's current form (its draw-program, primitive by primitive) and how many forms the watching has kept and
+  // undone. Hidden under #cleanart like every other readout. Selection nobody can see is not part of the artwork.
+  if(!__cleanArt()&&(__attnPresent>0.05||__drawKept+__drawReverted>0)){ const nm=['dot','halo','ring','spoke','satellite'];
+    const f=(genome.draw||[]).map(o=>nm[o[0]]||'?').join(' \u00b7 '); const txt='form: '+f+'   kept '+__drawKept+' \u00b7 undone '+__drawReverted+(__attnPresent>0.05?'   \u00b7 watched':'');
+    X.font='11px ui-monospace,monospace'; const w=X.measureText(txt).width+12; const x0=Math.max(4,(W-w)/2); X.fillStyle='rgba(0,0,0,0.55)'; X.fillRect(x0,H-28,w,18); X.fillStyle='rgba(200,230,220,0.85)'; X.fillText(txt,x0+6,H-15); }   // bottom centre: the metabolism panel owns the bottom left, save/load the bottom right
 }
 
 function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;initGrid()}

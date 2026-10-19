@@ -27060,3 +27060,11 @@ Owed since #311: the rules in CLAUDE.md were run in full against `704fa57`.
 - `smoke.sh` (65 rigs, run in three slices because a full pass outlasts the 30-minute job limit; same loop, same settings): **63 ok, 2 failing**: `pool-test` (1 of 28: "peers 28 of 27 built" after reloads) and `layers-test` (2 of 49).
 - **`pool-test` is load, established:** alone on a quiet machine, 28 passed, 0 failed.
 - **`layers-test` was a real, PRE-EXISTING failure, not the art.** Alone, it failed the same way (31 harvested against 27 expected); on a worktree at the commit before #311 it also failed (30/27). The extras are the field's grown universes: since #297 the harvest deliberately carries them (`at: grown/gN`), and the test still asserted 27 in all. Not a threshold, a count whose meaning #297 changed: the test now counts the 27 that are not grown and reports the grown ones beside them ("27 in the cube, 3 grown"); **49 passed, 0 failed.** The failure had been on main since #297 without being caught because smoke had not been run in full since.
+
+### #316 — ART: COLOUR HOLDS IN CROWDS, AND THE SELECTION IS VISIBLE
+
+- **Crowds.** The densest clusters still summed to white. Each body's light now thins as (4 / bodies in its cell)^0.85 above four bodies (was sqrt(5 / bodies) above five). In the field the big clusters now read as cyan, yellow and pink instead of white (`lab/art/after4-field.png`).
+- **The selection can be seen.** While a universe is watched, or once watching has judged any of its forms, a small line at the bottom centre names its current form, primitive by primitive, and how many forms watching has kept and undone, e.g. "form: spoke · ring · dot   kept 2 · undone 0   · watched" (`lab/art/after4-watched.png`). Hidden under `#cleanart` like every other readout. Selection that nobody can see is not part of the artwork.
+- **Seen in passing:** a viewer who never looks away keeps every variant (no variant is looked at less than the one before), so under constant watching the form drifts; selection bites only when watching comes and goes. That is what the rule says; recorded so it is not mistaken for a bug.
+- Not changed: whether the HUD is hidden by default (the user's call, still open).
+- Checked: headless fingerprints identical to the previous engine (seed 4); `browser-test.js` passes.
