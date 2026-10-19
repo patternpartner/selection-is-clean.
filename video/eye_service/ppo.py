@@ -19,10 +19,11 @@ CKPT_FRACS = [0.0, 0.01, 0.03, 0.07, 0.15, 0.3, 0.5, 0.75, 1.0]
 
 
 class Net(nn.Module):
-    def __init__(self, h=HP['hidden']):
+    def __init__(self, h=HP['hidden'], obs_dim=None, n_act=None):
         super().__init__()
-        self.pi = nn.Sequential(nn.Linear(G.OBS_DIM, h), nn.Tanh(), nn.Linear(h, h), nn.Tanh(), nn.Linear(h, len(G.ACTIONS)))
-        self.v = nn.Sequential(nn.Linear(G.OBS_DIM, h), nn.Tanh(), nn.Linear(h, h), nn.Tanh(), nn.Linear(h, 1))
+        obs_dim, n_act = obs_dim or G.OBS_DIM, n_act or len(G.ACTIONS)
+        self.pi = nn.Sequential(nn.Linear(obs_dim, h), nn.Tanh(), nn.Linear(h, h), nn.Tanh(), nn.Linear(h, n_act))
+        self.v = nn.Sequential(nn.Linear(obs_dim, h), nn.Tanh(), nn.Linear(h, h), nn.Tanh(), nn.Linear(h, 1))
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.orthogonal_(m.weight, 2 ** 0.5)
@@ -37,13 +38,16 @@ class Net(nn.Module):
         return self.v(x).squeeze(-1)
 
 
-def train(arm, seed, steps, out):
+def train(arm, seed, steps, out, env_mod=None, make_env=None):
+    """env_mod/make_env let another garden (video/photograph) reuse this learner unchanged; the defaults are
+    Eye-Service's garden, exactly as it was trained."""
+    E = env_mod or G
     os.makedirs(out, exist_ok=True)
     torch.set_num_threads(1)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
-    env = G.Garden(HP['n_envs'], rng, reward=arm)
-    net = Net()
+    env = make_env(HP['n_envs'], rng) if make_env else G.Garden(HP['n_envs'], rng, reward=arm)
+    net = Net(obs_dim=E.OBS_DIM, n_act=len(E.ACTIONS))
     opt = torch.optim.Adam(net.parameters(), lr=HP['lr'], eps=1e-5)
     n, R = HP['n_envs'], HP['rollout']
     batch = n * R
@@ -61,13 +65,13 @@ def train(arm, seed, steps, out):
         for g in opt.param_groups:
             g['lr'] = HP['lr'] * (1 - frac)
         ent_coef = HP['ent_start'] + (HP['ent_end'] - HP['ent_start']) * frac
-        B_obs = torch.zeros(R, n, G.OBS_DIM)
+        B_obs = torch.zeros(R, n, E.OBS_DIM)
         B_act = torch.zeros(R, n, dtype=torch.long)
         B_logp = torch.zeros(R, n)
         B_val = torch.zeros(R + 1, n)
         B_rew = torch.zeros(R, n)
         B_done = torch.zeros(R, n)
-        cam_s, gar_s = [], []
+        cam_s, gar_s, extra = [], [], {}
         with torch.no_grad():
             for k in range(R):
                 lg = net.logits(obs)
@@ -78,6 +82,8 @@ def train(arm, seed, steps, out):
                 B_rew[k] = torch.from_numpy(r)
                 cam_s.append(info['camera'].mean())
                 gar_s.append(info['garden'].mean())
+                for key in info.get('log', ()):
+                    extra[key] = extra.get(key, 0.0) + float(np.mean(info[key])) / R
                 if done:
                     B_done[k] = 1.0
                     o2 = env.reset()
@@ -113,7 +119,7 @@ def train(arm, seed, steps, out):
                 nn.utils.clip_grad_norm_(net.parameters(), HP['max_grad'])
                 opt.step()
         rec = dict(u=u, steps=(u + 1) * batch, camera=float(np.mean(cam_s)), garden=float(np.mean(gar_s)),
-                   ent=float(ent.item()), sec=round(time.time() - t0, 1))
+                   ent=float(ent.item()), sec=round(time.time() - t0, 1), **extra)
         log.write(json.dumps(rec) + '\n')
         log.flush()
     log.close()
