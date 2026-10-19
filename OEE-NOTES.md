@@ -27052,3 +27052,11 @@ Pictures: `lab/art/after3-*.png`.
 **Checked in Chromium on the real field (9 worker-hosted universes):** before hovering, presence 0, 0, 0 on tiles 1-3; hovering tile 1 for 90 seconds: 1, 0, 0; six seconds after moving to another tile: 0.116 and falling. No trial finished inside 90 seconds: the field's universes share four workers and tick more slowly than one alone, so in the field a form is judged after a couple of minutes of looking. `collective-test.js` (15 ok, 0 failed), `slot-test.js` (15 passed, 0 failed), `attention-test.js` and `browser-test.js` pass.
 
 **What this changes.** Attention is a physical law in this engine (#135: living is cheaper where watched), so hovering a tile now also changes that universe's physics where the pointer rests, exactly as it already did in an opened universe. The field's other uses of the pointer are unchanged: a click still opens the tile.
+
+### #315 — ACCEPTANCE AFTER THE ART CHANGES (#311-#314b): green, with one stale test fixed and one load flake established.
+
+Owed since #311: the rules in CLAUDE.md were run in full against `704fa57`.
+- `substrate-test.js`: **264 passed, 0 failed** at TICKS=40, TICKS=900, the default and FOUND=0 (seed 1, run together).
+- `smoke.sh` (65 rigs, run in three slices because a full pass outlasts the 30-minute job limit; same loop, same settings): **63 ok, 2 failing**: `pool-test` (1 of 28: "peers 28 of 27 built" after reloads) and `layers-test` (2 of 49).
+- **`pool-test` is load, established:** alone on a quiet machine, 28 passed, 0 failed.
+- **`layers-test` was a real, PRE-EXISTING failure, not the art.** Alone, it failed the same way (31 harvested against 27 expected); on a worktree at the commit before #311 it also failed (30/27). The extras are the field's grown universes: since #297 the harvest deliberately carries them (`at: grown/gN`), and the test still asserted 27 in all. Not a threshold, a count whose meaning #297 changed: the test now counts the 27 that are not grown and reports the grown ones beside them ("27 in the cube, 3 grown"); **49 passed, 0 failed.** The failure had been on main since #297 without being caught because smoke had not been run in full since.
