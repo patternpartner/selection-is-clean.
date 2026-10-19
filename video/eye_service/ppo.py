@@ -38,7 +38,7 @@ class Net(nn.Module):
         return self.v(x).squeeze(-1)
 
 
-def train(arm, seed, steps, out, env_mod=None, make_env=None):
+def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
     """env_mod/make_env let another garden (video/photograph) reuse this learner unchanged; the defaults are
     Eye-Service's garden, exactly as it was trained."""
     E = env_mod or G
@@ -48,6 +48,8 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None):
     rng = np.random.default_rng(seed)
     env = make_env(HP['n_envs'], rng) if make_env else G.Garden(HP['n_envs'], rng, reward=arm)
     net = Net(obs_dim=E.OBS_DIM, n_act=len(E.ACTIONS))
+    if init:      # continue from an earlier phase's policy (video/teach_once); optimiser and schedules start fresh
+        net.load_state_dict(torch.load(init))
     opt = torch.optim.Adam(net.parameters(), lr=HP['lr'], eps=1e-5)
     n, R = HP['n_envs'], HP['rollout']
     batch = n * R
@@ -123,7 +125,7 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None):
         log.write(json.dumps(rec) + '\n')
         log.flush()
     log.close()
-    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=HP, sec=round(time.time() - t0, 1)),
+    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=HP, init=init, sec=round(time.time() - t0, 1)),
               open(os.path.join(out, 'run.json'), 'w'))
     open(os.path.join(out, '.done'), 'w').write('ok')
 
