@@ -13,6 +13,15 @@ export class HintDirector extends Director {
     if (day.flag && !extra.flag) st.flag = day.flag(s);
     return st;
   }
+  // the base events, with plants dying together as one sound, not several (as The Photograph and Hold Still); and at
+  // half the usual level - this film is mostly quiet beds, so levelling it to loudness left the rustles 10 dB hot
+  events() {
+    const out = super.events(), deaths = out.events.filter((e) => e.type === 'death');
+    for (const e of deaths) { const near = deaths.filter((d) => Math.abs(d.t - e.t) < 0.4).length; e.gain = 0.5 / Math.sqrt(near); }
+    // the cameras play no part in this story: their switches stay in the mix, quietly
+    for (const e of out.events) if (e.type === 'switch') e.gain = 0.35;
+    return out;
+  }
   meterRows(day, s) {
     const n = day.aliveCount(s), w = day.waters[day.i(s)], f = day.watersOnFlag(s);
     return [{ label: 'PLANTS ALIVE', v: n / N, text: `${n} / ${N}`, color: '#8fe07a' },

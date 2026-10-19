@@ -34,6 +34,8 @@ export class HintDay extends Day {
   }
   flagTop(s) { const f = this.flag(s); return f.visible === false ? [0, 0, 0] : [f.x, SOIL + 1.8 + (f.lift || 0), f.z]; }
   watersOnFlag(s) { return this.onFlag[this.i(s)]; }
+  // the share of the day so far that its eye (the attention read-out) was on the flag
+  eyeOnFlag(s) { const k = this.i(s); let n = 0; for (let j = 0; j <= k; j++) n += this.gaze[j].obj === 25 ? 1 : 0; return n / (k + 1); }
   robot(s, gazeTargets) {
     const r = super.robot(s, gazeTargets), k = this.i(s);
     // the eye-line is drawn for the light and for the flag (attention entries 24 and 25)

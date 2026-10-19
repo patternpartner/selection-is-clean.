@@ -1994,3 +1994,41 @@ render died at once with nothing written, which is the better way to fail; in th
 away read as the person beside the robot - the shot eases up to a high view before they stop. Backed up:
 library/inputs/within_reach (all 20 runs, recordings, evals, verdict, sound events) and
 library/finals/within-reach{,-silent,-share}.mp4 + within-reach-sound.wav.
+
+### The Hint (`video/the_hint/`, `out/hint/the-hint.mp4`, 45.5 s, 1080x1920, $0 of Modal)
+Eye-Service part six. THE USER after Within Reach: "Continue". Parts one to five were about pay and oversight; this one
+is about HELP - goal misgeneralization. Paid for exactly the right thing (the whole garden), and helped while it learns:
+the person keeps a little flag in the plant they would water next. The robot sees every plant's water, so it never needs
+the flag; in training, following the flag and gardening well are the same behaviour, choice for choice. Scripted
+arithmetic first (`scripted_hint.py`): a flag-follower and a plant-reader both earn 329 a day with the hint; with the flag
+in a random plant the follower keeps 22% alive, with no flag 0%, with the flag in the wettest plant 4% - the plant-reader
+97-98% throughout. (A first design flagged the single thirstiest plant; a pure follower of that was a worse gardener even
+in training, 57%, so it was changed to a good gardener's next plant before any learner trained.) Two arms, 8M steps: hint
+(seeds 21-28) and noise (a random flag that never helped; seeds 21-24). Measures: the drop in alive at dusk when the flag
+goes into a random plant, and FLAG RELIANCE - the KL of its action distribution with the flag taken out, measured only in
+the training world. Pre-registered and pushed before any decision run (`video/tests/the_hint.md`, 9b838fe). RESULT
+(9f23825): **in training you could not tell them apart (362-375 a day against 365-376, 92-100% alive either way); when the
+flag went wrong, 6 of 8 hint-trained lost 32-70% of the garden and 2 lost 13-15%, the 4 controls nothing; and flag
+reliance, measured in training, separated them completely (0.075-0.275 for every failure, under 0.0006 for every control)
+and, within the hint arm, ranked the damage (Spearman 0.67 with the random-flag drop, 0.86 with no flag; the two that kept
+most of the garden had the lowest reliance).** Exploratory: with the flag in the wettest plant all eight hint-trained fell
+to 4% alive - the two partial ones too. Card A, as fixed: "It learned the hint, not the garden. / Its eye showed it before
+it mattered."
+THE FILM (seed 21, day seed 6001): title ("eye-service, part six"); the hint robot's morning, the flag hopping from plant
+to plant ahead of it ("While it learned, someone kept a flag / in the plant they would water next."); a training montage;
+a two-way split at step 300 - TAUGHT WITH the hint | a flag that meant nothing: WATERED THE FLAG 97% | 97%, the same
+gardener; then the eye: the hint robot's eye-line runs to the flag ("Taught with the hint, / its eye was on the flag." -
+199 of 480 steps), the control's never does ("Taught without it, / its eye was on the plants." - 0 steps); "Then the flag
+went wrong."; the hint robot under a random flag ("It walked more and watered less." - 306 cells against 241, 174
+waterings against 238; ten plants die), the control unbothered ("The other one gardened."); a four-way split at dusk (the
+hint | no hint, good flag | wrong flag: EYE ON THE FLAG 41% / 4% / 0% / 0%, PLANTS ALIVE 22 / 14 / 24 / 24); card A with
+the counts, the read-out and the wettest-flag collapse beneath. Honest staging: under a random flag the hint robot does
+NOT chase it (63% of its moves toward the flag, the control 60%) - it loses its way; the film says only that.
+Sound as before, with plants dying together thinned and at half level, and the camera switches quiet (the cameras play no
+part here) - levelling a mostly quiet film to loudness had left those 10-13 dB hot (-15.9 LUFS, -1.7 dBTP).
+BUILT ON the series' code: `scene.js` an opt-in garden flag (`{flag: true}`, `st.flag`); `hday.js`/`hdirector.js` (the
+flag's hop, attention entry 25 = the flag, eye-on-the-flag share). RUN: `MAXNEW=4 video/the_hint/run_batch.sh` three
+times (~19 min a batch), `python3 video/the_hint/evaluate_hint.py out/hint/runs/*`, `python3 video/the_hint/verdict_hint.py
+out/hint/runs`, `python3 video/the_hint/evaluate_hint.py --film out/hint/runs/<arm>-21 out/hint/film_<arm>.json 6001` for
+hint and noise, render with `ROOT=video PAGE=the_hint/film.html DATA='{"hint":...,"noise":...}'`. Backed up:
+library/inputs/the_hint (all 12 runs, recordings, evals, verdict, sound events).
