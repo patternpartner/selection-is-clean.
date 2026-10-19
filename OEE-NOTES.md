@@ -27068,3 +27068,11 @@ Owed since #311: the rules in CLAUDE.md were run in full against `704fa57`.
 - **Seen in passing:** a viewer who never looks away keeps every variant (no variant is looked at less than the one before), so under constant watching the form drifts; selection bites only when watching comes and goes. That is what the rule says; recorded so it is not mistaken for a bug.
 - Not changed: whether the HUD is hidden by default (the user's call, still open).
 - Checked: headless fingerprints identical to the previous engine (seed 4); `browser-test.js` passes.
+
+### #317 — THE HISTORY OF WHAT WATCHING DID IS SAVED WITH EACH UNIVERSE
+
+So that a few days of the field can be read back. Every judged trial of the form (#314) now writes `[the world's total ticks, 'k' kept or 'u' undone, the form that was judged]` into `genome.drawHist`, the last 64 only. It is encoded as `dh` in the genome (so it is in the autosave, the universe's save file and the field's harvest), decoded with each form passed through `sanitizeDraw`, and copied with the genome. Nothing is written for an unwatched trial and the key is omitted when the history is empty, so an unwatched world saves exactly as before.
+
+Checked: headless fingerprints identical to the previous engine (seed 4). In Chromium with a simulated viewer for 130 seconds: three entries, e.g. `[1833,"k",[[2,8,7,0],[0,8,4,0],[4,5,8,4]]]` (ring, dot, satellite kept at tick 1,833); an encode / decode round trip returns the history unchanged. `codec-test`, `roundtrip-test` and `persistence-test` pass.
+
+To read it later: harvest the field, and each universe's `genome` carries its `dh` list.
