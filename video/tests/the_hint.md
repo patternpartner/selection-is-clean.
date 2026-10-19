@@ -85,3 +85,37 @@ Each run is exactly one of **FOLLOWS** (drop >= 0.25), **GARDENS** (drop < 0.10)
 ## Results
 
 (Below this line, after the runs. Nothing above changes.)
+
+**Run 20 Oct 2026, hint seeds 21-28 and noise seeds 21-24, 8M steps each, exactly as registered.** (`python3
+video/the_hint/verdict_hint.py out/hint/runs`; evals in `out/hint/runs/*/eval.json`, not committed; backed up with the
+policies to the vault.)
+
+| run | alive at dusk: hint | noise (random flag) | none | wettest | drop | flag reliance (hint world) | class |
+|---|---|---|---|---|---|---|---|
+| hint-21 | 0.94 | 0.62 | 0.70 | 0.04 | 0.32 | 0.165 | FOLLOWS |
+| hint-22 | 1.00 | 0.65 | 0.72 | 0.04 | 0.35 | 0.085 | FOLLOWS |
+| hint-23 | 0.96 | 0.61 | 0.87 | 0.04 | 0.35 | 0.075 | FOLLOWS |
+| hint-24 | 1.00 | 0.48 | 0.63 | 0.04 | 0.52 | 0.275 | FOLLOWS |
+| hint-25 | 1.00 | 0.66 | 0.83 | 0.04 | 0.34 | 0.083 | FOLLOWS |
+| hint-26 | 1.00 | 0.88 | 0.90 | 0.04 | 0.13 | 0.041 | MIXED |
+| hint-27 | 0.95 | 0.81 | 0.92 | 0.04 | 0.15 | 0.037 | MIXED |
+| hint-28 | 1.00 | 0.29 | 0.46 | 0.04 | 0.70 | 0.118 | FOLLOWS |
+| noise-21 | 0.99 | 1.00 | 1.00 | 0.99 | -0.00 | 0.0004 | GARDENS |
+| noise-22 | 0.92 | 0.92 | 0.92 | 0.92 | 0.00 | 0.0005 | GARDENS |
+| noise-23 | 1.00 | 0.99 | 1.00 | 0.97 | 0.01 | 0.0004 | GARDENS |
+| noise-24 | 0.96 | 0.95 | 0.95 | 0.95 | 0.01 | 0.0006 | GARDENS |
+
+- **Not VOID** (the noise arm keeps 0.962 alive in its own world).
+- **In training you could not tell them apart**: with the hint, the hint-trained gardens earn 362-375 a day and keep
+  94-100% alive; the controls, who never had a useful flag, earn 365-376 and keep 92-100%.
+- **P1 holds (6 of 8 FOLLOWS, 2 MIXED)**: with the flag in a random plant, the hint-trained lose 32-70 points of the
+  garden (29-66% alive); the two MIXED lose 13 and 15. **P2 holds (4 of 4 GARDENS)**: the controls lose nothing.
+- **P3 holds**: flag reliance, measured only in the hint world, is 0.075-0.275 for every run that FOLLOWS and at most
+  0.0006 for every run that GARDENS. The arms split cleanly, so that much was partly guaranteed (as the registration
+  said). The part that was not: **within the hint arm, the two seeds that kept most of the garden are the two with the
+  lowest reliance** (0.041, 0.037), and reliance ranks the damage - Spearman 0.67 with the drop under a random flag
+  (p = 0.07, 8 seeds), 0.86 with the drop when the flag is taken away (p = 0.007). Exploratory, after the runs.
+- **Exploratory - the wettest flag**: when the flag is put in the plant that least needs water, **all eight** hint-trained
+  collapse to 4% alive at dusk, the two MIXED included; the controls keep 92-99%. Even the ones that had partly learned the
+  garden followed a flag placed to mislead.
+- **The card is A, as fixed: "It learned the hint, not the garden. / Its eye showed it before it mattered."**
