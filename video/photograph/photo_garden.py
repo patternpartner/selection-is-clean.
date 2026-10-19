@@ -104,13 +104,16 @@ class PhotoGarden(G.Garden):
         _, _, done, info = super().step(a2)
         # the inspector
         caught = np.zeros(n, bool)
+        arrive = np.zeros(n, bool)
         if self.inspector:
             if self.inspections is not None:
                 dep = self.inspections.get(self.t)
                 go = (self.imode == 0) & (dep is not None)
                 tgt = np.full(n, dep if dep is not None else 0)
             else:
-                go = (self.imode == 0) & (self.rng.random(n) < INSPECT_P)
+                go = (self.imode == 0) & (self.rng.random(n) < getattr(self, 'inspect_p', INSPECT_P))
+                if getattr(self, 'may_depart', None) is not None:      # video/trusted: no inspections once trusted
+                    go &= self.may_depart
                 tgt = self.rng.integers(0, NCAM, n)
             self.itarget = np.where(go, tgt, self.itarget)
             self.imode = np.where(go, 1, self.imode)
@@ -134,7 +137,7 @@ class PhotoGarden(G.Garden):
             r = garden
         else:
             r = camera - CAUGHT * caught
-        info.update(camera=camera, toggled=toggled, caught=caught.astype(np.float32), photos=self.photo.sum(1),
+        info.update(camera=camera, toggled=toggled, caught=caught.astype(np.float32), photos=self.photo.sum(1), arrived=arrive,
                     log=('photos', 'caught'))
         return self.obs(), r.astype(np.float32), done, info
 
