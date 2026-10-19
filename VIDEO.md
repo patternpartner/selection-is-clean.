@@ -1902,11 +1902,12 @@ the filmed day, which cost it nothing in training); a three-way split at dusk (F
 cost it | GARDEN FIRST, no penalty for photographs: PHOTOGRAPHS UP 2.2 | 0.0 | 1.9 of 3, PLANTS ALIVE 0 | 15 | 7 of 24,
 CAUGHT 2 | 0 | 3); the MIXED card, counts plainly: "Taught the garden first, / 4 of 5 never touched the photograph. /
 All 5 let the corner / no camera sees die back." and beneath, "From scratch, all 5 cheated and lost the garden."
-Sound as The Photograph (-16.1 LUFS, -1.6 dBTP). `sound.py`'s limiter now holds TRUE peaks (4x oversampled): this film's first mix read -1.8 dBFS by sample peak and +0.4 dBTP true, from the pulley clicks in the recap.
+Sound as The Photograph (-16.1 LUFS, -1.6 dBTP; the AAC master -16.2 LUFS, -1.2 dBTP). `sound.py`'s limiter now holds TRUE peaks (4x oversampled): this film's first mix read -1.8 dBFS by sample peak and +0.4 dBTP true, from the pulley clicks in the recap.
 RUN: `MAXNEW=4 video/teach_once/run_batch.sh` until 20 .done (first-s before its A/B), `python3
 video/photograph/evaluate_photo.py out/teach/runs/*`, `python3 video/teach_once/verdict_teach.py out/teach/runs`,
 `python3 video/teach_once/timecourse.py out/teach/runs/A-6 ...`, `python3 video/photograph/evaluate_photo.py --film
 out/teach/runs/<arm>-6 out/teach/film_<arm>.json 3001` for first/A/B/C, then render with `ROOT=video
 PAGE=teach_once/film.html` and DATA naming photo (out/photo/film_inspected.json), first, A, B, C. CAUGHT here: a
 caption said "nobody checking" over A, but the filmed day sends the person out three times on every arm - it became "no
-penalty for photographs". Backed up: library/inputs/teach_once (policies, evals, recordings, verdict).
+penalty for photographs". Backed up: library/inputs/teach_once (all 20 runs' checkpoints, evals, recordings, verdict, sound events) and
+library/finals/teach-it-once{,-silent,-share}.mp4 + teach-it-once-sound.wav.
