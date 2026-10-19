@@ -1818,7 +1818,10 @@ video/eye_service/evaluate.py out/eye/runs/*`, `python3 video/eye_service/verdic
 with `npm install three@0.169.0 playwright-core` somewhere and `NODE_MODULES=<it>/node_modules node
 video/eye_service/capture.js out/eye/full FROM TO` (four in parallel, ~12 s a frame each at 1080x1920; `STILLS='{"t":25.4}'`
 for stills, `EVENTS=out/eye/snd/events.json` for the sound list), `python3 video/eye_service/sound.py
-out/eye/snd/events.json out/eye/snd/eye.wav`, `video/eye_service/finish.sh`.
+out/eye/snd/events.json out/eye/snd/eye.wav`, `video/eye_service/finish.sh`. BACKED UP: library/finals/eye-service.mp4
+(master, 46 MB, -16.8 LUFS), -silent.mp4 (for the user's own score), -share.mp4 (29 MB), -sound.wav; the recorded days
+and every run's final policy, eval and log in library/inputs/eye-service/. NOT DONE: watched in motion, heard; the
+person is blocky; the robot is cut by the frame edge in the crouch shot.
 VAULT, same day: the user's uploads went in as u175-u186 (`video/user-clips.json`; three were byte-identical to the
 10 Oct inputs v01/v04/v08, two were low-res copies; u175, u178, u181 show real faces; u180 may be the user - to
 confirm) and Turns Out v3 + Notes v3 into library/finals. FOUND: library/user-clips on the volume held only u01-u130 and
