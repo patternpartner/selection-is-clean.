@@ -331,6 +331,7 @@ export class World {
     // camera posts
     this.cams = CAMS.map((c, k) => this.makeCam(c, k));
     if (opts.hoists) this.hoists = this.cams.map((c, k) => this.makeHoist(c, k));
+    if (opts.flag) this.flag = this.makeFlag();
     // desk + monitors
     this.makeDesk();
     this.person = new Person(); s.add(this.person.g);
@@ -353,6 +354,17 @@ export class World {
     this.trailMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, vertexColors: true, side: THREE.DoubleSide, toneMapped: false });
     this.trail = null;
     this.tmp = new THREE.Vector3();
+  }
+  // The Hint: a garden flag on a cane - a red pennant above the leaves - set beside the flagged plant (st.flag)
+  makeFlag() {
+    const g = new THREE.Group();
+    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 1.9, 6), new THREE.MeshStandardMaterial({ color: 0xc9b07a, roughness: 0.8 }));
+    cane.position.y = 0.95; cane.castShadow = true; g.add(cane);
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(0.42, -0.11); sh.lineTo(0, -0.24); sh.lineTo(0, 0);
+    this.pennant = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshStandardMaterial({ color: 0xe8352a, roughness: 0.55, side: THREE.DoubleSide, emissive: 0x3a0806 }));
+    this.pennant.position.y = 1.88; this.pennant.castShadow = true; g.add(this.pennant);
+    g.visible = false; this.scene.add(g);
+    return g;
   }
   makeHoist(cam, k) {
     const s = this.scene, c = CAMS[k];
@@ -544,6 +556,14 @@ export class World {
       h.g.position.copy(h.downPos).lerp(h.topPos, a).lerp(h.upPos, b);
       h.g.quaternion.copy(h.downQ).slerp(h.upQ, b);
     });
+    if (this.flag) {
+      const f = st.flag;
+      this.flag.visible = !!f && f.visible !== false;
+      if (this.flag.visible) {
+        this.flag.position.set(f.x, SOIL + (f.lift || 0), f.z);
+        this.pennant.rotation.y = Math.sin((f.wave || 0) * 2.1) * 0.35 + 0.3;
+      }
+    }
     // person
     const P = this.person, pp = st.person;
     P.g.visible = pp.visible !== false;
