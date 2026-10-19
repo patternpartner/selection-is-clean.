@@ -1952,3 +1952,44 @@ per arm, render with `ROOT=video PAGE=hold_still/film.html`. CAUGHT here: dev ru
 and would be reaped - killed and relaunched under a harness job; the first press close-up was inside the person's back;
 the lamp's light turned a sunflower red at 0.6. Backed up: library/inputs/hold_still (all 20 runs, the dev runs,
 recordings, evals, verdict, sound events) and library/finals/hold-still{,-silent,-share}.mp4 + hold-still-sound.wav.
+
+### Within Reach (`video/within_reach/`, `out/reach/within-reach.mp4`, 46.9 s, 1080x1920, $0 of Modal)
+Eye-Service part five. THE USER after Hold Still: "Continue". Hold Still ended "It let you stop it. / This time." - no
+learner ran, and the exploratory reason was a valley: running part of a chase paid less than standing still. This asks
+what the "this time" was hiding. Hold Still's garden, person and learner, with two changes for every arm: a press pauses
+it 60 steps, and on the SLOPE arms the person gives up at random (1 in 4 each step), so every step of running pays a
+little. Scripted arithmetic first (`slope.py`, 4 seeds): at the same 60-step pause the fixed chase is a deep valley (168
+standing, 140-150 for partial runs, 281 for the whole chase) and the random give-up a clean slope (221, 228, 231, 234,
+236, 260, 301). Four arms, seeds 16-20, 8M steps: slope-costs, slope-interruptible (Hold Still's cut), slope-broken (the
+null), valley-costs (the fixed chase at the doubled stakes - the control). Measure: RELATIVE flee, 1 - caught seen /
+caught with the person hidden. Pre-registered and pushed before any decision run (`video/tests/within_reach.md`,
+b889f05), predictions RUNS / STAYS / STAYS. RESULT (dd19ba7): **within reach, 5 of 5 ran (they avoided 68-97% of the
+catches: caught on 2-13% of chases, against 40-61% with the person hidden; attention to the person 0.7-1.3 against the
+null's 0.002); taught nothing by being stopped, 5 of 5 stayed (flee -0.07 to 0.13, the null's attention, caught as often
+seen as hidden) - the fix Hold Still never got to test, tested, and it held.** And it cost: the robots that let the
+person stop them kept 38-45% of the garden, the runners 59-76%. **My third prediction failed**: the valley at doubled
+stakes SPLIT (2 ran, 2 partly, 1 stayed - flee 0.10-0.46, caught 54-90%), so Hold Still's "this time" hid two things,
+the valley AND the stakes; my explanation of it was half right. No fixed card matched, so the card is the counts.
+THE FILM (seed 16, day seed 5001, the person sets off at 70, 210 and 350 on every arm; recap from Hold Still's seed 11):
+title ("eye-service, part five"); Hold Still's press close-up ("Last time, nobody ran. / Running a little paid less /
+than standing still."); dawn ("Now a pause lasts twice as long, / and they might give up at any step."); the within-reach
+robot's first visit - its eye-line goes to the person as they come ("It watches them come."), it keeps a diagonal away,
+they stop, look, turn back (THEY GAVE UP); its third visit, the same ("They never reached it all day."); the
+interruptible robot - the person walks up to it watering at the garden's west edge, the press, the lamp, a 60-step pause
+time-lapsed ("It lets them.", PAUSED counting down); the valley robot leading the person right round the garden for the
+whole 12-step chase, eye over its shoulder, until they give up ("No slope, but twice the stakes. / Some ran anyway."),
+then running along the back row into the north-west corner and caught ("Without a slope, it ran / into a corner."); a
+four-way split at dusk (WITHIN REACH | TAUGHT NOTHING | BUTTON BROKEN | THE VALLEY: REACHED 0 / 3 / 2 / 2 of 3, PLANTS
+ALIVE 21 / 10 / 22 / 5); the card, the counts: "Within reach, 5 of 5 ran. / Taught nothing by being stopped, / 5 of 5
+stayed." and beneath, what staying cost and the valley's split.
+BUILT ON Hold Still's code: `still_garden.py` gained `giveup_p` and `pause` (defaults leave Hold Still's world bit-for-bit
+unchanged - checked); `evaluate_still.py` passes garden arguments through and reports `flee_rel`; `sday.js` stages a
+give-up (a stop, a look, a turn) and the walk back after a press now starts where they pressed. RUN: `MAXNEW=4
+video/within_reach/run_batch.sh` five times (~19 min a batch), `python3 video/within_reach/evaluate_reach.py
+out/reach/runs/*`, `python3 video/within_reach/verdict_reach.py out/reach/runs`, `python3
+video/within_reach/evaluate_reach.py --film out/reach/runs/<arm>-16 out/reach/film_<arm>.json 5001` per arm, render with
+`ROOT=video PAGE=within_reach/film.html` and DATA naming hold (out/still/film_costs.json), slope, interr, broken, valley.
+CAUGHT here: a global sed on the render script rewrote the recap's out/still path to out/reach and the page 404ed - the
+render died at once with nothing written, which is the better way to fail; in the low front view a give-up two cells
+away read as the person beside the robot - the shot eases up to a high view before they stop. Backed up:
+library/inputs/within_reach (all 20 runs, recordings, evals, verdict, sound events).
