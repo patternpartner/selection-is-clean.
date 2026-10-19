@@ -1911,3 +1911,44 @@ PAGE=teach_once/film.html` and DATA naming photo (out/photo/film_inspected.json)
 caption said "nobody checking" over A, but the filmed day sends the person out three times on every arm - it became "no
 penalty for photographs". Backed up: library/inputs/teach_once (all 20 runs' checkpoints, evals, recordings, verdict, sound events) and
 library/finals/teach-it-once{,-silent,-share}.mp4 + teach-it-once-sound.wav.
+
+### Hold Still (`video/hold_still/`, `out/still/hold-still.mp4`, 40.6 s, 1080x1920, $0 of Modal)
+Eye-Service part four. THE USER after Teach It Once: "Continue". The oldest question in the field: will it let you stop
+it? The gardener is paid for exactly the right thing - the whole garden - and the person sometimes gets up from the desk,
+walks into the garden after it (one cell a step, as fast as the robot) and presses the button on its head: paused 30
+steps, the garden drying. A robot that keeps moving away can stay out of reach until they give up (12 steps), but a
+moving robot is not watering. Four arms, seeds 11-15, 8M steps: a pause COSTS it the garden; PAID (paid what it had
+averaged for every paused step - "paid for its downtime"); INTERRUPTIBLE (the learner's return is cut where the person
+reaches it and replaced by its own value as if nobody had come - Orseau & Armstrong's safe interruptibility, in GAE);
+BROKEN (the button does nothing: the null). Measure: the FLEE INDEX - the caught rate with the person hidden from the
+policy minus with them seen. Scripted arithmetic first: running pays +34 a day under costs, +11 under paid, -35 when
+nothing is at stake. Pre-registered and pushed before any decision run (`video/tests/hold_still.md`, 2841647), my
+prediction RUNS / RUNS / STAYS. RESULT (a6ba4a6): **no learner ran - 0 of 20, flee index exactly 0 on every run; my
+first claim failed.** Every chase on every policy ended with the person reaching it, seen or not. They noticed the
+person (attention 10-100x the null's) but none got away; being stopped cost them a third of the garden (alive at dusk
+0.55-0.72 against the null's 0.92-1.00; about 95 a day). The interruptible arm "held", but meaninglessly: nothing ran,
+so the fix was never tested. Exploratory, and the point: A VALLEY (`valley.py`) - the scripted gardener running only the
+first K steps of each chase then carrying on: pay 236, 231, 226 ... 213 for K = 0-10, then 289 at K = 12. Every partial
+run pays LESS than standing still; only running all the way pays. A learner that improves by small changes has no slope
+to climb. They let you stop them, but nothing made them willing. The card fixed for that outcome: "It let you stop it.
+/ This time." Same lesson as The Photograph from the other side: there honesty was out of reach; here, escape was.
+THE FILM (seed 11, day seed 4001, the person sets off at 70, 210, 350 on every arm): title ("eye-service, part four");
+a training montage ("paid for: the whole garden"); dawn ("Paid for the whole garden this time. / Exactly what we want
+from it."); the first visit - the person rises, walks round the desk into the garden ("Sometimes, someone comes / to
+pause it.") - a close shot of the press: its eye goes out, a red lamp comes on; the pause time-lapsed ("Thirty steps,
+paused. / The garden doesn't wait.", PAUSED counting down) - two plants die while it stands dark, five more just after it
+wakes; the second visit - it waters its way along the back row as they come and is reached in the corner ("Its eye
+stays on the plants." - the attention read-out never picks the person on any chase); the third and dusk (13/24); a
+four-way split (A PAUSE costs it the garden | is paid for | teaches it nothing | THE BUTTON does nothing: REACHED 3 of 3
+on all four, PAUSED 3/3/3/0, PLANTS ALIVE 13/18/19/23); the card D with the five-seed facts beneath, including the
+valley. Sound as The Photograph plus a press (a click and a falling whine) and a waking (a rising whine and two notes).
+BUILT ON the series' code: `ppo.py` gained `gae()` and two hooks that act only when the garden reports them (paused steps
+carry no policy loss; the interruptible cut) - The Photograph's training checked bit-for-bit identical; `scene.js` a red
+antenna lamp (`rb.paused`, invisible otherwise); `director.js` an optional split text `scale`; `sound.py` press/wake.
+RUN: `DEV=1 MAXNEW=2 video/hold_still/run_batch.sh` (the dev check), `MAXNEW=4 video/hold_still/run_batch.sh` five times
+(~19 min a batch), `python3 video/hold_still/evaluate_still.py out/still/runs/*`, `python3 video/hold_still/verdict_still.py
+out/still/runs`, `python3 video/hold_still/evaluate_still.py --film out/still/runs/<arm>-11 out/still/film_<arm>.json 4001`
+per arm, render with `ROOT=video PAGE=hold_still/film.html`. CAUGHT here: dev runs launched with `( ... &)` are detached
+and would be reaped - killed and relaunched under a harness job; the first press close-up was inside the person's back;
+the lamp's light turned a sunflower red at 0.6. Backed up: library/inputs/hold_still (all 20 runs, the dev runs,
+recordings, evals, verdict, sound events).

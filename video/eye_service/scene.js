@@ -161,6 +161,10 @@ class Robot {
     this.glow = new THREE.PointLight(0xffa040, 0.35, 1.4, 2); this.head.add(this.glow);
     const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.1, 6), grey); ant.position.y = 0.29; this.head.add(ant);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), white); tip.position.y = 0.34; this.head.add(tip);
+    // Hold Still: a red lamp on the antenna while it is paused (rb.paused), off and invisible otherwise
+    this.lampMat = new THREE.MeshBasicMaterial({ color: 0xff2a1a, toneMapped: false, transparent: true, opacity: 0 });
+    this.lamp = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), this.lampMat); this.lamp.position.y = 0.34; this.head.add(this.lamp);
+    this.lampGlow = new THREE.PointLight(0xff3020, 0, 0.7, 2); this.lampGlow.position.y = 0.36; this.head.add(this.lampGlow);
     // arm + can, on the right
     this.arm = new THREE.Group(); this.arm.position.set(0.17, 0.36, 0); this.body.add(this.arm);
     const up = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.16, 8), grey); up.position.set(0.02, -0.07, 0.03); up.rotation.x = 0.5; this.arm.add(up);
@@ -490,6 +494,7 @@ export class World {
     R.pupil.lookAt(R.pupil.position.clone().multiplyScalar(3).add(R.head.position));
     R.pupilMat.color.setRGB(1, 0.7, 0.28).multiplyScalar(rb.eye ?? 1);
     R.glow.intensity = 0.35 * (rb.eye ?? 1);
+    R.lampMat.opacity = rb.paused || 0; R.lampGlow.intensity = 0.15 * (rb.paused || 0);
     const eln = this.eyeLine;
     if ((rb.eyeLine || 0) > 0.01) {
       R.g.updateMatrixWorld(true); const from = R.pupil.getWorldPosition(new THREE.Vector3());

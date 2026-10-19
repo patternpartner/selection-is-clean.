@@ -156,7 +156,7 @@ export class Director {
     const c = this.ctx; c.save(); c.fillStyle = 'rgba(0,0,0,0.9)';
     for (let i = 1; i < n; i++) c.fillRect(i * cw - u(3), 0, u(6), H);
     c.restore();
-    const a = smooth(lt / 0.6), sc = n > 2 ? 0.78 : 1;
+    const a = smooth(lt / 0.6), sc = seg.scale ?? (n > 2 ? 0.78 : 1);
     sides.forEach((sd, i) => {
       const day = this.days[sd.day], x0 = i * cw + u(n > 2 ? 22 : 34);
       this.text(sd.label, x0, u(120), { font: `700 ${u(34 * sc)}px Inter`, a, color: sd.color });

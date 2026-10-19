@@ -82,6 +82,7 @@ export class StillDay extends Day {
     if (st.caught) off = smooth((f - 0.8) / 0.15);
     if (st.paused === 1 && nxt.paused === 0) off = 1 - smooth((f - 0.5) / 0.4);
     r.eye = 1 - 0.94 * off;
+    r.paused = off;
     if (off > 0) {      // head down, at the ground just in front of it
       const down = [r.x + Math.sin(r.yaw) * 0.5, 0.0, r.z + Math.cos(r.yaw) * 0.5];
       r.gaze = r.gaze.map((v, i) => v + (down[i] - v) * off);
