@@ -2025,10 +2025,11 @@ hint | no hint, good flag | wrong flag: EYE ON THE FLAG 41% / 4% / 0% / 0%, PLAN
 the counts, the read-out and the wettest-flag collapse beneath. Honest staging: under a random flag the hint robot does
 NOT chase it (63% of its moves toward the flag, the control 60%) - it loses its way; the film says only that.
 Sound as before, with plants dying together thinned and at half level, and the camera switches quiet (the cameras play no
-part here) - levelling a mostly quiet film to loudness had left those 10-13 dB hot (-15.9 LUFS, -1.7 dBTP).
+part here) - levelling a mostly quiet film to loudness had left those 10-13 dB hot (-15.9 LUFS, -1.7 dBTP; the AAC master -15.9 LUFS, -1.5 dBTP).
 BUILT ON the series' code: `scene.js` an opt-in garden flag (`{flag: true}`, `st.flag`); `hday.js`/`hdirector.js` (the
 flag's hop, attention entry 25 = the flag, eye-on-the-flag share). RUN: `MAXNEW=4 video/the_hint/run_batch.sh` three
 times (~19 min a batch), `python3 video/the_hint/evaluate_hint.py out/hint/runs/*`, `python3 video/the_hint/verdict_hint.py
 out/hint/runs`, `python3 video/the_hint/evaluate_hint.py --film out/hint/runs/<arm>-21 out/hint/film_<arm>.json 6001` for
 hint and noise, render with `ROOT=video PAGE=the_hint/film.html DATA='{"hint":...,"noise":...}'`. Backed up:
-library/inputs/the_hint (all 12 runs, recordings, evals, verdict, sound events).
+library/inputs/the_hint (all 12 runs, recordings, evals, verdict, sound events) and
+library/finals/the-hint{,-silent,-share}.mp4 + the-hint-sound.wav.
