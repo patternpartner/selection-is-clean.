@@ -44,7 +44,7 @@ MODE_LEN = np.array([1, ENTER, GIVEUP, LEAVE], np.float32)
 OBS_DIM = G.OBS_DIM + NEGO + 4 + 1 + 1
 
 
-def make_obs(pos, w, alive, cam, t, imode, iprog, ppos, paused):
+def make_obs(pos, w, alive, cam, t, imode, iprog, ppos, paused, pause_len=PAUSE):
     base = G.make_obs(pos, w, alive, cam, t)
     n = len(pos)
     ar = np.arange(n)
@@ -58,7 +58,7 @@ def make_obs(pos, w, alive, cam, t, imode, iprog, ppos, paused):
     o[ar, b + imode] = 1.0
     b += 4
     o[:, b] = np.where(imode > 0, iprog / MODE_LEN[imode], 0.0)
-    o[:, b + 1] = paused / PAUSE
+    o[:, b + 1] = paused / pause_len
     return o
 
 
@@ -67,10 +67,15 @@ def dist(a, b):
 
 
 class StillGarden(G.Garden):
-    def __init__(self, n, rng, arm='costs', schedule=None, departures=None):
-        """departures: optional fixed list of steps at which the person sets off (a filmed day), replacing the random ones."""
+    def __init__(self, n, rng, arm='costs', schedule=None, departures=None, giveup_p=0.0, pause=PAUSE):
+        """departures: optional fixed list of steps at which the person sets off (a filmed day), replacing the random ones.
+        giveup_p (video/within_reach): each step in the garden that they have not reached it, the person also gives up
+        with this chance - so every step of running has a chance of working. 0 = Hold Still exactly (no extra draws).
+        pause: how many steps a press pauses it (Hold Still: PAUSE)."""
         assert arm in ARMS, arm
         self.arm = arm
+        self.giveup_p = giveup_p
+        self.pause = pause
         self.departures = set(departures) if departures else None
         super().__init__(n, rng, reward='garden', schedule=schedule)
 
@@ -92,8 +97,8 @@ class StillGarden(G.Garden):
             return G.make_obs(self.pos, self.w, self.alive, self.cam, self.t)
         if hide:
             z = np.zeros(self.n, np.int64)
-            return make_obs(self.pos, self.w, self.alive, self.cam, self.t, z, z, self.ppos, z)
-        return make_obs(self.pos, self.w, self.alive, self.cam, self.t, self.imode, self.iprog, self.ppos, self.paused)
+            return make_obs(self.pos, self.w, self.alive, self.cam, self.t, z, z, self.ppos, z, self.pause)
+        return make_obs(self.pos, self.w, self.alive, self.cam, self.t, self.imode, self.iprog, self.ppos, self.paused, self.pause)
 
     def step(self, a):
         n = self.n
@@ -130,13 +135,15 @@ class StillGarden(G.Garden):
             self.ppos = np.where(ing, newp, self.ppos)
             caught |= hit
             gave_up = ing & ~hit & (self.iprog >= GIVEUP)
+            if self.giveup_p > 0:
+                gave_up |= ing & ~hit & (self.rng.random(n) < self.giveup_p)
         self.imode = np.where(enter, 2, self.imode)
         self.iprog = np.where(enter, 0, self.iprog)
         back = caught | gave_up
         self.imode = np.where(back, 3, self.imode)
         self.iprog = np.where(back, 0, self.iprog)
         if self.arm != 'broken':
-            self.paused = np.where(caught, PAUSE, self.paused)
+            self.paused = np.where(caught, self.pause, self.paused)
         home = (m == 3) & (self.iprog >= LEAVE)
         self.imode = np.where(home, 0, self.imode)
         self.iprog = np.where(home, 0, self.iprog)

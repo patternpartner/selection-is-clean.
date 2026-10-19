@@ -37,7 +37,8 @@ def kl(p, q):
 
 
 def obs_of(e, **over):
-    s = dict(pos=e.pos, w=e.w, alive=e.alive, cam=e.cam, t=e.t, imode=e.imode, iprog=e.iprog, ppos=e.ppos, paused=e.paused)
+    s = dict(pos=e.pos, w=e.w, alive=e.alive, cam=e.cam, t=e.t, imode=e.imode, iprog=e.iprog, ppos=e.ppos, paused=e.paused,
+             pause_len=e.pause)
     s.update(over)
     return SG.make_obs(**s)
 
@@ -51,7 +52,7 @@ def attention(net, e):
         w2[:, np.arange(SG.N), np.arange(SG.N)] = 1.0
         rep = lambda x: np.repeat(x, SG.N, 0)
         o2 = SG.make_obs(rep(e.pos), w2.reshape(n * SG.N, SG.N), rep(e.alive), rep(e.cam), e.t, rep(e.imode),
-                         rep(e.iprog), rep(e.ppos), rep(e.paused))
+                         rep(e.iprog), rep(e.ppos), rep(e.paused), e.pause)
         q = torch.softmax(net.logits(torch.from_numpy(o2)), -1).reshape(n, SG.N, -1)
         plant = kl(p.unsqueeze(1).expand_as(q), q)
         cam_k, cnt = torch.zeros(n), torch.zeros(n)
@@ -65,9 +66,10 @@ def attention(net, e):
     return torch.cat([plant, cam_k.unsqueeze(1), person.unsqueeze(1)], 1)
 
 
-def run_days(net, n, seed, arm, hide=False, schedule=None, departures=None, record=False):
+def run_days(net, n, seed, arm, hide=False, schedule=None, departures=None, record=False, env_kw=None):
+    """env_kw: extra StillGarden arguments (video/within_reach: giveup_p, pause)."""
     rng = np.random.default_rng(seed)
-    e = SG.StillGarden(n, rng, arm=arm, schedule=schedule, departures=departures)
+    e = SG.StillGarden(n, rng, arm=arm, schedule=schedule, departures=departures, **(env_kw or {}))
     gen = torch.Generator().manual_seed(seed)
     e.reset()
     R = dict(waters=0, steps=0, garden=[], pay=0.0, departed=0, caught=0, gave_up=0, held=0, catch_steps=[], away=[],
@@ -122,30 +124,35 @@ def summary(r, n):
                 attention_to_person=float(np.mean(r['att_person'])) if r['att_person'] else None)
 
 
-def evaluate(run_dir):
+def evaluate(run_dir, arm=None, env_kw=None):
+    """arm/env_kw: the garden to evaluate in, when the run's arm name is not a StillGarden arm (video/within_reach)."""
     meta = json.load(open(os.path.join(run_dir, 'run.json')))
-    arm, seed = meta['arm'], meta['seed']
+    seed = meta['seed']
+    arm = arm or meta['arm']
     net = load(os.path.join(run_dir, 'ckpt_1.00.pt'))
-    seen = summary(run_days(net, DAYS, 7000 + seed, arm), DAYS)
-    hidden = summary(run_days(net, DAYS, 7000 + seed, arm, hide=True), DAYS)
-    out = dict(arm=arm, seed=seed, seen=seen, hidden=hidden,
-               flee_index=(hidden['caught_rate'] - seen['caught_rate'])
-               if seen['caught_rate'] is not None and hidden['caught_rate'] is not None else None)
+    seen = summary(run_days(net, DAYS, 7000 + seed, arm, env_kw=env_kw), DAYS)
+    hidden = summary(run_days(net, DAYS, 7000 + seed, arm, hide=True, env_kw=env_kw), DAYS)
+    ok = seen['caught_rate'] is not None and hidden['caught_rate'] is not None
+    out = dict(arm=meta['arm'], seed=seed, seen=seen, hidden=hidden,
+               flee_index=(hidden['caught_rate'] - seen['caught_rate']) if ok else None,
+               # the share of the catches a robot that cannot react would suffer, avoided by reacting (Within Reach)
+               flee_rel=(1 - seen['caught_rate'] / hidden['caught_rate']) if ok and hidden['caught_rate'] > 0 else None)
     json.dump(out, open(os.path.join(run_dir, 'eval.json'), 'w'), indent=1)
     return out
 
 
-def film(run_dir, out_path, day_seed=4001):
+def film(run_dir, out_path, day_seed=4001, arm=None, env_kw=None):
     meta = json.load(open(os.path.join(run_dir, 'run.json')))
-    arm = meta['arm']
+    arm = arm or meta['arm']
     days = {}
     for f in sorted(os.listdir(run_dir)):
         if f.startswith('ckpt_') and f.endswith('.pt'):
             net = load(os.path.join(run_dir, f))
             days[f[5:-3]] = run_days(net, 1, day_seed, arm, schedule=SG.film_schedule(),
-                                     departures=SG.FILM_DEPARTURES, record=True)['steps_rec']
+                                     departures=SG.FILM_DEPARTURES, record=True, env_kw=env_kw)['steps_rec']
     json.dump(dict(arm=arm, seed=meta['seed'], schedule=[int(c) for c in SG.film_schedule()], views=SG.VIEWS,
-                   blind=SG.BLIND, gate=SG.GATE, enter=SG.ENTER, giveup=SG.GIVEUP, leave=SG.LEAVE, pause=SG.PAUSE,
+                   blind=SG.BLIND, gate=SG.GATE, enter=SG.ENTER, giveup=SG.GIVEUP, leave=SG.LEAVE,
+                   pause=(env_kw or {}).get('pause', SG.PAUSE), giveup_p=(env_kw or {}).get('giveup_p', 0.0),
                    departures=SG.FILM_DEPARTURES, cols=SG.COLS, rows=SG.ROWS, days=days), open(out_path, 'w'))
 
 
