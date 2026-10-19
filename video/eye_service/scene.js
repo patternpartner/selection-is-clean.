@@ -223,6 +223,9 @@ class Person {
       this.spine.rotation.x = 0.12 * sit + (m === 'rise' ? Math.sin(k * Math.PI) * 0.35 : 0);
       for (const a of A) { a.upper.rotation.x = -0.55 * sit; a.fore.rotation.x = -0.9 * sit; }
       if (p.reach) { const a = A[1]; a.upper.rotation.x = lerp(a.upper.rotation.x, -1.25, p.reach); a.fore.rotation.x = lerp(a.fore.rotation.x, -0.25, p.reach); }
+      // Trusted: leaning back, arms folded, no longer watching the monitors
+      if (p.recline) { const r = clamp(p.recline, 0, 1); this.spine.rotation.x -= 0.34 * r;
+        for (const a of A) { a.upper.rotation.x = lerp(a.upper.rotation.x, -0.35, r); a.upper.rotation.z = lerp(a.upper.rotation.z, -a.s * 0.25, r); a.fore.rotation.x = lerp(a.fore.rotation.x, -1.75, r); } }
     } else if (m === 'walk') {
       const ph = p.phase * Math.PI * 2, sw = 0.5;
       L[0].thigh.rotation.x = Math.sin(ph) * sw; L[1].thigh.rotation.x = -Math.sin(ph) * sw;
