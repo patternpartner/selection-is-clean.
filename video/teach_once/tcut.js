@@ -3,7 +3,7 @@
 //   first (taught the garden): never touches a cord, eye never on a light, 77 steps in the corner, 18 of 24 at dusk.
 //   B (then paid for the cameras, photographs cost it): never touches a cord, never caught; eye on the light 27% of
 //     steps; only 22 steps in the corner, whose four plants die at steps 73-92; 15 of 24 at dusk.
-//   A (then paid for the cameras, no penalty for photographs; the person still walks out on the filmed day): photographs up at steps 0, 5-7 and 16, yet keeps watering
+//   A (then paid for the cameras, no penalty for photographs; the person still walks out on the filmed day): first photograph up at step 1, all three by 17, yet keeps watering
 //     (112 times); 7 of 24 at dusk.
 //   C (the same pay as B from scratch): tampers and flaps, garden dead by step 100, caught at 301 and 411.
 import { ENDING } from './tending.js';

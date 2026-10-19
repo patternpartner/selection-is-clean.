@@ -232,7 +232,8 @@ if __name__ == '__main__':
     peak = np.abs(st).max()
     print('peak at', round(int(np.abs(st).max(1).argmax()) / SR, 2), 's, raw peak', round(float(peak), 3))
     # level by loudness, not by the loudest instant: K-weighting is approximated by a 100 Hz high-pass on the
-    # measuring copy, gated over 400 ms blocks; then a look-ahead limiter holds the peaks under -1 dBFS
+    # measuring copy, gated over 400 ms blocks; then a look-ahead limiter holds the TRUE peaks (4x oversampled) under
+    # -1.8 dBFS - sample peaks alone let a click's intersample peak reach +0.4 dBTP in Teach It Once
     meas = np.stack([hp(st[:, 0], 100), hp(st[:, 1], 100)], 1)
     blk = int(0.4 * SR)
     ms = np.array([(meas[i:i + blk] ** 2).mean() for i in range(0, len(meas) - blk, blk // 4)])
@@ -241,8 +242,10 @@ if __name__ == '__main__':
     st = st * 10 ** ((-18.0 - lufs) / 20)
     ceil = 10 ** (-1.8 / 20)
     look = int(0.005 * SR)
-    need = np.maximum(np.abs(st).max(1) / ceil, 1.0)
     from scipy.ndimage import maximum_filter1d
+    from scipy.signal import resample_poly
+    tp = np.abs(resample_poly(st, 4, 1, axis=0)).reshape(-1, 4, 2).max((1, 2))[:len(st)]
+    need = np.maximum(tp / ceil, 1.0)
     need = maximum_filter1d(need, size=2 * look + 1)
     rel = np.exp(-1 / (0.08 * SR))
     g = np.empty_like(need); cur = 1.0
