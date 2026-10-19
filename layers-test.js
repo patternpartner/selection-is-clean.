@@ -200,11 +200,14 @@ const readAll = page => page.evaluate(async () => {
     try { const d = await dl; const fp = require('path').join(require('os').tmpdir(), 'lt_harvest.json');
           await d.saveAs(fp); file = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch (e) {}
     ck('harvest produces a file', !!(file && file.type === 'selection-field'), file && file.type);
-    ck('it holds every universe in the cube', !!file && file.universes.length === 27,
-       file && file.universes.length);
+    // #315: since #297 the harvest also carries the field's GROWN universes (at 'grown/gN'), up to the device's cap, so the cube is
+    // the 27 that are not grown; the grown ones are counted beside it. This assertion said 27 in all and failed 30-31/27 from #297 on.
+    const cube = file ? file.universes.filter(u => !/^grown\//.test(String(u.at))) : [], grownN = file ? file.universes.length - cube.length : 0;
+    ck('it holds every universe in the cube', !!file && cube.length === 27,
+       file && (cube.length + ' in the cube, ' + grownN + ' grown'));
     ck('every one of them carried a genome out',
-       !!file && file.universes.filter(u => u.genome).length === 27,
-       file && file.universes.filter(u => u.genome).length + '/27');
+       !!file && cube.filter(u => u.genome).length === 27,
+       file && cube.filter(u => u.genome).length + '/27');
     const at = {}; if (file) file.universes.forEach(u => { const k = String(u.at).split('/')[0]; at[k] = (at[k] || 0) + 1; });
     ck('and says where each one lived',
        at.surface === 8 && at.collective === 1 && at.layer1 === 9 && at.layer2 === 9, JSON.stringify(at));
