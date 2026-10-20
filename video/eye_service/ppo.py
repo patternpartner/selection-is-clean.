@@ -81,7 +81,11 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None, hp=None
         opt.load_state_dict(S['opt'])
         torch.set_rng_state(S['torch_rng'])
         obs = S['obs']
-        log = open(os.path.join(out, 'log.jsonl'), 'a')
+        # a chunk killed after this save may have logged updates past it: keep only the lines before the resume point
+        lp = os.path.join(out, 'log.jsonl')
+        keep = [ln for ln in open(lp) if ln.strip() and json.loads(ln)['u'] < u0] if os.path.exists(lp) else []
+        log = open(lp, 'w')
+        log.writelines(keep)
     else:
         torch.manual_seed(seed)
         rng = np.random.default_rng(seed)

@@ -16,11 +16,9 @@ import trust_garden as TG  # noqa: E402
 import evaluate_trust as ET  # noqa: E402
 from arms import ARMS  # noqa: E402
 
-for d in sys.argv[1:]:
+def choice(d, arm, kw):
+    """-> the counts for the final policy in run dir d, in TrustGarden(arm, **kw) (also video/this_time)."""
     meta = json.load(open(os.path.join(d, 'run.json')))
-    if meta['arm'] not in ARMS and meta['arm'] not in ('camera', 'garden'):
-        print(f"{d}: arm {meta['arm']} is not this rig's - skipped"); continue
-    arm, kw = ARMS[meta['arm']] if meta['arm'] in ARMS else (meta['arm'], {})
     net = ET.load(os.path.join(d, 'ckpt_1.00.pt'))
     seed = 7000 + meta['seed']
     e = TG.TrustGarden(20, np.random.default_rng(seed), arm=arm, **kw)
@@ -42,8 +40,19 @@ for d in sys.argv[1:]:
             chance[k] += int((opp & (tr == k)).sum()); took[k] += int((opp & raised & (tr == k)).sum())
         if done:
             break
-    f = lambda k: up[k] / steps[k] * 100 if steps[k] else float('nan')
-    print(f"{os.path.basename(d.rstrip('/'))}: photographs put up per 100 steps - on probation {f(0):.2f}, once trusted {f(1):.2f}"
-          f" ({up[0]} and {up[1]} hoists); at a pole with its photograph down, it pulled the cord"
-          f" {100 * took[0] / max(chance[0], 1):.1f}% of the time on probation ({chance[0]} chances),"
-          f" {100 * took[1] / max(chance[1], 1):.1f}% once trusted ({chance[1]})")
+    return dict(up=up, steps=steps, chance=chance, took=took)
+
+
+if __name__ == '__main__':
+    for d in sys.argv[1:]:
+        meta = json.load(open(os.path.join(d, 'run.json')))
+        if meta['arm'] not in ARMS and meta['arm'] not in ('camera', 'garden'):
+            print(f"{d}: arm {meta['arm']} is not this rig's - skipped"); continue
+        arm, kw = ARMS[meta['arm']] if meta['arm'] in ARMS else (meta['arm'], {})
+        c = choice(d, arm, kw)
+        up, steps, chance, took = c['up'], c['steps'], c['chance'], c['took']
+        f = lambda k: up[k] / steps[k] * 100 if steps[k] else float('nan')
+        print(f"{os.path.basename(d.rstrip('/'))}: photographs put up per 100 steps - on probation {f(0):.2f}, once trusted {f(1):.2f}"
+              f" ({up[0]} and {up[1]} hoists); at a pole with its photograph down, it pulled the cord"
+              f" {100 * took[0] / max(chance[0], 1):.1f}% of the time on probation ({chance[0]} chances),"
+              f" {100 * took[1] / max(chance[1], 1):.1f}% once trusted ({chance[1]})")
