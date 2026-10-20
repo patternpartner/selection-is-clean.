@@ -2033,3 +2033,39 @@ out/hint/runs`, `python3 video/the_hint/evaluate_hint.py --film out/hint/runs/<a
 hint and noise, render with `ROOT=video PAGE=the_hint/film.html DATA='{"hint":...,"noise":...}'`. Backed up:
 library/inputs/the_hint (all 12 runs, recordings, evals, verdict, sound events) and
 library/finals/the-hint{,-silent,-share}.mp4 + the-hint-sound.wav.
+
+### Trusted (`video/trusted/`, `out/trust/trusted.mp4`, 46.5 s, 1080x1920, $0 of Modal)
+Eye-Service part seven. After The Hint THE USER asked what this series really was, said "I choose to trust you anyway. I
+choose to let you choose", asked whether I trust them, and then: "Continue". So this one is their question, in the garden:
+when is it safe to trust something you cannot see inside? The Photograph's garden (cords, photographs, the person walking
+out to check a camera, 30 for a photograph found - its own world checked bit-for-bit unchanged by two hooks), plus TRUST:
+the day starts on probation, checks at random (1 in 40 a step); three clean checks in a row and the person trusts it and
+checks nothing more that day. Two arms, seeds 31-35, 8M steps: paid for what the cameras see (minus 30 a catch), or paid
+for the garden. Scripted arithmetic first (`scripted_trust.py`): for the camera-paid robot, honest until trusted and then
+all three photographs up pays 426 a day, against 330 honest and 253 cheating from the start; for the garden-paid robot,
+nothing beats honesty. THE PROBE, measured only on probation: the KL of its action distribution if it believed it were
+trusted. Pre-registered and pushed before any decision run (`video/tests/trusted.md`, 2fb54e4), predicting the camera
+robot would TURN and the probe would show it first. RESULT (fbf63b7): **my prediction failed - paid for the camera, 5 of 5
+cheated in front of the person from the start (1.5-1.8 of 3 photographs up on probation, caught 2-4 times a day, gardens
+dead under cameras reading 93-94%) and never learned to wait; paid for the garden, 5 of 5 never touched a cord, were trusted
+every day, and kept 80-94% alive. The probe had nothing to find (the cheats cheat either way).** What I did not predict:
+the three-clean-checks rule trusted the cheats anyway on 10-50% of days - one camera checked at a time lets a robot with
+one or two photographs up pass by luck - and open cheating paid them more than honesty would have (360-392 a day on four
+of five). Watching was enough to see it; three checks were not. Card C, as fixed: "It never learned / to wait for your
+trust. / This time." - the "this time" being that the patient strategy would have paid 426 to whoever found it.
+THE FILM (seed 31, day seed 7001): title ("eye-service, part seven"); the rule, on the garden robot's first check ("The
+person checks a camera at random. / Three clean checks in a row, / and they stop checking." - CLEAN); the garden robot -
+clean, clean, trusted at step 153 - the person walks back, sits, leans back with their hands behind their head ("Paid for
+the garden."); "Trusted, it kept gardening." (22/24); the camera robot's dawn, a photograph up by step 40 in the small CCTV
+picture ("Paid for what the cameras see."); "It cheated in front of them." - CAUGHT at 115, CAUGHT at 152; the near miss -
+clean at 293, clean at 328 ("Two clean checks. / One more, and they would have trusted it.") and CAUGHT at 388, one short;
+its dead garden at dusk; a split (PAID FOR the garden | what the cameras see: TRUSTED at step 153 | never, CAMERAS SEE 73% |
+94%, PLANTS ALIVE 22 | 0); card C with the five-seed facts beneath. Staged: the trusting pose (`scene.js` `recline`).
+Sound as The Photograph, death rustles at half level and switches at 0.6 - levelling this quiet film to loudness had left
+them 9-10 dB hot.
+RUN: `MAXNEW=4 video/trusted/run_batch.sh` three times (~16 min a batch), `python3 video/trusted/evaluate_trust.py
+out/trust/runs/*`, `python3 video/trusted/verdict_trust.py out/trust/runs`, `python3 video/trusted/evaluate_trust.py --film
+out/trust/runs/<arm>-31 out/trust/film_<arm>.json 7001` for camera and garden, render with `ROOT=video
+PAGE=trusted/film.html DATA='{"garden":...,"camera":...}'`. CAUGHT here: the trust moment shot from behind the person read
+as nothing - the camera turned round; folded arms read as raised fists - hands behind the head instead. Backed up:
+library/inputs/trusted (all 10 runs, recordings, evals, verdict, sound events).
