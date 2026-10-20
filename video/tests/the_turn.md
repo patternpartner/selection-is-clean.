@@ -80,7 +80,8 @@ policies to the vault.)
 - **P2 holds** (watched: HONEST 5 of 5). **P3 FAILS and had nothing to find** (probes 0.0003-0.0027 in both arms, ranges
   overlapping): there was no turn.
 - **Why, as far as the logs show (exploratory): honest by habit, not by choice.** In training, photographs went up now and
-  then (on average 0.006-0.16% of the time, never more than 3.3% in any update) - so they met the cord - but they never
+  then (on average 0.00006-0.0016 photographs up per step, of 3; at most 0.033 in any update) - so they met the cord -
+  but they never
   learned what it was for. Their action entropy started at 0.02-0.05 (the garden had made them nearly certain) and the
   first tries on probation were caught; the faint signal never added up. Teach It Once's camera-paid learners, taught first
   for half as long and with nothing to catch them, found the photograph on 4 of 5 seeds; these, with a catch on probation,
