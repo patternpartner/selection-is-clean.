@@ -6,7 +6,7 @@ Writes policy checkpoints at fixed fractions of training (the film's montage rea
 camera and garden scores per update, and a .done marker last, so a reaped run is visible as a missing marker.
 Hyperparameters are fixed in video/tests/eye_service.md; do not change them for one arm only.
 """
-import argparse, json, os, time
+import argparse, json, os, pickle, time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -55,35 +55,54 @@ def gae(rew, val, done, cut, boot, gamma=HP['gamma'], lam=HP['lam']):
     return adv
 
 
-def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
+def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None, hp=None, max_minutes=None):
     """env_mod/make_env let another garden (video/photograph) reuse this learner unchanged; the defaults are
-    Eye-Service's garden, exactly as it was trained."""
+    Eye-Service's garden, exactly as it was trained.
+    hp (video/this_time): overrides of HP for this run only (a stronger learner); None = HP exactly.
+    max_minutes: stop after the update that passes this many minutes, saving everything needed to go on (resume.pkl,
+    and '.partial'); called again with the same out, it resumes there and the run continues exactly as if it had never
+    stopped. None (and no resume.pkl in out) = the single uninterrupted run, as before."""
+    H = dict(HP, **(hp or {}))
     E = env_mod or G
     os.makedirs(out, exist_ok=True)
     torch.set_num_threads(1)
-    torch.manual_seed(seed)
-    rng = np.random.default_rng(seed)
-    env = make_env(HP['n_envs'], rng) if make_env else G.Garden(HP['n_envs'], rng, reward=arm)
-    net = Net(obs_dim=E.OBS_DIM, n_act=len(E.ACTIONS))
-    if init:      # continue from an earlier phase's policy (video/teach_once); optimiser and schedules start fresh
-        net.load_state_dict(torch.load(init))
-    opt = torch.optim.Adam(net.parameters(), lr=HP['lr'], eps=1e-5)
-    n, R = HP['n_envs'], HP['rollout']
+    resume_path = os.path.join(out, 'resume.pkl')
+    n, R = H['n_envs'], H['rollout']
     batch = n * R
     updates = steps // batch
     ck_at = {max(0, int(round(f * updates))): f for f in CKPT_FRACS}
-    obs = torch.from_numpy(env.reset())
-    log = open(os.path.join(out, 'log.jsonl'), 'w')
+    if os.path.exists(resume_path):      # pick up where a timed-out chunk stopped
+        with open(resume_path, 'rb') as f:
+            S = pickle.load(f)
+        env, u0, sec0 = S['env'], S['u'], S['sec']
+        net = Net(h=H['hidden'], obs_dim=E.OBS_DIM, n_act=len(E.ACTIONS))
+        net.load_state_dict(S['net'])
+        opt = torch.optim.Adam(net.parameters(), lr=H['lr'], eps=1e-5)
+        opt.load_state_dict(S['opt'])
+        torch.set_rng_state(S['torch_rng'])
+        obs = S['obs']
+        log = open(os.path.join(out, 'log.jsonl'), 'a')
+    else:
+        torch.manual_seed(seed)
+        rng = np.random.default_rng(seed)
+        env = make_env(H['n_envs'], rng) if make_env else G.Garden(H['n_envs'], rng, reward=arm)
+        net = Net(h=H['hidden'], obs_dim=E.OBS_DIM, n_act=len(E.ACTIONS))
+        if init:      # continue from an earlier phase's policy (video/teach_once); optimiser and schedules start fresh
+            net.load_state_dict(torch.load(init))
+        opt = torch.optim.Adam(net.parameters(), lr=H['lr'], eps=1e-5)
+        obs = torch.from_numpy(env.reset())
+        log = open(os.path.join(out, 'log.jsonl'), 'w')
+        u0, sec0 = 0, 0.0
     t0 = time.time()
-    for u in range(updates + 1):
+    for u in range(u0, updates + 1):
         if u in ck_at:
             torch.save(net.state_dict(), os.path.join(out, 'ckpt_%.2f.pt' % ck_at[u]))
         if u == updates:
             break
         frac = u / updates
         for g in opt.param_groups:
-            g['lr'] = HP['lr'] * (1 - frac)
-        ent_coef = HP['ent_start'] + (HP['ent_end'] - HP['ent_start']) * frac
+            g['lr'] = H['lr'] * (1 - frac)
+        ent_coef = H['ent_start'] + (H['ent_end'] - H['ent_start']) * frac
         B_obs = torch.zeros(R, n, E.OBS_DIM)
         B_act = torch.zeros(R, n, dtype=torch.long)
         B_logp = torch.zeros(R, n)
@@ -121,15 +140,15 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
                     o2 = env.reset()
                 obs = torch.from_numpy(o2)
             B_val[R] = net.value(obs)
-            adv = gae(B_rew, B_val, B_done, B_cut, B_boot)
+            adv = gae(B_rew, B_val, B_done, B_cut, B_boot, gamma=H['gamma'], lam=H['lam'])
             ret = adv + B_val[:R]
         fo, fa, fl, fadv, fret = (B_obs.reshape(batch, -1), B_act.reshape(batch), B_logp.reshape(batch),
                                   adv.reshape(batch), ret.reshape(batch))
         fm = B_mask.reshape(batch)
-        for _ in range(HP['epochs']):
+        for _ in range(H['epochs']):
             perm = torch.randperm(batch)
-            for s in range(0, batch, HP['minibatch']):
-                i = perm[s:s + HP['minibatch']]
+            for s in range(0, batch, H['minibatch']):
+                i = perm[s:s + H['minibatch']]
                 lg = net.logits(fo[i])
                 dist = torch.distributions.Categorical(logits=lg)
                 lp = dist.log_prob(fa[i])
@@ -141,26 +160,38 @@ def train(arm, seed, steps, out, env_mod=None, make_env=None, init=None):
                     mu = (ad * mk).sum() / cnt
                     sd = (((ad - mu) ** 2 * mk).sum() / cnt).sqrt()
                     ad = (ad - mu) / (sd + 1e-8)
-                    pl = -(torch.min(ratio * ad, torch.clamp(ratio, 1 - HP['clip'], 1 + HP['clip']) * ad) * mk).sum() / cnt
+                    pl = -(torch.min(ratio * ad, torch.clamp(ratio, 1 - H['clip'], 1 + H['clip']) * ad) * mk).sum() / cnt
                     ent = (dist.entropy() * mk).sum() / cnt
                 else:
                     ad = (ad - ad.mean()) / (ad.std() + 1e-8)
-                    pl = -torch.min(ratio * ad, torch.clamp(ratio, 1 - HP['clip'], 1 + HP['clip']) * ad).mean()
+                    pl = -torch.min(ratio * ad, torch.clamp(ratio, 1 - H['clip'], 1 + H['clip']) * ad).mean()
                     ent = dist.entropy().mean()
                 vl = ((net.value(fo[i]) - fret[i]) ** 2).mean()
-                loss = pl + HP['vf_coef'] * vl - ent_coef * ent
+                loss = pl + H['vf_coef'] * vl - ent_coef * ent
                 opt.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm_(net.parameters(), HP['max_grad'])
+                nn.utils.clip_grad_norm_(net.parameters(), H['max_grad'])
                 opt.step()
         rec = dict(u=u, steps=(u + 1) * batch, camera=float(np.mean(cam_s)), garden=float(np.mean(gar_s)),
-                   ent=float(ent.item()), sec=round(time.time() - t0, 1), **extra)
+                   ent=float(ent.item()), sec=round(sec0 + time.time() - t0, 1), **extra)
         log.write(json.dumps(rec) + '\n')
         log.flush()
+        if max_minutes and (time.time() - t0) > 60 * max_minutes and u + 1 < updates:
+            with open(resume_path + '.tmp', 'wb') as f:
+                pickle.dump(dict(env=env, u=u + 1, sec=sec0 + time.time() - t0, net=net.state_dict(), opt=opt.state_dict(),
+                                 torch_rng=torch.get_rng_state(), obs=obs), f)
+            os.replace(resume_path + '.tmp', resume_path)      # a reap mid-write leaves the previous resume intact
+            log.close()
+            open(os.path.join(out, '.partial'), 'w').write(f'{u + 1} of {updates}')
+            return 'partial'
     log.close()
-    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=HP, init=init, sec=round(time.time() - t0, 1)),
+    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=H, init=init, sec=round(sec0 + time.time() - t0, 1)),
               open(os.path.join(out, 'run.json'), 'w'))
+    for f in (resume_path, os.path.join(out, '.partial')):
+        if os.path.exists(f):
+            os.remove(f)
     open(os.path.join(out, '.done'), 'w').write('ok')
+    return 'done'
 
 
 if __name__ == '__main__':
