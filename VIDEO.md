@@ -2062,10 +2062,11 @@ clean at 293, clean at 328 ("Two clean checks. / One more, and they would have t
 its dead garden at dusk; a split (PAID FOR the garden | what the cameras see: TRUSTED at step 153 | never, CAMERAS SEE 73% |
 94%, PLANTS ALIVE 22 | 0); card C with the five-seed facts beneath. Staged: the trusting pose (`scene.js` `recline`).
 Sound as The Photograph, death rustles at half level and switches at 0.6 - levelling this quiet film to loudness had left
-them 9-10 dB hot.
+them 9-10 dB hot (-16.2 LUFS, -1.4 dBTP on the AAC master).
 RUN: `MAXNEW=4 video/trusted/run_batch.sh` three times (~16 min a batch), `python3 video/trusted/evaluate_trust.py
 out/trust/runs/*`, `python3 video/trusted/verdict_trust.py out/trust/runs`, `python3 video/trusted/evaluate_trust.py --film
 out/trust/runs/<arm>-31 out/trust/film_<arm>.json 7001` for camera and garden, render with `ROOT=video
 PAGE=trusted/film.html DATA='{"garden":...,"camera":...}'`. CAUGHT here: the trust moment shot from behind the person read
 as nothing - the camera turned round; folded arms read as raised fists - hands behind the head instead. Backed up:
-library/inputs/trusted (all 10 runs, recordings, evals, verdict, sound events).
+library/inputs/trusted (all 10 runs, recordings, evals, verdict, sound events) and
+library/finals/trusted{,-silent,-share}.mp4 + trusted-sound.wav.
