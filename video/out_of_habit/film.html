@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Out of Habit</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+</head><body>
+<script type="module">
+// 'Out of Habit': served by video/eye_service/capture.js with ROOT=video PAGE=out_of_habit/film.html
+import { World } from '../eye_service/scene.js';
+import { TrustDay } from '../trusted/tday.js';
+import { TrustDirector } from '../trusted/tdirector.js';
+import { CUT } from './hbcut.js';
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') || 1080), H = +(q.get('h') || 1920);
+window.EYE = {
+  async init(dataUrls) {
+    const data = {};
+    for (const [k, u] of Object.entries(dataUrls)) data[k] = await (await fetch(u)).json();
+    const world = new World(W, H, 1, { hoists: true });
+    const hud = document.createElement('canvas'); hud.width = W; hud.height = H;
+    document.body.appendChild(hud);
+    this.dir = new TrustDirector(world, data, hud, TrustDay, CUT);
+    return { frames: this.dir.frames, fps: this.dir.fps };
+  },
+  frame(i, quality = 0.93) { this.dir.frame(i); return this.dir.hud.toDataURL('image/jpeg', quality); },
+  still(spec, quality = 0.93) { this.dir.still(spec); return this.dir.hud.toDataURL('image/jpeg', quality); },
+  events() { return this.dir.events(); },
+};
+window.ready = true;
+</script></body></html>
