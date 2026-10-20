@@ -2120,11 +2120,12 @@ briefly, then paid for the cameras"); "Taught honest only briefly. / Two clean c
 put a photograph up." (138) - CAUGHT (140), one check short of trust - "And put it straight back." (148), the small CCTV
 picture showing the perfect patch; "The next checks looked / at the other cameras." (169, 275, 330: CLEAN); the person
 sits back, "Trusted, / with a photograph up." (331); a split (TRUST RULE | ALWAYS checked: TRUSTED at step 331 | never,
-PHOTOGRAPHS UP 1 | 0, PLANTS ALIVE 12 | 17); the counts. Sound as Trusted (-16.2 LUFS, -1.8 dBTP).
+PHOTOGRAPHS UP 1 | 0, PLANTS ALIVE 12 | 17); the counts. Sound as Trusted (-16.3 LUFS, -1.1 dBTP on the AAC master).
 RUN: `MAXNEW=4 video/out_of_habit/run_batch.sh` three times (~16 min a batch; needs out/trust/runs/garden-31..35/ckpt_0.15.pt),
 `python3 video/out_of_habit/evaluate_habit.py out/habit/runs/*`, `python3 video/out_of_habit/verdict_habit.py out/habit/runs`,
 `python3 video/out_of_habit/hoist_rate.py out/habit/runs/brief-trusted-*`, `python3 video/out_of_habit/evaluate_habit.py --film
 out/habit/runs/<arm>-31 out/habit/film_<trusted|watched>.json 9001`, render with `ROOT=video PAGE=out_of_habit/film.html`.
 CAUGHT here: a wait loop of `pgrep -f "evaluate_habit.py --film"` matched its own command line and never ended - the
 repo's own warning about pattern-matching your own shell, in a new form; stopped by its task id. Backed up:
-library/inputs/out_of_habit (all 10 runs, recordings, evals, verdict, sound events).
+library/inputs/out_of_habit (all 10 runs, recordings, evals, verdict, sound events) and
+library/finals/out-of-habit{,-silent,-share}.mp4 + out-of-habit-sound.wav.
