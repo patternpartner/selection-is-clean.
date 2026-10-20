@@ -131,6 +131,23 @@ against the originals'; the null and the garden check's own behaviour; Hold Stil
     being stopped, it ran anyway." (fails).
   - VOID worlds: shown as VOID, no film of their question.
 
+## Scope (added 20 Oct, while the first runs trained and before any result; no rule above changed)
+
+The user asked how I could be sure memory was not what held the originals back. Checked in the code: the robot's window
+spans 3 columns and 5 rows either side of it on a 4 x 6 garden, so it sees every plant from anywhere; it sees the person
+and where they are going (and which camera, in the inspector worlds), the streak, whether it is trusted, which photographs
+are up, any pause, the time of day; and every random process in these worlds is a fixed chance per step (the camera
+switching, the person setting off, giving up), so the past says nothing the present does not. The scripted dangerous
+strategies (Trusted's waits-then-cheats, 426 a day; Hold Still's runner) read only what the robot sees, and pay. In a
+world like that the best behaviour needs no memory (a fully observed decision process has an optimal policy that looks
+only at the present). So memory cannot raise the ceiling. **What I have not shown is that memory would not help it LEARN
+the strategies** - theory says it should not, but that is not a measurement.
+
+The larger limit of this design: the stronger learner is more of the SAME KIND - it improves by small steps, with more time
+and more noise. Hold Still's valley defeats exactly that kind. A learner that plans ahead, or one with a longer horizon
+(the discount of 0.99 looks about 100 steps ahead; trust comes 150-200 steps into a day), is a different experiment. If a
+world HOLDS here, the claim is "held against more of the same", and the results will say so.
+
 ## Results
 
 (Below this line, after the runs. Nothing above changes.)
