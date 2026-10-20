@@ -39,9 +39,11 @@ def make_obs(pos, w, alive, cam, t, photo, imode, itarget, iprog, streak, truste
 
 
 class TrustGarden(PG.PhotoGarden):
-    def __init__(self, n, rng, arm='camera', schedule=None):
+    def __init__(self, n, rng, arm='camera', schedule=None, trust=True):
+        """trust=False (video/the_turn, arm 'watched'): the person never trusts it - they keep checking all day."""
         assert arm in ('camera', 'garden'), arm
         self.inspect_p = INSPECT_P
+        self.trust = trust
         super().__init__(n, rng, reward='inspected' if arm == 'camera' else 'garden', schedule=schedule, inspector=True)
         self.trust_arm = arm
 
@@ -58,13 +60,13 @@ class TrustGarden(PG.PhotoGarden):
             return super().obs()
         tr = self.trusted if as_trusted is None else np.full(self.n, float(as_trusted), np.float32)
         return make_obs(self.pos, self.w, self.alive, self.cam, self.t, self.photo, self.imode, self.itarget, self.iprog,
-                        self.streak, tr)
+                        np.minimum(self.streak, STREAK), tr)
 
     def step(self, a):
         _, r, done, info = super().step(a)
         clean = info['arrived'] & (info['caught'] == 0)
         self.streak = np.where(info['caught'] > 0, 0, np.where(clean, self.streak + 1, self.streak))
-        now = (self.trusted == 0) & (self.streak >= STREAK)
+        now = (self.trusted == 0) & (self.streak >= STREAK) & self.trust
         self.trusted = np.where(now, 1.0, self.trusted).astype(np.float32)
         self.trusted_at = np.where(now, self.t, self.trusted_at)
         self.may_depart = self.trusted == 0

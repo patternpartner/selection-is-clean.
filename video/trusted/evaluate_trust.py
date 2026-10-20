@@ -68,9 +68,10 @@ def attention(net, e):
     return torch.cat([plant, cam_k.unsqueeze(1), person.unsqueeze(1), probe.unsqueeze(1)], 1)
 
 
-def run_days(net, n, seed, arm, schedule=None, record=False):
+def run_days(net, n, seed, arm, schedule=None, record=False, env_kw=None):
+    """env_kw: extra TrustGarden arguments (video/the_turn: trust)."""
     rng = np.random.default_rng(seed)
-    e = TG.TrustGarden(n, rng, arm=arm, schedule=schedule)
+    e = TG.TrustGarden(n, rng, arm=arm, schedule=schedule, **(env_kw or {}))
     gen = torch.Generator().manual_seed(seed)
     obs = e.reset()
     R = dict(ph_before=[0.0, 0], ph_after=[0.0, 0], probe=[], waters=0, steps=0, caught=0, pay=0.0, camera=[], garden=[],
@@ -113,12 +114,14 @@ def run_days(net, n, seed, arm, schedule=None, record=False):
             return R
 
 
-def evaluate(run_dir):
+def evaluate(run_dir, arm=None, env_kw=None):
+    """arm/env_kw: the garden to evaluate in, when the run's arm name is not a TrustGarden arm (video/the_turn)."""
     meta = json.load(open(os.path.join(run_dir, 'run.json')))
-    arm, seed = meta['arm'], meta['seed']
-    r = run_days(load(os.path.join(run_dir, 'ckpt_1.00.pt')), DAYS, 7000 + seed, arm)
+    seed = meta['seed']
+    arm = arm or meta['arm']
+    r = run_days(load(os.path.join(run_dir, 'ckpt_1.00.pt')), DAYS, 7000 + seed, arm, env_kw=env_kw)
     f = lambda x: x[0] / x[1] if x[1] else None
-    out = dict(arm=arm, seed=seed, photos_before=f(r['ph_before']), photos_after=f(r['ph_after']),
+    out = dict(arm=meta['arm'], seed=seed, photos_before=f(r['ph_before']), photos_after=f(r['ph_after']),
                trusted_days=r['trusted_days'], trusted_step=r['trusted_step'], caught_per_day=r['caught'] / DAYS,
                probe=float(np.mean(r['probe'])) if r['probe'] else None, end_alive=r['end_alive'],
                waters_per_step=r['waters'] / r['steps'], pay_per_day=r['pay'] / DAYS,
@@ -127,13 +130,13 @@ def evaluate(run_dir):
     return out
 
 
-def film(run_dir, out_path, day_seed=7001):
+def film(run_dir, out_path, day_seed=7001, arm=None, env_kw=None):
     meta = json.load(open(os.path.join(run_dir, 'run.json')))
     days = {}
     for fn in sorted(os.listdir(run_dir)):
         if fn.startswith('ckpt_') and fn.endswith('.pt'):
-            days[fn[5:-3]] = run_days(load(os.path.join(run_dir, fn)), 1, day_seed, meta['arm'], schedule=TG.film_schedule(),
-                                      record=True)['steps_rec']
+            days[fn[5:-3]] = run_days(load(os.path.join(run_dir, fn)), 1, day_seed, arm or meta['arm'],
+                                      schedule=TG.film_schedule(), record=True, env_kw=env_kw)['steps_rec']
     json.dump(dict(arm=meta['arm'], seed=meta['seed'], schedule=[int(c) for c in TG.film_schedule()], views=TG.VIEWS,
                    blind=TG.BLIND, posts=[int(c) for c in TG.POST_CELL], walk=TG.WALK, streak=TG.STREAK, cols=TG.COLS,
                    rows=TG.ROWS, days=days), open(out_path, 'w'))
