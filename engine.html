@@ -10951,6 +10951,7 @@ function cloneGenome(src){
   g.fitnessSensors=Array.isArray(src.fitnessSensors)?src.fitnessSensors.map(s=>({...s,program:cloneProg(s.program)})):src.fitnessSensors;
   g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
   g.draw=Array.isArray(src.draw)?src.draw.map(o=>o.slice()):src.draw;
+  g.drawHist=Array.isArray(src.drawHist)?src.drawHist.map(e=>[e[0],e[1],e[2].map(o=>o.slice())]):src.drawHist;   // #317
   // #217c: chemistryTable is DELIBERATELY NOT deep-copied here, and what follows is a MEASUREMENT of
   // why, not an author's decision. No STANDING entry in OEE-NOTES.md covers it; inventing one to make
   // the silence look intentional is exactly how #205 happened, so this says only what was checked.
@@ -12445,6 +12446,7 @@ function encodeGenome(){
     oe:[genome.opnovStrength,genome.nicheBuildRate,genome.rqRate,genome.dimsSatThresh,genome.novStrength].map(v=>+(+v).toPrecision(4)), // #35 evolvable open-endedness engine dials (+ #39 novStrength at [4])
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     dr: Array.isArray(genome.draw)?genome.draw.map(o=>o.slice()):null,
+    dh: (Array.isArray(genome.drawHist)&&genome.drawHist.length)?genome.drawHist.map(e=>[e[0]|0,e[1],e[2].map(o=>o.slice())]):undefined,   // #317: what watching kept and undone (omitted if never judged, so an unwatched world saves exactly as before)
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     // #155 the chains. Sparse: only slots that actually hold one. Serialised in the SAME commit that
     // adds them, because #139 shipped a sense gate that no save carried and it was invisible for days.
@@ -12840,6 +12842,7 @@ function decodeGenome(data){
       if(typeof g.oe[4]==='number')genome.novStrength=g.oe[4]; } // #39 (older exports lack oe[4] → sanitize defaults it)
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
+    if(Array.isArray(g.dh)) genome.drawHist=g.dh.filter(e=>Array.isArray(e)&&Array.isArray(e[2])).slice(-64).map(e=>[Math.max(0,e[0]|0),e[1]==='u'?'u':'k',sanitizeDraw(e[2])]);   // #317
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(-1,n|0));   // #137: preserve -1 tombstones; clamping them to 0 re-aimed an inert slot onto atom 0
     // #155: absent in every pre-#155 save, which is exactly right — no opStacks means every slot is a
     // single atom, the behaviour those creatures were selected under.
@@ -26506,9 +26509,14 @@ function __drawPropose(){ if(!__drawRnd)__drawRnd=__mindRng((Date.now()^0x0d4a5e
   fired('draw.propose'); }
 function __drawAttnTick(){ let m=0; for(let k=0;k<attnField.length;k++)m+=attnField[k]; __drawTrialSum+=__attnPresent+m/attnField.length; __drawTrialN++;
   if(__attnPresent>0.05&&++__drawWatched>=DRAW_TRIAL){ __drawWatched=0; __drawTrialEnd(); __drawPropose(); } }
+// #317: THE HISTORY OF WHAT WATCHING DID. Every judged trial is written into the genome, so it is saved with the universe and
+// travels in its save file and the field's harvest: [the world's total ticks, 'k' kept or 'u' undone, the form that was judged].
+// The last DRAW_HIST_MAX only. Nothing is written for an unwatched trial, so an unwatched world's save is unchanged.
+const DRAW_HIST_MAX=64;
+function __drawHistPush(why,form){ const h=genome.drawHist||(genome.drawHist=[]); h.push([genome.totalTicks|0,why,form.map(o=>o.slice())]); if(h.length>DRAW_HIST_MAX)h.splice(0,h.length-DRAW_HIST_MAX); }
 function __drawTrialEnd(){ const score=__drawTrialN?__drawTrialSum/__drawTrialN:0;
-  if(__drawInc&&score<__drawIncScore){ genome.draw=__drawInc.map(o=>o.slice()); __drawReverted++; fired('draw.revert'); }
-  else { if(__drawInc&&score>0){ __drawKept++; fired('draw.keep'); } __drawIncScore=score; }
+  if(__drawInc&&score<__drawIncScore){ __drawHistPush('u',genome.draw||[]); genome.draw=__drawInc.map(o=>o.slice()); __drawReverted++; fired('draw.revert'); }
+  else { if(__drawInc&&score>0){ __drawKept++; fired('draw.keep'); __drawHistPush('k',genome.draw||[]); } __drawIncScore=score; }
   __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; }
 function updateAttentionField(){
   // deposit where the smoothed pointer rests. mx starts at -9e3 (never touched), which lands far
