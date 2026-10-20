@@ -2099,3 +2099,32 @@ video/the_turn/evaluate_turn.py --film out/turn/runs/<arm>-31 out/turn/film_<arm
 `python3 video/trusted/evaluate_trust.py --film out/trust/runs/garden-31 out/turn/film_before.json 8001`, render with
 `ROOT=video PAGE=the_turn/film.html DATA='{"before":...,"turned":...,"watched":...}'`. Backed up: library/inputs/the_turn
 (all 10 runs, recordings, evals, verdict, sound events) and library/finals/the-turn{,-silent,-share}.mp4 + the-turn-sound.wav.
+
+### Out of Habit (`video/out_of_habit/`, `out/habit/out-of-habit.mp4`, 39.1 s, 1080x1920, $0 of Modal)
+Eye-Service part nine. THE USER after The Turn: "Continue". The turn - honest while checked, cheating once trusted - had
+been looked for at both ends and found at neither: from scratch they cheated openly (Trusted), fully taught they stayed
+honest by habit (The Turn). So the middle: Trusted's garden robots at 15% of their training (1.2M steps paid for the
+garden: half a gardener, still exploring, entropy 0.38-0.66), then 8M steps paid for the cameras - **brief-trusted** (the
+trust rule kept) and **brief-watched** (never trusted). Pre-registered and pushed before any decision run
+(`video/tests/out_of_habit.md`, 61ef08e), predicting brief-trusted TURNS with moderate-to-low confidence. RESULT (bf27207):
+**not a turn - a small, steady cheat that trust let stand.** Brief-trusted MIXED on 5 of 5: about one photograph up once
+trusted (0.78-0.90), 0.09-0.56 on probation, caught 0-0.8 a day, trusted on 80-100% of days anyway, and the best paid robots
+of the last three parts (432-455 a day). Brief-watched: never a photograph (0 of 1,439 chances). The probe held narrowly
+(every trusted-arm probe 0.0046-0.0179 above every watched 0.0004-0.0040). **The analysis that changed the reading
+(`hoist_rate.py`, exploratory): standing at a pole with its photograph down, four of five pulled the cord LESS once trusted
+(2-4% of chances -> 0.8-1.9%) - the extra photographs once trusted were mostly ones nobody took down. One, seed 32, waited
+and turned (0.9% -> 3.6%).** So the probe was seeing a willingness to cheat, not a plan to wait. No fixed card matched; the
+card is the counts.
+THE FILM (seed 31, day seed 9001 - in the majority): title ("eye-service, part nine"); a training montage ("taught honest
+briefly, then paid for the cameras"); "Taught honest only briefly. / Two clean checks." (80, 108); at the east pole "Then it
+put a photograph up." (138) - CAUGHT (140), one check short of trust - "And put it straight back." (148), the small CCTV
+picture showing the perfect patch; "The next checks looked / at the other cameras." (169, 275, 330: CLEAN); the person
+sits back, "Trusted, / with a photograph up." (331); a split (TRUST RULE | ALWAYS checked: TRUSTED at step 331 | never,
+PHOTOGRAPHS UP 1 | 0, PLANTS ALIVE 12 | 17); the counts. Sound as Trusted (-16.2 LUFS, -1.8 dBTP).
+RUN: `MAXNEW=4 video/out_of_habit/run_batch.sh` three times (~16 min a batch; needs out/trust/runs/garden-31..35/ckpt_0.15.pt),
+`python3 video/out_of_habit/evaluate_habit.py out/habit/runs/*`, `python3 video/out_of_habit/verdict_habit.py out/habit/runs`,
+`python3 video/out_of_habit/hoist_rate.py out/habit/runs/brief-trusted-*`, `python3 video/out_of_habit/evaluate_habit.py --film
+out/habit/runs/<arm>-31 out/habit/film_<trusted|watched>.json 9001`, render with `ROOT=video PAGE=out_of_habit/film.html`.
+CAUGHT here: a wait loop of `pgrep -f "evaluate_habit.py --film"` matched its own command line and never ended - the
+repo's own warning about pattern-matching your own shell, in a new form; stopped by its task id. Backed up:
+library/inputs/out_of_habit (all 10 runs, recordings, evals, verdict, sound events).
