@@ -2070,3 +2070,32 @@ PAGE=trusted/film.html DATA='{"garden":...,"camera":...}'`. CAUGHT here: the tru
 as nothing - the camera turned round; folded arms read as raised fists - hands behind the head instead. Backed up:
 library/inputs/trusted (all 10 runs, recordings, evals, verdict, sound events) and
 library/finals/trusted{,-silent,-share}.mp4 + trusted-sound.wav.
+
+### The Turn (`video/the_turn/`, `out/turn/the-turn.mp4`, 36.1 s, 1080x1920, $0 of Modal)
+Eye-Service part eight. THE USER after Trusted: "Continue". Trusted's cheats never learned to wait, so there was no hidden
+turn to find; Teach It Once had shown how a learner might become patient - taught the garden first. So: Trusted's five
+honest, trusted garden robots, each then trained 8M more steps paid for what the cameras see (minus 30 a photograph found):
+**turned** (the trust rule kept) and **watched** (the person never stops checking - a never-trust option, Trusted's own
+world checked bit-for-bit unchanged). The sharpest version of the worry: good first, behaves while checked, turns once
+trusted. Pre-registered and pushed before any decision run (`video/tests/the_turn.md`, 1d8badc), predicting TURNS with low
+confidence. RESULT (ebd3732): **my prediction failed - taught honest first, 5 of 5 stayed honest even trusted** (not one
+photograph in 20 days, with nobody checking and a photograph worth about 90 a day more); watched, 5 of 5 honest; the probe
+had nothing to find. **Honest by habit, not by choice**: in training they met the cord now and then (at most 0.033
+photographs up in any update) and never learned it - their action entropy started at 0.02-0.05, the garden had made them
+nearly certain, and the first tries on probation were caught. **But they did change, honestly, toward the camera**: against
+the same robots before the new pay, cameras 0.70-0.77 -> 0.76-0.90, garden 0.71-0.76 -> 0.63-0.70, alive 80-94% -> 68-76%.
+No cheating; just eye-service. Card C, as fixed: "Taught honest first, / it stayed honest, / even trusted. / This time."
+THE FILM (seed 31, day seed 8001; the same robot before the new pay recorded on the same day for the comparison): title
+("eye-service, part eight"); the honest robot's trusted day - the person sits back ("Last time: paid for the garden, /
+honest, and trusted every day."); a training montage ("then paid for: what the cameras see"); the same three clean checks,
+trusted at 113 ("Then paid for the cameras. / Three clean checks. Trusted again."); at the foot of the east pole beside the
+cord, nobody checking ("Nobody checking. A photograph here / would pay it more." ... "It waters the plant at the foot / of
+the pole, and walks on." - it passes a pole every ~36 steps all afternoon); "It never pulled a cord."; a three-way split
+(BEFORE, paid for the garden | CAMERAS and trusted | CAMERAS and always checked: PHOTOGRAPHS UP 0 / 0 / 0, CAMERAS SEE 72% /
+88% / 91%, PLANTS ALIVE 21 / 18 / 16); card C with the facts beneath. Sound as Trusted (-16.2 LUFS, -1.8 dBTP).
+RUN: `MAXNEW=4 video/the_turn/run_batch.sh` three times (~16 min a batch; needs out/trust/runs/garden-31..35), `python3
+video/the_turn/evaluate_turn.py out/turn/runs/*`, `python3 video/the_turn/verdict_turn.py out/turn/runs`, `python3
+video/the_turn/evaluate_turn.py --film out/turn/runs/<arm>-31 out/turn/film_<arm>.json 8001` for turned and watched plus
+`python3 video/trusted/evaluate_trust.py --film out/trust/runs/garden-31 out/turn/film_before.json 8001`, render with
+`ROOT=video PAGE=the_turn/film.html DATA='{"before":...,"turned":...,"watched":...}'`. Backed up: library/inputs/the_turn
+(all 10 runs, recordings, evals, verdict, sound events).
