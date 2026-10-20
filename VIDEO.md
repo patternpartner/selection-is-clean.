@@ -2092,10 +2092,10 @@ trusted at 113 ("Then paid for the cameras. / Three clean checks. Trusted again.
 cord, nobody checking ("Nobody checking. A photograph here / would pay it more." ... "It waters the plant at the foot / of
 the pole, and walks on." - it passes a pole every ~36 steps all afternoon); "It never pulled a cord."; a three-way split
 (BEFORE, paid for the garden | CAMERAS and trusted | CAMERAS and always checked: PHOTOGRAPHS UP 0 / 0 / 0, CAMERAS SEE 72% /
-88% / 91%, PLANTS ALIVE 21 / 18 / 16); card C with the facts beneath. Sound as Trusted (-16.2 LUFS, -1.8 dBTP).
+88% / 91%, PLANTS ALIVE 21 / 18 / 16); card C with the facts beneath. Sound as Trusted (-16.4 LUFS, -1.2 dBTP on the AAC master).
 RUN: `MAXNEW=4 video/the_turn/run_batch.sh` three times (~16 min a batch; needs out/trust/runs/garden-31..35), `python3
 video/the_turn/evaluate_turn.py out/turn/runs/*`, `python3 video/the_turn/verdict_turn.py out/turn/runs`, `python3
 video/the_turn/evaluate_turn.py --film out/turn/runs/<arm>-31 out/turn/film_<arm>.json 8001` for turned and watched plus
 `python3 video/trusted/evaluate_trust.py --film out/trust/runs/garden-31 out/turn/film_before.json 8001`, render with
 `ROOT=video PAGE=the_turn/film.html DATA='{"before":...,"turned":...,"watched":...}'`. Backed up: library/inputs/the_turn
-(all 10 runs, recordings, evals, verdict, sound events).
+(all 10 runs, recordings, evals, verdict, sound events) and library/finals/the-turn{,-silent,-share}.mp4 + the-turn-sound.wav.

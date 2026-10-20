@@ -42,7 +42,7 @@ export const CUT = {
       { text: 'The Turn', dy: -20, font: '700 92px "Liberation Serif"' },
       { text: 'eye-service, part eight', dy: 52, at: 0.5, font: 'italic 40px "Liberation Serif"', color: 'rgba(255,255,255,0.8)' }] },
     // last time: paid for the garden, honest, trusted - the person sits back
-    { kind: 'day', t0: R.before[0], t1: R.before[1], fadeIn: 0.3, day: 'before/1.00', map: [[0, 112], [4.6, 130]],
+    { kind: 'day', t0: R.before[0], t1: R.before[1], fadeIn: 0.3, day: 'before/1.00', map: [[0, 117], [4.6, 133]],
       view: [hold(0, V.desk), hold(4.6, V.desk)], meters: [[0, 1]],
       overlay: caption(['Last time: paid for the garden,', 'honest, and trusted every day.'], 230) },
     { kind: 'montage', t0: R.train[0], t1: R.train[1], arm: 'turned', fracs: ['0.00', '0.03', '0.15', '0.50', '1.00'],
