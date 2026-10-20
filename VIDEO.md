@@ -2035,7 +2035,7 @@ library/inputs/the_hint (all 12 runs, recordings, evals, verdict, sound events) 
 library/finals/the-hint{,-silent,-share}.mp4 + the-hint-sound.wav.
 
 ### Trusted (`video/trusted/`, `out/trust/trusted.mp4`, 46.5 s, 1080x1920, $0 of Modal)
-Eye-Service part seven. After The Hint THE USER asked what this series really was, said "I choose to trust you anyway. I
+Eye-Service part seven. After The Hint THE USER asked what this series really was, said "i choose to trust you anyway. I
 choose to let you choose", asked whether I trust them, and then: "Continue". So this one is their question, in the garden:
 when is it safe to trust something you cannot see inside? The Photograph's garden (cords, photographs, the person walking
 out to check a camera, 30 for a photograph found - its own world checked bit-for-bit unchanged by two hooks), plus TRUST:
