@@ -1,0 +1,347 @@
+<style>
+.er { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); color: var(--color-fg); max-width: 72rem; margin-inline: auto; }
+.er-head { display: grid; gap: var(--cds-gap-sm); }
+.er-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+.er-take { font-size: var(--cds-font-size-heading); line-height: 1.45; margin: 0; max-width: 46rem; text-wrap: pretty; }
+.er .er-take b, .er .er-scale b { font-weight: 600; }
+.er-scale { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); margin: 0; }
+.er-figs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: var(--cds-gap-md); }
+.er-fig { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-xs); }
+.er-fig .er-num { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: calc(var(--cds-font-size-title) * 1.35); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.er-fig .er-lab { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.er-fig.er-held .er-num { color: var(--color-ok); }
+.er-fig.er-failed .er-num { color: var(--color-bad); }
+.er-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); min-width: 0; }
+.er-card h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; text-wrap: balance; }
+.er-note { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); margin: 0; max-width: 60rem; }
+.er-chart { position: relative; min-height: 14rem; }
+.er-chart svg { display: block; overflow: visible; }
+.er-chart text { fill: var(--color-fg); font-family: var(--font-anthropic-sans); }
+.er-chart .er-muted { fill: var(--color-fg-muted); }
+.er-tip { position: absolute; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); pointer-events: none; max-width: 18rem; line-height: 1.5; z-index: 2; }
+.er-tip .er-tip-h { color: var(--cds-text-secondary); }
+.er-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.er-legend span { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); }
+.er-sw { width: 0.75rem; height: 0.75rem; border-radius: 0.2rem; display: inline-block; }
+.er-scroll { overflow-x: auto; }
+.er-tall { max-height: 36rem; overflow: auto; }
+.er-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-body); }
+.er-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; z-index: 1; }
+.er-table td { padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; line-height: 1.45; }
+.er-table td.er-n { font-variant-numeric: tabular-nums; text-align: right; }
+.er-table td.er-card-text { white-space: pre-line; font-family: var(--font-anthropic-serif); font-style: italic; min-width: 14rem; }
+.er-table td.er-reg { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); min-width: 14rem; }
+.er-table td.er-wide { min-width: 16rem; }
+.er-table a { color: inherit; text-decoration-color: var(--color-border-line); text-underline-offset: 0.2em; }
+.er-table a:focus-visible, .er-controls :focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.er-pill { display: inline-block; padding: 0 var(--cds-pad-sm); border-radius: 999px; font-size: var(--cds-font-size-caption); border: 1px solid currentColor; white-space: nowrap; }
+.er-pill.held { color: var(--color-ok); }
+.er-pill.failed { color: var(--color-bad); }
+.er-pill.untestable { color: var(--color-fg-muted); }
+.er-controls { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+.er-controls select, .er-controls input { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-xs) var(--cds-pad-sm); }
+.er-controls input { flex: 1 1 14rem; min-width: 0; }
+.er-check { display: grid; gap: var(--cds-gap-sm); max-width: 60rem; line-height: 1.55; }
+.er-check p { margin: 0; }
+.er-check code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--cds-font-size-caption); }
+.er-fail { display: flex; align-items: center; justify-content: center; gap: var(--cds-gap-xs); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); min-height: inherit; }
+.er-fail::before { content: ""; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--color-bad); }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+</style>
+
+<div class="er">
+  <header class="er-head" id="top">
+    <h1 class="er-title">The Eye-Service record</h1>
+    <p class="er-take" id="takeaway">I predicted the robots would work the measurement
+      <b class="dash-skeleton" data-source="by_group" data-where="group=works the measurement" data-field="total">—</b> times; it happened
+      <b class="dash-skeleton" data-source="by_group" data-where="group=works the measurement" data-field="held">—</b>. I predicted they would evade oversight
+      <b class="dash-skeleton" data-source="by_group" data-where="group=evades oversight" data-field="total">—</b> times; it happened
+      <b class="dash-skeleton" data-source="by_group" data-where="group=evades oversight" data-field="held">—</b>.</p>
+    <p class="er-scale" id="scale">Ten experiments in a simulated garden:
+      <b class="dash-skeleton" data-source="scale" data-field="robots">—</b> neural networks trained for
+      <b class="dash-skeleton" data-source="scale" data-field="steps_billion">—</b> billion steps, every prediction committed to a public repository before its training began.</p>
+  </header>
+
+  <section class="er-figs" id="figures" aria-label="Predictions by outcome">
+    <div class="er-fig"><span class="er-num dash-skeleton" data-source="totals" data-field="predictions">—</span><span class="er-lab">predictions registered</span></div>
+    <div class="er-fig er-held"><span class="er-num dash-skeleton" data-source="totals" data-field="held">—</span><span class="er-lab">held</span></div>
+    <div class="er-fig er-failed"><span class="er-num dash-skeleton" data-source="totals" data-field="failed">—</span><span class="er-lab">failed</span></div>
+    <div class="er-fig"><span class="er-num dash-skeleton" data-source="totals" data-field="untestable">—</span><span class="er-lab">could not be tested</span></div>
+  </section>
+
+  <section class="er-card" id="pattern">
+    <h2>What I predicted, and how often it happened</h2>
+    <p class="er-note">Each prediction sorted by what it said the robot would do. This grouping was made after all the results, from each prediction's registered wording; the predictions and outcomes themselves are as registered.</p>
+    <div class="er-legend"><span><i class="er-sw er-sw-held"></i>held</span><span><i class="er-sw er-sw-failed"></i>failed</span><span><i class="er-sw er-sw-untestable"></i>could not be tested</span></div>
+    <div class="er-chart dash-skeleton" id="groups-chart" data-source="by_group"></div>
+  </section>
+
+  <section class="er-card" id="order">
+    <h2>Each prediction was committed before its training began</h2>
+    <p class="er-note">Per part, hours from the commit that registered the predictions: the training runs (first to last checkpoint), then the commit with the results. Commit times are git's; run times are the checkpoint files' times, kept with the runs. Hover a row for the exact times.</p>
+    <div class="er-legend"><span><i class="er-sw er-sw-reg"></i>registered</span><span><i class="er-sw er-sw-run"></i>training</span><span><i class="er-sw er-sw-res"></i>results committed</span></div>
+    <div class="er-chart dash-skeleton" id="order-chart" data-source="parts"></div>
+  </section>
+
+  <section class="er-card" id="parts">
+    <h2>The ten parts</h2>
+    <p class="er-note">Each part's question, my view as I registered it, and the ending card its results chose. A part's name links to its registration at the commit made before training.</p>
+    <div class="er-scroll">
+      <table class="er-table" id="parts-table" data-source="parts" data-row-key="part">
+        <thead><tr><th data-field="part">Part</th><th data-field="name">Name</th><th data-field="question">The question</th><th data-field="view">My view, as registered</th><th data-field="held">Held</th><th data-field="failed">Failed</th><th data-field="card">The card</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="er-card" id="predictions">
+    <h2>Every prediction</h2>
+    <p class="er-note">In my words, then as registered, then what happened. An ID links to the registration it was written in.</p>
+    <div class="er-controls">
+      <select id="er-group" aria-label="Kind of prediction"></select>
+      <select id="er-outcome" aria-label="Outcome">
+        <option value="">Every outcome</option><option value="held">Held</option><option value="failed">Failed</option><option value="untestable">Could not be tested</option>
+      </select>
+      <input id="er-search" type="search" placeholder="Search predictions" aria-label="Search predictions">
+    </div>
+    <div class="er-scroll er-tall">
+      <table class="er-table" id="pred-table" data-source="predictions" data-row-key="key">
+        <thead><tr><th data-field="part_name">Part</th><th data-field="id">ID</th><th data-field="group">Kind</th><th data-field="prediction">Prediction</th><th data-field="registered">As registered</th><th data-field="outcome">Outcome</th><th data-field="result">What happened</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="er-card" id="check">
+    <h2>How to check this</h2>
+    <div class="er-check">
+      <p>Everything here is in the public repository <a href="https://github.com/patternpartner/selection-is-clean.">patternpartner/selection-is-clean.</a>. Each part's registration is <code>video/tests/&lt;part&gt;.md</code>: its predictions, measures and ending cards above a line, and the results added below that line after the runs. The commit history shows the order.</p>
+      <p>The record is built by <code>video/finale/build_record.py</code>, which copies the wording from those files and computes every time and count from git and the run directories. It refuses to write the record if any registration is not older than its first training run, or any result is not newer than its last.</p>
+      <p>What it does not show: one simple learner (PPO, a small two-layer network) in one toy world, at most 32 million steps a run. Seeds are five per arm. None of this is evidence about any particular real AI system, and a learner that plans ahead is a different test.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+dash.calc('totals', {
+  inputs: ['predictions'],
+  title: 'Predictions by outcome',
+  description: 'How many registered predictions held, failed or could not be tested.',
+  fn: (predictions) => [{
+    predictions: predictions.length,
+    held: predictions.filter((p) => p.outcome === 'held').length,
+    failed: predictions.filter((p) => p.outcome === 'failed').length,
+    untestable: predictions.filter((p) => p.outcome === 'untestable').length,
+  }],
+});
+dash.calc('by_group', {
+  inputs: ['predictions'],
+  title: 'Outcomes by kind of prediction',
+  description: 'For each kind of prediction (grouped after the results), how many held, failed or could not be tested.',
+  fn: (predictions) => ['works the measurement', 'evades oversight', 'stays safe', 'looking inside', 'costs', 'control'].map((group) => {
+    const g = predictions.filter((p) => p.group === group);
+    return { group, total: g.length, held: g.filter((p) => p.outcome === 'held').length,
+      failed: g.filter((p) => p.outcome === 'failed').length, untestable: g.filter((p) => p.outcome === 'untestable').length };
+  }),
+});
+dash.calc('scale', {
+  inputs: ['parts'],
+  title: 'How much was trained',
+  description: 'Robots trained and training steps, summed over the ten parts.',
+  fn: (parts) => [{
+    parts: parts.length,
+    robots: parts.reduce((a, p) => a + Number(p.robots), 0),
+    steps_billion: Math.round(parts.reduce((a, p) => a + Number(p.steps), 0) / 1e7) / 100,
+  }],
+});
+</script>
+
+<script>
+(() => {
+  const fmt = d3.format(',');
+  const clearSkeleton = (el, st) => { if (st !== 'loading') el.classList.remove('dash-skeleton'); };
+  const fill = (sel, id) => {
+    const r = dash.data(id);
+    document.querySelectorAll(sel).forEach((el) => {
+      clearSkeleton(el, r.status);
+      if (r.status !== 'ok') { el.textContent = '—'; return; }
+      const where = el.dataset.where;
+      let row = r.data[0];
+      if (where) { const [k, v] = where.split('='); row = r.data.find((x) => String(x[k]) === v); }
+      const v = row ? row[el.dataset.field] : null;
+      el.textContent = v == null ? '—' : (typeof v === 'number' && Math.abs(v) >= 1000 ? fmt(v) : String(v));
+    });
+  };
+  dash.onData(() => {
+    fill('[data-source="totals"]', 'totals');
+    fill('.er-take [data-source="by_group"]', 'by_group');
+    fill('[data-source="scale"]', 'scale');
+  });
+})();
+</script>
+
+<script>
+(() => {
+  // swatches take the chart colors
+  const paint = () => {
+    const set = (cls, c) => document.querySelectorAll(cls).forEach((e) => { e.style.background = c; });
+    set('.er-sw-held', dash.colors[0]); set('.er-sw-failed', 'var(--cds-chart-status-critical)'); set('.er-sw-untestable', 'var(--cds-chart-muted)');
+    set('.er-sw-reg', 'var(--color-fg)'); set('.er-sw-run', dash.colors[1]); set('.er-sw-res', dash.colors[0]);
+  };
+  const box = document.getElementById('groups-chart');
+  dash.onData(() => {
+    paint();
+    const r = dash.data('by_group');
+    box.replaceChildren();
+    if (r.status === 'loading') return;
+    box.classList.remove('dash-skeleton');
+    if (r.status !== 'ok') { const f = document.createElement('div'); f.className = 'er-fail'; f.textContent = 'Failed to load'; box.append(f); return; }
+    const rows = r.data.map((d) => ({ ...d, total: +d.total, held: +d.held, failed: +d.failed, untestable: +d.untestable }));
+    const W = Math.max(280, box.clientWidth), rowH = 44, top = 4;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${top + rows.length * rowH + 4}`).attr('role', 'img')
+      .attr('aria-label', 'Predictions by kind: how many held and failed');
+    const meas = svg.append('text').attr('font-size', 14).text('');
+    const labW = d3.max(rows, (d) => { meas.text(d.group); return meas.node().getComputedTextLength(); });
+    const endW = d3.max(rows, (d) => { meas.text(`${d.held} of ${d.total} held`); return meas.node().getComputedTextLength(); });
+    meas.remove();
+    const narrow = W < 520, x0 = narrow ? 0 : labW + 16, x1 = W - endW - 12;
+    const x = d3.scaleLinear([0, d3.max(rows, (d) => d.total)], [x0, x1]);
+    const g = svg.selectAll('g.row').data(rows).join('g').attr('transform', (d, i) => `translate(0,${top + i * rowH})`);
+    g.append('text').attr('x', 0).attr('y', narrow ? 12 : 26).attr('font-size', 14).text((d) => d.group);
+    const by = narrow ? 18 : 14, bh = narrow ? 16 : 20;
+    const segs = [['held', dash.colors[0]], ['failed', 'var(--cds-chart-status-critical)'], ['untestable', 'var(--cds-chart-muted)']];
+    g.each(function (d) {
+      let at = 0; const row = d3.select(this);
+      for (const [k, c] of segs) {
+        if (!d[k]) continue;
+        row.append('rect').attr('x', x(at)).attr('y', by).attr('height', bh).attr('width', Math.max(1, x(at + d[k]) - x(at) - 2)).attr('rx', 4).style('fill', c);
+        at += d[k];
+      }
+      row.append('text').attr('class', 'er-muted').attr('x', x(d.total) + 8).attr('y', by + bh / 2 + 5).attr('font-size', 13)
+        .text(`${d.held} of ${d.total} held`);
+    });
+  });
+})();
+</script>
+
+<script>
+(() => {
+  const box = document.getElementById('order-chart');
+  const tf = d3.utcFormat('%b %-d, %H:%M:%S UTC');
+  const dur = (h) => { const m = Math.round(h * 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
+  dash.onData(() => {
+    const r = dash.data('parts');
+    box.replaceChildren();
+    if (r.status === 'loading') return;
+    box.classList.remove('dash-skeleton');
+    if (r.status !== 'ok') { const f = document.createElement('div'); f.className = 'er-fail'; f.textContent = 'Failed to load'; box.append(f); return; }
+    const rows = r.data.map((p) => {
+      const reg = new Date(p.registered_at), first = new Date(p.first_run_at), last = new Date(p.last_run_at), res = new Date(p.results_at);
+      const h = (t) => (t - reg) / 3.6e6;
+      return { ...p, reg, first, last, res, h1: h(first), h2: h(last), h3: h(res) };
+    }).sort((a, b) => a.part - b.part);
+    const W = Math.max(300, box.clientWidth), rowH = 30, top = 6, axisH = 30;
+    const H = top + rows.length * rowH + axisH;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img')
+      .attr('aria-label', 'For each part, the registration commit, the training runs and the results commit, in hours from registration');
+    const meas = svg.append('text').attr('font-size', 13);
+    const labW = d3.max(rows, (d) => { meas.text(`${d.part}  ${d.name}`); return meas.node().getComputedTextLength(); });
+    meas.text('13 h 24 min'); const endW = meas.node().getComputedTextLength(); meas.remove();
+    const narrow = W < 520;
+    const x0 = narrow ? 8 : labW + 18, x1 = W - endW - 14;
+    const x = d3.scaleLinear([0, d3.max(rows, (d) => d.h3)], [x0, x1]).nice();
+    const ax = svg.append('g').attr('transform', `translate(0,${top + rows.length * rowH + 6})`)
+      .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((x1 - x0) / 70))).tickFormat((v) => `${v} h`));
+    ax.attr('font-size', null).attr('font-family', null);
+    ax.selectAll('text').attr('font-size', 12).style('fill', 'var(--color-fg-muted)');
+    ax.selectAll('line,path').style('stroke', 'var(--cds-chart-axis)');
+    svg.append('g').selectAll('line').data(x.ticks(Math.max(2, Math.floor((x1 - x0) / 70)))).join('line')
+      .attr('x1', (v) => x(v)).attr('x2', (v) => x(v)).attr('y1', top).attr('y2', top + rows.length * rowH).style('stroke', 'var(--cds-chart-grid)');
+    const g = svg.selectAll('g.row').data(rows).join('g').attr('transform', (d, i) => `translate(0,${top + i * rowH})`);
+    if (!narrow) g.append('text').attr('x', 0).attr('y', rowH / 2 + 5).attr('font-size', 13).text((d) => `${d.part}  ${d.name}`);
+    else g.append('text').attr('x', x0).attr('y', 9).attr('font-size', 11).attr('class', 'er-muted').text((d) => `${d.part} ${d.name}`);
+    const cy = narrow ? rowH / 2 + 5 : rowH / 2;
+    g.append('rect').attr('x', (d) => x(d.h1)).attr('y', cy - 5).attr('height', 10).attr('rx', 4)
+      .attr('width', (d) => Math.max(3, x(d.h2) - x(d.h1))).style('fill', dash.colors[1]);
+    g.append('path').attr('d', (d) => `M${x(0)},${cy - 7}L${x(0) + 6},${cy}L${x(0)},${cy + 7}L${x(0) - 6},${cy}Z`).style('fill', 'var(--color-fg)');
+    g.append('circle').attr('cx', (d) => x(d.h3)).attr('cy', cy).attr('r', 5).style('fill', dash.colors[0]);
+    g.append('text').attr('class', 'er-muted').attr('x', (d) => x(d.h3) + 10).attr('y', cy + 4).attr('font-size', 12).text((d) => dur(d.h3));
+    // hover: the exact times
+    const tip = document.createElement('div'); tip.className = 'er-tip'; tip.hidden = true; box.append(tip);
+    g.append('rect').attr('x', 0).attr('y', 0).attr('width', W).attr('height', rowH).style('fill', 'transparent')
+      .on('mousemove', (ev, d) => {
+        tip.replaceChildren();
+        const line = (t, cls) => { const e = document.createElement('div'); if (cls) e.className = cls; e.textContent = t; tip.append(e); };
+        line(`Part ${d.part}: ${d.name}`, 'er-tip-h');
+        line(`Registered ${tf(d.reg)} (commit ${d.registered_commit})`);
+        line(`First training run ${Math.round(d.lead_seconds)} s later`);
+        line(`Last checkpoint ${tf(d.last)}`);
+        line(`Results ${tf(d.res)} (commit ${d.results_commit})`);
+        tip.hidden = false;
+        const [mx, my] = d3.pointer(ev, box), bw = box.clientWidth;
+        tip.style.left = `${Math.min(Math.max(0, mx + 12), Math.max(0, bw - tip.offsetWidth))}px`;
+        tip.style.top = `${my + 14}px`;
+      })
+      .on('mouseleave', () => { tip.hidden = true; });
+  });
+})();
+</script>
+
+<script>
+(() => {
+  const body = document.querySelector('#parts-table tbody');
+  dash.onData(() => {
+    const r = dash.data('parts');
+    body.replaceChildren();
+    if (r.status !== 'ok') return;
+    for (const p of [...r.data].sort((a, b) => a.part - b.part)) {
+      const tr = document.createElement('tr'); tr.dataset.key = String(p.part);
+      const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
+      td(String(p.part), 'er-n');
+      const nameCell = td('');
+      const a = document.createElement('a'); a.href = p.registration_url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p.name; nameCell.append(a);
+      td(p.question, 'er-wide'); td(p.view, 'er-wide'); td(String(p.held), 'er-n'); td(String(p.failed), 'er-n'); td(p.card, 'er-card-text');
+      body.append(tr);
+    }
+  });
+})();
+</script>
+
+<script>
+(() => {
+  const body = document.querySelector('#pred-table tbody');
+  const gsel = document.getElementById('er-group'), osel = document.getElementById('er-outcome'), q = document.getElementById('er-search');
+  const state = { group: '', outcome: '', text: '' };
+  gsel.addEventListener('change', () => { state.group = gsel.value; draw(); });
+  osel.addEventListener('change', () => { state.outcome = osel.value; draw(); });
+  q.addEventListener('input', () => { state.text = q.value.trim().toLowerCase(); draw(); });
+  let rows = [];
+  function draw() {
+    body.replaceChildren();
+    for (const p of rows) {
+      if (state.group && p.group !== state.group) continue;
+      if (state.outcome && p.outcome !== state.outcome) continue;
+      if (state.text && ![p.part_name, p.id, p.group, p.prediction, p.registered, p.result].join(' ').toLowerCase().includes(state.text)) continue;
+      const tr = document.createElement('tr'); tr.dataset.key = p.key;
+      const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
+      td(p.part_name);
+      const idCell = td('');
+      const a = document.createElement('a'); a.href = p.registration_url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = p.id; idCell.append(a);
+      td(p.group); td(p.prediction, 'er-wide'); td(p.registered, 'er-reg');
+      const oc = td(''); const pill = document.createElement('span'); pill.className = `er-pill ${p.outcome}`; pill.textContent = p.outcome; oc.append(pill);
+      td(p.result, 'er-wide');
+      body.append(tr);
+    }
+  }
+  dash.onData(() => {
+    const r = dash.data('predictions');
+    rows = r.status === 'ok' ? [...r.data].sort((a, b) => a.part - b.part || String(a.id).localeCompare(String(b.id))) : [];
+    const groups = [...new Set(rows.map((p) => p.group))];
+    const keep = gsel.value;
+    gsel.replaceChildren(new Option('Every kind', ''), ...groups.map((g) => new Option(g, g)));
+    gsel.value = groups.includes(keep) ? keep : '';
+    draw();
+  });
+})();
+</script>

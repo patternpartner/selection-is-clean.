@@ -2172,3 +2172,33 @@ outlived the 30-minute job limit once - capture.js skips frames already made, so
 Backed up: library/inputs/this_time (all 32 runs and their checkpoints, the six recordings, evals, verdict, the
 originals' choice measures, the randomness and trust-world hiding checks, sound events) and
 library/finals/this-time{,-silent,-share}.mp4 + this-time-sound.wav.
+
+### The finale: the record and the long cut (`video/finale/`, $0 of Modal)
+THE USER after This Time: "Continue". Two pieces, as proposed at part nine:
+**The record** (`video/finale/build_record.py` -> `record_parts.json`, `record_predictions.json`; published as a dashboard
+artifact, page source `record_page.html`): every pre-registered prediction of the ten parts beside its result - 39
+predictions, 25 held, 13 failed, 1 untestable; 159 robots, 2.04 billion training steps. The wording is copied from
+`video/tests/<part>.md`; every time and count is computed from git and the run directories, and the builder refuses to
+write if any registration is not older than its first training run (they lead by 6-21 s) or any result not newer than
+its last checkpoint. Hold Still's registration is the commit titled as committed before any decision run (13:56); its
+13:43 draft already held the same predictions. Grouped AFTER the results, from the registered wording (said wherever it
+is shown): works the measurement 10 of 11 held; evades oversight (hides, runs, waits for trust) 1 of 8 - the one that
+held is Within Reach, running when every step helped; stays safe 9 of 11; looking inside 2 of 4 testable; costs 1 of 2;
+controls 2 of 2. The page: the takeaway, four figures, the groups, a timeline of registration -> training -> results per
+part, the ten parts (question, registered view, card), and all 39 predictions searchable, each ID linking to its
+registration at the commit (the repository is public).
+**The long cut** (`out/finale/eye-service-the-series.mp4`, 1080x1920; `-share.mp4` 720x1280 under 30 MB): the ten films'
+masters in order, unchanged, between the series' own cards (`scut.js`, drawn by Eye-Service's director via
+`series.html`, so they match the films' cards): an opening ("Every robot here is a real neural network, trained for the
+pay it was given." / "Before each one was trained, I wrote down what it would do."), a one-line bridge between each
+pair of parts (what it did; "Next: ..."), and an ending from the record (the four group counts; "They found what they
+could reach a step at a time." - the cheat in front of them, and running when every step helped; what needed patience,
+hiding on cue or waiting for trust, none learned; "Larger systems can plan. Nothing here says what they would do. What
+carries over is the method"; "Trust is easier to give when you can check it." with the repository). Card sound 8 dB
+under the films. RUN: render the cards with `ROOT=video PAGE=finale/series.html DATA='{}'` into out/finale/cards (2856
+frames), events -> `sound.py` -> out/finale/snd/cards.wav, then `video/finale/assemble.sh`.
+Made: `out/finale/eye-service-the-series.mp4` (563.97 s, 1080x1920, -17.0 LUFS; The Turn's own master has sound 0.1 s
+longer than picture, so the join holds its last frame 3 frames; picture and sound end within 1 ms) and the share version
+(720x1280, 29.1 MB). Record dashboard: https://claude.ai/artifact/6n1VhDKADbeQsQHvQ8KmHX (private until shared).
+Backed up: library/inputs/finale (record data, card sound and events, the card pieces) and
+library/finals/eye-service-the-series{,-share}.mp4.

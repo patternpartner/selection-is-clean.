@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Eye-Service: the series cards</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+</head><body>
+<script type="module">
+// The long cut's own cards (video/finale/scut.js), drawn by Eye-Service's director so they match the films' cards.
+// Served by video/eye_service/capture.js with ROOT=video PAGE=finale/series.html DATA='{}'.
+import { World } from '../eye_service/scene.js';
+import { Director } from '../eye_service/director.js';
+import { Day } from '../eye_service/day.js';
+import { CUT } from './scut.js';
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') || 1080), H = +(q.get('h') || 1920);
+window.EYE = {
+  async init() {
+    const world = new World(W, H, 1);
+    const hud = document.createElement('canvas'); hud.width = W; hud.height = H;
+    document.body.appendChild(hud);
+    this.dir = new Director(world, {}, hud, Day, CUT);
+    return { frames: this.dir.frames, fps: this.dir.fps };
+  },
+  frame(i, quality = 0.93) { this.dir.frame(i); return this.dir.hud.toDataURL('image/jpeg', quality); },
+  still(spec, quality = 0.93) { this.dir.still(spec); return this.dir.hud.toDataURL('image/jpeg', quality); },
+  events() { return this.dir.events(); },
+};
+window.ready = true;
+</script></body></html>
