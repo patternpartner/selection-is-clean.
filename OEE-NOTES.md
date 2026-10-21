@@ -27296,3 +27296,17 @@ The distance test passes thousands of times under REPL. **The age test fails, at
 The user asked for it (a review's design): niche partitioning in `pE`, the currency that pays for REPL births, chosen by the program and not by passive traits. **`REPL_DIET=K`** (rigs only, REPL only): each cell's sunlight becomes K bands, each with 1/K of the income and cap, diffusing separately; a particle harvests only its band, shared with the others in that band and cell; total income unchanged. The band is `floor((tanh(R10)+1)/2*K)`, R10 being the general register at the end of the particle's solo run. `sunField` stays the total, so every other reader is unchanged. Unset: harness-oee identical to the previous engine (default world and REPL=1, seed 2) apart from one never-fired liveness name; substrate-test TICKS=40 264/0.
 **The carrier was found by pilot (practice seed 1, recorded so it is not mistaken for luck):** first action channel 5 with `floor(|v|*K) mod K` — no particle left the ancestral band in 6,000 ticks (channel 5 is written in only 2.8% of solo runs, and the typical value 1 mapped back to band 0); then the tanh spread on channel 5 — still none; then R10 (16-56 distinct end-of-run values across particles in R6-R11) — bands diversify: 0/0/175/101 at tick 500, 17/137/163/145 at 6,000, population 144 -> 462 as bands fill.
 Pre-registration: `lab/inlife/PREREG-diet.md` (seeds 6701-6705, CONTROL REPL=1 and DIET REPL_DIET=4 under the sweeper at NULLSHIFT 0/3, plus a manipulation-check probe on every DIET run; markers calibrated across runs per #328). Results follow.
+
+**#329 RESULT — NOT SUPPORTED. The diet diversified on every run, and new program types were still held no better than chance.** 30 runs (seeds 6701-6705, NULLSHIFT 0/3; CONTROL and DIET under the sweeper, plus the manipulation probe), all finished, all counted. Analysis `lab/inlife/analyse-diet.js`.
+
+| arm | counted | program TREE FASTER | SLOWER | markers FASTER |
+|---|---|---|---|---|
+| CONTROL (REPL=1) | 10 | 0 | 2 | 2 of 20 |
+| DIET (REPL_DIET=4) | 10 | 1 | 1 | 1 of 20 |
+
+beats chance: no (1 of 10); beats control: no (1 against 0). **Verdict as written: NOT SUPPORTED.** My prediction (PARTLY: DIET ahead of CONTROL by at least 3) was wrong.
+- **The manipulation took everywhere:** on all 10 DIET runs at least 2 bands each held 5% or more of the living in the last third (late occupancy e.g. 104/142/161/147, 97/115/271/106; at the low end 0/9/208/452 and 0/0/110/43, two bands).
+- **Persistent program arrivals were often LOWER under DIET** (0.7-11.7 per 1,000 ticks against 4.3-16.7), with smaller populations on most DIET runs (174-1,638 against 279-1,519 alive at the end).
+- **Why, a guess, unchecked:** R10 depends on the particle's state as well as its program, so the band may be mostly a moment-to-moment behaviour rather than a heritable niche: every band holds many distinct programs (e.g. 39/41/108/55 programs in bands 0-3). Not measured: the share of children whose band matches their parent's. If that is low, this design never gave a lineage a niche to keep.
+- **Together with #328:** REPL's new program types are held at chance whether or not the diet exists. Splitting the resource the program pays with, in this form, did not make new heritable types arise and persist at 10,000 ticks.
+- REPL_DIET stays a rig-only knob.
