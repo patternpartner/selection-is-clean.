@@ -27137,3 +27137,10 @@ Tally: cER UP 5/5, spread_late UP 5/5, estFrac UP 4/5; nothing DOWN; no REPL-onl
 - **Contact physics explains PART of #319's trait spread:** spread_late is lower in 8 of the 9 matched pairs, and three runs (0.36-0.43) land near the default band. It does not explain all of it (6101 C0 1.06, 6102 C1 0.88).
 - **It explains NONE of the lineage collapse:** 9-40 standing, the same as without contact. #282's sweep is not a contact-physics artifact.
 - Contrast with the default world, where `blend0` did nothing (#257c, #258b): the same physics matters under REPL and not in the default world, which says the default world's squeeze has another dominant source.
+
+### #321 — ACCEPTANCE AFTER #318-#320: 65 ok, 1 failing, and the failure is pre-existing and no longer "load".
+
+- `substrate-test.js` 264/0 at TICKS=40, TICKS=900, the default and FOUND=0 (#318, before #320). #320's knob is byte-identical when unset (default and REPL=1, seed 2).
+- `smoke.sh` (66 rigs, three slices of 22 because a full pass outlasts the 30-minute job limit, same loop and settings, nothing else running): **65 ok, 1 failing.** Includes the new `draw-attn-test.js`.
+- **Environment first:** this container had no `playwright-core`, so seven browser rigs failed "Cannot find module" and `collective-test` / `browser-test` silently SKIPPED and reported ok. Fixed per #236 (`npm install --no-save --no-package-lock playwright-core@1.56`). #236 said `node_modules/` is gitignored; it was not — now it is.
+- **`pool-test` fails 1 of 28: "three reloads later it still does, not four times as many — peers 29 of 27 built".** #315 saw the same row ("28 of 27") and established it as LOAD (28/0 alone). **That no longer holds:** alone on a quiet machine it failed again ("30 of 27"), and on a worktree at 5aa15d6 — the commit before this session — it failed identically ("30 of 27"). So it is a real, pre-existing defect in the field's peer accounting across reloads, not this session's, and not contention. Not fixed here; owed.
