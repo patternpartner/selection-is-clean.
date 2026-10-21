@@ -555,6 +555,7 @@ export class World {
     } else cm.opacity = 0;
     for (const m of this.outlines) m.opacity = st.outlines ?? 0;
     if (this.hoists) this.hoists.forEach((h, k) => {
+      h.g.visible = !st.hoistsOff;      // This Time: a Hold Still day in a film that also has the photograph gardens
       const u = clamp((st.hoist && st.hoist[k]) || 0, 0, 1), a = smoothstep(u / 0.8), b = smoothstep((u - 0.8) / 0.2);
       h.g.position.copy(h.downPos).lerp(h.topPos, a).lerp(h.upPos, b);
       h.g.quaternion.copy(h.downQ).slerp(h.upQ, b);
