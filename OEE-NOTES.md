@@ -27087,3 +27087,30 @@ To read it later: harvest the field, and each universe's `genome` carries its `d
 
 **Checked.** New rig `draw-attn-test.js` (in `smoke.sh`): never watched / watched / watched then left open for six drifts / viewer returns. Fixed engine 8 of 8; **the previous engine fails 4 of 8**, with 9 reverts against 1 and 13 drawHist entries against 5 in the same script. harness-oee seed 2, 1,500 ticks: every field except `config` identical to the previous engine. substrate-test: **264 passed, 0 failed** at TICKS=40, TICKS=900, the default and FOUND=0 (seed 1). `smoke.sh` NOT run: the REPL-default batch was using the cores, and CLAUDE.md says not to run it beside long node jobs.
 
+
+### #319 — REPL AS THE DEFAULT WORLD: the pre-registered verdict is BETTER, 5 of 5 seeds — and lineages fall 5-100x. My prediction was wrong.
+
+Pre-registered in `lab/inlife/PREREG-repl-default.md` (committed 17ebd9e before any decision run). Engine at #318. Seeds 6101-6105 (never run), 10,000 ticks; per seed four default nulls (NULLSHIFT 0-3) and three REPL=1 replicates (NULLSHIFT 0-2), everything else default (law mutation ON). 35 runs, all finished, no errors, no crashes. Analysis `lab/inlife/analyse-repl-default.js`.
+
+**Counted 5 of 5** (REPL births fired in every REPL run). A measure moved only if all three REPL runs lay outside the four-null band on the same side and beyond the threshold.
+
+| seed | centredEntropyRatio default / REPL | spread_late default / REPL | estFrac default / REPL | alive_late default / REPL |
+|---|---|---|---|---|
+| 6101 | 0.22-0.71 / 1.01-1.22 UP | 0.24-0.50 / 0.96-1.31 UP | 0.003-0.005 / 0.84-1.00 UP | 364-380 / 415-1728 |
+| 6102 | 0.13-0.37 / 0.62-1.08 UP | 0.21-0.33 / 0.56-1.04 UP | 0.000-0.011 / 0.98-1.00 UP | 348-364 / 539-1507 |
+| 6103 | 0.16-0.39 / 1.05-1.15 UP | 0.26-0.33 / 1.13-1.27 UP | 0.003-0.006 / 1.00 UP | 355-374 / 334-1739 |
+| 6104 | 0.17-0.33 / 0.90-1.18 UP | 0.23-0.32 / 1.02-1.41 UP | 0.000-0.008 / 0.76-0.95 UP | 359-399 / 435-946 |
+| 6105 | 0.15-0.28 / 0.34-1.14 UP | 0.20-0.25 / 0.39-1.38 UP | 0.003-0.013 / 0.00-1.00 none | 356-374 / 318-1222 |
+
+Tally: cER UP 5/5, spread_late UP 5/5, estFrac UP 4/5; nothing DOWN; no REPL-only crash. **Verdict as written: BETTER.** Old grid measures agree (kinds_late 5.5-11.8 default against 18-58 REPL).
+
+**My prediction was wrong.** I wrote "SPLIT or WORSE: REPL lowers centredEntropyRatio and spread_late (selection sweeps a lineage within 25 generations, #282)". On the ruling measures it is the other way on every seed, by a factor of three to four.
+
+**What the ruling measures did not see (post hoc, NOT part of the verdict, recorded so the verdict is not read past its rung):**
+- **Lineages standing at 10,000 ticks: default 183-316, REPL 1-56.** Seed 6105 R1 ended with ONE lineage and the highest spread_late in its seed (1.38). So #282's clonal sweep is already under way at this horizon in lineage terms, while trait diversity rises. The two measures disagree, and the pre-registration ruled only on traits.
+- **Where the difference comes from.** Both arms start from the same world (seed 6101: spreadPair 0.67 default, 0.70 REPL at tick 1). The DEFAULT world contracts trait spread (0.67 -> 0.31 by tick 3,000, centred entropy 3.7 -> 0.8 bits) while lineages hold at about 200; REPL expands it (0.70 -> 1.4) while lineages fall 329 -> 44. So the default world's low diversity is something its own dynamics do to traits, and REPL does not do it. A guess, NOT checked: default births are mostly two-parent physics births that blend traits, and blending halves variance each generation; REPL's program births are one-parent.
+- **So this is variance, not selection** (CLAUDE.md: do not upgrade one to the other). Trait spread inside a handful of lineages over 25 generations is what drift on unselected traits looks like. Nothing here says the traits matter to who reproduces under REPL.
+- **estFrac near 1 under REPL** is at least partly short lives: with a median life of about 400 ticks, most lineages that exist at all have "established" by the census's window. Not comparable across arms the way it is within one.
+- `generation` in harness-oee's series reads 0-1 in both arms (REPL should be about 25). That field does not measure generations; not used.
+
+**Template step 6.** The pre-registration says BETTER -> recommend REPL as the default, and it goes to the user before it ships. It goes to the user with the lineage caveat above. Nothing has changed in the engine or in any saved universe.
