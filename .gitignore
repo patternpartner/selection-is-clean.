@@ -24,3 +24,5 @@ lab/loop/*/state.json
 lab/mindrun/heavy/
 # in-progress batch outputs (results are written up in OEE-NOTES.md)
 lab/inlife/out-*/
+# temporary smoke.sh slices (the suite outlasts the 30-minute job limit; see #315)
+.smoke-slice*.sh
