@@ -1,3 +1,4 @@
+// RETIRED IN #332: this needs engine.html at 5f25594 (REPL_COPY / REPL_DIET / REPL_CONTACT were removed after it). On a later engine the knob is silently ignored and every arm runs plain REPL. Run it from a worktree: git worktree add --detach <dir> 5f25594
 // #329 manipulation check for REPL_DIET: how the living are spread across the diet bands their programs compute, every
 // SAMPLE ticks, with the population and the number of distinct exact programs in each band. Reads state only; draws nothing.
 //   SEED=s TICKS=10000 REPL=1 REPL_DIET=4 [NULLSHIFT=k] node lab/inlife/probe-diet.js

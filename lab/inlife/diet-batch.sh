@@ -1,4 +1,5 @@
 #!/bin/bash
+# RETIRED IN #332: this needs engine.html at 5f25594 (REPL_COPY / REPL_DIET / REPL_CONTACT were removed after it). On a later engine the knob is silently ignored and every arm runs plain REPL. Run it from a worktree: git worktree add --detach <dir> 5f25594
 # lab/inlife/diet-batch.sh OUTDIR [MAXNEW] [PAR]  - the 30 runs of PREREG-diet.md, staged for the 30-minute window.
 # <seed>_C<k> CONTROL sweep, <seed>_T<k> DIET sweep, <seed>_Q<k> DIET probe-diet; seeds 6701-6705, k in 0 3.
 cd "$(dirname "$0")/../.."; OUT=${1:?outdir}; MAXNEW=${2:-9}; PAR=${3:-3}; mkdir -p "$OUT"; todo=()

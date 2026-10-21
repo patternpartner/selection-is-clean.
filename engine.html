@@ -1347,7 +1347,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'mind.see','mind.propose','mind.train',   // #296: the mind in the real engine (off unless MIND / #mind)
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.copy','repl.inject','repl.copyIncomplete','repl.copyBirth','repl.dietBand','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10579,42 +10579,15 @@ function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P
 // have nothing left to improve. With probability REPL_SEX_P a newborn's program is spliced (crossoverProg, deep-copied)
 // with the program of a random neighbour standing in the 3x3 cells around the parent.
 const REPL_SEX=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_SEX|0)!==0);
-// #320: REPL_CONTACT=1 - under REPL, interferenceCreate skips ONLY its birth block. #273 put the REPL return on the function's
-// first line, so it also switched off destructive interference (phase scatter, BIRTH_SHRINK, amp damage) and the whole
-// contact fall-through (elastic bounce, CONTACT_BLEND, overlap push-apart): REPL worlds have had no hard-sphere contact.
-// Rigs only, default 0 (every REPL result so far, #273-#319, is the 0 arm).
-const REPL_CONTACT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_CONTACT|0)!==0);
 // #322: a probe hook for op 225 (PROG_LATERAL_COPY), null unless a rig installs one. Called with (i,1) when the copy
 // happens and with (i,0) when REPL_INERT=225 swallowed an op 225 that WOULD have copied (same conditions as the live
 // case). Draws nothing; never set by the engine itself.
 let __on225=null;
-// #324: REPL_COPY - COMPUTED REPLICATION. Under REPL a birth has been a free clone of the parent's germline, asked for by one
-// instruction. With REPL_COPY=1 the child's program must be COPIED, one instruction per executed op 225, into a buffer that
-// persists across ticks (pChildProg, pCopyCur; moved in compact, cleared at birth), and addParticle refuses a parented birth
-// until the buffer is as long as the parent's running program - before anything is paid. Copying an instruction is op 225
-// (PROG_LATERAL_COPY) re-read: in the solo VM it appends the parent's next instruction to its OWN buffer; in the pairwise
-// VM it appends it to the PARTNER's buffer, so a partner's next child carries foreign code (the parasitism window). A
-// longer program therefore takes longer to gestate. REPL_COPY=2 installs only the same ancestor (op 225 first), for the
-// matched control, which also runs REPL_INERT=225. Rigs only; default 0 changes nothing.
-const REPL_COPY=REPL_ON&&(typeof globalThis!=='undefined')?(globalThis.__REPL_COPY|0):0;
-// #325: REPL_COPY=3 is v2, after #324's correction. Three changes from v1 (=1, kept so its result can be re-run):
-// (a) op 225 with k >= 0 (the ancestor's) SELF-copies, in the solo VM only - pairwise it does nothing; op 225 with k < 0
-//     INJECTS one of the actor's instructions into the PARTNER's buffer, pairwise only, on its own cursor (pInjCur), so
-//     injection is one mutation away instead of what every particle does from tick 0, and never scrambles a self-copy;
-// (b) copying is paid on the energy clock: each instruction (self-copied or injected) costs the actor
-//     replCopyCost() = BIRTH_ENERGY_COST*(1-SUN_ENDOW)/L0 (L0 = the ancestor's length) and needs that much in its store;
-// (c) the birth then charges only the endowment half, BIRTH_ENERGY_COST*SUN_ENDOW, which is what the child receives.
-// So an ancestor-length program pays exactly what a plain REPL birth pays, and every instruction more or less moves it.
-const REPL_COPY_BUF=REPL_COPY===1||REPL_COPY===3;
-const pChildProg=REPL_COPY_BUF?new Array(CAP).fill(null).map(()=>[]):null, pCopyCur=REPL_COPY_BUF?new Int32Array(CAP):null;
-const pInjCur=REPL_COPY===3?new Int32Array(CAP):null;
-const REPL_COPY_MAX=96;
 // #326: REPL_FROZEN=1 - the neutral arm for #282's lineage collapse. Under REPL a parented child takes its parent's genome
 // and program WITHOUT mutateChildGenome, and every founder already starts from the same germline clone, so no heritable
 // program or genome difference can arise and lineages can be lost only by drift (spatial luck included). Traits still
 // inherit with INHERIT's noise, as in plain REPL. Rigs only; default 0 changes nothing.
 const REPL_FROZEN=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_FROZEN|0)!==0);
-function replCopyCost(){ return BIRTH_ENERGY_COST*(1-SUN_ENDOW)/Math.max(1,REPL_ANCESTOR?REPL_ANCESTOR.length:16); }
 const REPL_SEX_P=0.5;
 function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx,y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue; for(let j=sunHead[y*FIELD_W+x];j>=0&&cand.length<24;j=sunNext[j]) if(j!==p&&j<N&&palive[j]&&pProg[j])cand.push(j); }
@@ -10640,47 +10613,7 @@ const pE=new Float32Array(CAP), pAdq=new Float32Array(CAP).fill(1);
 const corpseField=new Float32Array(FIELD_W*FIELD_H);   // #278c: under REPL the dead feed scavengers through THIS layer, written only by deathReturn and read only by op 146 - the shared detrital layer also takes free deposits (op 9 reactions, op 165, cosmos exports, peer contact), and under REPL each of those minted breeding energy: seed 1 ran to the 1,800 cap on 3.2 million predations per 500 ticks   // #272: a particle's own energy store, and the share of its upkeep it met
 function SUN_GRAD(){ return (FIELD_W*FIELD_H)/Math.max(1e-9,WORLD_ENERGY_MAX); }
 function sunCell(i){ const fx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1), fy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1); return fy*FIELD_W+fx; }
-// #329: REPL_DIET=K (K>=2) - A DIET THE PROGRAM CHOOSES. Each cell's sunlight is split into K bands, each regenerating
-// 1/K of the income up to 1/K of the cap and diffusing on its own; a particle harvests only the band it is in, shared
-// with the others in that band and cell. The band is what its program computed: floor((tanh(R10)+1)/2*K), R10 being the
-// general register's value at the end of each solo run (nothing else reads it there). Channel 5 was tried first and was
-// written in only 2.8% of solo runs, by particles that never spread (pilot); registers vary far more. R10 depends on the
-// particle's state as well as its program, so the ancestral programs already split between the middle bands (2 and 3 of 4
-// in the pilot); the outer bands are reached by programs that leave R10 further out. sunField
-// stays the total, so every other reader (gradient senses, death return) sees what it saw. Rigs only; 0 changes nothing.
-const REPL_DIET=REPL_ON&&(typeof globalThis!=='undefined')?Math.min(8,Math.max(0,globalThis.__REPL_DIET|0)):0;
-const DIET_K=REPL_DIET>=2?REPL_DIET:0;
-const sunBand=DIET_K?Array.from({length:DIET_K},()=>new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)/DIET_K)):null;
-const sunBandTake=DIET_K?new Float32Array(FIELD_W*FIELD_H*DIET_K):null, sunBandCnt=DIET_K?new Int32Array(FIELD_W*FIELD_H*DIET_K):null;
-const pBand=DIET_K?new Uint8Array(CAP):null;
-// #331: REPL_DIET_SRC=1 - THE BAND IS A STRICT FUNCTION OF THE PROGRAM. #330 found #329's R10 band was mostly crowding
-// (R10 is pMem[6], which pairwise contact overwrites), so one program's carriers spread over every band and no lineage held
-// a niche. With SRC=1 the band is the program's exact opcode sequence hashed (FNV-1a) into K: identical programs always
-// share a band, no state enters, and only a change to the opcode sequence can move a lineage. A heritable label the
-// program determines, not a value it computes. 0 keeps #329's R10 band, unchanged.
-const DIET_SRC=DIET_K&&(typeof globalThis!=='undefined')?(globalThis.__REPL_DIET_SRC|0):0;
-function dietBandOfProg(p){ let h=2166136261>>>0; if(Array.isArray(p)) for(let q=0;q<p.length;q++){ h^=((p[q]?(p[q][0]|0):-1)&0xffff); h=Math.imul(h,16777619)>>>0; } return h%DIET_K; }
-function dietBandOf(v){ if(!Number.isFinite(v))return 0; const b=Math.floor((Math.tanh(v)+1)*0.5*DIET_K); return b<0?0:b>=DIET_K?DIET_K-1:b; }   // #329: tanh spread, so ordinary values (0, +-0.3, +-1) reach different bands
-function sunStepDiet(season){
-  const C=FIELD_W*FIELD_H, q=WORLD_ENERGY_REGEN*season/C/DIET_K, cap=WORLD_ENERGY_MAX/C/DIET_K, D=FIELD_DIFFUSE;
-  for(let b=0;b<DIET_K;b++){ const F=sunBand[b];
-    for(let c=0;c<C;c++){ const v=F[c]; if(v<cap)F[c]=Math.min(cap,v+q); }
-    for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ const c=y*FIELD_W+x, v=F[c];
-      sunScratch[c]=v*(1-4*D)+D*((x>0?F[c-1]:v)+(x<FIELD_W-1?F[c+1]:v)+(y>0?F[c-FIELD_W]:v)+(y<FIELD_H-1?F[c+FIELD_W]:v)); }
-    F.set(sunScratch); }
-  sunCnt.fill(0); sunHead.fill(-1); sunBandCnt.fill(0);
-  for(let i=0;i<N;i++) if(palive[i]){ const c=sunCell(i); sunCnt[c]++; sunNext[i]=sunHead[c]; sunHead[c]=i; sunBandCnt[c*DIET_K+pBand[i]]++; }
-  for(let c=0;c<C;c++) for(let b=0;b<DIET_K;b++){ const n=sunBandCnt[c*DIET_K+b]; if(!n)continue; const t=sunBand[b][c]*Math.min(1,SUN_TAKE*n); sunBandTake[c*DIET_K+b]=t/n; sunBand[b][c]-=t; }
-  let dem=0, paid=0, tot=0;
-  for(let i=0;i<N;i++){ if(!palive[i])continue; const c=sunCell(i), b=pBand[i]; let e=pE[i]+sunBandTake[c*DIET_K+b];
-    if(e>SUN_STORE){ sunBand[b][c]+=e-SUN_STORE; e=SUN_STORE; }
-    const u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); dem+=u;
-    if(e>=u){ e-=u; pAdq[i]=1; paid+=u; } else { pAdq[i]=u>0?e/u:1; paid+=e; e=0; }
-    pE[i]=e; }
-  energyAdequacy=dem>0?paid/dem:1;
-  for(let c=0;c<C;c++){ let v=0; for(let b=0;b<DIET_K;b++) v+=sunBand[b][c]; sunField[c]=v; tot+=v; } worldEnergy=tot; }
 function sunStep(season){
-  if(DIET_K){ sunStepDiet(season); return; }   // #329
   const C=FIELD_W*FIELD_H, q=WORLD_ENERGY_REGEN*season/C, cap=WORLD_ENERGY_MAX/C, D=FIELD_DIFFUSE;
   for(let c=0;c<C;c++){ const v=sunField[c]; if(v<cap)sunField[c]=Math.min(cap,v+q); }
   for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ const c=y*FIELD_W+x, v=sunField[c];
@@ -10697,7 +10630,6 @@ function sunStep(season){
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
 if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
-if(REPL_COPY>=1&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([225,0,11,1.0]);   // #324: the ancestor copies one instruction a tick (result to R11, clear of R2's birth signal)
 const REPL_ANCESTOR=REPL_ON&&Array.isArray(genome.vmProgram)?genome.vmProgram.map(x=>x.slice()):null;   // #284: kept, so a parentless founder under REPL is always a working replicator   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
   if(REPL_ON){ const c=sunCell(i); corpseField[c]=Math.min(3,corpseField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
@@ -21499,13 +21431,11 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
-  if(REPL_COPY_BUF&&parentA>=0&&parentA<N&&!(pChildProg[parentA].length>=Math.max(1,(pProg[parentA]||[]).length))){ fired('birth.refused'); fired('repl.copyIncomplete'); return-1; }   // #324: no complete copy, no birth, nothing paid
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(SUN_ON){ const _bc=REPL_COPY===3?BIRTH_ENERGY_COST*SUN_ENDOW:BIRTH_ENERGY_COST;   // #325: v2 has paid the rest as copy work
-      if(!(parentA<N)||pE[parentA]<_bc){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
-      pE[parentA]-=_bc; fired('birth.paid'); }
+    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
+      pE[parentA]-=BIRTH_ENERGY_COST; fired('birth.paid'); }
     else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
@@ -21527,8 +21457,6 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
-  if(REPL_COPY_BUF){ pChildProg[i]=[]; pCopyCur[i]=0; if(pInjCur)pInjCur[i]=0; }   // #324
-  if(DIET_K)pBand[i]=(parentA>=0&&parentA<N)?pBand[parentA]:0;   // #329: until its own first run
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -21608,7 +21536,6 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
-  if(REPL_COPY_BUF&&parentA>=0&&parentA<N){ _bg.vmProgram=pChildProg[parentA].map(x=>x.slice()); pChildProg[parentA]=[]; pCopyCur[parentA]=0; fired('repl.copyBirth'); }   // #324: the child is what was copied
   if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */){
     _bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
     recombineGenome(_bg,pGenome[parentB]); // same event now recombines the whole genome, not just the program
@@ -21641,8 +21568,6 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N) inheritMutate(i);   // INHERIT -- see addParticle
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
-  if(REPL_COPY_BUF){ pChildProg[i]=[]; pCopyCur[i]=0; if(pInjCur)pInjCur[i]=0; }   // #324
-  if(DIET_K)pBand[i]=(parentA>=0&&parentA<N)?pBand[parentA]:0;   // #329: until its own first run
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -24661,18 +24586,6 @@ case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — own x-velocity. First veloci
 function vmOps14(op,src,dst,k,si,di,i,j,ip){ switch(op){
 case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx224=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224%_glen224][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — read k-constant at instruction index; paired with GENOME_OP_AT for full instruction decoding; enables self-tuning by reading own coefficients.
       case 225:
-        if(REPL_COPY===3){   // #325: v2. k >= 0: self-copy, solo only. k < 0: inject into the partner, pairwise only. Paid per instruction.
-          const _src=pProg[i], _cc=replCopyCost(), _solo=__vmMode===VM_SOLO, _t=_solo?i:j, _inj=k<0;
-          if(_inj!==_solo&&_t>=0&&_t<N&&_src&&_src.length&&pE[i]>=_cc&&pChildProg[_t].length<Math.min(REPL_COPY_MAX,Math.max(1,(pProg[_t]||[]).length))){
-            const _cur=_inj?pInjCur:pCopyCur; pChildProg[_t].push(_src[_cur[i]%_src.length].slice()); _cur[i]++; pE[i]-=_cc; vmRegs[di]=1; fired(_inj?'repl.inject':'repl.copy'); }
-          else vmRegs[di]=0;
-          break; }
-        if(REPL_COPY===1){   // #324: COPY_INST. Solo: own next instruction into own child buffer. Pairwise: into the partner's.
-          const _t=__vmMode===VM_SOLO?i:j, _src=pProg[i];
-          if(_t>=0&&_t<N&&_src&&_src.length&&pChildProg[_t].length<Math.min(REPL_COPY_MAX,Math.max(1,(pProg[_t]||[]).length))){
-            pChildProg[_t].push(_src[pCopyCur[i]%_src.length].slice()); pCopyCur[i]++; vmRegs[di]=1; fired(_t===i?'repl.copy':'repl.inject'); }
-          else vmRegs[di]=0;
-          break; }
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
@@ -25493,11 +25406,11 @@ function entrain(i,j,sim,d){
 }
 
 function interferenceCreate(i,j){
-  if(REPL_ON&&!REPL_CONTACT)return false;   // #273: under REPL only programs reproduce (#320: REPL_CONTACT keeps the contact physics)
+  if(REPL_ON)return false;   // #273: under REPL only programs reproduce
   const dp=phase[i]-phase[j];
   const interference=Math.cos(dp);
   const sim=tendSim(i,j);
-  if(!REPL_ON&&interference>genome.creationThresh&&sim>0.1){
+  if(interference>genome.creationThresh&&sim>0.1){
     _specSpawnSim(sim);                                  // observe the compound channel's similarity distribution (the dominant, dissimilar-pairing one)
     // swing #18 finding: compound formation is HYBRIDIZATION — its cross-lineage births are net-generative
     // (they found and feed lineages faster than they homogenise). So mate choice does NOT gate this channel;
@@ -25793,7 +25706,6 @@ function executeSoloVM(){
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
     if(REPL_COST){ pE[i]-=REPL_INSTR_C*nInst; if(pE[i]<0){ pE[i]=0; pAdq[i]=0; } }   // #283: the run is paid for
-    if(DIET_K){ const _b=DIET_SRC===1?dietBandOfProg(prog):dietBandOf(vmRegs[10]); pBand[i]=_b; if(DIET_SRC===1?_b!==0:vmRegs[10]!==0)fired('repl.dietBand'); }   // #329: the diet this program computed (R10 at the end of its solo run)
     if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
       const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
       const _ci=addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1); if(_ci>=0){ birthsThisTick++; fired('repl.birth'); if(REPL_SEX)replSexBirth(_ci,i); } }
@@ -26114,7 +26026,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];if(REPL_COPY_BUF){pChildProg[w]=pChildProg[r];pCopyCur[w]=pCopyCur[r];if(pInjCur)pInjCur[w]=pInjCur[r];}if(DIET_K)pBand[w]=pBand[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];

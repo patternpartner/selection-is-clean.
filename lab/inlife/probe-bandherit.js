@@ -1,3 +1,4 @@
+// RETIRED IN #332: this needs engine.html at 5f25594 (REPL_COPY / REPL_DIET / REPL_CONTACT were removed after it). On a later engine the knob is silently ignored and every arm runs plain REPL. Run it from a worktree: git worktree add --detach <dir> 5f25594
 // #330 - was #329's diet band heritable at all? Two readouts under REPL_DIET:
 //   (1) parent-child agreement: at each parented birth the parent's band is recorded against the child's slot; once the
 //       child is AGE ticks old (it has run its own program by then) its band is compared with that record. Reported with

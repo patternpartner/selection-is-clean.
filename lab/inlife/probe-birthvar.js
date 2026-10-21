@@ -1,3 +1,4 @@
+// RETIRED IN #332: this needs engine.html at 5f25594 (REPL_COPY / REPL_DIET / REPL_CONTACT were removed after it). On a later engine the knob is silently ignored and every arm runs plain REPL. Run it from a worktree: git worktree add --detach <dir> 5f25594
 // #324 follow-up: does REPL_COPY lower the top genotype share because each birth VARIES more, rather than because selection
 // holds more types? At every parented birth, compares the child's opcode sequence (the key harness-oee's topSeqShare uses)
 // with the parent's running program, and reports per window: births, share of children that differ, mean opcode positions
