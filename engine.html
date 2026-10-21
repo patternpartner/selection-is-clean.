@@ -1347,7 +1347,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'mind.see','mind.propose','mind.train',   // #296: the mind in the real engine (off unless MIND / #mind)
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.copy','repl.inject','repl.copyIncomplete','repl.copyBirth','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10588,6 +10588,17 @@ const REPL_CONTACT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__RE
 // happens and with (i,0) when REPL_INERT=225 swallowed an op 225 that WOULD have copied (same conditions as the live
 // case). Draws nothing; never set by the engine itself.
 let __on225=null;
+// #324: REPL_COPY - COMPUTED REPLICATION. Under REPL a birth has been a free clone of the parent's germline, asked for by one
+// instruction. With REPL_COPY=1 the child's program must be COPIED, one instruction per executed op 225, into a buffer that
+// persists across ticks (pChildProg, pCopyCur; moved in compact, cleared at birth), and addParticle refuses a parented birth
+// until the buffer is as long as the parent's running program - before anything is paid. Copying an instruction is op 225
+// (PROG_LATERAL_COPY) re-read: in the solo VM it appends the parent's next instruction to its OWN buffer; in the pairwise
+// VM it appends it to the PARTNER's buffer, so a partner's next child carries foreign code (the parasitism window). A
+// longer program therefore takes longer to gestate. REPL_COPY=2 installs only the same ancestor (op 225 first), for the
+// matched control, which also runs REPL_INERT=225. Rigs only; default 0 changes nothing.
+const REPL_COPY=REPL_ON&&(typeof globalThis!=='undefined')?(globalThis.__REPL_COPY|0):0;
+const pChildProg=REPL_COPY===1?new Array(CAP).fill(null).map(()=>[]):null, pCopyCur=REPL_COPY===1?new Int32Array(CAP):null;
+const REPL_COPY_MAX=96;
 const REPL_SEX_P=0.5;
 function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx,y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue; for(let j=sunHead[y*FIELD_W+x];j>=0&&cand.length<24;j=sunNext[j]) if(j!==p&&j<N&&palive[j]&&pProg[j])cand.push(j); }
@@ -10630,6 +10641,7 @@ function sunStep(season){
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
 if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
+if(REPL_COPY>=1&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([225,0,11,1.0]);   // #324: the ancestor copies one instruction a tick (result to R11, clear of R2's birth signal)
 const REPL_ANCESTOR=REPL_ON&&Array.isArray(genome.vmProgram)?genome.vmProgram.map(x=>x.slice()):null;   // #284: kept, so a parentless founder under REPL is always a working replicator   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
   if(REPL_ON){ const c=sunCell(i); corpseField[c]=Math.min(3,corpseField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
@@ -21424,6 +21436,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
+  if(REPL_COPY===1&&parentA>=0&&parentA<N&&!(pChildProg[parentA].length>=Math.max(1,(pProg[parentA]||[]).length))){ fired('birth.refused'); fired('repl.copyIncomplete'); return-1; }   // #324: no complete copy, no birth, nothing paid
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
@@ -21450,6 +21463,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  if(REPL_COPY===1){ pChildProg[i]=[]; pCopyCur[i]=0; }   // #324
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -21529,6 +21543,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
+  if(REPL_COPY===1&&parentA>=0&&parentA<N){ _bg.vmProgram=pChildProg[parentA].map(x=>x.slice()); pChildProg[parentA]=[]; pCopyCur[parentA]=0; fired('repl.copyBirth'); }   // #324: the child is what was copied
   if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */){
     _bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
     recombineGenome(_bg,pGenome[parentB]); // same event now recombines the whole genome, not just the program
@@ -21561,6 +21576,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N) inheritMutate(i);   // INHERIT -- see addParticle
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  if(REPL_COPY===1){ pChildProg[i]=[]; pCopyCur[i]=0; }   // #324
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -24579,6 +24595,12 @@ case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — own x-velocity. First veloci
 function vmOps14(op,src,dst,k,si,di,i,j,ip){ switch(op){
 case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx224=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224%_glen224][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — read k-constant at instruction index; paired with GENOME_OP_AT for full instruction decoding; enables self-tuning by reading own coefficients.
       case 225:
+        if(REPL_COPY===1){   // #324: COPY_INST. Solo: own next instruction into own child buffer. Pairwise: into the partner's.
+          const _t=__vmMode===VM_SOLO?i:j, _src=pProg[i];
+          if(_t>=0&&_t<N&&_src&&_src.length&&pChildProg[_t].length<Math.min(REPL_COPY_MAX,Math.max(1,(pProg[_t]||[]).length))){
+            pChildProg[_t].push(_src[pCopyCur[i]%_src.length].slice()); pCopyCur[i]++; vmRegs[di]=1; fired(_t===i?'repl.copy':'repl.inject'); }
+          else vmRegs[di]=0;
+          break; }
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
@@ -26019,7 +26041,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];if(REPL_COPY===1){pChildProg[w]=pChildProg[r];pCopyCur[w]=pCopyCur[r];}pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
