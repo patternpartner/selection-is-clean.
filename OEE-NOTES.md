@@ -27196,3 +27196,5 @@ Guards: centredEntropyRatio and spread_late moved on no seed; alive late 520-1,6
 - On the ruling measures I predicted NO CONSISTENT DIRECTION; the rule says BETTER. Recorded as wrong.
 
 REPL_COPY stays a rig-only knob (pre-registered: a BETTER verdict makes it the candidate for the next REPL ruling, not a default).
+
+**#324 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running), `pool-test` included after #323.
