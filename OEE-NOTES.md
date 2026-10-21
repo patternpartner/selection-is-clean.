@@ -27198,3 +27198,177 @@ Guards: centredEntropyRatio and spread_late moved on no seed; alive late 520-1,6
 REPL_COPY stays a rig-only knob (pre-registered: a BETTER verdict makes it the candidate for the next REPL ruling, not a default).
 
 **#324 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running), `pool-test` included after #323.
+
+**#324 CORRECTION — the BETTER verdict measures BROKEN HEREDITY, not held diversity. Two design faults of mine, found by the follow-up probe the result entry named.** `lab/inlife/probe-birthvar.js`, seeds 6301-6303 (already seen; a mechanism probe, not a ruling), one run per arm, 10,000 ticks. At every parented birth it compares the child's opcode sequence with the parent's running program.
+
+| | births | children differing from parent | opcode positions changed per birth | copied instructions that were INJECTED by a partner |
+|---|---|---|---|---|
+| CONTROL | 12,490-17,414 | 8-12% | 0.14-0.19 | 0 |
+| COPY | 10,447-20,831 | **96-99%** | **8.4-8.9** (of about 16) | **60%** (384,520 of 641,398 on 6301) |
+
+Under REPL_COPY nearly every child differs from its parent at about half its positions. The low top-genotype share follows from that alone: there is no faithful inheritance for a genotype to sweep with. "Computed replication prevents the sweep" is withdrawn; the verdict stands as what the rule measured.
+**Why, in the design:**
+1. **The ancestor is a parasite from tick 0.** Its first instruction is op 225, and op 225 ALSO runs in the pairwise VM, where under REPL_COPY it injects into the partner's buffer. So every particle injects into every partner it meets from the first tick. Injection was meant to be something that could evolve, not the default.
+2. **Injection advances the injector's own copy cursor** (`pCopyCur[i]` serves both paths), so a particle that has just injected skips instructions in its own next self-copy, and self-copies come out scrambled too.
+**What a corrected design needs before it is run again:** self-copy and injection as different acts (the ancestor self-copies only; injecting into a partner must be an evolved difference), and separate cursors. Then a fresh pre-registration on unseen seeds, with per-birth fidelity (this probe's "children differing") reported beside the ruling measures, so a heredity collapse cannot read as diversity again.
+
+### #325 — REPL_COPY v2 (`REPL_COPY=3`): heredity intact, copying priced on the energy clock. Pre-registered.
+
+The user asked for it after #324's correction, with a review's design for the energy coupling. **Changes from v1** (v1 kept as `REPL_COPY=1`, byte-identical, so #324 re-runs):
+- op 225 **k >= 0** (the ancestor's) **self-copies in the solo VM only** and does nothing pairwise; **k < 0 injects** into the partner's buffer, **pairwise only, on its own cursor** (`pInjCur`). Fixes both #324 faults: no particle injects from tick 0, and injecting never scrambles a self-copy.
+- **Copying is paid**: each instruction costs the actor `BIRTH_ENERGY_COST*(1-SUN_ENDOW)/L0` (L0 = ancestor length; 0.125/L0 at REPL's defaults) and needs it in the store; the birth then charges only `BIRTH_ENERGY_COST*SUN_ENDOW`, the child's endowment. An ancestor-length program pays exactly a plain REPL birth; length now costs energy, which #324 found was the clock that actually binds.
+**Checked:** knob unset, default world and REPL=1 identical to the previous engine (seed 2); `REPL_COPY=1` identical too (seed 1); substrate-test TICKS=40 264/0.
+**Pilot (practice seed 1, 3,000 ticks, not evidence):** whole-run share of children differing from their parent **0.169 under v2 against 0.204 in the control** (v1: 0.96-0.99) — heredity is back to baseline. No injections yet (k < 0 had not arisen).
+Pre-registration: `lab/inlife/PREREG-repl-copy2.md` (seeds 6401-6405, three replicates per arm at NULLSHIFT 0/3/7, 10,000 ticks, plus one fidelity run per arm per seed). New, because of #324: **a heredity guard** — on a seed where v2's children differ more than twice as often as the control's, a lower top-genotype share cannot count. Secondary claim: program length. Results follow.
+
+**#325 RESULT — NO CONSISTENT DIRECTION (as predicted); LENGTH NOT SHOWN (predicted shorter: wrong). Computed replication with heredity intact and copying priced does not change the sweep at 10,000 ticks.** 40 runs, seeds 6401-6405, all counted, three distinct replicates per arm on every seed, no crashes. Analysis `lab/inlife/analyse-repl-copy2.js`.
+
+| seed | fidelity F, V2 / CONTROL | P1 lineages late, V2 / CONTROL | P2 top share, V2 / CONTROL | length late, V2 / CONTROL |
+|---|---|---|---|---|
+| 6401 | 0.194 / 0.161 | 14-107 / 19-48 none | 0.07-0.56 / 0.05-0.15 none | 15.3-16.5 / 14.6-16.2 none |
+| 6402 | 0.190 / 0.140 | 33-46 / 15-25 **UP** | 0.03-0.21 / 0.03-0.27 none | 13.4-15.7 / 14.8-15.7 none |
+| 6403 | 0.188 / 0.076 (guard) | 13-25 / 18-43 none | 0.04-0.15 / 0.07-0.11 none | **10.5-13.6 / 15.6-16.0 SHORTER** |
+| 6404 | 0.216 / 0.106 (guard) | 5-39 / 21-38 none | 0.09-0.16 / 0.07-0.11 none | 14.2-15.9 / 14.8-16.0 none |
+| 6405 | 0.160 / 0.104 | 12-24 / 18-31 none | 0.06-0.19 / 0.09-0.17 none | **8.2-14.1 / 14.9-15.8 SHORTER** |
+
+Tally: primary better on 1 seed (6402, lineages), worse on none; one guard (spread_late lower on 6402). **Verdict as written: NO CONSISTENT DIRECTION.** Secondary: shorter 2, longer 0 -> **NOT SHOWN.**
+- **Heredity is intact** (the point of v2): children differing from their parent 16-22% under V2 on every seed, against 96-99% in v1. **But V2 is consistently 1.5-2.5x the control** (8-16%), and the pre-registered guard tripped on 6403 and 6404 — because the CONTROL was unusually faithful there, not because V2 scrambled (V2 sat at its usual 0.19-0.22). It changed no verdict (P2 moved on neither). A guess for the gap, unchecked: a copy reads the RUNNING program, so changes made during a parent's life (PROG_GROW/TRIM and the like) are inherited under V2 and not under plain REPL, where a child clones the germline.
+- **Length:** where V2 differs it is always shorter, twice strongly (8.2-14.1 against 14.9-15.8), but 2 of 5 is under the floor.
+- **Parasitism did not arise:** 20 injections in all 40 runs, all on 6402 NULLSHIFT 0's fidelity run. The k < 0 route was one mutation away and was essentially never taken or kept within 10,000 ticks. Route 1 (#289) was not tested by this.
+- **What this closes:** making replication computed and priced, with heredity intact, does not by itself stop the lineage collapse at this horizon. Together with #320 (contact physics) and #322 (op 225), three candidate causes of #282's sweep have now been tried and none moved it. REPL_COPY stays a rig-only knob (v1 and v2 both, v1 so #324 re-runs).
+
+**#325 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
+
+### #326 — IS REPL'S LINEAGE COLLAPSE A SWEEP OR DRIFT? Pre-registered measurement, and a neutral arm (`REPL_FROZEN`).
+
+The user chose to measure the collapse before building another mechanism. **New knob** `REPL_FROZEN=1` (rigs only, REPL only): a parented child takes its parent's genome and program without `mutateChildGenome`; founders all start from one germline clone, so no heritable genome or program difference can arise (traits still inherit with INHERIT's noise). Unset: harness-oee identical to the previous engine (default world and REPL=1, seed 2); substrate-test TICKS=40 264/0. Frozen fidelity (probe-birthvar, practice seed 1): 0-0.1% of children differ from their parent.
+**Probe** `lab/inlife/probe-drift.js`: founder labels inherited parent to child, read against generations (births / mean living), with 20 MIXED shadows (well-mixed Moran on the real demography) and `pLin` mint counts.
+**Pilot (practice seed 1, 3,000 ticks, not evidence):** REPL 71 of 329 founders at generation 7.4 (MIXED 26-39); FROZEN collapsed to ONE founder at generation 10.8 while growing to about 1,700 (about 29 at generation 7.5); DEFAULT 218 at generation 0.64. **REPL mints 0 new `pLin` ids; the default world mints about 150 per 1,000 births** — so #319's "183-316 against 1-56" compared founder-plus-mint counts with pure founder survival.
+Pre-registration: `lab/inlife/PREREG-drift.md` (seeds 6501-6505; REPL and FROZEN at NULLSHIFT 0/3/7, DEFAULT once; founders compared at a matched generation). Calling it a SWEEP needs REPL below BOTH nulls. Results follow.
+
+**#326 RESULT — NOT A SWEEP (4 of 5 counted seeds within or slower than drift; one faster). And the comparison that started this was upside down: per generation, it is the DEFAULT world that loses founder lineages fast.** 35 runs, seeds 6501-6505, all counted. Analysis `lab/inlife/analyse-drift.js`.
+
+| seed | G* | founders at G*: REPL / FROZEN / MIXED | call |
+|---|---|---|---|
+| 6501 | 20.5 | 16-25 / 2-11 / 9-19 | slower than drift |
+| 6502 | 16.8 | 1-5 / 4-9 / 13-58 | within |
+| 6503 | 17.0 | 2-26 / 1-12 / 7.5-23 | within |
+| 6504 | 16.9 | 1, 1, 1 / 8-13 / 14-41 | **faster** |
+| 6505 | 14.8 | 1-20 / 14-28 / 18-47 | within |
+
+Tally: faster 1, within 3, slower 1 -> **NOT A SWEEP.** My prediction said NOT A SWEEP (right) "with REPL SLOWER than FROZEN on most seeds" (wrong: 1 of 5) and "0 pLin mints under REPL on every run" (wrong: 0.1-5.5 per 1,000 births; the pilot's 0 was at 3,000 ticks).
+- **The founder collapse happens without heritable change.** By 10,000 ticks REPL holds 1-10 founder lineages and the FROZEN world, where every child is an exact clone, holds 1-7. A world with nothing for selection to act on loses founders as completely as REPL does. At 10,000 ticks REPL's collapse is drift (spatial luck included) on a clock running 15-29 generations, not a sweep; there is no selective target there for a mechanism to remove. One seed (6504) was faster than both nulls; one in five is under the floor.
+- **Reported, not ruled — the default world per generation.** At the generation the DEFAULT world reaches by 10,000 ticks (2.3-3.7), it holds **18-33 founders**, against **44-85 in its own MIXED null**, and **117-192 in REPL and FROZEN at the same generation**. The default world loses founder lineages several times faster per generation than drift, REPL or the frozen world: strong reproductive skew (one family breeding much more than others), consistent with #219's finding that the default world allots reproduction by array order. Not established as selection (MIXED is beaten by any skew, heritable or not).
+- **Why #319 looked the other way:** its "183-316 lineages (default) against 1-56 (REPL)" counted `pLin`, and the default world mints **280-464 new `pLin` ids per 1,000 births** against REPL's 0.1-5.5. The default world's lineage count is almost all new ids; REPL's is founder survival plus a trickle. The two numbers never measured the same thing.
+- **What this changes:** #320, #322 and #324/#325 each tried to stop a sweep that, at 10,000 ticks, is not there. The question for REPL is not "what stops the sweep" but "what makes NEW lineages arise and persist" (minting is near zero under REPL), and the default world's founder loss per generation is the sharper anomaly.
+**Cannot say:** anything past 10,000 ticks (#282's one-lineage worlds were 72,000+); FROZEN keeps founder trait differences, so it is a null for heritable change by mutation, not for every heritable difference.
+
+**#326 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 65 of 66. **The one failure is `collective-test`'s return-path ratio, and it is not this session's:** standalone at smoke's SECS=22 the current engine passed 5 of 6 ("←14 →1", "←14 →2", "←11 →2", "←11 →1", "←7 →0"; failed "←8 →3"), and the commit before this session (5aa15d6), alternated with it on the same machine, **failed 2 of 3** ("←7 →3", "←10 →3"; passed "←8 →1"). Inbound on BOTH engines was 7-14 today against the 17-28 CLAUDE.md records, so the denominator CLAUDE.md warns about has dropped for environmental reasons on this box, and the 4:1 ratio over single-digit counts fails on old and new code alike. (I also lost the in-suite failure's log by clearing `.smoke-fail/` before slice 3; the standalone runs above stand in for it.) Threshold not retuned.
+
+### #327 — WHY REPL MINTED NO LINEAGES: the speciation clock was read through the genome swap. Fixed; and what `pLin` can and cannot measure in REPL.
+
+The user chose Direction 1 (what makes new lineages arise and persist in REPL), with a review's hypothesis to check first: Gate A (`'speciate'`, child-to-parent trait distance over `SPECIATE_DIST` 0.55) rarely clears for a one-parent birth. **Measured, and the hypothesis is wrong** (`lab/inlife/probe-mints.js`, seed 6501, 10,000 ticks, descriptive):
+
+| world | parented addParticle births | over SPECIATE_DIST | mean child-parent trait step | 'speciate' lineages created |
+|---|---|---|---|---|
+| REPL | 20,498 | **6,910 (34%)** | 0.49 | **1** |
+| DEFAULT | 381 (+674 via addCompound) | 169 | 0.54 | 357 |
+
+The distance test passes thousands of times under REPL. **The age test fails, at age 0, every time** (952 of 952 over-distance births in 4,000 ticks): `executeSoloVM` runs with `genome = pGenome[i]` and the REPL birth calls `addParticle` inside that swap, so `genome.totalTicks` there is the parent's cloned copy, which never advances, and `gT - birthTick` reads 0 against `SPECIATE_MIN_AGE` 400. CLAUDE.md's ambient-genome trap in a new place. `createLineage` stamped `birthTick` and `lastSeen` the same way.
+**Fix:** `gT()`, the germline's tick count set where it advances, used by both speciation age tests and by `createLineage`. **The default world is identical** (harness-oee seeds 2 and 5, 3,000 ticks, every field but `config`) — its births and mints happen outside a swap — so no saved universe changes. Under REPL (seed 6501): 'speciate' lineages created **4,604 by 10,000 ticks (was 1)**, standing 112-548. substrate-test TICKS=40 264/0.
+**What the fix shows about the measure:** under REPL a third of all births clear `SPECIATE_DIST` (mean one-parent step 0.49 against 0.55, a threshold calibrated on the default world), so a REPL `pLin` is now close to per-birth trait noise, not a new heritable type that persists. **`pLin` counts cannot answer Direction 1 in REPL, before or after the fix.** The instrument for it already exists: #256's novelty sweeper (arrivals of program and trait types that persist, against MIXED and TREE nulls).
+**Consequence for earlier entries:** every REPL lineage count before this (#319, #320, #324, #325, #326) was founder survival plus a trickle, which is what #326 found by other means. Those counts stand as what they measured.
+**Also found, a correction to #325:** the REPL birth pre-check in `executeSoloVM` requires `pE[i] >= BIRTH_ENERGY_COST` (the full 0.25) before `addParticle` is called, and v2's birth charges only half. So v2 parents needed twice the store they were charged; #325's "an ancestor-length program pays exactly a plain REPL birth" describes the charge, not the gate that ran. Left as run (v2 stays reproducible); a v3 would fix the pre-check.
+
+**#327 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0. `smoke.sh` 65 of 66 in-suite, and **the one failure was this change's own**: `harness-gates.js` audits the speciation gate by patching its source text, and its `patchExactly` refused the run once #327 changed that text (x0, expected 2) — the guard doing its job. Patch updated to `gT()` (find and replacement); `harness-gates` passes alone at smoke's TICKS=40. A sweep of every rig for the other strings #327 changed (`birthTick:`/`lastSeen:` stamps, the tick increment) found only a comment in `autosave-test.js`, which passed.
+
+### #328 — PRE-REGISTERED: Direction 1, Step 1 — the novelty sweeper's baseline on REPL.
+
+`lab/inlife/PREREG-sweep-repl.md`, committed before any decision run. #327 made `pLin` near per-birth noise under REPL, so the measure is #256's sweeper: do new PROGRAM types (exact op sequences) arrive and persist faster than its TREE null (real family tree, real events, random recipients)? **Pilot (practice seed 1, 6,000 ticks):** program layer FASTER THAN CHANCE under TREE (20 persistent per 1,000 ticks, shadows 7.3-17.3). Calibration: both neutral markers read CHANCE under TREE, but under MIXED one read FASTER and one SLOWER, and `summarySelection` read a neutral marker as "NOVELTY FAVOURED" — so in REPL only TREE rules, and a run counts only if its markers are calibrated. Seeds 6601-6605, NULLSHIFT 0 and 3, 10,000 ticks. Results follow.
+
+**#328 RESULT — INCONCLUSIVE by the rule (1 of 5 seeds counted), and the rule was mine and miscalibrated. Descriptively, REPL's program layer reads like a neutral marker against the TREE null.** 10 runs (seeds 6601-6605, NULLSHIFT 0 and 3), all finished. Analysis `lab/inlife/analyse-sweep-repl.js`.
+- **Why 4 seeds did not count:** the rule required BOTH neutral markers to read CHANCE under TREE on BOTH runs of a seed. The sweeper's own header says a marker leaves an 8-shadow band about 2 times in 9 by chance alone, so a run passes about (7/9)^2 = 60% of the time and a seed about 37%. Observed: markers off-band 5 of 20 reads (25%), 5 of 10 runs excluded — exactly what that base rate predicts. **The counting rule threw out good runs by construction**; I should have computed that before registering. Not re-ruled.
+- **What the 10 runs show (reported, not ruled):** program layer under TREE FASTER 3, SLOWER 1, CHANCE 6 — an off-band rate of 4 in 10 against the markers' 5 in 20. **New program types are held about as well as a neutral marker would be held by random recipients.** Persistent program arrivals ranged 1.7-14.7 per 1,000 ticks and tracked population size (40-1,262 alive at the end). The prediction (PROGRAMS OUTPACE THE TREE NULL) is not supported; the practice-seed pilot was the high draw.
+- **For Step 2 (the rule's shape, fixed before any Step 2 run):** markers calibrate ACROSS runs, not as a per-run exclusion. A layer is read as beating its null when its FASTER rate across all runs of an arm exceeds the markers' off-band rate in the same runs by a margin set in advance.
+
+### #329 — PRE-REGISTERED: Direction 1, Step 2 — a diet the program computes (`REPL_DIET`).
+
+The user asked for it (a review's design): niche partitioning in `pE`, the currency that pays for REPL births, chosen by the program and not by passive traits. **`REPL_DIET=K`** (rigs only, REPL only): each cell's sunlight becomes K bands, each with 1/K of the income and cap, diffusing separately; a particle harvests only its band, shared with the others in that band and cell; total income unchanged. The band is `floor((tanh(R10)+1)/2*K)`, R10 being the general register at the end of the particle's solo run. `sunField` stays the total, so every other reader is unchanged. Unset: harness-oee identical to the previous engine (default world and REPL=1, seed 2) apart from one never-fired liveness name; substrate-test TICKS=40 264/0.
+**The carrier was found by pilot (practice seed 1, recorded so it is not mistaken for luck):** first action channel 5 with `floor(|v|*K) mod K` — no particle left the ancestral band in 6,000 ticks (channel 5 is written in only 2.8% of solo runs, and the typical value 1 mapped back to band 0); then the tanh spread on channel 5 — still none; then R10 (16-56 distinct end-of-run values across particles in R6-R11) — bands diversify: 0/0/175/101 at tick 500, 17/137/163/145 at 6,000, population 144 -> 462 as bands fill.
+Pre-registration: `lab/inlife/PREREG-diet.md` (seeds 6701-6705, CONTROL REPL=1 and DIET REPL_DIET=4 under the sweeper at NULLSHIFT 0/3, plus a manipulation-check probe on every DIET run; markers calibrated across runs per #328). Results follow.
+
+**#329 RESULT — NOT SUPPORTED. The diet diversified on every run, and new program types were still held no better than chance.** 30 runs (seeds 6701-6705, NULLSHIFT 0/3; CONTROL and DIET under the sweeper, plus the manipulation probe), all finished, all counted. Analysis `lab/inlife/analyse-diet.js`.
+
+| arm | counted | program TREE FASTER | SLOWER | markers FASTER |
+|---|---|---|---|---|
+| CONTROL (REPL=1) | 10 | 0 | 2 | 2 of 20 |
+| DIET (REPL_DIET=4) | 10 | 1 | 1 | 1 of 20 |
+
+beats chance: no (1 of 10); beats control: no (1 against 0). **Verdict as written: NOT SUPPORTED.** My prediction (PARTLY: DIET ahead of CONTROL by at least 3) was wrong.
+- **The manipulation took everywhere:** on all 10 DIET runs at least 2 bands each held 5% or more of the living in the last third (late occupancy e.g. 104/142/161/147, 97/115/271/106; at the low end 0/9/208/452 and 0/0/110/43, two bands).
+- **Persistent program arrivals were often LOWER under DIET** (0.7-11.7 per 1,000 ticks against 4.3-16.7), with smaller populations on most DIET runs (174-1,638 against 279-1,519 alive at the end).
+- **Why, a guess, unchecked:** R10 depends on the particle's state as well as its program, so the band may be mostly a moment-to-moment behaviour rather than a heritable niche: every band holds many distinct programs (e.g. 39/41/108/55 programs in bands 0-3). Not measured: the share of children whose band matches their parent's. If that is low, this design never gave a lineage a niche to keep.
+- **Together with #328:** REPL's new program types are held at chance whether or not the diet exists. Splitting the resource the program pays with, in this form, did not make new heritable types arise and persist at 10,000 ticks.
+- REPL_DIET stays a rig-only knob.
+
+**#329 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
+
+### #330 — #329's diet band was only weakly heritable: R10 is memory slot 6, which pairwise contact overwrites with crowding.
+
+**Correction to #329's engine comment ("R10, the general register ... nothing else reads it there"):** `MEM_SIZE` is 8, so R4-R11 are loaded from the particle's persistent memory, and R10 is `pMem[6]`. Every pairwise contact overwrites it with `localRes[i]*4` (engine ~24880: recent contact gain), and every birth adds noise to it (~21547). So a program that never touches R10 still lands in a band set by how crowded it has just been. Pointed out by the review; checked in the code.
+**Measured** (`lab/inlife/probe-bandherit.js`, the five #329 DIET seeds 6701-6705 at NULLSHIFT 0, 10,000 ticks; descriptive):
+
+| seed | child's band = parent's (child 20 ticks old) | expected by chance | carriers of one exact program in its commonest band |
+|---|---|---|---|
+| 6701 | 0.44 | 0.36 | 0.53 |
+| 6702 | 0.71 | 0.49 | 0.83 |
+| 6703 | 0.66 | 0.37 | 0.74 |
+| 6704 | 0.67 | 0.57 | 0.79 |
+| 6705 | 0.54 | 0.54 | 0.73 |
+
+Above chance on 4 of 5 seeds, by at most 0.30; one seed at chance. One program's carriers are spread over bands (53-83% in the commonest). **So #329 tested a diet that was largely crowding plus noise, which a single program can spread across every band: a lineage never had a niche of its own to keep.** #329's verdict stands as what it measured; it is not evidence against a HERITABLE diet.
+
+### #331 — PRE-REGISTERED: a heritable diet (`REPL_DIET_SRC=1`) — the band is the program's opcode sequence, hashed.
+
+After #330 the user asked for Step 2 with a band that is a strict function of the program. **`REPL_DIET_SRC=1`** (with REPL_DIET): the band is the exact opcode sequence hashed (FNV-1a) into K, so identical programs always share a band, no state enters, and only an opcode change moves a lineage. A heritable label the program determines, not a value it computes. Unset: plain REPL and #329's R10 diet both identical to the previous engine (seed 2); substrate-test TICKS=40 264/0. **Pilot (practice seed 1, 6,000 ticks):** child = parent band 0.94 against chance 0.25-0.53; one program, one band; all four bands occupied from tick 500; population 1,350-1,800 against plain REPL's 300-600. `analyse-diet.js` gains the heritability check (a DIET run counts only if agreement exceeds chance by 0.2) and SEEDS=; it reproduces #329's verdict unchanged. Pre-registration: `lab/inlife/PREREG-diet2.md` (seeds 6801-6805). Results follow.
+
+**#331 RESULT — NOT SUPPORTED. A heritable diet held on every run, and new program types were still held no better than chance.** 40 runs (seeds 6801-6805, NULLSHIFT 0/3; CONTROL and DIET under the sweeper, plus both manipulation probes on every DIET run), all finished, all counted. Analysis `SEEDS=6801,... lab/inlife/analyse-diet.js`.
+
+| arm | counted | program TREE FASTER | SLOWER | markers FASTER |
+|---|---|---|---|---|
+| CONTROL (REPL=1) | 10 | 2 | 2 | 2 of 20 |
+| DIET (REPL_DIET=4, SRC=1) | 10 | 1 | 0 | 2 of 20 |
+
+beats chance: no; beats control: no. **Verdict as written: NOT SUPPORTED.** My prediction (PARTLY) was wrong — the fourth wrong prediction in this line of work, which says my intuitions about this world are not tracking it.
+- **The manipulation took completely:** child = parent band 0.906-0.938 against chance 0.281-0.334 on every DIET run; four bands evenly held (e.g. 105/98/104/112, 102/112/99/102).
+- **Persistence:** persistent program arrivals sat inside their TREE bands on 9 of 10 DIET runs.
+- **Survival, reported:** on seed 6801 CONTROL went extinct on both replicates (0 alive at the end); DIET survived on both (667, 454). One seed.
+- **A reading, interpretation only:** four hashed bands are four FIXED niches. They fill early (all four occupied by tick 500 in the pilot), and after that each band is a small REPL world drifting as before; a new program type hashes into an occupied band almost every time, so it never gets a niche of its own. That is #289's finding in this engine: a fixed number of profitable ways to make a living, however they are split. **Making new heritable types arise and persist would need niches that new types themselves create** — the routes #289 named (organisms as the resource, constructions that change local physics), not more bands.
+- **Direction 1 so far:** #327 (speciation clock fixed), #328 (REPL programs at chance against the tree null), #329/#330 (crowding-driven diet, not heritable), #331 (heritable diet, still chance). REPL_DIET and REPL_DIET_SRC stay rig-only knobs.
+
+**#331 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
+
+### #332 — RETIRED: `REPL_CONTACT` (#320), `REPL_COPY` v1 and v2 (#324, #325), `REPL_DIET` and `REPL_DIET_SRC` (#329, #331). Kept: `REPL_FROZEN`.
+
+CLAUDE.md: a session that adds a mechanism must also remove, merge or prove one, and a mechanism that does not change who has offspring is decoration. The user chose to retire every knob this session added that measured no effect on the dependent variable, and to keep `REPL_FROZEN` (#326) as the standing neutral-drift instrument.
+- **Removed from engine.html:** the three knobs and everything only they used — `pChildProg`/`pCopyCur`/`pInjCur`, `replCopyCost`, the copy ancestor, the copy birth gate and v2's half-price birth, both op 225 copy branches, the diet bands (`sunBand`, `pBand`, `sunStepDiet`, `dietBandOf`, `dietBandOfProg`) and the R10/hash band assignment, `interferenceCreate`'s contact branch, five liveness names, four KNOBS entries. 95 lines out. `interferenceCreate`, `addParticle`'s payment and op 225 read as they did before #320, except where a fix that stays shares the line (#322's `__on225` hook, #326's `REPL_FROZEN`, #327's `gT()`).
+- **Checked:** harness-oee identical to the engine before the deletion (5f25594), every field but `config` and the five retired never-fired names, for the default world (seed 2), REPL=1 (seed 2), REPL=1 REPL_FROZEN=1 (seed 3) and REPL=1 REPL_INERT=225 (seed 2), 1,500 ticks.
+- **To reproduce #320, #324, #325, #329, #330 or #331:** engine.html at **5f25594** (the last commit holding all three knobs in their final form). `git worktree add --detach <dir> 5f25594` and run the entry's batch there. Their lab scripts now say so in their first lines. **On a later engine those env vars are not in KNOBS and are silently ignored** — every arm would run plain REPL — which is the trap CLAUDE.md names ("an env var with no line in KNOBS ... is a no-op that reads like one").
+- **Kept:** `REPL_FROZEN` (instrument), `__on225` (probe hook, null unless set), `gT()` (a bug fix), harness-oee's ordered-genotype fields (#324: an instrument, `topSeqShare` had power).
+
+### #333 — PRE-REGISTERED (rule written before any run): is the 1-instruction "rock" near the top of REPL's fitness landscape?
+
+A review's diagnosis of why #319-#331 all hit chance: under REPL sunlight goes into `pE` passively and reproduction is one unconditional instruction (`[4,2,4,1]`), so computing anything buys little. #326's FROZEN worlds (no mutation at all) already lived as well as evolving REPL (450-1,800 alive). This puts the minimal case on the record. **Probe** `lab/inlife/probe-rock.js`: ROCK=1 pins every living particle's program to `[[4,2,4,1]]` after every tick (no predation, gifts or scavenging possible); ROCK=0 is plain REPL. Seeds 6901-6903 (never run), 10,000 ticks, REPL=1. **Rule:** ROCK CONFIRMED if the ROCK world's mean alive over the last third is at least half of plain REPL's on at least 2 of 3 seeds; NOT CONFIRMED if under half on at least 2 of 3. Births reported beside it. A measurement; no knob, no engine change.
+
+**#332 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 65 of 66, the one failure `collective-test`'s return-path ratio ("←13 →4"), which passed twice standalone straight after ("←10 →1", "←14 →1") and which #326 showed fails on the pre-session engine on this box too.
+
+**#333 RESULT — ROCK CONFIRMED, 3 of 3 seeds. A REPL world whose every program is the single reproduction instruction lives as well as evolving REPL.** 6 runs, seeds 6901-6903, 10,000 ticks. Out: `lab/inlife/out-rock/`.
+
+| seed | ROCK late alive | REPL late alive | ratio | births ROCK / REPL | REPL mean program length |
+|---|---|---|---|---|---|
+| 6901 | 316 | 347 | 0.91 | 8,624 / 15,818 | 17.2 |
+| 6902 | 1,078 | 1,011 | 1.07 | 28,004 / 17,567 | 16.1 |
+| 6903 | 492 | 326 | 1.51 | 12,190 / 10,234 | 14.6 |
+
+All three ratios are at least 0.5 -> **ROCK CONFIRMED.** On two seeds the 1-instruction world holds MORE living than worlds whose programs evolve to 15-17 instructions with predation, gifts and scavenging available. Under REPL the sunlight `sunStep` hands out is enough, and computation buys nothing the population can measure. This is the reason #319-#331 met chance: there was nothing for a better program to be better AT. It is also what #273 already hinted (the ancestor instruction alone carried replication).
+**What it rules on:** any further REPL mechanism has to make survival or reproduction require computation, or it is decoration by construction. The lean core (oee-core.js) already makes eating an instruction (EAT_LIGHT) and charges every executed instruction; #290 there, with paid computation and function-keyed parasites, still plateaued at NAND size 6. That is where the next experiment (outputs of others as inputs, the user's choice) goes.

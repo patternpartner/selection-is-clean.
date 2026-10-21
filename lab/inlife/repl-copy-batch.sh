@@ -1,4 +1,5 @@
 #!/bin/bash
+# RETIRED IN #332: this needs engine.html at 5f25594 (REPL_COPY / REPL_DIET / REPL_CONTACT were removed after it). On a later engine the knob is silently ignored and every arm runs plain REPL. Run it from a worktree: git worktree add --detach <dir> 5f25594
 # lab/inlife/repl-copy-batch.sh OUTDIR [MAXNEW] [PAR]  - the 30 runs of PREREG-repl-copy.md, staged for the 30-minute window:
 # skips runs with a .done marker, deletes a .json left by a reaped launch, starts at most MAXNEW, PAR at a time.
 cd "$(dirname "$0")/../.."; OUT=${1:?outdir}; MAXNEW=${2:-9}; PAR=${3:-3}; mkdir -p "$OUT"
