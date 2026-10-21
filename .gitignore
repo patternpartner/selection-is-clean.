@@ -26,3 +26,4 @@ lab/mindrun/heavy/
 lab/inlife/out-*/
 # temporary smoke.sh slices (the suite outlasts the 30-minute job limit; see #315)
 .smoke-slice*.sh
+node_modules/
