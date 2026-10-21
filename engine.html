@@ -10609,6 +10609,11 @@ const REPL_COPY_BUF=REPL_COPY===1||REPL_COPY===3;
 const pChildProg=REPL_COPY_BUF?new Array(CAP).fill(null).map(()=>[]):null, pCopyCur=REPL_COPY_BUF?new Int32Array(CAP):null;
 const pInjCur=REPL_COPY===3?new Int32Array(CAP):null;
 const REPL_COPY_MAX=96;
+// #326: REPL_FROZEN=1 - the neutral arm for #282's lineage collapse. Under REPL a parented child takes its parent's genome
+// and program WITHOUT mutateChildGenome, and every founder already starts from the same germline clone, so no heritable
+// program or genome difference can arise and lineages can be lost only by drift (spatial luck included). Traits still
+// inherit with INHERIT's noise, as in plain REPL. Rigs only; default 0 changes nothing.
+const REPL_FROZEN=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_FROZEN|0)!==0);
 function replCopyCost(){ return BIRTH_ENERGY_COST*(1-SUN_ENDOW)/Math.max(1,REPL_ANCESTOR?REPL_ANCESTOR.length:16); }
 const REPL_SEX_P=0.5;
 function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
@@ -21560,7 +21565,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
     _bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
     recombineGenome(_bg,pGenome[parentB]); // same event now recombines the whole genome, not just the program
   }
-  pGenome[i]=mutateChildGenome(_bg);}
+  pGenome[i]=(REPL_FROZEN&&parentA>=0&&parentA<N)?_bg:mutateChildGenome(_bg);}   // #326: frozen children are exact clones
   pProg[i]=pGenome[i].vmProgram;
   if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276

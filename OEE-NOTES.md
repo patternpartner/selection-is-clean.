@@ -27238,3 +27238,10 @@ Tally: primary better on 1 seed (6402, lineages), worse on none; one guard (spre
 - **What this closes:** making replication computed and priced, with heredity intact, does not by itself stop the lineage collapse at this horizon. Together with #320 (contact physics) and #322 (op 225), three candidate causes of #282's sweep have now been tried and none moved it. REPL_COPY stays a rig-only knob (v1 and v2 both, v1 so #324 re-runs).
 
 **#325 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
+
+### #326 — IS REPL'S LINEAGE COLLAPSE A SWEEP OR DRIFT? Pre-registered measurement, and a neutral arm (`REPL_FROZEN`).
+
+The user chose to measure the collapse before building another mechanism. **New knob** `REPL_FROZEN=1` (rigs only, REPL only): a parented child takes its parent's genome and program without `mutateChildGenome`; founders all start from one germline clone, so no heritable genome or program difference can arise (traits still inherit with INHERIT's noise). Unset: harness-oee identical to the previous engine (default world and REPL=1, seed 2); substrate-test TICKS=40 264/0. Frozen fidelity (probe-birthvar, practice seed 1): 0-0.1% of children differ from their parent.
+**Probe** `lab/inlife/probe-drift.js`: founder labels inherited parent to child, read against generations (births / mean living), with 20 MIXED shadows (well-mixed Moran on the real demography) and `pLin` mint counts.
+**Pilot (practice seed 1, 3,000 ticks, not evidence):** REPL 71 of 329 founders at generation 7.4 (MIXED 26-39); FROZEN collapsed to ONE founder at generation 10.8 while growing to about 1,700 (about 29 at generation 7.5); DEFAULT 218 at generation 0.64. **REPL mints 0 new `pLin` ids; the default world mints about 150 per 1,000 births** — so #319's "183-316 against 1-56" compared founder-plus-mint counts with pure founder survival.
+Pre-registration: `lab/inlife/PREREG-drift.md` (seeds 6501-6505; REPL and FROZEN at NULLSHIFT 0/3/7, DEFAULT once; founders compared at a matched generation). Calling it a SWEEP needs REPL below BOTH nulls. Results follow.
