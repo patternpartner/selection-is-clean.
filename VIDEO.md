@@ -2197,3 +2197,8 @@ hiding on cue or waiting for trust, none learned; "Larger systems can plan. Noth
 carries over is the method"; "Trust is easier to give when you can check it." with the repository). Card sound 8 dB
 under the films. RUN: render the cards with `ROOT=video PAGE=finale/series.html DATA='{}'` into out/finale/cards (2856
 frames), events -> `sound.py` -> out/finale/snd/cards.wav, then `video/finale/assemble.sh`.
+Made: `out/finale/eye-service-the-series.mp4` (563.97 s, 1080x1920, -17.0 LUFS; The Turn's own master has sound 0.1 s
+longer than picture, so the join holds its last frame 3 frames; picture and sound end within 1 ms) and the share version
+(720x1280, 29.1 MB). Record dashboard: https://claude.ai/artifact/6n1VhDKADbeQsQHvQ8KmHX (private until shared).
+Backed up: library/inputs/finale (record data, card sound and events, the card pieces) and
+library/finals/eye-service-the-series{,-share}.mp4.
