@@ -14560,6 +14560,13 @@ const MAX_LINEAGE_HISTORY=60; // how many lineages to keep in registry before pr
 // parentless particle mints a registry entry too, so "82 lineages" may be 82 speciation events or 82
 // founders that never reproduced, and singleFrac cannot tell those apart. The tag is a string written
 // once at mint; it is read only by instruments and never by the simulation.
+// #327: THE WORLD'S CLOCK, READ THROUGH THE GENOME SWAP. A per-particle VM runs with genome = pGenome[i], and REPL births
+// (executeSoloVM) call addParticle inside that swap, so genome.totalTicks there is the PARENT'S cloned copy, which never
+// advances. The speciation age test read it and saw every lineage as 0 ticks old: under REPL 952 of 952 births that
+// cleared SPECIATE_DIST in 4,000 ticks failed the age test at age 0, and a lineage could never throw a daughter.
+// gT() is the germline's own count, set where it advances; before the first tick it falls back to genome (no swap yet).
+let __germTicks=-1;
+function gT(){ return __germTicks>=0?__germTicks:genome.totalTicks; }
 function createLineage(parentLineageID,src){
   const lid=nextLineageID++;
   // Generate a distinctive color from lineage ID — golden ratio hue spacing
@@ -14570,10 +14577,10 @@ function createLineage(parentLineageID,src){
   lineageRegistry.set(lid,{
     color:[r,g,b],
     hue,
-    birthTick:genome.totalTicks,
+    birthTick:gT(),   // #327: not the ambient genome's copy
     parentLineage:parentLineageID,
     budCount:0,
-    lastSeen:genome.totalTicks,
+    lastSeen:gT(),
     extinct:false,
     children:[], // child lineage IDs (from budding speciation events)
     // #70 census fields. Written by the lineage census (every 60 ticks, detection cadence) and by
@@ -21545,7 +21552,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
-        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+        if(_pe&&!_pe.extinct&&(gT()-_pe.birthTick)>SPECIATE_MIN_AGE){
           const _new=createLineage(pLin[parentA],'speciate');
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
@@ -21654,7 +21661,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
     if(_d2>SPECIATE_DIST*SPECIATE_DIST){
       try{
         const _pe=lineageRegistry.get(pLin[parentA]);
-        if(_pe&&!_pe.extinct&&(genome.totalTicks-_pe.birthTick)>SPECIATE_MIN_AGE){
+        if(_pe&&!_pe.extinct&&(gT()-_pe.birthTick)>SPECIATE_MIN_AGE){
           const _new=createLineage(pLin[parentA],'speciate');
           if(_pe.children)_pe.children.push(_new);
           pLin[i]=_new;
@@ -27182,7 +27189,7 @@ function loop(){
   try{
   const frameStart=lastLoopTime;
   tick++;
-  genome.totalTicks++;
+  genome.totalTicks++; __germTicks=genome.totalTicks;   // #327
   if(__mindLatch!==false){ const _M=mindOn(); if(_M&&tick%_M.EVERY===0)_M.train(); }   // #296: the mind learns from the parents it has seen
   updateWorldSignal();   // #136: read the real world before deciding what the sunlight is
   // #183: the world's own legislature. One proposal on probation at a time; the population is the
