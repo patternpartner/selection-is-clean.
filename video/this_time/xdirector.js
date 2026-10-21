@@ -10,6 +10,7 @@ import { TrustDirector } from '../trusted/tdirector.js';
 import { PhotoDay } from '../photograph/pday.js';
 import { StillDay } from '../hold_still/sday.js';
 import { TrustDay } from '../trusted/tday.js';
+import { pw, clamp } from '../eye_service/timeline.js';
 
 export const kindOf = (key) => (key.startsWith('photo') ? PhotoDay : key.startsWith('still') ? StillDay : TrustDay);
 
@@ -61,6 +62,12 @@ export class ThisDirector extends Director {
     for (const e of ev) { if (e.type === 'death') e.gain = (e.gain ?? 1) * 0.5; if (e.type === 'switch') e.gain = 0.6; }
     ev.sort((x, y) => x.t - y.t);
     return { seconds: this.T, events: ev, beds: a.beds };
+  }
+  // a split whose sides run through the day (sd.map: film time -> step, as a day segment's map), with an overlay
+  split(seg, t, lt) {
+    const sides = (seg.sides || [seg.left, seg.right]).map((sd) => (sd.map ? { ...sd, s: clamp(pw(sd.map, lt), 0, 479.4) } : sd));
+    super.split({ ...seg, sides }, t, lt);
+    if (seg.overlay) seg.overlay(this, lt, sides);
   }
   skip() {}
 }
