@@ -27220,3 +27220,19 @@ The user asked for it after #324's correction, with a review's design for the en
 **Checked:** knob unset, default world and REPL=1 identical to the previous engine (seed 2); `REPL_COPY=1` identical too (seed 1); substrate-test TICKS=40 264/0.
 **Pilot (practice seed 1, 3,000 ticks, not evidence):** whole-run share of children differing from their parent **0.169 under v2 against 0.204 in the control** (v1: 0.96-0.99) — heredity is back to baseline. No injections yet (k < 0 had not arisen).
 Pre-registration: `lab/inlife/PREREG-repl-copy2.md` (seeds 6401-6405, three replicates per arm at NULLSHIFT 0/3/7, 10,000 ticks, plus one fidelity run per arm per seed). New, because of #324: **a heredity guard** — on a seed where v2's children differ more than twice as often as the control's, a lower top-genotype share cannot count. Secondary claim: program length. Results follow.
+
+**#325 RESULT — NO CONSISTENT DIRECTION (as predicted); LENGTH NOT SHOWN (predicted shorter: wrong). Computed replication with heredity intact and copying priced does not change the sweep at 10,000 ticks.** 40 runs, seeds 6401-6405, all counted, three distinct replicates per arm on every seed, no crashes. Analysis `lab/inlife/analyse-repl-copy2.js`.
+
+| seed | fidelity F, V2 / CONTROL | P1 lineages late, V2 / CONTROL | P2 top share, V2 / CONTROL | length late, V2 / CONTROL |
+|---|---|---|---|---|
+| 6401 | 0.194 / 0.161 | 14-107 / 19-48 none | 0.07-0.56 / 0.05-0.15 none | 15.3-16.5 / 14.6-16.2 none |
+| 6402 | 0.190 / 0.140 | 33-46 / 15-25 **UP** | 0.03-0.21 / 0.03-0.27 none | 13.4-15.7 / 14.8-15.7 none |
+| 6403 | 0.188 / 0.076 (guard) | 13-25 / 18-43 none | 0.04-0.15 / 0.07-0.11 none | **10.5-13.6 / 15.6-16.0 SHORTER** |
+| 6404 | 0.216 / 0.106 (guard) | 5-39 / 21-38 none | 0.09-0.16 / 0.07-0.11 none | 14.2-15.9 / 14.8-16.0 none |
+| 6405 | 0.160 / 0.104 | 12-24 / 18-31 none | 0.06-0.19 / 0.09-0.17 none | **8.2-14.1 / 14.9-15.8 SHORTER** |
+
+Tally: primary better on 1 seed (6402, lineages), worse on none; one guard (spread_late lower on 6402). **Verdict as written: NO CONSISTENT DIRECTION.** Secondary: shorter 2, longer 0 -> **NOT SHOWN.**
+- **Heredity is intact** (the point of v2): children differing from their parent 16-22% under V2 on every seed, against 96-99% in v1. **But V2 is consistently 1.5-2.5x the control** (8-16%), and the pre-registered guard tripped on 6403 and 6404 — because the CONTROL was unusually faithful there, not because V2 scrambled (V2 sat at its usual 0.19-0.22). It changed no verdict (P2 moved on neither). A guess for the gap, unchecked: a copy reads the RUNNING program, so changes made during a parent's life (PROG_GROW/TRIM and the like) are inherited under V2 and not under plain REPL, where a child clones the germline.
+- **Length:** where V2 differs it is always shorter, twice strongly (8.2-14.1 against 14.9-15.8), but 2 of 5 is under the floor.
+- **Parasitism did not arise:** 20 injections in all 40 runs, all on 6402 NULLSHIFT 0's fidelity run. The k < 0 route was one mutation away and was essentially never taken or kept within 10,000 ticks. Route 1 (#289) was not tested by this.
+- **What this closes:** making replication computed and priced, with heredity intact, does not by itself stop the lineage collapse at this horizon. Together with #320 (contact physics) and #322 (op 225), three candidate causes of #282's sweep have now been tried and none moved it. REPL_COPY stays a rig-only knob (v1 and v2 both, v1 so #324 re-runs).
