@@ -27310,3 +27310,5 @@ beats chance: no (1 of 10); beats control: no (1 against 0). **Verdict as writte
 - **Why, a guess, unchecked:** R10 depends on the particle's state as well as its program, so the band may be mostly a moment-to-moment behaviour rather than a heritable niche: every band holds many distinct programs (e.g. 39/41/108/55 programs in bands 0-3). Not measured: the share of children whose band matches their parent's. If that is low, this design never gave a lineage a niche to keep.
 - **Together with #328:** REPL's new program types are held at chance whether or not the diet exists. Splitting the resource the program pays with, in this form, did not make new heritable types arise and persist at 10,000 ticks.
 - REPL_DIET stays a rig-only knob.
+
+**#329 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
