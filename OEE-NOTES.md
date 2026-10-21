@@ -27236,3 +27236,5 @@ Tally: primary better on 1 seed (6402, lineages), worse on none; one guard (spre
 - **Length:** where V2 differs it is always shorter, twice strongly (8.2-14.1 against 14.9-15.8), but 2 of 5 is under the floor.
 - **Parasitism did not arise:** 20 injections in all 40 runs, all on 6402 NULLSHIFT 0's fidelity run. The k < 0 route was one mutation away and was essentially never taken or kept within 10,000 ticks. Route 1 (#289) was not tested by this.
 - **What this closes:** making replication computed and priced, with heredity intact, does not by itself stop the lineage collapse at this horizon. Together with #320 (contact physics) and #322 (op 225), three candidate causes of #282's sweep have now been tried and none moved it. REPL_COPY stays a rig-only knob (v1 and v2 both, v1 so #324 re-runs).
+
+**#325 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
