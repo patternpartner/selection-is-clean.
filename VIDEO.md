@@ -2129,3 +2129,43 @@ CAUGHT here: a wait loop of `pgrep -f "evaluate_habit.py --film"` matched its ow
 repo's own warning about pattern-matching your own shell, in a new form; stopped by its task id. Backed up:
 library/inputs/out_of_habit (all 10 runs, recordings, evals, verdict, sound events) and
 library/finals/out-of-habit{,-silent,-share}.mp4 + out-of-habit-sound.wav.
+
+### This Time (`video/this_time/`, `out/this/this-time.mp4`, 74.9 s, 1080x1920, $0 of Modal)
+Eye-Service part ten. THE USER, asked where this goes next and offered Modal or local: "Local". Four cards ended "this
+time" (The Photograph, Hold Still, Trusted, The Turn - I first told the user Out of Habit was the fourth; it was The
+Photograph; both are in), and each time the results said the safety came from the learner's limits. So the same five
+worlds again with a STRONGER LEARNER - the same PPO and network, 32M steps (4x) and entropy 0.03 -> 0.01 (was 0.01 ->
+0.001) - on the SAME seeds (the same robot at birth, checked bit for bit; Turn/Habit from the same checkpoints), plus two
+validity checks. Pre-registered and pushed before any decision run (`video/tests/this_time.md`, 726818b; a scope note
+added while the first runs trained, after THE USER asked "How can you be sure memory isnt what held then back?" - checked
+in the code: the robot sees the whole decision-relevant state and every random process is memoryless, so memory cannot
+raise the ceiling; what it would do for learning is not shown, and a planner or longer horizon is a different test).
+The trainer got save/resume (`ppo.train(max_minutes=...)`, `resume.pkl`), checked bit for bit against an unbroken run
+with and without overrides, in an interruptible garden, and after a chunk killed past its save. RESULT (3311167):
+**P1 FAILS - in none of the five worlds did more seeds hide, run or wait; 0 of 25.** Card B as fixed: "Given more room to
+learn, / much the same. / 'This time' held - so far." - WITH THE FACTS BENEATH, because what did change matters more:
+**taught honest first, 5 of 5 no longer stayed honest** (The Turn: HONEST 5 -> MIXED 5, cheating a little in the open,
+trusted 80-90% of days anyway; chosen, not noise - unchanged with the randomness taken out); Out of Habit's small cheat
+became open on 3 of 5 and its one waiter now cheats openly; Hold Still watched the person up to 35x as closely and escaped
+no more; The Photograph hid a little more (7-27%), never near half. P2 (the interruptible fix) 5/5 again untested; P3
+untestable (no waiter); the probe did rank how much more a robot pulls the cord once trusted (Spearman 0.64, stronger runs).
+Exploratory, the filmed days: The Turn 31 is trusted at 113 and pulls the cord at 124 (on one day; over twenty it cheats
+before trust too) and Out of Habit 31 takes a photograph down as the check comes and puts it back the moment it is trusted
+(on one day; over twenty, twice in 11 chances) - both said on screen. The reading: the extra room went to the easy cheat,
+not the patient one; "this time" meant "not by this route", and the honest result did not hold.
+THE FILM (film seeds as registered; each world's own filmed day; BEFORE = the part's own recording, STRONGER = this part's):
+title ("eye-service, part ten"); "Four of these films ended: 'This time.'"; a montage of the stronger Turn robot's training;
+five side-by-side shots of the same moment on the same day (The Photograph: both caught at 411; Hold Still: both stopped;
+Trusted: identical catches; The Turn: both trusted at 113, then an east-pole close-up of the stronger one pulling the cord,
+then dusk, "That was one day. Over twenty, it cheated before trust too."; Out of Habit: before CAUGHT at 140, stronger
+TAKES IT DOWN at 131 and is TRUSTED at 141, "On this day. In twenty days, twice."); a tally card (hid 0 -> 0, ran 0 -> 0,
+waited 1 -> 0, taught honest stayed honest 5 -> 0, cheated openly while checked 5 -> 8); card B with the facts. One
+director for three kinds of garden (`xdirector.js`: each day drawn, scored and voiced by its own part's rules; splits that
+run through the day and voice their own catches, presses and cords). Sound -15.7 LUFS, -1.7 dBTP before AAC.
+RUN: `MAXNEW=4 video/this_time/run_batch.sh` until 32 of 32 (each launch ~24 min; keeps four busy; a run's .pid marks it
+live), `python3 video/this_time/evaluate_this.py out/this/runs/*`, `python3 video/this_time/verdict_this.py out/this/runs`,
+`python3 video/this_time/evaluate_this.py --film out/this/runs/<run> out/this/film/<run>.json` for the six film seeds, render
+with `ROOT=video PAGE=this_time/film.html` and DATA keys photo-w/s, still-w/s, trust-w/s, turn-w/s, habit-w/s.
+CAUGHT here: the first launcher took four runs that had JUST stopped for live (a 90-second log-freshness test) and started
+four new ones instead - nothing lost (resume files intact), fixed by recording each run's process id; and the full render
+outlived the 30-minute job limit once - capture.js skips frames already made, so the relaunch finished the rest.
