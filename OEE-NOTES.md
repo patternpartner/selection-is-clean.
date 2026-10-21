@@ -27148,3 +27148,19 @@ Tally: cER UP 5/5, spread_late UP 5/5, estFrac UP 4/5; nothing DOWN; no REPL-onl
 ### #322 — PRE-REGISTERED: is op 225 (lateral program copy) SELECTED under REPL? ("somatic mimicry")
 
 `lab/inlife/PREREG-op225.md`, committed with this entry before any decision run. Engine: a probe hook `__on225` (null unless a probe sets it), called when op 225 copies and, under REPL_INERT=225, when it would have copied (the live case's conditions). harness-oee identical to the previous engine with it unset (default world; REPL=1 REPL_INERT=225; seed 2), substrate-test TICKS=40 264/0. Probe `lab/inlife/probe225.js`: tracking outside the engine through novelty-shadows' BIRTHS/COMPACT hooks, density-matched controls with explicit pair ids, identity checked each tick against the slot's pGenome object (0 mismatches in the pilot), draws nothing (its active-arm split counts equal #320's desync probe exactly). Results follow when the 30 runs are in.
+
+**#322 RESULT — NOT SHOWN, as predicted. op 225 is not selected under REPL at 12,000 ticks; the particles that copy do have more children than crowd-matched controls, but particles that WOULD have copied do at least as well.** 30 runs, seeds 6201-6205, all counted (op 225 copied in 3/3 ACTIVE runs on every seed; 0 identity mismatches). Analysis `lab/inlife/analyse-op225.js`.
+
+| seed | germline carriage C, ACTIVE | C, INERT | copies (ACTIVE) | move |
+|---|---|---|---|---|
+| 6201 | 0.0009, 0.0030, 0.0001 | 0.0015, 0.0030, 0.0001 | 25, 10, 7 | none |
+| 6202 | 0, 0, 0.0011 | 0, 0, 0 | 62, 62, 47 | none |
+| 6203 | 0, 0.0148, 0.0006 | 0.0055, 0.0048, 0 | 2, 32, 17 | none |
+| 6204 | 0.0060, 0, 0 | 0.0002, 0.0005, 0.0005 | 67, 18, 18 | none |
+| 6205 | 0, 0.0264, 0 | 0, 0, 0.0008 | 2, 614, 1 | none |
+
+- **World level (the ruling measure):** carriage stays under 3% everywhere and under 0.5% in 25 of 30 runs; no seed separates the arms. UP 0, DOWN 0 -> **NOT SHOWN.** The two runs with the most carriage (6205 A1 2.6%, 614 copies; 6203 A1 1.5%) are single replicates beside zeros.
+- **Mechanism, within ACTIVE (rules on nothing):** a particle's first copy, against an unflagged particle with the nearest neighbour count at the end of the same tick, followed 500 ticks: **+0.19 children per pair, 95% [0.04, 0.34], n = 450.** So copiers out-reproduce crowd-matched controls.
+- **Mechanism, across arms:** children per copying ACTIVE particle **0.69** (n = 450) against per would-have-copied INERT particle **0.85** (n = 461). The particles that meet op 225's conditions do at least as well when the copy does nothing. So the within-arm excess belongs to WHAT GETS A PARTICLE TO op 225 (enough contact gain, `localRes >= 0.3`, beyond what neighbour count captures), not to running a borrowed program. "Somatic mimicry" is not supported: no spread, and no sign the borrowed program is what pays. (The cross-arm comparison is between different worlds after the first copy, so this is the weaker readout; it is the one that separates the two readings.)
+- **The null band was thinner than designed on two seeds:** NULLSHIFT 0 and 1 gave the same world to the unit on 6202 (both arms), and 1 and 2 on 6204 (both arms; the INERT pair went extinct together). #309's "one-draw null that changes nothing", now also for two draws. Those seeds had two independent replicates per arm, not three. It cannot turn "none" into UP; it does mean a future null design should check its replicates are distinct before counting them.
+- **Closed at this horizon:** whether a lateral copy should be inherited is not worth a retire-or-prove; op 225 stays as it is.
