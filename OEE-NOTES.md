@@ -27114,3 +27114,13 @@ Tally: cER UP 5/5, spread_late UP 5/5, estFrac UP 4/5; nothing DOWN; no REPL-onl
 - `generation` in harness-oee's series reads 0-1 in both arms (REPL should be about 25). That field does not measure generations; not used.
 
 **Template step 6.** The pre-registration says BETTER -> recommend REPL as the default, and it goes to the user before it ships. It goes to the user with the lineage caveat above. Nothing has changed in the engine or in any saved universe.
+
+**#319 — the user's decision (step 6): do NOT make REPL the default.** The lineage collapse (183-316 standing against 1-56) is the reason. Next REPL ruling rules on lineages and program diversity as well as traits.
+
+### #320 — REPL HAS HAD NO CONTACT PHYSICS SINCE #273. A knob to restore it; and what does NOT explain #319's trait spread.
+
+**Found by an external review, checked in the code.** #273 put `if(REPL_ON)return false;` on the FIRST line of `interferenceCreate`. Its note says the intent was "physics makes no babies", but the return also skips destructive interference (phase scatter, `BIRTH_SHRINK`, amp damage) and the whole contact fall-through: the elastic bounce, `CONTACT_BLEND`'s trait averaging, and the overlap push-apart. So every REPL world (#273-#319) has run without hard-sphere contact.
+
+**The review's causal claim is CONTRADICTED by the record.** It said the missing `CONTACT_BLEND` is why #319's default world squeezes trait spread (0.67 -> 0.31) and REPL does not. `FORCE=blend0` holds `CONTACT_BLEND` at 0 in the default world, and it was ruled on twice, pre-registered: #257c (seeds 131-133) and #258b (seeds 141-143, "inside the null band on every seed, every measure" -> KEEP). The default world without contact blending contracts just the same. Whatever does the squeezing, it is not this. (The two-parent physics birth, which REPL also removes, remains the unchecked guess from #319.)
+
+**The knob.** `REPL_CONTACT=1` (KNOBS entry added; rigs only): under REPL, `interferenceCreate` skips only its birth block and runs the rest. Default 0 = every REPL result to date. **Checked:** with the knob unset, harness-oee seed 2, 1,500 ticks, identical to the previous engine in every field but `config`, for both the default world and REPL=1.

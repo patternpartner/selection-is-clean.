@@ -10579,6 +10579,11 @@ function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P
 // have nothing left to improve. With probability REPL_SEX_P a newborn's program is spliced (crossoverProg, deep-copied)
 // with the program of a random neighbour standing in the 3x3 cells around the parent.
 const REPL_SEX=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_SEX|0)!==0);
+// #320: REPL_CONTACT=1 - under REPL, interferenceCreate skips ONLY its birth block. #273 put the REPL return on the function's
+// first line, so it also switched off destructive interference (phase scatter, BIRTH_SHRINK, amp damage) and the whole
+// contact fall-through (elastic bounce, CONTACT_BLEND, overlap push-apart): REPL worlds have had no hard-sphere contact.
+// Rigs only, default 0 (every REPL result so far, #273-#319, is the 0 arm).
+const REPL_CONTACT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_CONTACT|0)!==0);
 const REPL_SEX_P=0.5;
 function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx,y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue; for(let j=sunHead[y*FIELD_W+x];j>=0&&cand.length<24;j=sunNext[j]) if(j!==p&&j<N&&palive[j]&&pProg[j])cand.push(j); }
@@ -25390,11 +25395,11 @@ function entrain(i,j,sim,d){
 }
 
 function interferenceCreate(i,j){
-  if(REPL_ON)return false;   // #273: under REPL only programs reproduce
+  if(REPL_ON&&!REPL_CONTACT)return false;   // #273: under REPL only programs reproduce (#320: REPL_CONTACT keeps the contact physics)
   const dp=phase[i]-phase[j];
   const interference=Math.cos(dp);
   const sim=tendSim(i,j);
-  if(interference>genome.creationThresh&&sim>0.1){
+  if(!REPL_ON&&interference>genome.creationThresh&&sim>0.1){
     _specSpawnSim(sim);                                  // observe the compound channel's similarity distribution (the dominant, dissimilar-pairing one)
     // swing #18 finding: compound formation is HYBRIDIZATION — its cross-lineage births are net-generative
     // (they found and feed lineages faster than they homogenise). So mate choice does NOT gate this channel;
