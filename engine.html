@@ -10653,6 +10653,13 @@ const DIET_K=REPL_DIET>=2?REPL_DIET:0;
 const sunBand=DIET_K?Array.from({length:DIET_K},()=>new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)/DIET_K)):null;
 const sunBandTake=DIET_K?new Float32Array(FIELD_W*FIELD_H*DIET_K):null, sunBandCnt=DIET_K?new Int32Array(FIELD_W*FIELD_H*DIET_K):null;
 const pBand=DIET_K?new Uint8Array(CAP):null;
+// #331: REPL_DIET_SRC=1 - THE BAND IS A STRICT FUNCTION OF THE PROGRAM. #330 found #329's R10 band was mostly crowding
+// (R10 is pMem[6], which pairwise contact overwrites), so one program's carriers spread over every band and no lineage held
+// a niche. With SRC=1 the band is the program's exact opcode sequence hashed (FNV-1a) into K: identical programs always
+// share a band, no state enters, and only a change to the opcode sequence can move a lineage. A heritable label the
+// program determines, not a value it computes. 0 keeps #329's R10 band, unchanged.
+const DIET_SRC=DIET_K&&(typeof globalThis!=='undefined')?(globalThis.__REPL_DIET_SRC|0):0;
+function dietBandOfProg(p){ let h=2166136261>>>0; if(Array.isArray(p)) for(let q=0;q<p.length;q++){ h^=((p[q]?(p[q][0]|0):-1)&0xffff); h=Math.imul(h,16777619)>>>0; } return h%DIET_K; }
 function dietBandOf(v){ if(!Number.isFinite(v))return 0; const b=Math.floor((Math.tanh(v)+1)*0.5*DIET_K); return b<0?0:b>=DIET_K?DIET_K-1:b; }   // #329: tanh spread, so ordinary values (0, +-0.3, +-1) reach different bands
 function sunStepDiet(season){
   const C=FIELD_W*FIELD_H, q=WORLD_ENERGY_REGEN*season/C/DIET_K, cap=WORLD_ENERGY_MAX/C/DIET_K, D=FIELD_DIFFUSE;
@@ -25786,7 +25793,7 @@ function executeSoloVM(){
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
     if(REPL_COST){ pE[i]-=REPL_INSTR_C*nInst; if(pE[i]<0){ pE[i]=0; pAdq[i]=0; } }   // #283: the run is paid for
-    if(DIET_K){ const _b=dietBandOf(vmRegs[10]); pBand[i]=_b; if(vmRegs[10]!==0)fired('repl.dietBand'); }   // #329: the diet this program computed (R10 at the end of its solo run)
+    if(DIET_K){ const _b=DIET_SRC===1?dietBandOfProg(prog):dietBandOf(vmRegs[10]); pBand[i]=_b; if(DIET_SRC===1?_b!==0:vmRegs[10]!==0)fired('repl.dietBand'); }   // #329: the diet this program computed (R10 at the end of its solo run)
     if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
       const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
       const _ci=addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1); if(_ci>=0){ birthsThisTick++; fired('repl.birth'); if(REPL_SEX)replSexBirth(_ci,i); } }

@@ -27327,3 +27327,7 @@ beats chance: no (1 of 10); beats control: no (1 against 0). **Verdict as writte
 | 6705 | 0.54 | 0.54 | 0.73 |
 
 Above chance on 4 of 5 seeds, by at most 0.30; one seed at chance. One program's carriers are spread over bands (53-83% in the commonest). **So #329 tested a diet that was largely crowding plus noise, which a single program can spread across every band: a lineage never had a niche of its own to keep.** #329's verdict stands as what it measured; it is not evidence against a HERITABLE diet.
+
+### #331 — PRE-REGISTERED: a heritable diet (`REPL_DIET_SRC=1`) — the band is the program's opcode sequence, hashed.
+
+After #330 the user asked for Step 2 with a band that is a strict function of the program. **`REPL_DIET_SRC=1`** (with REPL_DIET): the band is the exact opcode sequence hashed (FNV-1a) into K, so identical programs always share a band, no state enters, and only an opcode change moves a lineage. A heritable label the program determines, not a value it computes. Unset: plain REPL and #329's R10 diet both identical to the previous engine (seed 2); substrate-test TICKS=40 264/0. **Pilot (practice seed 1, 6,000 ticks):** child = parent band 0.94 against chance 0.25-0.53; one program, one band; all four bands occupied from tick 500; population 1,350-1,800 against plain REPL's 300-600. `analyse-diet.js` gains the heritability check (a DIET run counts only if agreement exceeds chance by 0.2) and SEEDS=; it reproduces #329's verdict unchanged. Pre-registration: `lab/inlife/PREREG-diet2.md` (seeds 6801-6805). Results follow.
