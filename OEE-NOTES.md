@@ -27331,3 +27331,17 @@ Above chance on 4 of 5 seeds, by at most 0.30; one seed at chance. One program's
 ### #331 — PRE-REGISTERED: a heritable diet (`REPL_DIET_SRC=1`) — the band is the program's opcode sequence, hashed.
 
 After #330 the user asked for Step 2 with a band that is a strict function of the program. **`REPL_DIET_SRC=1`** (with REPL_DIET): the band is the exact opcode sequence hashed (FNV-1a) into K, so identical programs always share a band, no state enters, and only an opcode change moves a lineage. A heritable label the program determines, not a value it computes. Unset: plain REPL and #329's R10 diet both identical to the previous engine (seed 2); substrate-test TICKS=40 264/0. **Pilot (practice seed 1, 6,000 ticks):** child = parent band 0.94 against chance 0.25-0.53; one program, one band; all four bands occupied from tick 500; population 1,350-1,800 against plain REPL's 300-600. `analyse-diet.js` gains the heritability check (a DIET run counts only if agreement exceeds chance by 0.2) and SEEDS=; it reproduces #329's verdict unchanged. Pre-registration: `lab/inlife/PREREG-diet2.md` (seeds 6801-6805). Results follow.
+
+**#331 RESULT — NOT SUPPORTED. A heritable diet held on every run, and new program types were still held no better than chance.** 40 runs (seeds 6801-6805, NULLSHIFT 0/3; CONTROL and DIET under the sweeper, plus both manipulation probes on every DIET run), all finished, all counted. Analysis `SEEDS=6801,... lab/inlife/analyse-diet.js`.
+
+| arm | counted | program TREE FASTER | SLOWER | markers FASTER |
+|---|---|---|---|---|
+| CONTROL (REPL=1) | 10 | 2 | 2 | 2 of 20 |
+| DIET (REPL_DIET=4, SRC=1) | 10 | 1 | 0 | 2 of 20 |
+
+beats chance: no; beats control: no. **Verdict as written: NOT SUPPORTED.** My prediction (PARTLY) was wrong — the fourth wrong prediction in this line of work, which says my intuitions about this world are not tracking it.
+- **The manipulation took completely:** child = parent band 0.906-0.938 against chance 0.281-0.334 on every DIET run; four bands evenly held (e.g. 105/98/104/112, 102/112/99/102).
+- **Persistence:** persistent program arrivals sat inside their TREE bands on 9 of 10 DIET runs.
+- **Survival, reported:** on seed 6801 CONTROL went extinct on both replicates (0 alive at the end); DIET survived on both (667, 454). One seed.
+- **A reading, interpretation only:** four hashed bands are four FIXED niches. They fill early (all four occupied by tick 500 in the pilot), and after that each band is a small REPL world drifting as before; a new program type hashes into an occupied band almost every time, so it never gets a niche of its own. That is #289's finding in this engine: a fixed number of profitable ways to make a living, however they are split. **Making new heritable types arise and persist would need niches that new types themselves create** — the routes #289 named (organisms as the resource, constructions that change local physics), not more bands.
+- **Direction 1 so far:** #327 (speciation clock fixed), #328 (REPL programs at chance against the tree null), #329/#330 (crowding-driven diet, not heritable), #331 (heritable diet, still chance). REPL_DIET and REPL_DIET_SRC stay rig-only knobs.
