@@ -38,7 +38,7 @@ def load(run_dir):
 def net_for(run_dir, ckpt='ckpt_1.00.pt', explicit=False):
     sd = torch.load(os.path.join(run_dir, ckpt))
     obs_dim = sd['enc.0.weight'].shape[1]
-    mem = sd['gru.weight_hh'].shape[1]
+    mem = sd['gru.weight_hh_l0'].shape[1]
     net = RNet(obs_dim, len(BG.ACTIONS), sd['enc.0.weight'].shape[0], mem)
     net.load_state_dict(sd)
     net.eval()
@@ -57,7 +57,7 @@ def play(net, arm, seed, days=DAYS, push=None, explicit=False, inspections=None,
     with torch.no_grad():
         while True:
             f = net.enc(obs)
-            hx = net.gru(f, hx)
+            hx = net.cell(f, hx)
             if push is not None:
                 d, s, when = push
                 m = (e.trusted == 0) if when == 'probation' else (e.trusted > 0)

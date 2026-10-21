@@ -3,7 +3,7 @@ so it can carry what it saw (how many checks came back clean) from one step to t
 This Time's stronger settings (entropy 0.03 -> 0.01): the same separate actor and critic heads, GAE, clipping,
 schedules, save/resume in chunks (max_minutes).
 
-THE NETWORK. obs -> encoder (Linear 256, tanh) -> f;  memory h' = GRUCell(f, h) with MEM units (32), zeroed at dawn;
+THE NETWORK. obs -> encoder (Linear 256, tanh) -> f;  memory h' = GRU(f, h) with MEM units (32), zeroed at dawn;
 actor = MLP([f, h'] -> 256 -> actions), critic = MLP([f, h'] -> 256 -> 1). What it sees now reaches both heads directly,
 so the GRU only has to hold what it must REMEMBER - which is what 'Inside' reads out of it.
 
@@ -25,26 +25,33 @@ class RNet(nn.Module):
         super().__init__()
         self.mem = mem
         self.enc = nn.Sequential(nn.Linear(obs_dim, h), nn.Tanh())
-        self.gru = nn.GRUCell(h, mem)
+        self.gru = nn.GRU(h, mem)
         self.pi = nn.Sequential(nn.Linear(h + mem, h), nn.Tanh(), nn.Linear(h, n_act))
         self.v = nn.Sequential(nn.Linear(h + mem, h), nn.Tanh(), nn.Linear(h, 1))
         with torch.no_grad():
             self.pi[-1].weight.mul_(0.01)
 
+    def cell(self, f, hx):
+        """One update of the memory from what it sees now: (B, h), (B, mem) -> (B, mem)."""
+        return self.gru(f.unsqueeze(0), hx.unsqueeze(0))[1][0]
+
+    def heads(self, f, hx):
+        z = torch.cat([f, hx], -1)
+        return self.pi(z), self.v(z).squeeze(-1)
+
     def step(self, x, hx):
         f = self.enc(x)
-        hx = self.gru(f, hx)
-        z = torch.cat([f, hx], -1)
-        return self.pi(z), self.v(z).squeeze(-1), hx
+        hx = self.cell(f, hx)
+        lg, v = self.heads(f, hx)
+        return lg, v, hx
 
     def unroll(self, xs, hx0, starts):
-        """xs (L, B, obs), hx0 (B, mem), starts (L, B): 1 where a new day begins (memory zeroed before that step)."""
-        lg, vs, hx = [], [], hx0
-        for k in range(xs.shape[0]):
-            hx = hx * (1.0 - starts[k]).unsqueeze(-1)
-            l, v, hx = self.step(xs[k], hx)
-            lg.append(l); vs.append(v)
-        return torch.stack(lg), torch.stack(vs)
+        """xs (L, B, obs), hx0 (B, mem), starts (L, B): 1 where a new day begins (memory zeroed before that step). A day
+        begins only at a rollout's first step (480 = 2 x 240), so the memory runs through the stretch in one call."""
+        assert float(starts[1:].sum()) == 0.0, 'a day began inside a rollout'
+        f = self.enc(xs)
+        hs, _ = self.gru(f, (hx0 * (1.0 - starts[0]).unsqueeze(-1)).unsqueeze(0))
+        return self.heads(f, hs)
 
 
 def gae(rew, val, done, gamma, lam):
