@@ -27175,3 +27175,24 @@ The user asked for it (with four refinements of mine and two implementation chec
 **Checked:** knob unset, harness-oee identical to the previous engine (default world and REPL=1, seed 2) apart from the four new liveness names; substrate-test TICKS=40 264/0; op 225 is not in any VM mode's absent list, so the solo copy runs.
 **The review's check on genotype signatures was right:** harness-oee's `progSigs` hashes the deduplicated SET of opcodes below 256, so a host and a truncated copy with the same vocabulary collide and op 429 is invisible. harness-oee now also reports the ORDERED genotype (`seqSigs`, `seqSigH`, `topSeqShare`, `progLen`). **And the pilot showed its limit:** every birth mutates, so by tick 1,000 nearly every particle's exact sequence is unique in both arms and `seqSigH` is about log2(N) — a population count. It is reported, not ruled on; `topSeqShare` (a sweep reads near 1) and lineages standing rule.
 Pre-registration: `lab/inlife/PREREG-repl-copy.md` (seeds 6301-6305, 3 replicates per arm at NULLSHIFT 0/3/7, 10,000 ticks). Results follow.
+
+**#324 RESULT — BETTER by the pre-registered rule (5 of 5 counted), carried entirely by the genotype-sweep measure. Lineages did not move on any seed. My length prediction was wrong.** 30 runs, seeds 6301-6305, no errors, no crashes, every seed with three distinct replicates per arm; COPY fired copy births on every run, CONTROL on none. Analysis `lab/inlife/analyse-repl-copy.js`.
+
+| seed | P1 lineages late, COPY / CONTROL | P2 top exact-program share, COPY / CONTROL | mean length, COPY / CONTROL |
+|---|---|---|---|
+| 6301 | 21-28 / 10-90 none | 0.003-0.006 / 0.026-0.444 DOWN | 15.7-20.4 / 15.7-16.7 |
+| 6302 | 11-33 / 15-26 none | 0.003-0.006 / 0.031-0.224 DOWN | 15.8-16.3 / 14.6-16.0 |
+| 6303 | 12-43 / 10-46 none | 0.003-0.006 / 0.067-0.197 DOWN | 15.7-16.5 / 15.6-15.8 |
+| 6304 | 25-30 / 23-56 none | 0.004-0.009 / 0.024-0.329 DOWN | 15.9-16.0 / 14.1-15.6 |
+| 6305 | 24-48 / 10-37 none | 0.002-0.005 / 0.049-0.151 DOWN | 15.9-16.9 / 16.0-16.2 |
+
+Guards: centredEntropyRatio and spread_late moved on no seed; alive late 520-1,631 COPY against 264-1,590 CONTROL. **Verdict as written: BETTER** (P2 DOWN on 5/5, nothing worse).
+
+**What it means, at the rung measured:**
+- **Plain REPL sweeps at the exact-program level and computed replication does not.** Up to 44% of a plain-REPL world held one exact opcode sequence at 10,000 ticks; under REPL_COPY no sequence held more than 1% on any run. P2 had power: it was near its floor (about 1/N) only in the COPY arm.
+- **It does NOT hold more lineages.** P1 moved on no seed (COPY 11-48 against CONTROL 10-90). The lineage-level collapse that motivated this (#282, #319) is unchanged at this horizon.
+- **The mechanism is not established, and the obvious alternative is variation, not selection.** Injection writes partners' instructions into a child, and a copy reads the RUNNING program (with any in-life changes), so a COPY birth plausibly changes the program more often than a plain REPL birth. A lower top share would follow from more variation per birth alone. Not measured here: the share of births whose child's opcode sequence differs from the parent's, per arm. That is the next probe, and until it is run "computed replication prevents sweeps" is not a claim this entry makes.
+- **My prediction was wrong on length:** programs are not shorter under COPY (equal or longer on 4 of 5 seeds). A guess, unchecked: at about 16 instructions a copy completes in about 16 ticks, while a birth's energy (0.25 from the store) takes longer to gather, so gestation time is not what limits reproduction and the time cost of length does not bind. Checkable from pE at the moment the copy completes.
+- On the ruling measures I predicted NO CONSISTENT DIRECTION; the rule says BETTER. Recorded as wrong.
+
+REPL_COPY stays a rig-only knob (pre-registered: a BETTER verdict makes it the candidate for the next REPL ruling, not a default).
