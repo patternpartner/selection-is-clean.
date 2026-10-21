@@ -27037,7 +27037,7 @@ No arm reaches 4 of 5 on any measure, so by the pre-registered rule: **no verdic
 **2. Attention selects the form.** Until now `genome.draw` only drifted, and very slowly: the engine mutates it with odds 0.004 per genome mutation, which works out at about once in 150,000 ticks, and nothing could keep a form because how a world looks changes nothing about who lives. Now:
 - **Variation, only while watched.** While the pointer (or a finger) is on the canvas, every 900 watched ticks the world proposes a variant of its form, with the drift's three operators (add, drop or retype a primitive) and a random stream of its own, never `Math.random`.
 - **Selection by attention.** While a form is current, the world sums how much it is looked at (the pointer's presence plus the attention field it leaves, #135). At the next proposal (or drift mutation) the trial is judged: a form looked at LESS than the one it replaced is undone; otherwise it stays and becomes the one to beat. Liveness: `draw.propose`, `draw.keep`, `draw.revert`.
-- **Headless and unwatched worlds are byte-identical** (no proposals, every trial scores 0, nothing undone): harness-oee fingerprints match the previous engine on seeds 2 and 5. `browser-test.js` passes. A simulated viewer in Chromium (looking 12 seconds in 20, for 200 seconds) gave 4 reverted and 2 kept trials and a changed form.
+- **Headless and unwatched worlds are byte-identical** (no proposals, every trial scores 0, nothing undone): harness-oee fingerprints match the previous engine on seeds 2 and 5. **Corrected by #318: true only of a world NEVER watched.** A world watched once and then left open kept the last watched score as the one to beat, so every drift of its form while nobody was there was undone. `browser-test.js` passes. A simulated viewer in Chromium (looking 12 seconds in 20, for 200 seconds) gave 4 reverted and 2 kept trials and a changed form.
 - **Where it acts:** a universe open by itself (`engine.html`, or one opened from the field, which forwards the pointer and touch into its worker). In the field's tile view the tiles are covered by tap targets, so tiles are not looked at in this sense; a phone looks only while a finger is down. The incumbent and its score are not saved: a reload judges afresh from the saved form. The form itself (`genome.draw`) is saved with the universe as before, so a saved world now keeps whatever its viewers selected.
 - **This changes the artwork and what saved universes do while watched** (template step 6); the user asked for it.
 
@@ -27071,8 +27071,130 @@ Owed since #311: the rules in CLAUDE.md were run in full against `704fa57`.
 
 ### #317 — THE HISTORY OF WHAT WATCHING DID IS SAVED WITH EACH UNIVERSE
 
-So that a few days of the field can be read back. Every judged trial of the form (#314) now writes `[the world's total ticks, 'k' kept or 'u' undone, the form that was judged]` into `genome.drawHist`, the last 64 only. It is encoded as `dh` in the genome (so it is in the autosave, the universe's save file and the field's harvest), decoded with each form passed through `sanitizeDraw`, and copied with the genome. Nothing is written for an unwatched trial and the key is omitted when the history is empty, so an unwatched world saves exactly as before.
+So that a few days of the field can be read back. Every judged trial of the form (#314) now writes `[the world's total ticks, 'k' kept or 'u' undone, the form that was judged]` into `genome.drawHist`, the last 64 only. It is encoded as `dh` in the genome (so it is in the autosave, the universe's save file and the field's harvest), decoded with each form passed through `sanitizeDraw`, and copied with the genome. Nothing is written for an unwatched trial and the key is omitted when the history is empty (**corrected by #318:** false for a world watched once and then left open, which wrote a 'u' for every drift of its form while nobody was there), so an unwatched world saves exactly as before.
 
 Checked: headless fingerprints identical to the previous engine (seed 4). In Chromium with a simulated viewer for 130 seconds: three entries, e.g. `[1833,"k",[[2,8,7,0],[0,8,4,0],[4,5,8,4]]]` (ring, dot, satellite kept at tick 1,833); an encode / decode round trip returns the history unchanged. `codec-test`, `roundtrip-test` and `persistence-test` pass.
 
 To read it later: harvest the field, and each universe's `genome` carries its `dh` list.
+
+### #318 — A TRIAL NOBODY WATCHED IS NOT JUDGED (a review's finding, checked and sharpened)
+
+**What was wrong.** `__drawTrialEnd` (#314) judged every trial, watched or not. Once anyone had watched a universe, `__drawIncScore` held that watched score until reload. Left open afterwards, each natural drift of the form (odds 0.004 per genome mutation, about once in 150,000 ticks) ended a trial that scored about 0, lost to the old score, and was **undone and written into `drawHist` as 'u'** — a viewer's verdict that no viewer gave. So #314's "unwatched worlds ... nothing undone" and #317's "nothing is written for an unwatched trial" were both true only of a world never watched (both corrected in place above). An external review raised it as "freezes background drift"; the drawHist half is the one that matters, because #317 exists so a few days of the field can be read back, and the field is exactly the case of universes watched now and then and left open.
+
+**The fix.** The trial counts its watched ticks (`__drawTrialW`, pointer presence above 0.05). A trial with none is not judged: the form it ends on stays, nothing is written, and the incumbent is forgotten, so the next watched trial only sets a baseline, as after a reload. Draws nothing.
+
+**Not changed, on purpose:** a trial that was watched for part of its length is still judged on its whole-length mean. That mean is the selection signal #314 chose (a form people keep looking at is current for fewer wall-clock ticks per 900 watched ones), and a viewer leaving during a form is part of it.
+
+**Checked.** New rig `draw-attn-test.js` (in `smoke.sh`): never watched / watched / watched then left open for six drifts / viewer returns. Fixed engine 8 of 8; **the previous engine fails 4 of 8**, with 9 reverts against 1 and 13 drawHist entries against 5 in the same script. harness-oee seed 2, 1,500 ticks: every field except `config` identical to the previous engine. substrate-test: **264 passed, 0 failed** at TICKS=40, TICKS=900, the default and FOUND=0 (seed 1). `smoke.sh` NOT run: the REPL-default batch was using the cores, and CLAUDE.md says not to run it beside long node jobs.
+
+
+### #319 — REPL AS THE DEFAULT WORLD: the pre-registered verdict is BETTER, 5 of 5 seeds — and lineages fall 5-100x. My prediction was wrong.
+
+Pre-registered in `lab/inlife/PREREG-repl-default.md` (committed 17ebd9e before any decision run). Engine at #318. Seeds 6101-6105 (never run), 10,000 ticks; per seed four default nulls (NULLSHIFT 0-3) and three REPL=1 replicates (NULLSHIFT 0-2), everything else default (law mutation ON). 35 runs, all finished, no errors, no crashes. Analysis `lab/inlife/analyse-repl-default.js`.
+
+**Counted 5 of 5** (REPL births fired in every REPL run). A measure moved only if all three REPL runs lay outside the four-null band on the same side and beyond the threshold.
+
+| seed | centredEntropyRatio default / REPL | spread_late default / REPL | estFrac default / REPL | alive_late default / REPL |
+|---|---|---|---|---|
+| 6101 | 0.22-0.71 / 1.01-1.22 UP | 0.24-0.50 / 0.96-1.31 UP | 0.003-0.005 / 0.84-1.00 UP | 364-380 / 415-1728 |
+| 6102 | 0.13-0.37 / 0.62-1.08 UP | 0.21-0.33 / 0.56-1.04 UP | 0.000-0.011 / 0.98-1.00 UP | 348-364 / 539-1507 |
+| 6103 | 0.16-0.39 / 1.05-1.15 UP | 0.26-0.33 / 1.13-1.27 UP | 0.003-0.006 / 1.00 UP | 355-374 / 334-1739 |
+| 6104 | 0.17-0.33 / 0.90-1.18 UP | 0.23-0.32 / 1.02-1.41 UP | 0.000-0.008 / 0.76-0.95 UP | 359-399 / 435-946 |
+| 6105 | 0.15-0.28 / 0.34-1.14 UP | 0.20-0.25 / 0.39-1.38 UP | 0.003-0.013 / 0.00-1.00 none | 356-374 / 318-1222 |
+
+Tally: cER UP 5/5, spread_late UP 5/5, estFrac UP 4/5; nothing DOWN; no REPL-only crash. **Verdict as written: BETTER.** Old grid measures agree (kinds_late 5.5-11.8 default against 18-58 REPL).
+
+**My prediction was wrong.** I wrote "SPLIT or WORSE: REPL lowers centredEntropyRatio and spread_late (selection sweeps a lineage within 25 generations, #282)". On the ruling measures it is the other way on every seed, by a factor of three to four.
+
+**What the ruling measures did not see (post hoc, NOT part of the verdict, recorded so the verdict is not read past its rung):**
+- **Lineages standing at 10,000 ticks: default 183-316, REPL 1-56.** Seed 6105 R1 ended with ONE lineage and the highest spread_late in its seed (1.38). So #282's clonal sweep is already under way at this horizon in lineage terms, while trait diversity rises. The two measures disagree, and the pre-registration ruled only on traits.
+- **Where the difference comes from.** Both arms start from the same world (seed 6101: spreadPair 0.67 default, 0.70 REPL at tick 1). The DEFAULT world contracts trait spread (0.67 -> 0.31 by tick 3,000, centred entropy 3.7 -> 0.8 bits) while lineages hold at about 200; REPL expands it (0.70 -> 1.4) while lineages fall 329 -> 44. So the default world's low diversity is something its own dynamics do to traits, and REPL does not do it. A guess, NOT checked: default births are mostly two-parent physics births that blend traits, and blending halves variance each generation; REPL's program births are one-parent.
+- **So this is variance, not selection** (CLAUDE.md: do not upgrade one to the other). Trait spread inside a handful of lineages over 25 generations is what drift on unselected traits looks like. Nothing here says the traits matter to who reproduces under REPL.
+- **estFrac near 1 under REPL** is at least partly short lives: with a median life of about 400 ticks, most lineages that exist at all have "established" by the census's window. Not comparable across arms the way it is within one.
+- `generation` in harness-oee's series reads 0-1 in both arms (REPL should be about 25). That field does not measure generations; not used.
+
+**Template step 6.** The pre-registration says BETTER -> recommend REPL as the default, and it goes to the user before it ships. It goes to the user with the lineage caveat above. Nothing has changed in the engine or in any saved universe.
+
+**#319 — the user's decision (step 6): do NOT make REPL the default.** The lineage collapse (183-316 standing against 1-56) is the reason. Next REPL ruling rules on lineages and program diversity as well as traits.
+
+### #320 — REPL HAS HAD NO CONTACT PHYSICS SINCE #273. A knob to restore it; and what does NOT explain #319's trait spread.
+
+**Found by an external review, checked in the code.** #273 put `if(REPL_ON)return false;` on the FIRST line of `interferenceCreate`. Its note says the intent was "physics makes no babies", but the return also skips destructive interference (phase scatter, `BIRTH_SHRINK`, amp damage) and the whole contact fall-through: the elastic bounce, `CONTACT_BLEND`'s trait averaging, and the overlap push-apart. So every REPL world (#273-#319) has run without hard-sphere contact.
+
+**The review's causal claim is CONTRADICTED by the record.** It said the missing `CONTACT_BLEND` is why #319's default world squeezes trait spread (0.67 -> 0.31) and REPL does not. `FORCE=blend0` holds `CONTACT_BLEND` at 0 in the default world, and it was ruled on twice, pre-registered: #257c (seeds 131-133) and #258b (seeds 141-143, "inside the null band on every seed, every measure" -> KEEP). The default world without contact blending contracts just the same. Whatever does the squeezing, it is not this. (The two-parent physics birth, which REPL also removes, remains the unchecked guess from #319.)
+
+**The knob.** `REPL_CONTACT=1` (KNOBS entry added; rigs only): under REPL, `interferenceCreate` skips only its birth block and runs the rest. Default 0 = every REPL result to date. **Checked:** with the knob unset, harness-oee seed 2, 1,500 ticks, identical to the previous engine in every field but `config`, for both the default world and REPL=1.
+
+**#320 — first look with the knob ON (exploratory: seeds 6101-6103 were already seen in #319, so this rules on nothing).** REPL=1 REPL_CONTACT=1, NULLSHIFT 0-2, 10,000 ticks, 9 runs, no errors. Out: `lab/inlife/out-repl-contact/`.
+
+| seeds 6101-6103 | spread_late | lineages standing | living at end |
+|---|---|---|---|
+| default world (#319, 12 runs) | 0.21-0.50 | 183-236 | 327-367 |
+| REPL, no contact (#319, 9 runs) | 0.56-1.31 | 8-56 | 264-1,766 |
+| REPL + contact (9 runs) | 0.36-1.06 | 9-40 | 193-1,706 |
+
+- **The knob is not a no-op** (the negative side): every run differs from its REPL twin.
+- **Contact physics explains PART of #319's trait spread:** spread_late is lower in 8 of the 9 matched pairs, and three runs (0.36-0.43) land near the default band. It does not explain all of it (6101 C0 1.06, 6102 C1 0.88).
+- **It explains NONE of the lineage collapse:** 9-40 standing, the same as without contact. #282's sweep is not a contact-physics artifact.
+- Contrast with the default world, where `blend0` did nothing (#257c, #258b): the same physics matters under REPL and not in the default world, which says the default world's squeeze has another dominant source.
+
+### #321 — ACCEPTANCE AFTER #318-#320: 65 ok, 1 failing, and the failure is pre-existing and no longer "load".
+
+- `substrate-test.js` 264/0 at TICKS=40, TICKS=900, the default and FOUND=0 (#318, before #320). #320's knob is byte-identical when unset (default and REPL=1, seed 2).
+- `smoke.sh` (66 rigs, three slices of 22 because a full pass outlasts the 30-minute job limit, same loop and settings, nothing else running): **65 ok, 1 failing.** Includes the new `draw-attn-test.js`.
+- **Environment first:** this container had no `playwright-core`, so seven browser rigs failed "Cannot find module" and `collective-test` / `browser-test` silently SKIPPED and reported ok. Fixed per #236 (`npm install --no-save --no-package-lock playwright-core@1.56`). #236 said `node_modules/` is gitignored; it was not — now it is.
+- **`pool-test` fails 1 of 28: "three reloads later it still does, not four times as many — peers 29 of 27 built".** #315 saw the same row ("28 of 27") and established it as LOAD (28/0 alone). **That no longer holds:** alone on a quiet machine it failed again ("30 of 27"), and on a worktree at 5aa15d6 — the commit before this session — it failed identically ("30 of 27"). So it is a real, pre-existing defect in the field's peer accounting across reloads, not this session's, and not contention. Not fixed here; owed.
+
+### #322 — PRE-REGISTERED: is op 225 (lateral program copy) SELECTED under REPL? ("somatic mimicry")
+
+`lab/inlife/PREREG-op225.md`, committed with this entry before any decision run. Engine: a probe hook `__on225` (null unless a probe sets it), called when op 225 copies and, under REPL_INERT=225, when it would have copied (the live case's conditions). harness-oee identical to the previous engine with it unset (default world; REPL=1 REPL_INERT=225; seed 2), substrate-test TICKS=40 264/0. Probe `lab/inlife/probe225.js`: tracking outside the engine through novelty-shadows' BIRTHS/COMPACT hooks, density-matched controls with explicit pair ids, identity checked each tick against the slot's pGenome object (0 mismatches in the pilot), draws nothing (its active-arm split counts equal #320's desync probe exactly). Results follow when the 30 runs are in.
+
+**#322 RESULT — NOT SHOWN, as predicted. op 225 is not selected under REPL at 12,000 ticks; the particles that copy do have more children than crowd-matched controls, but particles that WOULD have copied do at least as well.** 30 runs, seeds 6201-6205, all counted (op 225 copied in 3/3 ACTIVE runs on every seed; 0 identity mismatches). Analysis `lab/inlife/analyse-op225.js`.
+
+| seed | germline carriage C, ACTIVE | C, INERT | copies (ACTIVE) | move |
+|---|---|---|---|---|
+| 6201 | 0.0009, 0.0030, 0.0001 | 0.0015, 0.0030, 0.0001 | 25, 10, 7 | none |
+| 6202 | 0, 0, 0.0011 | 0, 0, 0 | 62, 62, 47 | none |
+| 6203 | 0, 0.0148, 0.0006 | 0.0055, 0.0048, 0 | 2, 32, 17 | none |
+| 6204 | 0.0060, 0, 0 | 0.0002, 0.0005, 0.0005 | 67, 18, 18 | none |
+| 6205 | 0, 0.0264, 0 | 0, 0, 0.0008 | 2, 614, 1 | none |
+
+- **World level (the ruling measure):** carriage stays under 3% everywhere and under 0.5% in 25 of 30 runs; no seed separates the arms. UP 0, DOWN 0 -> **NOT SHOWN.** The two runs with the most carriage (6205 A1 2.6%, 614 copies; 6203 A1 1.5%) are single replicates beside zeros.
+- **Mechanism, within ACTIVE (rules on nothing):** a particle's first copy, against an unflagged particle with the nearest neighbour count at the end of the same tick, followed 500 ticks: **+0.19 children per pair, 95% [0.04, 0.34], n = 450.** So copiers out-reproduce crowd-matched controls.
+- **Mechanism, across arms:** children per copying ACTIVE particle **0.69** (n = 450) against per would-have-copied INERT particle **0.85** (n = 461). The particles that meet op 225's conditions do at least as well when the copy does nothing. So the within-arm excess belongs to WHAT GETS A PARTICLE TO op 225 (enough contact gain, `localRes >= 0.3`, beyond what neighbour count captures), not to running a borrowed program. "Somatic mimicry" is not supported: no spread, and no sign the borrowed program is what pays. (The cross-arm comparison is between different worlds after the first copy, so this is the weaker readout; it is the one that separates the two readings.)
+- **The null band was thinner than designed on two seeds:** NULLSHIFT 0 and 1 gave the same world to the unit on 6202 (both arms), and 1 and 2 on 6204 (both arms; the INERT pair went extinct together). #309's "one-draw null that changes nothing", now also for two draws. Those seeds had two independent replicates per arm, not three. It cannot turn "none" into UP; it does mean a future null design should check its replicates are distinct before counting them.
+- **Closed at this horizon:** whether a lateral copy should be inherited is not worth a retire-or-prove; op 225 stays as it is.
+
+### #323 — `pool-test`'s reload row: not load, not zombies — the field's GROWN universes. Fixed in the rig; the suite is green.
+
+#321 left it owed. Diagnosed, not retuned: after three reloads the page hosted **4 grown universes** (`#below .grown`, deliberately not `.deep`, so the rig's `built` never counted them) and every cell read **peers 30** — within 27 built + 4 grown. A reload-zombie field would add a whole field (about 27 peers), not 3. So this is #315's `layers-test` finding again in another rig: #297 made the field grow universes and bring them back after a reload, and the assertion still compared against the first load's count. The row now compares peers with what the page hosts at the moment of the read (built + grown) and reports both ("peers 30 of 27 built + 4 grown"); it still fails on accumulation. **28/0 alone, at the default and at smoke's SECS=14.** With #321's slices that makes `smoke.sh` 66 of 66 on this engine.
+
+### #324 — REPL_COPY: COMPUTED REPLICATION. Built, and pre-registered against a matched-ancestor control.
+
+The user asked for it (with four refinements of mine and two implementation checks from a review). **What it is** (`REPL_COPY=1`, rigs only, REPL only): a REPL child's program is no longer a free clone of the parent's germline. It must be COPIED, one instruction per executed op 225, into a per-particle buffer (`pChildProg`, `pCopyCur`) that persists across ticks, is moved in `compact()` and is cleared at birth. `addParticle` — the single chokepoint for every REPL birth (solo, pairwise, op 16/226 via the birthQueue; `addCompound` is unreachable under REPL) — refuses a parented birth until the buffer is as long as the parent's running program, BEFORE anything is paid or drawn (`repl.copyIncomplete`). The child's program is the buffer (then the usual `mutateChildGenome`, mind and REPL_SEX paths). op 225 is re-read under REPL_COPY: solo, it appends the particle's own next instruction to its own buffer (`repl.copy`); pairwise, to the PARTNER's buffer (`repl.inject`), so a partner's next child carries foreign code. A copy fills only up to the target's own program length, so a longer program gestates longer. The ancestor gains `[225,0,11,1]` in front of REPL's `[4,2,4,1]` (result to R11, clear of the birth signal). `REPL_COPY=2` installs the same ancestor only, for the control, which also runs `REPL_INERT=225`.
+**Checked:** knob unset, harness-oee identical to the previous engine (default world and REPL=1, seed 2) apart from the four new liveness names; substrate-test TICKS=40 264/0; op 225 is not in any VM mode's absent list, so the solo copy runs.
+**The review's check on genotype signatures was right:** harness-oee's `progSigs` hashes the deduplicated SET of opcodes below 256, so a host and a truncated copy with the same vocabulary collide and op 429 is invisible. harness-oee now also reports the ORDERED genotype (`seqSigs`, `seqSigH`, `topSeqShare`, `progLen`). **And the pilot showed its limit:** every birth mutates, so by tick 1,000 nearly every particle's exact sequence is unique in both arms and `seqSigH` is about log2(N) — a population count. It is reported, not ruled on; `topSeqShare` (a sweep reads near 1) and lineages standing rule.
+Pre-registration: `lab/inlife/PREREG-repl-copy.md` (seeds 6301-6305, 3 replicates per arm at NULLSHIFT 0/3/7, 10,000 ticks). Results follow.
+
+**#324 RESULT — BETTER by the pre-registered rule (5 of 5 counted), carried entirely by the genotype-sweep measure. Lineages did not move on any seed. My length prediction was wrong.** 30 runs, seeds 6301-6305, no errors, no crashes, every seed with three distinct replicates per arm; COPY fired copy births on every run, CONTROL on none. Analysis `lab/inlife/analyse-repl-copy.js`.
+
+| seed | P1 lineages late, COPY / CONTROL | P2 top exact-program share, COPY / CONTROL | mean length, COPY / CONTROL |
+|---|---|---|---|
+| 6301 | 21-28 / 10-90 none | 0.003-0.006 / 0.026-0.444 DOWN | 15.7-20.4 / 15.7-16.7 |
+| 6302 | 11-33 / 15-26 none | 0.003-0.006 / 0.031-0.224 DOWN | 15.8-16.3 / 14.6-16.0 |
+| 6303 | 12-43 / 10-46 none | 0.003-0.006 / 0.067-0.197 DOWN | 15.7-16.5 / 15.6-15.8 |
+| 6304 | 25-30 / 23-56 none | 0.004-0.009 / 0.024-0.329 DOWN | 15.9-16.0 / 14.1-15.6 |
+| 6305 | 24-48 / 10-37 none | 0.002-0.005 / 0.049-0.151 DOWN | 15.9-16.9 / 16.0-16.2 |
+
+Guards: centredEntropyRatio and spread_late moved on no seed; alive late 520-1,631 COPY against 264-1,590 CONTROL. **Verdict as written: BETTER** (P2 DOWN on 5/5, nothing worse).
+
+**What it means, at the rung measured:**
+- **Plain REPL sweeps at the exact-program level and computed replication does not.** Up to 44% of a plain-REPL world held one exact opcode sequence at 10,000 ticks; under REPL_COPY no sequence held more than 1% on any run. P2 had power: it was near its floor (about 1/N) only in the COPY arm.
+- **It does NOT hold more lineages.** P1 moved on no seed (COPY 11-48 against CONTROL 10-90). The lineage-level collapse that motivated this (#282, #319) is unchanged at this horizon.
+- **The mechanism is not established, and the obvious alternative is variation, not selection.** Injection writes partners' instructions into a child, and a copy reads the RUNNING program (with any in-life changes), so a COPY birth plausibly changes the program more often than a plain REPL birth. A lower top share would follow from more variation per birth alone. Not measured here: the share of births whose child's opcode sequence differs from the parent's, per arm. That is the next probe, and until it is run "computed replication prevents sweeps" is not a claim this entry makes.
+- **My prediction was wrong on length:** programs are not shorter under COPY (equal or longer on 4 of 5 seeds). A guess, unchecked: at about 16 instructions a copy completes in about 16 ticks, while a birth's energy (0.25 from the store) takes longer to gather, so gestation time is not what limits reproduction and the time cost of length does not bind. Checkable from pE at the moment the copy completes.
+- On the ruling measures I predicted NO CONSISTENT DIRECTION; the rule says BETTER. Recorded as wrong.
+
+REPL_COPY stays a rig-only knob (pre-registered: a BETTER verdict makes it the candidate for the next REPL ruling, not a default).
+
+**#324 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running), `pool-test` included after #323.

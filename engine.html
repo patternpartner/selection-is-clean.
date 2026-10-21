@@ -1347,7 +1347,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'mind.see','mind.propose','mind.train',   // #296: the mind in the real engine (off unless MIND / #mind)
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.copy','repl.inject','repl.copyIncomplete','repl.copyBirth','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10579,6 +10579,26 @@ function replAtomBirth(i){ const g=pGenome[i]; if(!g||Math.random()>=REPL_ATOM_P
 // have nothing left to improve. With probability REPL_SEX_P a newborn's program is spliced (crossoverProg, deep-copied)
 // with the program of a random neighbour standing in the 3x3 cells around the parent.
 const REPL_SEX=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_SEX|0)!==0);
+// #320: REPL_CONTACT=1 - under REPL, interferenceCreate skips ONLY its birth block. #273 put the REPL return on the function's
+// first line, so it also switched off destructive interference (phase scatter, BIRTH_SHRINK, amp damage) and the whole
+// contact fall-through (elastic bounce, CONTACT_BLEND, overlap push-apart): REPL worlds have had no hard-sphere contact.
+// Rigs only, default 0 (every REPL result so far, #273-#319, is the 0 arm).
+const REPL_CONTACT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_CONTACT|0)!==0);
+// #322: a probe hook for op 225 (PROG_LATERAL_COPY), null unless a rig installs one. Called with (i,1) when the copy
+// happens and with (i,0) when REPL_INERT=225 swallowed an op 225 that WOULD have copied (same conditions as the live
+// case). Draws nothing; never set by the engine itself.
+let __on225=null;
+// #324: REPL_COPY - COMPUTED REPLICATION. Under REPL a birth has been a free clone of the parent's germline, asked for by one
+// instruction. With REPL_COPY=1 the child's program must be COPIED, one instruction per executed op 225, into a buffer that
+// persists across ticks (pChildProg, pCopyCur; moved in compact, cleared at birth), and addParticle refuses a parented birth
+// until the buffer is as long as the parent's running program - before anything is paid. Copying an instruction is op 225
+// (PROG_LATERAL_COPY) re-read: in the solo VM it appends the parent's next instruction to its OWN buffer; in the pairwise
+// VM it appends it to the PARTNER's buffer, so a partner's next child carries foreign code (the parasitism window). A
+// longer program therefore takes longer to gestate. REPL_COPY=2 installs only the same ancestor (op 225 first), for the
+// matched control, which also runs REPL_INERT=225. Rigs only; default 0 changes nothing.
+const REPL_COPY=REPL_ON&&(typeof globalThis!=='undefined')?(globalThis.__REPL_COPY|0):0;
+const pChildProg=REPL_COPY===1?new Array(CAP).fill(null).map(()=>[]):null, pCopyCur=REPL_COPY===1?new Int32Array(CAP):null;
+const REPL_COPY_MAX=96;
 const REPL_SEX_P=0.5;
 function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx,y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue; for(let j=sunHead[y*FIELD_W+x];j>=0&&cand.length<24;j=sunNext[j]) if(j!==p&&j<N&&palive[j]&&pProg[j])cand.push(j); }
@@ -10621,6 +10641,7 @@ function sunStep(season){
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
 if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
+if(REPL_COPY>=1&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([225,0,11,1.0]);   // #324: the ancestor copies one instruction a tick (result to R11, clear of R2's birth signal)
 const REPL_ANCESTOR=REPL_ON&&Array.isArray(genome.vmProgram)?genome.vmProgram.map(x=>x.slice()):null;   // #284: kept, so a parentless founder under REPL is always a working replicator   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
   if(REPL_ON){ const c=sunCell(i); corpseField[c]=Math.min(3,corpseField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
@@ -21415,6 +21436,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // world tries to do reproductively fails right here and no census row, no epoch log and no
   // liveness name said so - the single largest silent quantity in the file. BOTH gates are
   // instrumented, because addParticle and addCompound are both real reproduction.
+  if(REPL_COPY===1&&parentA>=0&&parentA<N&&!(pChildProg[parentA].length>=Math.max(1,(pProg[parentA]||[]).length))){ fired('birth.refused'); fired('repl.copyIncomplete'); return-1; }   // #324: no complete copy, no birth, nothing paid
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
@@ -21441,6 +21463,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  if(REPL_COPY===1){ pChildProg[i]=[]; pCopyCur[i]=0; }   // #324
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -21520,6 +21543,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   // Two-parent crossover: when parentB also has a genome, a 30% chance produces a genuinely
   // recombined program (prefix from A, suffix from B) rather than a pure clone-with-mutation.
   {const _bg=(parentA>=0&&parentA<N&&pGenome[parentA])?cloneGenome(pGenome[parentA]):cloneGenome(genome);
+  if(REPL_COPY===1&&parentA>=0&&parentA<N){ _bg.vmProgram=pChildProg[parentA].map(x=>x.slice()); pChildProg[parentA]=[]; pCopyCur[parentA]=0; fired('repl.copyBirth'); }   // #324: the child is what was copied
   if(parentB>=0&&parentB<N&&pGenome[parentB]&&Math.random()<0.3&&(!__SPEC.gate||pLin[parentA]===pLin[parentB]||Math.random()<HYBRID_RATE)&&__assortOK(parentA,parentB) /* LEAP 10 (#52): rare cross-lineage gene flow — two distinct histories spliced, a novelty source point mutation cannot supply */){
     _bg.vmProgram=crossoverProg(_bg.vmProgram,pGenome[parentB].vmProgram); // #17: crossover is gene flow — gated to within-lineage when isolating
     recombineGenome(_bg,pGenome[parentB]); // same event now recombines the whole genome, not just the program
@@ -21552,6 +21576,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N) inheritMutate(i);   // INHERIT -- see addParticle
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
+  if(REPL_COPY===1){ pChildProg[i]=[]; pCopyCur[i]=0; }   // #324
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -24570,10 +24595,16 @@ case 208:{vmRegs[di]=vx[i]*k;}break; // VX_READ — own x-velocity. First veloci
 function vmOps14(op,src,dst,k,si,di,i,j,ip){ switch(op){
 case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx224=Math.floor(Math.abs(vmRegs[si]))|0;vmRegs[di]=(pProg[i][_gidx224%_glen224][3]||0)*k;}else{vmRegs[di]=0;}}break; // GENOME_K_AT — read k-constant at instruction index; paired with GENOME_OP_AT for full instruction decoding; enables self-tuning by reading own coefficients.
       case 225:
+        if(REPL_COPY===1){   // #324: COPY_INST. Solo: own next instruction into own child buffer. Pairwise: into the partner's.
+          const _t=__vmMode===VM_SOLO?i:j, _src=pProg[i];
+          if(_t>=0&&_t<N&&_src&&_src.length&&pChildProg[_t].length<Math.min(REPL_COPY_MAX,Math.max(1,(pProg[_t]||[]).length))){
+            pChildProg[_t].push(_src[pCopyCur[i]%_src.length].slice()); pCopyCur[i]++; vmRegs[di]=1; fired(_t===i?'repl.copy':'repl.inject'); }
+          else vmRegs[di]=0;
+          break; }
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        {const _wgc225=0.3;if(localRes[i]>=_wgc225&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // PROG_LATERAL_COPY — replace own behavioral program with deep-copy of partner's (lateral program transfer); costs 0.3 localRes; returns 1 on success. Enables horizontal strategy transfer; program co-option; symbiotic program merging.
+        {const _wgc225=0.3;if(localRes[i]>=_wgc225&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;if(__on225!==null)__on225(i,1);}else{vmRegs[di]=0;}}break; // PROG_LATERAL_COPY — replace own behavioral program with deep-copy of partner's (lateral program transfer); costs 0.3 localRes; returns 1 on success. Enables horizontal strategy transfer; program co-option; symbiotic program merging.
       case 226:{if(localRes[i]>=0.4&&amp[i]>=0.2&&N+birthQueue.length<CAP-1){localRes[i]-=0.4;amp[i]-=0.2;const _nt226=new Float32Array(DIMS);for(let _nd226=0;_nd226<DIMS;_nd226++)_nt226[_nd226]=tend[i*DIMS+_nd226];birthQueue.push({x:px[i]+(Math.random()-0.5)*30,y:py[i]+(Math.random()-0.5)*30,t:_nt226,parent:i});vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // SPAWN_REQUEST — queue a birth near own position (scaffold peak attraction applies at birth); costs 0.4 localRes + 0.2 amp; returns 1 on success. Enables deliberate programmatic reproduction; scaffold-guided colonisation; cluster expansion decisions.
       case 227:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -24640,7 +24671,7 @@ case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not hav
 }
 const __vmOpsTab=[vmOps0,vmOps1,vmOps2,vmOps3,vmOps4,vmOps5,vmOps6,vmOps7,vmOps8,vmOps9,vmOps10,vmOps11,vmOps12,vmOps13,vmOps14,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOps26];
 function vmStep(op,src,dst,k,si,di,i,j,ip){
-    if(op===REPL_INERT)return ip;   // #273: the inert control (-1 unless a rig sets REPL_INERT under REPL)
+    if(op===REPL_INERT){ if(__on225!==null&&op===225&&__vmMode!==VM_SOLO&&localRes[i]>=0.3&&j>=0&&j<N&&pProg[j])__on225(i,0); return ip; }   // #273: the inert control (-1 unless a rig sets REPL_INERT under REPL); #322: would-have-copied hook
     if(!__vmAbsent[__vmMode][op]){ const _vo=__vmOpsTab[op>>4]; if(_vo!==undefined) ip=_vo(op,src,dst,k,si,di,i,j,ip); }   // #251: dispatch to the chunk that holds op
     // === #199 - SELFWRITE. Handled here rather than as a switch case because 429 sits ABOVE the
     // bound-opcode range, so it never reaches the switch above and never collides with a core op.
@@ -25390,11 +25421,11 @@ function entrain(i,j,sim,d){
 }
 
 function interferenceCreate(i,j){
-  if(REPL_ON)return false;   // #273: under REPL only programs reproduce
+  if(REPL_ON&&!REPL_CONTACT)return false;   // #273: under REPL only programs reproduce (#320: REPL_CONTACT keeps the contact physics)
   const dp=phase[i]-phase[j];
   const interference=Math.cos(dp);
   const sim=tendSim(i,j);
-  if(interference>genome.creationThresh&&sim>0.1){
+  if(!REPL_ON&&interference>genome.creationThresh&&sim>0.1){
     _specSpawnSim(sim);                                  // observe the compound channel's similarity distribution (the dominant, dissimilar-pairing one)
     // swing #18 finding: compound formation is HYBRIDIZATION — its cross-lineage births are net-generative
     // (they found and feed lineages faster than they homogenise). So mate choice does NOT gate this channel;
@@ -26010,7 +26041,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];if(REPL_COPY===1){pChildProg[w]=pChildProg[r];pCopyCur[w]=pCopyCur[r];}pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
@@ -26496,7 +26527,7 @@ const _attnTmp=new Float32Array(FIELD_W*FIELD_H);
 // It draws no random numbers and changes nothing the simulation reads except genome.draw, which only the renderers read. With
 // nobody watching (every headless rig), every trial scores 0, nothing is ever undone, and the world is byte-identical to before.
 // Not saved: the incumbent and its score live in memory, so a reload starts judging afresh from the saved form.
-let __drawInc=null, __drawIncScore=0, __drawTrialSum=0, __drawTrialN=0, __drawKept=0, __drawReverted=0;
+let __drawInc=null, __drawIncScore=0, __drawTrialSum=0, __drawTrialN=0, __drawTrialW=0, __drawKept=0, __drawReverted=0;
 // The engine's own drift mutates the form about once in 150,000 ticks, far too rarely for anyone to select anything. So while
 // someone is watching (and only then) the world also proposes a variant of its own every DRAW_TRIAL watched ticks, from a random
 // stream of its own (never Math.random, so the simulation's draws are untouched), with the same three operators as the drift.
@@ -26508,16 +26539,24 @@ function __drawPropose(){ if(!__drawRnd)__drawRnd=__mindRng((Date.now()^0x0d4a5e
   else { const o=d[(r()*d.length)|0], f=(r()*4)|0; o[f]=f===0?((r()*DRAW_NPRIM)|0):((r()*DRAW_NREG)|0); }
   fired('draw.propose'); }
 function __drawAttnTick(){ let m=0; for(let k=0;k<attnField.length;k++)m+=attnField[k]; __drawTrialSum+=__attnPresent+m/attnField.length; __drawTrialN++;
+  if(__attnPresent>0.05)__drawTrialW++;
   if(__attnPresent>0.05&&++__drawWatched>=DRAW_TRIAL){ __drawWatched=0; __drawTrialEnd(); __drawPropose(); } }
 // #317: THE HISTORY OF WHAT WATCHING DID. Every judged trial is written into the genome, so it is saved with the universe and
 // travels in its save file and the field's harvest: [the world's total ticks, 'k' kept or 'u' undone, the form that was judged].
 // The last DRAW_HIST_MAX only. Nothing is written for an unwatched trial, so an unwatched world's save is unchanged.
 const DRAW_HIST_MAX=64;
 function __drawHistPush(why,form){ const h=genome.drawHist||(genome.drawHist=[]); h.push([genome.totalTicks|0,why,form.map(o=>o.slice())]); if(h.length>DRAW_HIST_MAX)h.splice(0,h.length-DRAW_HIST_MAX); }
+// #318: A TRIAL NOBODY WATCHED IS NOT JUDGED. Before this, a world watched once and then left open kept the last watched
+// score as the one to beat until reload, so every drift mutation of the form while nobody was there scored about 0, was
+// undone, and was written into drawHist as 'u' - a viewer's verdict that no viewer gave (#314 said "nothing undone" and #317
+// "nothing written for an unwatched trial"; both were true only of a world never watched). Now an unwatched trial keeps
+// whatever form it ends on, writes nothing, and forgets the incumbent, so the next watched trial starts afresh exactly as
+// after a reload. Draws nothing; a never-watched world is unchanged.
 function __drawTrialEnd(){ const score=__drawTrialN?__drawTrialSum/__drawTrialN:0;
+  if(!__drawTrialW){ __drawInc=null; __drawIncScore=0; __drawTrialSum=0; __drawTrialN=0; return; }
   if(__drawInc&&score<__drawIncScore){ __drawHistPush('u',genome.draw||[]); genome.draw=__drawInc.map(o=>o.slice()); __drawReverted++; fired('draw.revert'); }
   else { if(__drawInc&&score>0){ __drawKept++; fired('draw.keep'); __drawHistPush('k',genome.draw||[]); } __drawIncScore=score; }
-  __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; }
+  __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; __drawTrialW=0; }
 function updateAttentionField(){
   // deposit where the smoothed pointer rests. mx starts at -9e3 (never touched), which lands far
   // outside the grid, so an untouched world simply has no attention anywhere — the honest default.

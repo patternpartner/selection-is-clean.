@@ -231,10 +231,16 @@ const statAll = (page) => page.evaluate(async () => {
     for (let i = 0; i < 3; i++) { await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(RELOAD); }
     const after = (await statAll(page)).filter(Boolean).map(s => s.peers);
     const worst = Math.max.apply(null, after.concat([0]));
+    // #323: since #297 the field GROWS universes (#below .grown, deliberately not .deep) and brings them back after a
+    // reload, so after three reloads the page legitimately hosts more than it built on the first load. This row compared
+    // against the first load's count and failed 28-30 of 27 from #297 on (#315 called it load; #321 found it fails alone
+    // and on older commits). Measured: 4 grown on the page, peers 30. Compare with what the page hosts NOW. A zombie
+    // set from an old worker is a whole field (about 27 more), which this still catches.
+    const grownNow = await page.evaluate(() => document.querySelectorAll('#below .grown').length);
     ck('one load sees exactly the universes it built', Math.max.apply(null, first.concat([0])) <= built,
        'peers ' + first[0] + ' of ' + built + ' built');
-    ck('three reloads later it still does, not four times as many', worst <= built,
-       'peers ' + worst + ' of ' + built + ' built');
+    ck('three reloads later it still does, not four times as many', worst <= built + grownNow,
+       'peers ' + worst + ' of ' + built + ' built + ' + grownNow + ' grown');
     await ctx.close();
   }
 

@@ -22,3 +22,8 @@ lab/loop/*/heavy/
 lab/loop/*/state.json
 # #293 mind runs: per-1,000-tick samples and saves are large; summaries are committed beside them
 lab/mindrun/heavy/
+# in-progress batch outputs (results are written up in OEE-NOTES.md)
+lab/inlife/out-*/
+# temporary smoke.sh slices (the suite outlasts the 30-minute job limit; see #315)
+.smoke-slice*.sh
+node_modules/

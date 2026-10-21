@@ -527,6 +527,15 @@ const driver = `
         if(pr){ g++; for(let q=0;q<pr.length;q++){ const op=pr[q][0]|0; if(op>=0&&op<256&&seen[op]!==g){ seen[op]=g; s=(s+opHash[op])|0; } } }
         c.set(s,(c.get(s)||0)+1); }
       let h=0; c.forEach(v=>{ const p=v/n; h-=p*Math.log2(p); }); return {sigs:c.size, h:n?+h.toFixed(3):0}; })();
+    // #324: the ORDERED genotype - the exact opcode sequence, full range, so length and order count. progSigs above hashes the
+    // deduplicated set of opcodes below 256, where a 12-instruction host and a 2-instruction copy with the same vocabulary
+    // collide and op 429 is invisible. topShare = the commonest exact sequence's share of the living (a sweep reads near 1).
+    const _seq=(function(){ const c=new Map(); let n=0, len=0;
+      for(let i=0;i<N;i++){ if(!palive[i])continue; n++; const pr=pProg[i]; let k='';
+        if(pr){ len+=pr.length; for(let q=0;q<pr.length;q++) k+=(pr[q][0]|0)+'.'; }
+        c.set(k,(c.get(k)||0)+1); }
+      let h=0, top=0; c.forEach(v=>{ const p=v/n; h-=p*Math.log2(p); if(v>top)top=v; });
+      return {sigs:c.size, h:n?+h.toFixed(3):0, top:n?+(top/n).toFixed(4):0, len:n?+(len/n).toFixed(2):0}; })();
 
     return {
       tick:(typeof tick!=='undefined')?tick:-1,
@@ -560,7 +569,7 @@ const driver = `
       // swing #37's program NFD hashes it (the sum of opHash over distinct opcodes), counted and turned into bits.
       // Computed here from pProg, not read from pParaSig, because pParaSig is only written when the program NFD runs,
       // so a knockout of it would freeze the very number used to judge the knockout. Draws nothing.
-      progSigs:_prog.sigs, progSigH:_prog.h,
+      progSigs:_prog.sigs, progSigH:_prog.h, seqSigs:_seq.sigs, seqSigH:_seq.h, topSeqShare:_seq.top, progLen:_seq.len,
       clusters:(typeof clusters!=='undefined')?clusters.length:-1,
       castes:casteSet.size,
       // novelty
@@ -860,6 +869,11 @@ const program = {
   sigs_late: +thirdMean(S, 'progSigs', t2, n).toFixed(1),
   sigH_early: +thirdMean(S, 'progSigH', 0, t1).toFixed(3),
   sigH_late: +thirdMean(S, 'progSigH', t2, n).toFixed(3),
+  // #324: the ordered genotype (see _seq)
+  seqH_early: +thirdMean(S, 'seqSigH', 0, t1).toFixed(3),
+  seqH_late: +thirdMean(S, 'seqSigH', t2, n).toFixed(3),
+  topSeq_late: +thirdMean(S, 'topSeqShare', t2, n).toFixed(4),
+  progLen_late: +thirdMean(S, 'progLen', t2, n).toFixed(2),
 };
 
 const niche = {
