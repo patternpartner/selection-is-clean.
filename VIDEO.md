@@ -2169,3 +2169,6 @@ with `ROOT=video PAGE=this_time/film.html` and DATA keys photo-w/s, still-w/s, t
 CAUGHT here: the first launcher took four runs that had JUST stopped for live (a 90-second log-freshness test) and started
 four new ones instead - nothing lost (resume files intact), fixed by recording each run's process id; and the full render
 outlived the 30-minute job limit once - capture.js skips frames already made, so the relaunch finished the rest.
+Backed up: library/inputs/this_time (all 32 runs and their checkpoints, the six recordings, evals, verdict, the
+originals' choice measures, the randomness and trust-world hiding checks, sound events) and
+library/finals/this-time{,-silent,-share}.mp4 + this-time-sound.wav.

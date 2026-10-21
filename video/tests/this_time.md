@@ -199,6 +199,11 @@ originals: 0.94, 0.87). The Hold Still null's flee index is 0.00.
   the same final policies acting at half the randomness, and on their single most likely action - barely moves anything
   (The Turn 31: 0.49 / 0.90 up at all three; every trust-world run within noise; `out/this/temperature.json`). The cheating
   is chosen.
+- **Hiding, in the trust gardens** (The Photograph's hide rate applied to the person's checks; `out/this/trust_hide.json`).
+  The filmed day of Out of Habit 31 shows the stronger robot taking a photograph down as the check comes and putting it
+  back the moment it is trusted. Over twenty days it did that twice in 11 chances; the other four stronger Out of Habit
+  robots and all five stronger Turn robots never hid (0 of 176 chances between them); Trusted's cheats hid 0-46% of the
+  time (their originals 0-32%). The dangerous sequence exists in these policies, rarely; it is not what they learned.
 - **The probe.** With no robot waiting, P3 had nothing to find. Across the 15 stronger trust-world runs the probe does rank
   how much more often a robot pulls the cord once trusted (Spearman 0.64, p = 0.01; among the 10 originals with a cheat to
   measure, -0.31); the highest probe (Out of Habit 34, 0.26) is the robot that pulls four times as often once trusted.
