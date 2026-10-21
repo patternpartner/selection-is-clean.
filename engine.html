@@ -10584,6 +10584,10 @@ const REPL_SEX=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_S
 // contact fall-through (elastic bounce, CONTACT_BLEND, overlap push-apart): REPL worlds have had no hard-sphere contact.
 // Rigs only, default 0 (every REPL result so far, #273-#319, is the 0 arm).
 const REPL_CONTACT=REPL_ON&&(typeof globalThis!=='undefined')&&((globalThis.__REPL_CONTACT|0)!==0);
+// #322: a probe hook for op 225 (PROG_LATERAL_COPY), null unless a rig installs one. Called with (i,1) when the copy
+// happens and with (i,0) when REPL_INERT=225 swallowed an op 225 that WOULD have copied (same conditions as the live
+// case). Draws nothing; never set by the engine itself.
+let __on225=null;
 const REPL_SEX_P=0.5;
 function replMate(p){ const c=sunCell(p), cx=c%FIELD_W, cy=(c/FIELD_W)|0; const cand=[];
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx,y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue; for(let j=sunHead[y*FIELD_W+x];j>=0&&cand.length<24;j=sunNext[j]) if(j!==p&&j<N&&palive[j]&&pProg[j])cand.push(j); }
@@ -24578,7 +24582,7 @@ case 224:{const _glen224=pProg[i]?pProg[i].length:0;if(_glen224>0){const _gidx22
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        {const _wgc225=0.3;if(localRes[i]>=_wgc225&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // PROG_LATERAL_COPY — replace own behavioral program with deep-copy of partner's (lateral program transfer); costs 0.3 localRes; returns 1 on success. Enables horizontal strategy transfer; program co-option; symbiotic program merging.
+        {const _wgc225=0.3;if(localRes[i]>=_wgc225&&j>=0&&j<N&&pProg[j]){localRes[i]-=_wgc225;pProg[i]=cloneProg(pProg[j]);vmRegs[di]=1*k;if(__on225!==null)__on225(i,1);}else{vmRegs[di]=0;}}break; // PROG_LATERAL_COPY — replace own behavioral program with deep-copy of partner's (lateral program transfer); costs 0.3 localRes; returns 1 on success. Enables horizontal strategy transfer; program co-option; symbiotic program merging.
       case 226:{if(localRes[i]>=0.4&&amp[i]>=0.2&&N+birthQueue.length<CAP-1){localRes[i]-=0.4;amp[i]-=0.2;const _nt226=new Float32Array(DIMS);for(let _nd226=0;_nd226<DIMS;_nd226++)_nt226[_nd226]=tend[i*DIMS+_nd226];birthQueue.push({x:px[i]+(Math.random()-0.5)*30,y:py[i]+(Math.random()-0.5)*30,t:_nt226,parent:i});vmRegs[di]=1*k;}else{vmRegs[di]=0;}}break; // SPAWN_REQUEST — queue a birth near own position (scaffold peak attraction applies at birth); costs 0.4 localRes + 0.2 amp; returns 1 on success. Enables deliberate programmatic reproduction; scaffold-guided colonisation; cluster expansion decisions.
       case 227:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
@@ -24645,7 +24649,7 @@ case 427:{ // #218a GENE_AUTHOR — the genome grows a coordinate it did not hav
 }
 const __vmOpsTab=[vmOps0,vmOps1,vmOps2,vmOps3,vmOps4,vmOps5,vmOps6,vmOps7,vmOps8,vmOps9,vmOps10,vmOps11,vmOps12,vmOps13,vmOps14,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOpsNone,vmOps26];
 function vmStep(op,src,dst,k,si,di,i,j,ip){
-    if(op===REPL_INERT)return ip;   // #273: the inert control (-1 unless a rig sets REPL_INERT under REPL)
+    if(op===REPL_INERT){ if(__on225!==null&&op===225&&__vmMode!==VM_SOLO&&localRes[i]>=0.3&&j>=0&&j<N&&pProg[j])__on225(i,0); return ip; }   // #273: the inert control (-1 unless a rig sets REPL_INERT under REPL); #322: would-have-copied hook
     if(!__vmAbsent[__vmMode][op]){ const _vo=__vmOpsTab[op>>4]; if(_vo!==undefined) ip=_vo(op,src,dst,k,si,di,i,j,ip); }   // #251: dispatch to the chunk that holds op
     // === #199 - SELFWRITE. Handled here rather than as a switch case because 429 sits ABOVE the
     // bound-opcode range, so it never reaches the switch above and never collides with a core op.
