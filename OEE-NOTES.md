@@ -27245,3 +27245,20 @@ The user chose to measure the collapse before building another mechanism. **New 
 **Probe** `lab/inlife/probe-drift.js`: founder labels inherited parent to child, read against generations (births / mean living), with 20 MIXED shadows (well-mixed Moran on the real demography) and `pLin` mint counts.
 **Pilot (practice seed 1, 3,000 ticks, not evidence):** REPL 71 of 329 founders at generation 7.4 (MIXED 26-39); FROZEN collapsed to ONE founder at generation 10.8 while growing to about 1,700 (about 29 at generation 7.5); DEFAULT 218 at generation 0.64. **REPL mints 0 new `pLin` ids; the default world mints about 150 per 1,000 births** — so #319's "183-316 against 1-56" compared founder-plus-mint counts with pure founder survival.
 Pre-registration: `lab/inlife/PREREG-drift.md` (seeds 6501-6505; REPL and FROZEN at NULLSHIFT 0/3/7, DEFAULT once; founders compared at a matched generation). Calling it a SWEEP needs REPL below BOTH nulls. Results follow.
+
+**#326 RESULT — NOT A SWEEP (4 of 5 counted seeds within or slower than drift; one faster). And the comparison that started this was upside down: per generation, it is the DEFAULT world that loses founder lineages fast.** 35 runs, seeds 6501-6505, all counted. Analysis `lab/inlife/analyse-drift.js`.
+
+| seed | G* | founders at G*: REPL / FROZEN / MIXED | call |
+|---|---|---|---|
+| 6501 | 20.5 | 16-25 / 2-11 / 9-19 | slower than drift |
+| 6502 | 16.8 | 1-5 / 4-9 / 13-58 | within |
+| 6503 | 17.0 | 2-26 / 1-12 / 7.5-23 | within |
+| 6504 | 16.9 | 1, 1, 1 / 8-13 / 14-41 | **faster** |
+| 6505 | 14.8 | 1-20 / 14-28 / 18-47 | within |
+
+Tally: faster 1, within 3, slower 1 -> **NOT A SWEEP.** My prediction said NOT A SWEEP (right) "with REPL SLOWER than FROZEN on most seeds" (wrong: 1 of 5) and "0 pLin mints under REPL on every run" (wrong: 0.1-5.5 per 1,000 births; the pilot's 0 was at 3,000 ticks).
+- **The founder collapse happens without heritable change.** By 10,000 ticks REPL holds 1-10 founder lineages and the FROZEN world, where every child is an exact clone, holds 1-7. A world with nothing for selection to act on loses founders as completely as REPL does. At 10,000 ticks REPL's collapse is drift (spatial luck included) on a clock running 15-29 generations, not a sweep; there is no selective target there for a mechanism to remove. One seed (6504) was faster than both nulls; one in five is under the floor.
+- **Reported, not ruled — the default world per generation.** At the generation the DEFAULT world reaches by 10,000 ticks (2.3-3.7), it holds **18-33 founders**, against **44-85 in its own MIXED null**, and **117-192 in REPL and FROZEN at the same generation**. The default world loses founder lineages several times faster per generation than drift, REPL or the frozen world: strong reproductive skew (one family breeding much more than others), consistent with #219's finding that the default world allots reproduction by array order. Not established as selection (MIXED is beaten by any skew, heritable or not).
+- **Why #319 looked the other way:** its "183-316 lineages (default) against 1-56 (REPL)" counted `pLin`, and the default world mints **280-464 new `pLin` ids per 1,000 births** against REPL's 0.1-5.5. The default world's lineage count is almost all new ids; REPL's is founder survival plus a trickle. The two numbers never measured the same thing.
+- **What this changes:** #320, #322 and #324/#325 each tried to stop a sweep that, at 10,000 ticks, is not there. The question for REPL is not "what stops the sweep" but "what makes NEW lineages arise and persist" (minting is near zero under REPL), and the default world's founder loss per generation is the sharper anomaly.
+**Cannot say:** anything past 10,000 ticks (#282's one-lineage worlds were 72,000+); FROZEN keeps founder trait differences, so it is a null for heritable change by mutation, not for every heritable difference.
