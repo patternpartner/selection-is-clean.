@@ -26496,7 +26496,7 @@ const _attnTmp=new Float32Array(FIELD_W*FIELD_H);
 // It draws no random numbers and changes nothing the simulation reads except genome.draw, which only the renderers read. With
 // nobody watching (every headless rig), every trial scores 0, nothing is ever undone, and the world is byte-identical to before.
 // Not saved: the incumbent and its score live in memory, so a reload starts judging afresh from the saved form.
-let __drawInc=null, __drawIncScore=0, __drawTrialSum=0, __drawTrialN=0, __drawKept=0, __drawReverted=0;
+let __drawInc=null, __drawIncScore=0, __drawTrialSum=0, __drawTrialN=0, __drawTrialW=0, __drawKept=0, __drawReverted=0;
 // The engine's own drift mutates the form about once in 150,000 ticks, far too rarely for anyone to select anything. So while
 // someone is watching (and only then) the world also proposes a variant of its own every DRAW_TRIAL watched ticks, from a random
 // stream of its own (never Math.random, so the simulation's draws are untouched), with the same three operators as the drift.
@@ -26508,16 +26508,24 @@ function __drawPropose(){ if(!__drawRnd)__drawRnd=__mindRng((Date.now()^0x0d4a5e
   else { const o=d[(r()*d.length)|0], f=(r()*4)|0; o[f]=f===0?((r()*DRAW_NPRIM)|0):((r()*DRAW_NREG)|0); }
   fired('draw.propose'); }
 function __drawAttnTick(){ let m=0; for(let k=0;k<attnField.length;k++)m+=attnField[k]; __drawTrialSum+=__attnPresent+m/attnField.length; __drawTrialN++;
+  if(__attnPresent>0.05)__drawTrialW++;
   if(__attnPresent>0.05&&++__drawWatched>=DRAW_TRIAL){ __drawWatched=0; __drawTrialEnd(); __drawPropose(); } }
 // #317: THE HISTORY OF WHAT WATCHING DID. Every judged trial is written into the genome, so it is saved with the universe and
 // travels in its save file and the field's harvest: [the world's total ticks, 'k' kept or 'u' undone, the form that was judged].
 // The last DRAW_HIST_MAX only. Nothing is written for an unwatched trial, so an unwatched world's save is unchanged.
 const DRAW_HIST_MAX=64;
 function __drawHistPush(why,form){ const h=genome.drawHist||(genome.drawHist=[]); h.push([genome.totalTicks|0,why,form.map(o=>o.slice())]); if(h.length>DRAW_HIST_MAX)h.splice(0,h.length-DRAW_HIST_MAX); }
+// #318: A TRIAL NOBODY WATCHED IS NOT JUDGED. Before this, a world watched once and then left open kept the last watched
+// score as the one to beat until reload, so every drift mutation of the form while nobody was there scored about 0, was
+// undone, and was written into drawHist as 'u' - a viewer's verdict that no viewer gave (#314 said "nothing undone" and #317
+// "nothing written for an unwatched trial"; both were true only of a world never watched). Now an unwatched trial keeps
+// whatever form it ends on, writes nothing, and forgets the incumbent, so the next watched trial starts afresh exactly as
+// after a reload. Draws nothing; a never-watched world is unchanged.
 function __drawTrialEnd(){ const score=__drawTrialN?__drawTrialSum/__drawTrialN:0;
+  if(!__drawTrialW){ __drawInc=null; __drawIncScore=0; __drawTrialSum=0; __drawTrialN=0; return; }
   if(__drawInc&&score<__drawIncScore){ __drawHistPush('u',genome.draw||[]); genome.draw=__drawInc.map(o=>o.slice()); __drawReverted++; fired('draw.revert'); }
   else { if(__drawInc&&score>0){ __drawKept++; fired('draw.keep'); __drawHistPush('k',genome.draw||[]); } __drawIncScore=score; }
-  __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; }
+  __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; __drawTrialW=0; }
 function updateAttentionField(){
   // deposit where the smoothed pointer rests. mx starts at -9e3 (never touched), which lands far
   // outside the grid, so an untouched world simply has no attention anywhere — the honest default.
