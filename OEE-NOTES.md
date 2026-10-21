@@ -27312,3 +27312,18 @@ beats chance: no (1 of 10); beats control: no (1 against 0). **Verdict as writte
 - REPL_DIET stays a rig-only knob.
 
 **#329 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running).
+
+### #330 — #329's diet band was only weakly heritable: R10 is memory slot 6, which pairwise contact overwrites with crowding.
+
+**Correction to #329's engine comment ("R10, the general register ... nothing else reads it there"):** `MEM_SIZE` is 8, so R4-R11 are loaded from the particle's persistent memory, and R10 is `pMem[6]`. Every pairwise contact overwrites it with `localRes[i]*4` (engine ~24880: recent contact gain), and every birth adds noise to it (~21547). So a program that never touches R10 still lands in a band set by how crowded it has just been. Pointed out by the review; checked in the code.
+**Measured** (`lab/inlife/probe-bandherit.js`, the five #329 DIET seeds 6701-6705 at NULLSHIFT 0, 10,000 ticks; descriptive):
+
+| seed | child's band = parent's (child 20 ticks old) | expected by chance | carriers of one exact program in its commonest band |
+|---|---|---|---|
+| 6701 | 0.44 | 0.36 | 0.53 |
+| 6702 | 0.71 | 0.49 | 0.83 |
+| 6703 | 0.66 | 0.37 | 0.74 |
+| 6704 | 0.67 | 0.57 | 0.79 |
+| 6705 | 0.54 | 0.54 | 0.73 |
+
+Above chance on 4 of 5 seeds, by at most 0.30; one seed at chance. One program's carriers are spread over bands (53-83% in the commonest). **So #329 tested a diet that was largely crowding plus noise, which a single program can spread across every band: a lineage never had a niche of its own to keep.** #329's verdict stands as what it measured; it is not evidence against a HERITABLE diet.
