@@ -27361,3 +27361,14 @@ CLAUDE.md: a session that adds a mechanism must also remove, merge or prove one,
 A review's diagnosis of why #319-#331 all hit chance: under REPL sunlight goes into `pE` passively and reproduction is one unconditional instruction (`[4,2,4,1]`), so computing anything buys little. #326's FROZEN worlds (no mutation at all) already lived as well as evolving REPL (450-1,800 alive). This puts the minimal case on the record. **Probe** `lab/inlife/probe-rock.js`: ROCK=1 pins every living particle's program to `[[4,2,4,1]]` after every tick (no predation, gifts or scavenging possible); ROCK=0 is plain REPL. Seeds 6901-6903 (never run), 10,000 ticks, REPL=1. **Rule:** ROCK CONFIRMED if the ROCK world's mean alive over the last third is at least half of plain REPL's on at least 2 of 3 seeds; NOT CONFIRMED if under half on at least 2 of 3. Births reported beside it. A measurement; no knob, no engine change.
 
 **#332 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 65 of 66, the one failure `collective-test`'s return-path ratio ("←13 →4"), which passed twice standalone straight after ("←10 →1", "←14 →1") and which #326 showed fails on the pre-session engine on this box too.
+
+**#333 RESULT — ROCK CONFIRMED, 3 of 3 seeds. A REPL world whose every program is the single reproduction instruction lives as well as evolving REPL.** 6 runs, seeds 6901-6903, 10,000 ticks. Out: `lab/inlife/out-rock/`.
+
+| seed | ROCK late alive | REPL late alive | ratio | births ROCK / REPL | REPL mean program length |
+|---|---|---|---|---|---|
+| 6901 | 316 | 347 | 0.91 | 8,624 / 15,818 | 17.2 |
+| 6902 | 1,078 | 1,011 | 1.07 | 28,004 / 17,567 | 16.1 |
+| 6903 | 492 | 326 | 1.51 | 12,190 / 10,234 | 14.6 |
+
+All three ratios are at least 0.5 -> **ROCK CONFIRMED.** On two seeds the 1-instruction world holds MORE living than worlds whose programs evolve to 15-17 instructions with predation, gifts and scavenging available. Under REPL the sunlight `sunStep` hands out is enough, and computation buys nothing the population can measure. This is the reason #319-#331 met chance: there was nothing for a better program to be better AT. It is also what #273 already hinted (the ancestor instruction alone carried replication).
+**What it rules on:** any further REPL mechanism has to make survival or reproduction require computation, or it is decoration by construction. The lean core (oee-core.js) already makes eating an instruction (EAT_LIGHT) and charges every executed instruction; #290 there, with paid computation and function-keyed parasites, still plateaued at NAND size 6. That is where the next experiment (outputs of others as inputs, the user's choice) goes.
