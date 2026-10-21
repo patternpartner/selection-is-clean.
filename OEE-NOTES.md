@@ -27198,3 +27198,16 @@ Guards: centredEntropyRatio and spread_late moved on no seed; alive late 520-1,6
 REPL_COPY stays a rig-only knob (pre-registered: a BETTER verdict makes it the candidate for the next REPL ruling, not a default).
 
 **#324 acceptance:** substrate-test 264/0 at TICKS=40, TICKS=900, the default and FOUND=0; `smoke.sh` 66 of 66 (three slices, nothing else running), `pool-test` included after #323.
+
+**#324 CORRECTION — the BETTER verdict measures BROKEN HEREDITY, not held diversity. Two design faults of mine, found by the follow-up probe the result entry named.** `lab/inlife/probe-birthvar.js`, seeds 6301-6303 (already seen; a mechanism probe, not a ruling), one run per arm, 10,000 ticks. At every parented birth it compares the child's opcode sequence with the parent's running program.
+
+| | births | children differing from parent | opcode positions changed per birth | copied instructions that were INJECTED by a partner |
+|---|---|---|---|---|
+| CONTROL | 12,490-17,414 | 8-12% | 0.14-0.19 | 0 |
+| COPY | 10,447-20,831 | **96-99%** | **8.4-8.9** (of about 16) | **60%** (384,520 of 641,398 on 6301) |
+
+Under REPL_COPY nearly every child differs from its parent at about half its positions. The low top-genotype share follows from that alone: there is no faithful inheritance for a genotype to sweep with. "Computed replication prevents the sweep" is withdrawn; the verdict stands as what the rule measured.
+**Why, in the design:**
+1. **The ancestor is a parasite from tick 0.** Its first instruction is op 225, and op 225 ALSO runs in the pairwise VM, where under REPL_COPY it injects into the partner's buffer. So every particle injects into every partner it meets from the first tick. Injection was meant to be something that could evolve, not the default.
+2. **Injection advances the injector's own copy cursor** (`pCopyCur[i]` serves both paths), so a particle that has just injected skips instructions in its own next self-copy, and self-copies come out scrambled too.
+**What a corrected design needs before it is run again:** self-copy and injection as different acts (the ancestor self-copies only; injecting into a partner must be an evolved difference), and separate cursors. Then a fresh pre-registration on unseen seeds, with per-birth fidelity (this probe's "children differing") reported beside the ruling measures, so a heredity collapse cannot read as diversity again.
