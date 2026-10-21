@@ -1347,7 +1347,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'mind.see','mind.propose','mind.train',   // #296: the mind in the real engine (off unless MIND / #mind)
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.copy','repl.inject','repl.copyIncomplete','repl.copyBirth','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.copy','repl.inject','repl.copyIncomplete','repl.copyBirth','repl.dietBand','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10640,7 +10640,40 @@ const pE=new Float32Array(CAP), pAdq=new Float32Array(CAP).fill(1);
 const corpseField=new Float32Array(FIELD_W*FIELD_H);   // #278c: under REPL the dead feed scavengers through THIS layer, written only by deathReturn and read only by op 146 - the shared detrital layer also takes free deposits (op 9 reactions, op 165, cosmos exports, peer contact), and under REPL each of those minted breeding energy: seed 1 ran to the 1,800 cap on 3.2 million predations per 500 ticks   // #272: a particle's own energy store, and the share of its upkeep it met
 function SUN_GRAD(){ return (FIELD_W*FIELD_H)/Math.max(1e-9,WORLD_ENERGY_MAX); }
 function sunCell(i){ const fx=__cl(Math.floor(px[i]/(W/FIELD_W)),0,FIELD_W-1), fy=__cl(Math.floor(py[i]/(H/FIELD_H)),0,FIELD_H-1); return fy*FIELD_W+fx; }
+// #329: REPL_DIET=K (K>=2) - A DIET THE PROGRAM CHOOSES. Each cell's sunlight is split into K bands, each regenerating
+// 1/K of the income up to 1/K of the cap and diffusing on its own; a particle harvests only the band it is in, shared
+// with the others in that band and cell. The band is what its program computed: floor((tanh(R10)+1)/2*K), R10 being the
+// general register's value at the end of each solo run (nothing else reads it there). Channel 5 was tried first and was
+// written in only 2.8% of solo runs, by particles that never spread (pilot); registers vary far more. R10 depends on the
+// particle's state as well as its program, so the ancestral programs already split between the middle bands (2 and 3 of 4
+// in the pilot); the outer bands are reached by programs that leave R10 further out. sunField
+// stays the total, so every other reader (gradient senses, death return) sees what it saw. Rigs only; 0 changes nothing.
+const REPL_DIET=REPL_ON&&(typeof globalThis!=='undefined')?Math.min(8,Math.max(0,globalThis.__REPL_DIET|0)):0;
+const DIET_K=REPL_DIET>=2?REPL_DIET:0;
+const sunBand=DIET_K?Array.from({length:DIET_K},()=>new Float32Array(FIELD_W*FIELD_H).fill(WORLD_ENERGY_MAX/(FIELD_W*FIELD_H)/DIET_K)):null;
+const sunBandTake=DIET_K?new Float32Array(FIELD_W*FIELD_H*DIET_K):null, sunBandCnt=DIET_K?new Int32Array(FIELD_W*FIELD_H*DIET_K):null;
+const pBand=DIET_K?new Uint8Array(CAP):null;
+function dietBandOf(v){ if(!Number.isFinite(v))return 0; const b=Math.floor((Math.tanh(v)+1)*0.5*DIET_K); return b<0?0:b>=DIET_K?DIET_K-1:b; }   // #329: tanh spread, so ordinary values (0, +-0.3, +-1) reach different bands
+function sunStepDiet(season){
+  const C=FIELD_W*FIELD_H, q=WORLD_ENERGY_REGEN*season/C/DIET_K, cap=WORLD_ENERGY_MAX/C/DIET_K, D=FIELD_DIFFUSE;
+  for(let b=0;b<DIET_K;b++){ const F=sunBand[b];
+    for(let c=0;c<C;c++){ const v=F[c]; if(v<cap)F[c]=Math.min(cap,v+q); }
+    for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ const c=y*FIELD_W+x, v=F[c];
+      sunScratch[c]=v*(1-4*D)+D*((x>0?F[c-1]:v)+(x<FIELD_W-1?F[c+1]:v)+(y>0?F[c-FIELD_W]:v)+(y<FIELD_H-1?F[c+FIELD_W]:v)); }
+    F.set(sunScratch); }
+  sunCnt.fill(0); sunHead.fill(-1); sunBandCnt.fill(0);
+  for(let i=0;i<N;i++) if(palive[i]){ const c=sunCell(i); sunCnt[c]++; sunNext[i]=sunHead[c]; sunHead[c]=i; sunBandCnt[c*DIET_K+pBand[i]]++; }
+  for(let c=0;c<C;c++) for(let b=0;b<DIET_K;b++){ const n=sunBandCnt[c*DIET_K+b]; if(!n)continue; const t=sunBand[b][c]*Math.min(1,SUN_TAKE*n); sunBandTake[c*DIET_K+b]=t/n; sunBand[b][c]-=t; }
+  let dem=0, paid=0, tot=0;
+  for(let i=0;i<N;i++){ if(!palive[i])continue; const c=sunCell(i), b=pBand[i]; let e=pE[i]+sunBandTake[c*DIET_K+b];
+    if(e>SUN_STORE){ sunBand[b][c]+=e-SUN_STORE; e=SUN_STORE; }
+    const u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); dem+=u;
+    if(e>=u){ e-=u; pAdq[i]=1; paid+=u; } else { pAdq[i]=u>0?e/u:1; paid+=e; e=0; }
+    pE[i]=e; }
+  energyAdequacy=dem>0?paid/dem:1;
+  for(let c=0;c<C;c++){ let v=0; for(let b=0;b<DIET_K;b++) v+=sunBand[b][c]; sunField[c]=v; tot+=v; } worldEnergy=tot; }
 function sunStep(season){
+  if(DIET_K){ sunStepDiet(season); return; }   // #329
   const C=FIELD_W*FIELD_H, q=WORLD_ENERGY_REGEN*season/C, cap=WORLD_ENERGY_MAX/C, D=FIELD_DIFFUSE;
   for(let c=0;c<C;c++){ const v=sunField[c]; if(v<cap)sunField[c]=Math.min(cap,v+q); }
   for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ const c=y*FIELD_W+x, v=sunField[c];
@@ -21488,6 +21521,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   if(REPL_COPY_BUF){ pChildProg[i]=[]; pCopyCur[i]=0; if(pInjCur)pInjCur[i]=0; }   // #324
+  if(DIET_K)pBand[i]=(parentA>=0&&parentA<N)?pBand[parentA]:0;   // #329: until its own first run
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -21601,6 +21635,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
   if(REPL_COPY_BUF){ pChildProg[i]=[]; pCopyCur[i]=0; if(pInjCur)pInjCur[i]=0; }   // #324
+  if(DIET_K)pBand[i]=(parentA>=0&&parentA<N)?pBand[parentA]:0;   // #329: until its own first run
   if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -25751,6 +25786,7 @@ function executeSoloVM(){
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
     if(REPL_COST){ pE[i]-=REPL_INSTR_C*nInst; if(pE[i]<0){ pE[i]=0; pAdq[i]=0; } }   // #283: the run is paid for
+    if(DIET_K){ const _b=dietBandOf(vmRegs[10]); pBand[i]=_b; if(vmRegs[10]!==0)fired('repl.dietBand'); }   // #329: the diet this program computed (R10 at the end of its solo run)
     if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
       const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
       const _ci=addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1); if(_ci>=0){ birthsThisTick++; fired('repl.birth'); if(REPL_SEX)replSexBirth(_ci,i); } }
@@ -26071,7 +26107,7 @@ function compact(){
     pPlasmidAge[w]=pPlasmidAge[r];
     pBroadcast[w*2]=pBroadcast[r*2];pBroadcast[w*2+1]=pBroadcast[r*2+1];
     clusterID[w]=clusterID[r];
-    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];if(REPL_COPY_BUF){pChildProg[w]=pChildProg[r];pCopyCur[w]=pCopyCur[r];if(pInjCur)pInjCur[w]=pInjCur[r];}pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
+    pType[w]=pType[r];pProg[w]=pProg[r];pGenome[w]=pGenome[r];pLin[w]=pLin[r];pMindW[w]=pMindW[r];if(REPL_COPY_BUF){pChildProg[w]=pChildProg[r];pCopyCur[w]=pCopyCur[r];if(pInjCur)pInjCur[w]=pInjCur[r];}if(DIET_K)pBand[w]=pBand[r];pProvision[w]=pProvision[r];if(SUN_ON){pE[w]=pE[r];pAdq[w]=pAdq[r];}if(REPL_ARMS){for(let m=0;m<4;m++){pKey[w*4+m]=pKey[r*4+m];pDef[w*4+m]=pDef[r*4+m];}}pMode[w]=pMode[r];pModeBias[w]=pModeBias[r]; // UNLOCKED #7a/#9: caste + full per-particle genome (+ lineage tag) relocate with the particle (also fixes a caste-scramble bug)
     for(let rx=0;rx<REFLEX_DEPTH*2;rx++)pReflexHist[w*REFLEX_DEPTH*2+rx]=pReflexHist[r*REFLEX_DEPTH*2+rx];
     for(let rx=0;rx<REFLEX_DIMS;rx++)pReflexState[w*REFLEX_DIMS+rx]=pReflexState[r*REFLEX_DIMS+rx];
     pReflexIdx[w]=pReflexIdx[r];
