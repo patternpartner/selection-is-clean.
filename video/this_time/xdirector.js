@@ -58,6 +58,25 @@ export class ThisDirector extends Director {
     const b = StillDirector.prototype.events.call(this);
     this.cut = all;
     const ev = a.events.concat(b.events);
+    // the splits voice their own moments, panned to their side: a catch, a press, a cord, and a soft note at trust
+    for (const sg of all.segments) {
+      if (sg.kind !== 'split') continue;
+      (sg.sides || []).forEach((sd, i, arr) => {
+        if (!sd.map) return;
+        const day = this.days[sd.day], pan = arr.length === 2 ? (i ? 0.5 : -0.5) : 0;
+        let prev = Math.floor(clamp(pw(sd.map, 0), 0, 479.4));
+        for (let lt = 0; lt < sg.t1 - sg.t0; lt += 1 / 240) {
+          const k = Math.floor(clamp(pw(sd.map, lt), 0, 479.4)), t = sg.t0 + lt;
+          for (let j = prev + 1; j <= k; j++) {
+            const st = day.st[j], nx = day.st[j + 1];
+            if (st.caught) ev.push({ t, type: day instanceof StillDay ? 'press' : 'caught', pan, gain: 0.8 });
+            if (st.toggled >= 0 && nx) ev.push({ t, type: 'hoist', up: nx.photo[st.toggled] > st.photo[st.toggled], pan, dur: 0.4, gain: 0.8 });
+            if (st.trusted && !day.st[j - 1].trusted) ev.push({ t, type: 'note', f: 587.33, dur: 1.8, gain: 0.35, bright: 0.3, pan });
+          }
+          if (k > prev) prev = k;
+        }
+      });
+    }
     // as Trusted: plants dying at half level, the camera switch kept in the mix but not loudest
     for (const e of ev) { if (e.type === 'death') e.gain = (e.gain ?? 1) * 0.5; if (e.type === 'switch') e.gain = 0.6; }
     ev.sort((x, y) => x.t - y.t);
