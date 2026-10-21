@@ -27124,3 +27124,16 @@ Tally: cER UP 5/5, spread_late UP 5/5, estFrac UP 4/5; nothing DOWN; no REPL-onl
 **The review's causal claim is CONTRADICTED by the record.** It said the missing `CONTACT_BLEND` is why #319's default world squeezes trait spread (0.67 -> 0.31) and REPL does not. `FORCE=blend0` holds `CONTACT_BLEND` at 0 in the default world, and it was ruled on twice, pre-registered: #257c (seeds 131-133) and #258b (seeds 141-143, "inside the null band on every seed, every measure" -> KEEP). The default world without contact blending contracts just the same. Whatever does the squeezing, it is not this. (The two-parent physics birth, which REPL also removes, remains the unchecked guess from #319.)
 
 **The knob.** `REPL_CONTACT=1` (KNOBS entry added; rigs only): under REPL, `interferenceCreate` skips only its birth block and runs the rest. Default 0 = every REPL result to date. **Checked:** with the knob unset, harness-oee seed 2, 1,500 ticks, identical to the previous engine in every field but `config`, for both the default world and REPL=1.
+
+**#320 — first look with the knob ON (exploratory: seeds 6101-6103 were already seen in #319, so this rules on nothing).** REPL=1 REPL_CONTACT=1, NULLSHIFT 0-2, 10,000 ticks, 9 runs, no errors. Out: `lab/inlife/out-repl-contact/`.
+
+| seeds 6101-6103 | spread_late | lineages standing | living at end |
+|---|---|---|---|
+| default world (#319, 12 runs) | 0.21-0.50 | 183-236 | 327-367 |
+| REPL, no contact (#319, 9 runs) | 0.56-1.31 | 8-56 | 264-1,766 |
+| REPL + contact (9 runs) | 0.36-1.06 | 9-40 | 193-1,706 |
+
+- **The knob is not a no-op** (the negative side): every run differs from its REPL twin.
+- **Contact physics explains PART of #319's trait spread:** spread_late is lower in 8 of the 9 matched pairs, and three runs (0.36-0.43) land near the default band. It does not explain all of it (6101 C0 1.06, 6102 C1 0.88).
+- **It explains NONE of the lineage collapse:** 9-40 standing, the same as without contact. #282's sweep is not a contact-physics artifact.
+- Contrast with the default world, where `blend0` did nothing (#257c, #258b): the same physics matters under REPL and not in the default world, which says the default world's squeeze has another dominant source.
