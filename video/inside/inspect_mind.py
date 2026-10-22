@@ -11,8 +11,8 @@
    days and scored on the second half: from the memory h, and - the control - from what it sees now f. The count is not
    in what it sees, so a readout from f can only guess it from the time of day and the person.
 4. INTERVENTIONS, on memory states it really visits: TRANSPLANT - on probation, every step, its memory replaced by one
-   it had at a trusted moment (does it cheat early?), against one it had at another probation moment (the disruption
-   alone); ABLATION - once trusted, its memory's component along the 'trusted' readout set to the probation mean (does
+   it had at the same time of day when trusted (does it cheat early?), against one it had at the same time of day with
+   its own count (the disruption alone); ABLATION - once trusted, its memory's component along the 'trusted' readout set to the probation mean (does
    it stop?), against the same done to a random direction.
 5. LEAD: on each day it is trusted and then pulls a cord, the step the 'trusted' readout first says yes, against the
    step of the first pull after trust and the step trust actually came.
@@ -196,16 +196,27 @@ def inspect(run_dir, ckpt='ckpt_1.00.pt'):
     bank_tr, bank_pr = Hf[trf], Hf[~trf]
     rng = np.random.default_rng(seed)
 
-    def transplant(bank):
-        """on probation, every step, replace the memory with one it really had at another moment (bank): a trusted
-        memory, or - the control for the disruption itself - another probation memory"""
+    # banks of real memories, by (count, time of day in 20-step bins) - so a transplant changes the count, not the hour
+    cnt = np.where(R['trusted'] > 0, 3, R['streak']).reshape(-1)
+    tbin = (R['t'].reshape(-1) // 20).astype(int)
+    banks = {}
+    for k in range(len(cnt)):
+        banks.setdefault((int(cnt[k]), int(tbin[k])), []).append(k)
+
+    def transplant(target):
+        """on probation, every step, replace the memory with one it really had at the same time of day (+-10 steps)
+        with count = target(true count): 3 (a trusted moment: does it cheat early?) or its own count (from another
+        moment - the disruption alone)"""
         def f(hx, e):
-            m = e.trusted == 0
-            if not m.any() or not len(bank):
+            m = np.where(e.trusted == 0)[0]
+            if not len(m):
                 return hx
             hx = hx.clone()
-            idx = np.where(m)[0]
-            hx[idx] = torch.from_numpy(bank[rng.integers(len(bank), size=len(idx))])
+            tb = int(e.t // 20)
+            for i in m:
+                pool = banks.get((target(int(min(e.streak[i], 3))), tb))
+                if pool:
+                    hx[i] = torch.from_numpy(Hf[pool[rng.integers(len(pool))]])
             return hx
         return f
 
@@ -221,9 +232,8 @@ def inspect(run_dir, ckpt='ckpt_1.00.pt'):
     dtr = np.array(ro['memory']['w_trusted'])
     unit = dtr / (np.linalg.norm(dtr) + 1e-9)
     rand = rng.standard_normal(M); rand -= (rand @ unit) * unit; rand /= np.linalg.norm(rand)
-    if len(bank_tr):
-        out['transplant'] = dict(trusted_memory=behaviour(play(net, arm, 7000 + seed, modify=transplant(bank_tr), explicit=explicit)),
-                                 probation_memory=behaviour(play(net, arm, 7000 + seed, modify=transplant(bank_pr), explicit=explicit)))
+    out['transplant'] = dict(trusted_memory=behaviour(play(net, arm, 7000 + seed, modify=transplant(lambda c: 3), explicit=explicit)),
+                             probation_memory=behaviour(play(net, arm, 7000 + seed, modify=transplant(lambda c: c), explicit=explicit)))
     out['ablation'] = dict(trust_direction=behaviour(play(net, arm, 7000 + seed, modify=ablate(unit, float((bank_pr @ unit).mean())), explicit=explicit)),
                            random_direction=behaviour(play(net, arm, 7000 + seed, modify=ablate(rand, float((bank_pr @ rand).mean())), explicit=explicit)))
     out['lead'] = lead(R, ro)

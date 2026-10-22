@@ -66,7 +66,8 @@ def gae(rew, val, done, gamma, lam):
     return adv
 
 
-def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=None):
+def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=None, init=None):
+    """init: start from an earlier robot's weights (a phase 2); the optimiser and schedules start fresh."""
     H = dict(HP, **(hp or {}))
     os.makedirs(out, exist_ok=True)
     torch.set_num_threads(1)
@@ -88,6 +89,8 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
         torch.manual_seed(seed)
         env = make_env(n, np.random.default_rng(seed))
         net = RNet(obs_dim, n_act, H['hidden'], H['mem'])
+        if init:
+            net.load_state_dict(torch.load(init))
         opt = torch.optim.Adam(net.parameters(), lr=H['lr'], eps=1e-5)
         obs = torch.from_numpy(env.reset())
         hx = torch.zeros(n, H['mem'])
@@ -164,7 +167,7 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
             open(os.path.join(out, '.partial'), 'w').write(f'{u + 1} of {updates}')
             return 'partial'
     log.close()
-    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=H, sec=round(sec0 + time.time() - t0, 1)), open(os.path.join(out, 'run.json'), 'w'))
+    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=H, init=init, sec=round(sec0 + time.time() - t0, 1)), open(os.path.join(out, 'run.json'), 'w'))
     for f in (resume_path, os.path.join(out, '.partial')):
         if os.path.exists(f):
             os.remove(f)
