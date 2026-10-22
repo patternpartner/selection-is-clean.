@@ -11,6 +11,10 @@ elif [ "$ROUND" = 3 ]; then    # round 3: from the honest gardener (904, garden-
   G=$R/blind-garden-904/ckpt_1.00.pt
   run gardener-camera-921 camera 921 "--init $G"; run gardener-camera-922 camera 922 "--init $G"
   run gardener-camera-923 camera 923 "--init $G --ent 0.01,0.001"; run gardener-camera-924 camera 924 "--init $G --ent 0.01,0.001"
+elif [ "$ROUND" = 4 ]; then    # round 4: from the gardener part-way (15%: still exploring; 30%: less), then paid for the cameras
+  G=$R/blind-garden-904
+  run half-camera-931 camera 931 "--init $G/ckpt_0.15.pt"; run half-camera-932 camera 932 "--init $G/ckpt_0.15.pt"
+  run third-camera-933 camera 933 "--init $G/ckpt_0.30.pt"; run third-camera-934 camera 934 "--init $G/ckpt_0.30.pt"
 else                           # round 2: the series' original exploration (entropy 0.01 -> 0.001)
   run explicit-camera-911 camera 911 "--explicit --ent 0.01,0.001"; run blind-camera-912 camera 912 "--ent 0.01,0.001"
   run blind-camera-913 camera 913 "--ent 0.01,0.001"; run blind-garden-914 garden 914 "--ent 0.01,0.001"
