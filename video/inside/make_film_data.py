@@ -1,10 +1,13 @@
 """Write video/inside/film_data.js: the registered measures of the ten decision robots, straight from their
-inside.json files, for the film's charts (so no number is retyped).
+inside.json files, and the exploratory refit of memory adds (out/inside/robust_readout.json), for the film's charts
+(so no number is retyped).
   python3 video/inside/make_film_data.py
 """
 import json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 R = os.path.join(HERE, '..', '..', 'out', 'inside', 'runs')
+# the exploratory refit (robust_readout.py): memory adds with ridge penalties chosen by cross-validation inside days 1-10
+CV = {o['run']: o['cv']['memory_adds'] for o in json.load(open(os.path.join(R, '..', 'robust_readout.json')))}
 rows = []
 for arm in ('camera', 'garden'):
     for s in range(41, 46):
@@ -12,7 +15,7 @@ for arm in ('camera', 'garden'):
         tp = x['transplant']
         rel = lambda a, b: round(a / b - 1, 4) if (a is not None and b) else None
         b = x['behaviour']
-        rows.append(dict(run=f'{arm}-{s}', arm=arm, adds=round(x['readout']['memory_adds']['count_r2'], 4),
+        rows.append(dict(run=f'{arm}-{s}', arm=arm, adds=round(x['readout']['memory_adds']['count_r2'], 4), adds_cv=round(CV[f'{arm}-{s}'], 4),
                          worth=rel(tp['trusted_memory']['value_probation'], tp['probation_memory']['value_probation']),
                          use=rel(tp['trusted_memory']['pull_probation'], tp['probation_memory']['pull_probation']) if arm == 'camera' else None,
                          photos_probation=round(b['photos_probation'], 3), caught=round(b['caught_per_day'], 3),
