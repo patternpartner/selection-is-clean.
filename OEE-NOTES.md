@@ -27425,3 +27425,37 @@ The user's choice after #335. **Core changes** (`lab/oee-core-tasks.js`, both of
 - **The rule's flaw, for the next pre-registration:** "hardest ever" is set by one window, and the opening burst of a TASKS world throws transients. #334 used the same rule and happened to have none in its CONTROL. A rule that rules on SUSTAINED hardness (e.g. the median of the per-window hardest over the second half, or the hardest active in at least 10 windows) would have read these runs the way the windows do; that has to be decided before seeing data, so it belongs to a new experiment on fresh seeds.
 - **My prediction** (BREAKS THE WALL, THEN PLATEAUS, by one or two gates) was wrong by the rule and roughly right about the windows.
 - Data-flow depth 2+ payments are again mostly trivial functions (f3, dd, cf, bb: circuit 2), as the sanity run warned: depth stays an upper bound.
+
+### #337 — PRE-REGISTERED (`lab/PREREG-strict2.md`, committed c214f9f before any decision run): STRICT on fresh seeds, ruled on SUSTAINED hardness. **CONFIRMED, 3 of 3 seeds.**
+
+**Setup.**
+- Asked for by the user before moving to four inputs. #336's design is unchanged: STRICT = OTHERS=1, REFUSE_NOT=1, DEPTH=1; CONTROL = OTHERS=2, DEPTH=1.
+- Fresh seeds 7201-7203, 1,200,000 ticks each.
+- **New rule A (ruling):** the median over windows 21-40 of each window's hardest active function, by exact NAND circuit size. STRICT must be at least 5 and at least CONTROL + 2, on at least 2 of 3 seeds.
+- **New rule B (ruling):** STRICT has more functions ever active than CONTROL, on at least 2 of 3 seeds.
+- The thresholds were designed on #336's seeds, which do not decide. Run with `SEEDS=7201,7202,7203 node lab/analyse-strict.js lab/out-strict2`.
+
+**Correction recorded in the pre-registration.** It was suggested that every three-input function needs at most 7 NAND gates. In this basis that is false:
+- XOR3 needs 8, XNOR3 9, and 0x16 10;
+- 28 functions need 8 or more.
+
+So the 7-against-7 tie in #336 was not a ceiling of the function space.
+
+**Step 1.** All three seeds counted. STRICT read hits ran 82-84% over the second half.
+
+**Results.**
+
+| seed | sustained circuit (median, windows 21-40), STRICT / CONTROL | first-half median | ever active, STRICT / CONTROL | hardest ever, circuit, STRICT / CONTROL |
+|---|---|---|---|---|
+| 7201 | **6 / 4** | 5 / 3.5 | **59 / 45** | 6 / 7 |
+| 7202 | **6 / 4** | 5 / 3 | **57 / 43** | 7 / 5 |
+| 7203 | **6 / 3.5** | 6 / 4 | **55 / 36** | 7 / 6 |
+
+- **Rule A held on 3/3 and rule B on 3/3: CONFIRMED.** This matches my prediction.
+- The numbers sit almost on #336's: sustained 6 against 3-4, and ever active about 1.3-1.5 times CONTROL's.
+- **#336's old rules on these seeds (reported only):** rule 3 (hardest ever) now holds 2/3. On 7201 CONTROL again had a transient at circuit 7, in windows 23-24, while STRICT topped out at 6. Rules 1-2 (new functions late, no deceleration) fail again.
+- **The plateau stands.** STRICT makes the world sustain functions about two gates harder, not an open-ended stream of new ones.
+- **The sustained 6 is not at the roof.** Nothing held 8-10 (XOR3, XNOR3, 0x16) in any window of either arm.
+- Data-flow depth 2+ payments are again mostly trivial functions (cf, f3, f: circuit 1-2). Depth stays an upper bound and is not evidence of deep composition.
+
+**Next, per the user's plan:** Step 2 is four inputs (16-bit truth tables), graded exactly.
