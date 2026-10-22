@@ -1,9 +1,9 @@
-// analysis for PREREG-strict.md (#336).  node lab/analyse-strict.js <dir>   (o1 = STRICT, o2 = CONTROL)
+// analysis for PREREG-strict.md (#336) and PREREG-strict2.md (#337).  [SEEDS=7201,7202,7203] node lab/analyse-strict.js <dir>   (o1 = STRICT, o2 = CONTROL)
 // Joins each world's chunk files in order, then applies #290's activity definition (lab/core-tasks.js: ACTIVE = at least MIN
 // of the window's task income and at least MINABS income per sample) over 30,000-tick windows.
 'use strict';
 const fs=require('fs'); const {SZ,CSZ}=require('./core-tasks.js');
-const D=process.argv[2], WIN=30, MIN=0.01, MINABS=100, seeds=[7101,7102,7103];
+const D=process.argv[2], WIN=30, MIN=0.01, MINABS=100, seeds=(process.env.SEEDS||'7101,7102,7103').split(',').map(Number);
 const rowsOf=w=>{ const out=[]; for(let k=0;k<8;k++){ const f=`${D}/${w}.${k}.jsonl`; if(!fs.existsSync(f))break; for(const l of fs.readFileSync(f,'utf8').trim().split('\n')){ try{ out.push(JSON.parse(l)); }catch(e){} } } return out; };
 function windows(rows){ const ever=new Set(), per=[]; let hardest=0, hardestC=0, firstAct=-1; const dep=[0,0,0,0], deep=new Map(); const R=rows.filter(r=>r.N>0&&r.tasks);
   for(let w0=0,wi=0;w0+WIN<=R.length;w0+=WIN,wi++){ const W=R.slice(w0,w0+WIN), m=new Map(); let inc=0;
@@ -22,6 +22,13 @@ for(const s of seeds) for(const o of [1,2]){ const w=`${s}_o${o}`, rows=rowsOf(w
 const counted=seeds.filter(s=>{ const L=res[`${s}_o1`], C=res[`${s}_o2`]; return L.ticks>=1200000&&C.ticks>=1200000&&L.hitShare>=0.01; });
 console.log(`\ncounted seeds: ${counted.length}/3 (${counted.join(',')})`);
 if(counted.length<3){ console.log('VERDICT: INCONCLUSIVE'); process.exit(0); }
+// #337 (PREREG-strict2.md): SUSTAINED hardness - the median, over windows 21-40, of each window's hardest active circuit size.
+const med=a=>{ const b=[...a].sort((x,y)=>x-y), n=b.length; return n?(n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2):0; };
+const sus=w=>med(res[w].per.slice(20,40).map(q=>q.hardC));
+for(const s of seeds) console.log(`#337 ${s}: sustained hardest circuit (median, windows 21-40) STRICT ${sus(`${s}_o1`)} CONTROL ${sus(`${s}_o2`)} | first-half median ${med(res[`${s}_o1`].per.slice(0,20).map(q=>q.hardC))} / ${med(res[`${s}_o2`].per.slice(0,20).map(q=>q.hardC))} | ever active ${res[`${s}_o1`].ever} / ${res[`${s}_o2`].ever}`);
+const sA=seeds.filter(s=>sus(`${s}_o1`)>=5&&sus(`${s}_o1`)>=sus(`${s}_o2`)+2).length, sB=seeds.filter(s=>res[`${s}_o1`].ever>res[`${s}_o2`].ever).length;
+console.log(`#337 rule A sustained (STRICT >= 5 and >= CONTROL + 2): ${sA}/3 seeds | rule B ever active (STRICT > CONTROL): ${sB}/3 seeds`);
+console.log('#337 VERDICT: '+(sA>=2&&sB>=2?'CONFIRMED':sA>=2?'HARDER, NOT BROADER':'NOT CONFIRMED'));
 const lastNew=w=>res[w].per.slice(-10).filter(q=>q.newN>0).length, growth=(w,a,b)=>{ const p=res[w].per; return (p[b-1]?p[b-1].ever:0)-(a>0&&p[a-1]?p[a-1].ever:0); };
 const exh=s=>res[`${s}_o1`].ever>=200;
 const r1=seeds.every(s=>exh(s)||lastNew(`${s}_o1`)>=5)&&(seeds.reduce((a,s)=>a+lastNew(`${s}_o1`),0)>seeds.reduce((a,s)=>a+lastNew(`${s}_o2`),0)||seeds.every(exh));
