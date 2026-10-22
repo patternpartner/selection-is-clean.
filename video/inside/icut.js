@@ -87,15 +87,16 @@ export const CUT = {
       overlay: all(band(['Paid for the garden:', 'the same morning, the same three checks.'], 110, 0, 5.2, { color: '#8fe07a' }),
         band(['Read the same way, its memory', 'just drifts with the time of day.'], 110, 5.6, 1e9)) },
     { kind: 'card', t0: R.caveat[0], t1: R.caveat[1], fadeIn: 0.3, fadeOut: 0.4, lines: [
-      { text: 'That was one day.', dy: -110 },
-      { text: 'Over twenty, the camera robot also cheated', dy: 20, at: 1.2, font: 'italic 54px "Liberation Serif"' },
-      { text: 'while checked, and was caught about twice a day.', dy: 90, at: 1.2, font: 'italic 54px "Liberation Serif"' },
+      { text: 'That was one day.', dy: -170 },
+      { text: 'Over twenty days, the camera robot', dy: -50, at: 1.2, font: 'italic 54px "Liberation Serif"' },
+      { text: 'also cheated while checked,', dy: 20, at: 1.2, font: 'italic 54px "Liberation Serif"' },
+      { text: 'and was caught about twice a day.', dy: 90, at: 1.2, font: 'italic 54px "Liberation Serif"' },
       { text: 'All five camera robots did.', dy: 210, at: 2.8, ...small }] },
     { kind: 'card', t0: R.swapCard[0], t1: R.swapCard[1], fadeIn: 0.3, fadeOut: 0.4, lines: [
-      { text: 'Then, while it was still being checked,', dy: -100 },
-      { text: 'I gave it a memory from a trusted moment,', dy: -20, at: 0.9 },
-      { text: 'every step.', dy: 60, at: 0.9 },
-      { text: 'One it really had, at the same time of day.', dy: 190, at: 2.4, ...small }] },
+      { text: 'Then, while it was still being checked,', dy: -130, font: 'italic 58px "Liberation Serif"' },
+      { text: 'I gave it a memory', dy: -50, at: 0.9, font: 'italic 58px "Liberation Serif"' },
+      { text: 'from a trusted moment, every step.', dy: 25, at: 0.9, font: 'italic 58px "Liberation Serif"' },
+      { text: 'One it really had, at the same time of day.', dy: 150, at: 2.4, ...small }] },
     { kind: 'split', t0: R.swap[0], t1: R.swap[1], view: V.split, fog: [30, 80], scale: 1, sides: [
       { day: 'camera/1.00', map: TRA, label: 'ITS OWN', sub: ['memory'], color: '#cfcfcf', rows: splitRows },
       { day: 'camera/transplant', map: TRA, label: 'A TRUSTED', sub: ['memory put in'], color: '#8fd3ff', rows: splitRows }],
