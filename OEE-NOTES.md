@@ -27500,3 +27500,42 @@ Step 2 of the user's plan after #337.
 **What this does not separate.** The four-input world differs from #337's in two ways besides the input count: the half-per-truth-table draw, and the clean-word rule. So "STRICT's sustained 6 does not survive four inputs" and "STRICT's sustained 6 does not survive the clean-word rule" are not yet told apart.
 
 The cheap test is #337's three-input STRICT with the clean-word rule. That would need the rule enabled at NIN=3, which is a new option, so it is a new experiment. A positive result there would point at the input count; a null would mean #337's effect leaned on words the clean rule now refuses.
+
+### #339 — PRE-REGISTERED (`lab/PREREG-clean3.md`, committed 3cca4c5 before any decision run): does #337 survive CLEAN words? **YES - SURVIVES, 3 of 3 seeds.** #338's four-input null is not the clean-word rule.
+
+**The rule.** CLEAN=1 refuses any output with a bit that depends on junk:
+- junk means a word made by anything but NAND and copies, or an earlier epoch's inputs;
+- it is tracked bit-exactly through the registers, with NAND's controlling value: a clean 0 forces the output bit.
+
+Two earlier versions were wrong and are recorded in the pre-registration:
+- **one flag per register** made accumulators R1=NAND(read,R1) unclean forever;
+- **the first bit-exact version's input mask** dropped the dependence of a bit forced by two clean zeros.
+
+**The run.** Three inputs, #337's world and rule unchanged, both arms CLEAN=1, fresh seeds 7401-7403, 1,200,000 ticks. Run it with `SEEDS=7401,7402,7403 node lab/analyse-strict.js lab/out-clean3`.
+
+| seed | sustained circuit (median windows 21-40), STRICT / CONTROL | first-half median | ever active |
+|---|---|---|---|
+| 7401 | **6 / 3.5** | 5 / 3 | **55 / 42** |
+| 7402 | **6 / 4** | 6 / 3 | **51 / 40** |
+| 7403 | **6 / 3.5** | 6 / 3 | **55 / 36** |
+
+- **Rule A held on 3/3 and rule B on 3/3. SURVIVES CLEAN WORDS**, as predicted.
+- **The numbers match #337 (6 against 3.5-4).** STRICT's per-window line is if anything steadier: it sits at 5-7 from window 2-3 on.
+- **So #337's lift is real boolean composition, and #338's drop at four inputs comes from the four-input world itself:** the input count, or the half-per-truth-table draw. That is the open question now.
+- **#336's old rules on these seeds:** rule 3 holds; rules 1-2 (late novelty) fail again. The plateau stands.
+
+**Where the paid income comes from.** `lab/probe-twowire.js` counts the distinct reads from the current epoch that feed each paid output (k), by data flow. It also splits by whether the register carried junk at the epoch's start (a stale start). Shares of all income, at the saves at 1,200,000 ticks:
+
+| world | clean, fresh start, k=0/1/2/3+ | clean, stale start, k=0/1/2/3+ | unclean (any) |
+|---|---|---|---|
+| #337 7201 | .13/.30/.01/.03 | .13/.01/.005/.056 | 34% |
+| #337 7202 | .04/.55/.02/.03 | .01/0/.001/.015 | 34% |
+| #337 7203 | .10/.11/.01/.01 | .07/.11/.001/.008 | 60% |
+| #339 7401 | .05/.91/.04/.00 | .00/0/0/.001 | refused |
+| #339 7402 | .06/.73/.01/.01 | .08/.11/.001/.007 | refused |
+| #339 7403 | .26/.42/.03/.04 | .20/.00/.001/.043 | refused |
+
+- **The user's k=2 bleach prediction holds in all six worlds.** It says a register that starts the epoch stale and folds two reads into a fully clean word must produce NOT of the last read, which is refused. Stale-start clean income at k=2 is 0.0-0.5% of all income, below k=3+ (0.1-5.6%) on every world. Fresh-start k=2 is paid, 0.4-4.3%.
+- **A correction to that prediction.** Stale-start clean income also appears at k=0 and k=1 (up to 20%). The bleach can be an INPUT word, not only a read: a NAND with an input's zeros washes junk just as a read's zeros do.
+- **Under CLEAN, STRICT's income is mostly single-read.** One read feeding an output carries 42-91%; 2+ reads carry 2-12%. So the sustained 6 gates is mostly NAND-logic on top of ONE published word, which can itself be 4-5 gates. That fits the user's u^3 = u argument, under which single-wire composition stops 1-2 layers above the word read.
+- **Gating two distinct reads exists but is small.** The instruction set allows it (READ, MOV k, TURN, READ, NAND k), and so does the accumulator R1=NAND(read,R1).
