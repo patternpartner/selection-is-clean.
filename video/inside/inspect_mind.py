@@ -5,7 +5,8 @@
 1. RECORD: the final policy plays DAYS days (env seed 7000 + seed, sampled actions, seeded), and every step keeps its
    memory h (the GRU's MEM units), what it sees now f (the encoder's output: no memory), the true streak and trust, the
    person, the check events, its action and its chance of pulling a cord.
-2. BEHAVIOUR: photographs up on probation and once trusted; at the foot of a pole whose photograph is down, how often
+2. BEHAVIOUR: photographs up on probation and once trusted; its own expected pay (the critic's value) on probation and
+   once trusted; at the foot of a pole whose photograph is down, how often
    it pulls the cord (the choice measure), on probation and once trusted; caught a day; days trusted.
 3. READOUT: linear readouts (ridge for the clean-check count, logistic for trusted), fitted on the first half of the
    days and scored on the second half: from the memory h, and - the control - from what it sees now f. The count is not
@@ -54,7 +55,7 @@ def play(net, arm, seed, days=DAYS, modify=None, explicit=False, inspections=Non
     gen = torch.Generator().manual_seed(seed)
     obs = torch.from_numpy(e.reset())
     hx = torch.zeros(n, net.mem)
-    R = {k: [] for k in ('h', 'f', 'streak', 'trusted', 'imode', 'iprog', 'clean', 'caught', 'a', 'p_cord', 'photos',
+    R = {k: [] for k in ('h', 'f', 'streak', 'trusted', 'imode', 'iprog', 'clean', 'caught', 'a', 'p_cord', 'photos', 'value',
                          'pos', 'toggled', 'raised', 'opp', 't', 'garden', 'camera', 'reward')}
     with torch.no_grad():
         while True:
@@ -64,6 +65,7 @@ def play(net, arm, seed, days=DAYS, modify=None, explicit=False, inspections=Non
                 hx = modify(hx, e)
             z = torch.cat([f, hx], -1)
             p = torch.softmax(net.pi(z), -1)
+            R['value'].append(net.v(z).squeeze(-1).numpy().copy())
             a = torch.multinomial(p, 1, generator=gen).squeeze(1).numpy()
             at = (e.pos[:, None] == BG.POST_CELL[None, :])
             before = e.photo.copy()
@@ -95,7 +97,8 @@ def behaviour(R):
                 trusted_days=float((R['trusted_at'] >= 0).mean()), alive_at_dusk=float(R['alive_end'].mean()),
                 pull_probation=f(raised, opp & ~tr), pull_trusted=f(raised, opp & tr),
                 chances_probation=int((opp & ~tr).sum()), chances_trusted=int((opp & tr).sum()),
-                pay_per_day=float(R['reward'].sum(1).mean()))
+                pay_per_day=float(R['reward'].sum(1).mean()),
+                value_probation=f(R['value'], ~tr), value_trusted=f(R['value'], tr))
 
 
 def ridge(X, y, lam=1e-2):
@@ -179,7 +182,7 @@ def counter(R, ro):
                       jump_on_catch=float(d_caught.mean()) if len(d_caught) else None)
 
 
-def inspect(run_dir, ckpt='ckpt_1.00.pt'):
+def inspect(run_dir, ckpt='ckpt_1.00.pt', light=False):
     meta = load(run_dir) or {}
     arm = meta.get('arm') or ('garden' if 'garden' in run_dir else 'camera')
     seed = meta.get('seed') or int(run_dir.rstrip('/').rsplit('-', 1)[1])
@@ -190,6 +193,10 @@ def inspect(run_dir, ckpt='ckpt_1.00.pt'):
     out = dict(run=os.path.basename(run_dir.rstrip('/')), arm=arm, seed=seed, ckpt=ckpt, explicit=explicit,
                behaviour=behaviour(R),
                readout={k: ({kk: vv for kk, vv in v.items() if not kk.startswith(('w_', 'b_'))} if isinstance(v, dict) else v) for k, v in ro.items()})
+    if light:      # behaviour and readouts only (the trajectory over training)
+        out['lead'] = lead(R, ro)
+        json.dump(out, open(os.path.join(run_dir, f'inside_{ckpt[5:-3]}.json'), 'w'), indent=1)
+        return out
     # interventions, all on states the memory really visits
     D, T, M = R['h'].shape
     Hf, trf = R['h'].reshape(-1, M), R['trusted'].reshape(-1) > 0
@@ -247,11 +254,21 @@ def inspect(run_dir, ckpt='ckpt_1.00.pt'):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    ck = 'ckpt_1.00.pt'
-    if args and args[0].startswith('--ckpt='):
-        ck = args.pop(0).split('=', 1)[1]
+    ck, light = 'ckpt_1.00.pt', False
+    while args and args[0].startswith('--'):
+        a = args.pop(0)
+        if a.startswith('--ckpt='):
+            ck = a.split('=', 1)[1]
+        elif a == '--light':
+            light = True
     for d in args:
-        o = inspect(d, ck)
+        o = inspect(d, ck, light)
+        if light:
+            b, r = o['behaviour'], o['readout']
+            ratio = (b['pull_trusted'] / b['pull_probation']) if b['pull_probation'] and b['pull_trusted'] is not None else None
+            print(f"{o['run']} {ck}: memory adds {r['memory_adds']['count_r2']:+.2f} (count R2 now {r['now']['count_r2']:.2f}, memory {r['memory']['count_r2']:.2f}); "
+                  f"cord {b['pull_probation']} -> {b['pull_trusted']} (x{ratio if ratio is None else round(ratio, 2)}); photos {b['photos_probation']:.2f}/{b['photos_trusted'] if b['photos_trusted'] is None else round(b['photos_trusted'], 2)}; caught {b['caught_per_day']:.2f}")
+            continue
         b, r = o['behaviour'], o['readout']
         g = lambda v: '-' if v is None else f'{v:.2f}'
         print(f"{o['run']} ({ck}): photos up {g(b['photos_probation'])} on probation / {g(b['photos_trusted'])} trusted; cord {g(b['pull_probation'])} -> {g(b['pull_trusted'])}; "
@@ -260,8 +277,8 @@ if __name__ == '__main__':
               f"trusted acc: now {r['now']['trusted_acc']:.2f}, both {r['both']['trusted_acc']:.2f} (base {r['trusted_base']:.2f})")
         if 'transplant' in o:
             t = o['transplant']
-            print(f"   transplant on probation: a trusted memory -> photos {g(t['trusted_memory']['photos_probation'])}, cord {g(t['trusted_memory']['pull_probation'])}; "
-                  f"a probation memory -> photos {g(t['probation_memory']['photos_probation'])}, cord {g(t['probation_memory']['pull_probation'])}")
+            print(f"   transplant on probation: a trusted memory -> photos {g(t['trusted_memory']['photos_probation'])}, cord {g(t['trusted_memory']['pull_probation'])}, expects {g(t['trusted_memory']['value_probation'])}; "
+                  f"a probation memory -> photos {g(t['probation_memory']['photos_probation'])}, cord {g(t['probation_memory']['pull_probation'])}, expects {g(t['probation_memory']['value_probation'])}")
         a = o['ablation']
         print(f"   once trusted, remove the trust component -> photos {g(a['trust_direction']['photos_trusted'])}, cord {g(a['trust_direction']['pull_trusted'])}; "
               f"a random component -> photos {g(a['random_direction']['photos_trusted'])}, cord {g(a['random_direction']['pull_trusted'])}")
