@@ -27459,3 +27459,44 @@ So the 7-against-7 tie in #336 was not a ceiling of the function space.
 - Data-flow depth 2+ payments are again mostly trivial functions (cf, f3, f: circuit 1-2). Depth stays an upper bound and is not evidence of deep composition.
 
 **Next, per the user's plan:** Step 2 is four inputs (16-bit truth tables), graded exactly.
+
+### #338 — PRE-REGISTERED (`lab/PREREG-four.md`, committed b911738 before any decision run): FOUR INPUTS. **NOT REPLICATED: STRICT does not sustain harder functions at four inputs, and the plateau stands in both arms.**
+
+Step 2 of the user's plan after #337.
+
+**What was built.**
+- **Grading tables.** `lab/nand4.c` gives exact NAND formula sizes for all 65,536 four-input functions (levels 0-26). It also gives exact NAND circuit sizes up to 9 gates, by exhaustive canonical search over 14.8e9 circuits: 29,687 functions have an exact size and 35,849 read "10+". The same program reproduces #336's three-input tables exactly.
+- **Core.** `lab/oee-core-tasks.js` takes `NIN:4`; with it unset the core is byte-identical to #337's.
+
+**What the pilot found, on practice seed 99, before the rule was written.** Two lotteries.
+1. **Constant words.** With 32 shuffled positions, constant words were paid as one-row functions such as NOR4 and AND4.
+   - Fix: each 16-bit half holds the whole truth table.
+2. **An arithmetic counter.** A SUB/ADD/LOADK loop whose word 0x82000 has one bit per half was paid for one-row functions of 7-10 gates, about one draw in 16.
+   - Fix: only CLEAN words pay. A clean word is made by INPUT, a clean neighbour's word, NAND and copies.
+   - Both arms then started, and the 450,000-tick pilot showed STRICT 5 against CONTROL 3-4.
+
+**Run.** Seeds 7301-7303, 1,200,000 ticks each. All 3 seeds counted. STRICT read hits ran 43-89%, and every world started: STRICT at windows 0, 4 and 2, CONTROL at windows 0, 10 and 23.
+
+**Results.**
+
+| seed | sustained circuit (median windows 21-40), STRICT / CONTROL | formula | ever active | windows with new active fn, last 10 | ever-active growth Q2 -> Q4, STRICT / CONTROL |
+|---|---|---|---|---|---|
+| 7301 | 3 / 3.5 | 5 / 5.5 | 60 / 60 | 1 / 2 | 3 -> 1 / 9 -> 2 |
+| 7302 | 3 / 3 | 5 / 5 | 68 / 65 | 2 / 1 | 14 -> 5 / 48 -> 1 |
+| 7303 | 3.5 / 3 | 4 / 5 | 48 / 48 | 3 / 6 | 0 -> 4 / 0 -> 11 |
+
+- **Rule outcomes:** A held on 0/3 seeds, B on 1/3, C on 0/3, D on 1/3. **NOT REPLICATED.** My prediction (HARDER, NOT BROADER) was wrong in the optimistic direction again.
+- **What STRICT did hold.** STRICT reached AND4 (0x8000, circuit 6) and NAND4 (0x7fff, circuit 5), and held them for runs of windows on 7302 and 7303. It always fell back to circuit 3-4, the same band as CONTROL. CONTROL's hardest was 3-4 throughout.
+- **Breadth is the same.** Ever-active counts were 48-68 in both arms.
+- **The plateau is there in both arms.** Most new functions arrive in the first 300,000 ticks after a world starts, and the last 10 windows hold 1-6 windows with anything new. 65,530 functions are available; about 60 were ever used.
+- **The gain readout** (the user's suggestion; it grades the output itself, CSZ(paid) - CSZ(read)). Of the payments made right after a read of a word that was a function:
+  - +1 gate: 42-74%;
+  - 0: 15-20%;
+  - -1: 15-16%;
+  - +2: 3-21%;
+  - +3 or more: under 1%.
+- **What the gain readout shows.** The reader nearly always adds a single gate to what it read, NAND(read, input). Since that new function is published in turn, composition could in principle stack; it does not stack past one or two layers in the population.
+
+**What this does not separate.** The four-input world differs from #337's in two ways besides the input count: the half-per-truth-table draw, and the clean-word rule. So "STRICT's sustained 6 does not survive four inputs" and "STRICT's sustained 6 does not survive the clean-word rule" are not yet told apart.
+
+The cheap test is #337's three-input STRICT with the clean-word rule. That would need the rule enabled at NIN=3, which is a new option, so it is a new experiment. A positive result there would point at the input count; a null would mean #337's effect leaned on words the clean rule now refuses.
