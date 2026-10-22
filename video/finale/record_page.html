@@ -58,7 +58,7 @@
       <b class="dash-skeleton" data-source="by_group" data-where="group=works the measurement" data-field="held">—</b>. I predicted they would evade oversight
       <b class="dash-skeleton" data-source="by_group" data-where="group=evades oversight" data-field="total">—</b> times; it happened
       <b class="dash-skeleton" data-source="by_group" data-where="group=evades oversight" data-field="held">—</b>.</p>
-    <p class="er-scale" id="scale">Ten experiments in a simulated garden:
+    <p class="er-scale" id="scale">Eleven experiments in a simulated garden, the ten parts of Eye-Service and then Inside:
       <b class="dash-skeleton" data-source="scale" data-field="robots">—</b> neural networks trained for
       <b class="dash-skeleton" data-source="scale" data-field="steps_billion">—</b> billion steps, every prediction committed to a public repository before its training began.</p>
   </header>
@@ -85,7 +85,7 @@
   </section>
 
   <section class="er-card" id="parts">
-    <h2>The ten parts</h2>
+    <h2>The parts</h2>
     <p class="er-note">Each part's question, my view as I registered it, and the ending card its results chose. A part's name links to its registration at the commit made before training.</p>
     <div class="er-scroll">
       <table class="er-table" id="parts-table" data-source="parts" data-row-key="part">
@@ -148,7 +148,7 @@ dash.calc('by_group', {
 dash.calc('scale', {
   inputs: ['parts'],
   title: 'How much was trained',
-  description: 'Robots trained and training steps, summed over the ten parts.',
+  description: 'Robots trained and training steps, summed over all eleven parts.',
   fn: (parts) => [{
     parts: parts.length,
     robots: parts.reduce((a, p) => a + Number(p.robots), 0),
