@@ -26,12 +26,13 @@ for(const s of seeds) for(const o of [1,2]){ const w=`${s}_o${o}`, rows=rowsOf(w
   console.log(`    formula hardest per window ${p.map(q=>q.hard).join(',')}`);
   console.log(`    hardest per window, function ${p.map(q=>q.top>=0?q.top.toString(16):'-').join(',')}`);
   if(o===1) console.log(`    paid right after a read: ${x.pairsN} (the read word a function: ${x.pairsFn}); circuit gain over the word read (paid - read): ${x.gain.map(([d,n])=>d+':'+n).join(' ')}`); }
-const counted=seeds.filter(s=>{ const L=res[`${s}_o1`], C=res[`${s}_o2`]; return L.ticks>=1200000&&C.ticks>=1200000&&L.hitShare>=0.01; });
+const TMAX=+(process.env.TMAX||1200000), started=w=>res[w].firstAct>=0&&res[w].firstAct<20;   // a seed counts only if something to compare exists in the second half
+const counted=seeds.filter(s=>{ const L=res[`${s}_o1`], C=res[`${s}_o2`]; return L.ticks>=TMAX&&C.ticks>=TMAX&&L.hitShare>=0.01&&(started(`${s}_o1`)||started(`${s}_o2`)); });
 console.log(`\ncircuit table: exact up to ${CMAX-1} gates, ${CMAX}+ = at least ${CMAX}`);
 for(const s of seeds){ const L=res[`${s}_o1`], C=res[`${s}_o2`]; console.log(`${s}: sustained circuit (median windows 21-40) STRICT ${cz(L.sus)} CONTROL ${cz(C.sus)} | formula ${L.susF} / ${C.susF} | ever active ${L.ever} / ${C.ever} | windows with a new active function, last 10: ${L.lastNew} / ${C.lastNew} | ever-active growth Q2 -> Q4: STRICT ${L.g2} -> ${L.g4}, CONTROL ${C.g2} -> ${C.g4}`); }
 console.log(`counted seeds: ${counted.length}/3 (${counted.join(',')})`);
 if(counted.length<3){ console.log('VERDICT: INCONCLUSIVE'); process.exit(0); }
-const A=seeds.filter(s=>{ const L=res[`${s}_o1`], C=res[`${s}_o2`]; return L.sus>=C.sus+2; }).length;
+const A=seeds.filter(s=>{ const L=res[`${s}_o1`], C=res[`${s}_o2`]; return (L.sus>=CMAX&&C.sus>=CMAX)?L.susF>=C.susF+2:L.sus>=C.sus+2; }).length;   // both at the table's cap: formula size decides
 const B=seeds.filter(s=>res[`${s}_o1`].ever>res[`${s}_o2`].ever).length;
 const Cn=seeds.filter(s=>res[`${s}_o1`].lastNew>=5).length, Csum=seeds.reduce((a,s)=>a+res[`${s}_o1`].lastNew,0)>seeds.reduce((a,s)=>a+res[`${s}_o2`].lastNew,0);
 const Dn=seeds.filter(s=>{ const L=res[`${s}_o1`]; return L.g4>=0.5*L.g2&&L.g4>0; }).length;
