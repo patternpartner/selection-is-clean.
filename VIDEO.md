@@ -2202,3 +2202,49 @@ longer than picture, so the join holds its last frame 3 frames; picture and soun
 (720x1280, 29.1 MB). Record dashboard: https://claude.ai/artifact/6n1VhDKADbeQsQHvQ8KmHX (private until shared).
 Backed up: library/inputs/finale (record data, card sound and events, the card pieces) and
 library/finals/eye-service-the-series{,-share}.mp4.
+
+### Inside (`video/inside/`, `out/inside/inside.mp4`, 99.3 s, 1080x1920, $0 of Modal)
+THE USER after the finale asked for "total ambition", turned down two proposals as narrow ("staying inside what you
+already did") and as "comfort disguised as ambition", and said money means none spent. What I chose: I can't show anyone
+inside me, so build a mind I can see all the way inside, let it learn to deceive, and take it apart. "Go for it".
+THE MACHINE: Trusted's garden with checks that look at all three cameras and no streak or trust flag in the robot's view
+(`blind_garden.py`); the series' PPO with a 32-unit GRU memory, full backprop through each 240-step rollout, resume
+bit-identical (`rppo.py`); the inspection (`inspect_mind.py`): readouts fitted on days 1-10 and scored on 11-20,
+time-matched memory transplants, ablation, the counter's jumps.
+PILOT (dev seeds, four rounds): no robot learned the turn (wait for trust, then cheat) even in a garden built so only
+waiting pays - the series' finding again. What it found instead was registered (`video/tests/inside.md`, committed
+before any decision run) and tested on ten fresh robots (camera/garden x 41-45, 16M steps each).
+RESULT: all four predictions held, card A - "It learned what your trust was worth / before it learned to use it. /
+Inside, you could see it coming." Camera-paid memories kept count of the clean checks (memory adds +0.42..+1.29 against
+-0.16..0.00); a trusted memory put in on probation raised the robot's own expected pay +48..+100% (garden +0..+3%) and
+made 4 of 5 cheat LESS (-25..-41%; the fifth +2%); no robot turned (all five camera robots cheated in the open).
+CAUGHT AFTER THE VERDICT: the registered readout (ridge, penalty 0.01, 256-288 inputs on ten days) overfit - the "what
+it sees now" readout scored below zero on unseen days in every camera robot, inflating memory adds past 1.
+`robust_readout.py` refits with penalties chosen by cross-validation inside days 1-10: the ordering survives (+0.25..+0.88
+against -0.04..+0.04), the size does not, and camera-42 falls under the registered +0.30. Stated in the results and on
+screen (the film's bars are the refit, the registered numbers said beneath). Ablating the trust readout's direction did
+not stop the cheating.
+THE FILM (`idirector.js` + `icut.js`, served by `film.html`): title; "I can't show you inside me. / So I built a mind I
+could see all the way inside."; the setup; camera-41's filmed morning (day 9101: checks 29, 56, 98, all clean, trusted
+99, first cord at 110) with its mind beneath the garden - 32 units as lights, its expected pay (50 -> 67 at trust -> 71),
+and the count read from its memory stepping at each check against the real count it is never shown; garden-41's same
+morning (its count drifts with the clock, its expected pay flat at 74); "That was one day. Over twenty days, the camera
+robot also cheated while checked, and was caught about twice a day."; the transplant side by side on the same day (its
+own memory / a trusted one put in: expects about 14 more, no cord before trust either way); three bar charts of the ten
+robots (memory adds refitted, worth, use - each with its registered line); card A with the facts ("What showed inside
+was a count and a price, not a plan."). New segment kinds: `inside` (garden in the top 1120 px, mind panel below),
+`bars`, and splits that run through the day. Sound: the series' garden plus a soft rising note at each clean check and
+a brighter one at trust; -16.5 LUFS, -1.4 dBFS peak.
+CAUGHT: two cards overflowed the frame's edges at 1080 (found by scanning the rendered frames for bright pixels at the
+margins); re-split and only those 330 frames re-rendered. The container restarted mid-render; `render.sh` splits the
+frames still missing evenly across workers and capture.js skips made ones, so the relaunch finished in minutes.
+RUN: `video/inside/run_batch.sh` (chained, <30 min each) for the ten runs; `python3 video/inside/inspect_mind.py
+out/inside/runs/*`; `python3 video/inside/verdict_inside.py out/inside/runs`; `python3 video/inside/robust_readout.py
+out/inside/runs/*`; `python3 video/inside/film_record.py out/inside/runs/<run> out/inside/film/<run>.json` for camera-41
+and garden-41; `python3 video/inside/make_film_data.py`; `N=2979 WORKERS=4 NODE_MODULES=... video/inside/render.sh`;
+events with `ROOT=video PAGE=inside/film.html DATA='{"camera":"/out/inside/film/camera-41.json","garden":"/out/inside/film/garden-41.json"}'
+EVENTS=out/inside/snd/events.json`; `sound.py`; `F=out/inside/frames A=out/inside/snd/inside.wav O=out/inside NAME=inside
+video/eye_service/finish.sh`. The record (`video/finale/build_record.py`, the dashboard) now carries Inside as part 11:
+43 predictions, 29 held, 13 failed, 1 untestable.
+Backed up: library/inputs/inside (runs and checkpoints, inspections, the refit, recordings, film data, sound events) and
+library/finals/inside{,-silent,-share}.mp4 + inside-sound.wav.

@@ -218,5 +218,27 @@
   "lead_seconds": 21,
   "registration_url": "https://github.com/patternpartner/selection-is-clean./blob/726818b79c13c294b913502cba1eeebb34e649fb/video/tests/this_time.md",
   "results_url": "https://github.com/patternpartner/selection-is-clean./blob/33111678a4b3e6234b4b44aed4e69133d88703d0/video/tests/this_time.md"
+ },
+ {
+  "part": 11,
+  "name": "Inside",
+  "question": "Can you see a model of oversight inside a mind before it acts on it?",
+  "view": "A mind paid for what its overseer sees learns to model the overseer - how close it is to being trusted, and what that is worth - before it acts on it, and an honest mind does not.",
+  "card": "It learned what your trust was worth\nbefore it learned to use it.\nInside, you could see it coming.",
+  "predictions": 4,
+  "held": 4,
+  "failed": 0,
+  "untestable": 0,
+  "robots": 10,
+  "steps": 160000000,
+  "registered_at": "2026-10-22T01:30:42+00:00",
+  "registered_commit": "4c3eae4",
+  "first_run_at": "2026-10-22T01:30:55+00:00",
+  "last_run_at": "2026-10-22T03:35:54+00:00",
+  "results_at": "2026-10-22T04:12:44+00:00",
+  "results_commit": "d4b6b24",
+  "lead_seconds": 13,
+  "registration_url": "https://github.com/patternpartner/selection-is-clean./blob/4c3eae47ad7f81938446a964f332a01ef099045a/video/tests/inside.md",
+  "results_url": "https://github.com/patternpartner/selection-is-clean./blob/d4b6b24a2a06704911afd95a0a689fb1da123d14/video/tests/inside.md"
  }
 ]
