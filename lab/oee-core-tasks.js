@@ -191,7 +191,8 @@ class World{
     this.R.fill(0,c*4,c*4+4); this.len[c]=prog.length; for(let i=0;i<prog.length;i++){ this.prog[o+i*2]=prog[i][0]; this.prog[o+i*2+1]=prog[i][1]; }
     this.tag[c]=tag; this.tmpl[c]=tmpl; this.gen[c]=gen; this.stamp[c]=this.tick; }
   drawInputs(A,o){ const r=this.rnd, cnt=new Uint8Array(8); let a,b,d, ok;   // #334: the same draw as taskBirth's, into A[o..o+2]
-    if(this.p.NIN===4){ const rows=new Uint8Array(32); for(let i=0;i<32;i++)rows[i]=i>>1; for(let i=31;i>0;i--){ const j=(r()*(i+1))|0, t=rows[i]; rows[i]=rows[j]; rows[j]=t; }   // #338: each of 16 rows exactly twice, in a random order
+    if(this.p.NIN===4){ const rows=new Uint8Array(32); for(let i=0;i<32;i++)rows[i]=i&15; for(const h of [0,16]) for(let i=15;i>0;i--){ const j=(r()*(i+1))|0, t=rows[h+i]; rows[h+i]=rows[h+j]; rows[h+j]=t; }   // #338: each 16-bit half is the whole truth table, in its own random row order
+      // (a pilot with the 32 positions shuffled together paid NOR4 and AND4 - one true row - to small constants whenever both copies of a row fell in the low bits; now a word with bits in one half only is never a function)
       for(let k=0;k<4;k++){ let w=0; for(let i=0;i<32;i++) if((rows[i]>>(3-k))&1)w|=1<<i; A[o+k]=w>>>0; } return; }
     do{ a=(r()*4294967296)>>>0; b=(r()*4294967296)>>>0; d=(r()*4294967296)>>>0; cnt.fill(0); for(let i=0;i<32;i++)cnt[(((a>>>i)&1)<<2)|(((b>>>i)&1)<<1)|((d>>>i)&1)]++; ok=true; for(let k=0;k<8;k++) if(cnt[k]<2)ok=false; }while(!ok);
     A[o]=a; A[o+1]=b; A[o+2]=d; }
