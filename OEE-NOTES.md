@@ -27391,3 +27391,19 @@ The user's choice after #333: #290 (paid computation plus function-keyed parasit
 - **My prediction (NOT SUPPORTED) was wrong**, this time in the pessimistic direction; the pilot's never-starting LIVE world did not recur (first active window 3, 5 and 9).
 - **Copying was attempted constantly and never paid:** 143-221 million copies refused per LIVE world. Reads found a current neighbour output 72-74% of the time.
 - **What it means, at the rung measured:** composition through others' outputs moves the reachable ceiling once (about 6 -> 10) and the world fills to the new ceiling and stops. That is #289's shape again (a burst, then a plateau) with the ceiling set higher, which is evidence that the ceiling is partly REACHABILITY: what one short program can assemble, which others' outputs extend. Not yet shown: what the size-10 functions are built from (which reads they use), or whether a bigger function space (four inputs, 65,530 functions) keeps the climb going instead of re-plateauing.
+
+### #335 — WHAT #334'S HARD FUNCTIONS ARE: the reads are causal, and the wall-break is mostly NOT(a neighbour's output). The plateau looks like complement closure.
+
+Diagnostics on #334's three LIVE worlds (`lab/probe-others.js`): each world's 1,200,000-tick save run on 30,000 ticks twice from the same state — reads live (continued) and reads returning 0 from the first tick (knockout). At every paid output: the function, its NAND formula size, whether the organism had read a nonzero word this epoch, and that word's function g. Plus the late active sets across seeds (last 10 windows of the main runs). Descriptive; nothing pre-registered.
+
+| seed | functions paid 50+ times, continued / knockout | hardest, continued / knockout | paid outputs right after a read (continued) |
+|---|---|---|---|
+| 7001 | 97 / 44 | 10 / 7 | 74% |
+| 7002 | 106 / 47 | 10 / 7 | 52% |
+| 7003 | 116 / 48 | 10 / 7 | 47% |
+
+- **Causal:** without reads the hardest falls to 7 and the function count to under half within 30,000 ticks, on 3 of 3 seeds.
+- **What the hard functions are:** almost every size-7+ function is paid right after a read (89-100% of its payments), and the word read is its COMPLEMENT. Size 10 `0x01` (three-input NOR) after reading `0xfe` (three-input OR, size 7) — and `0xfe` after reading `0x01`: the two feed each other, a cross-feeding pair. Size 8 `0x10`/`0x02`/`0x04` after `0xef`/`0xfd`/`0xfb`; size 7 `0x08`/`0x20`/`0x40` after `0xf7`/`0xdf`/`0xbf`. **So the wall-break is mostly one NOT applied to a neighbour's output.** NAND FORMULA size charges that heavily (a formula cannot share a gate), so the measure overstates how much new computation there is: #334's "size 6 -> 10" is a real, causal change in what is computed and paid, but most of the climb is negation, not deeper composition.
+- **The plateau fits complement closure:** reachable = the functions programs compute alone plus their complements, roughly twice the control's count (63-64 ever active against 39-43). Late on about 25 functions are active per world; the three LIVE seeds share 17 of them, but no function of size 7+ is active late on all three (Jaccard 0.55-0.75 LIVE, 0.71-0.85 CONTROL).
+- **A readout that failed, recorded:** the probe's composition DEPTH kept the smallest depth ever seen for each function, and every function is sometimes paid without a read, so every depth read 0. The read share and the read function g carry the finding instead.
+- **What would test deeper composition:** refuse payment for the complement of the word just read (as #334 already refuses the word itself), so NOT-of-a-neighbour pays nothing and only a real combination of g with the inputs (NAND(g,x) and up) can climb; and grade hardness by circuit size (gates shared) beside formula size, so negation is not counted as depth.
