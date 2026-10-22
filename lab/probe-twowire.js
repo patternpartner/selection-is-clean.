@@ -1,24 +1,27 @@
-// lab/probe-twowire.js - #339: do paid outputs combine TWO DISTINCT read words? Loads a saved three-input world, switches on CLEAN=2
-// bookkeeping (bit-exact junk, lab/oee-core-tasks.js), and follows, through the registers, which read words feed each one (data flow,
-// up to 2 distinct words kept: READ sets {w}, NAND unions, GET/MOV copy, INPUT and every other change clear; a new epoch clears).
-// At each paid output: no read word, one, or two or more, split clean / unclean. Draws nothing.
+// lab/probe-twowire.js - #339: do paid outputs combine DISTINCT read words, and did the register start the epoch stale? Loads a saved
+// three-input world, switches on CLEAN=2 bookkeeping (bit-exact junk, lab/oee-core-tasks.js), and follows through the registers
+// (data flow) which read words of THIS epoch feed each one (up to 4 kept: READ sets {w}, NAND unions, GET/MOV copy, INPUT and every
+// other change clear) and whether it carries material that was junk when the epoch began (STALE: at each epoch boundary a register
+// with any junk bit is marked; NAND ORs the marks, GET/MOV copy, INPUT/READ/any other change clear). At each paid output its income
+// goes to (k = 0, 1, 2, 3+ read words) x (stale start or not), clean / unclean. Draws nothing.
+// (The first version kept 2 words and cleared them at an organism's first output of the epoch; this one clears at the boundary.)
 //   LOAD=lab/out-strict2/7201_o1.7.save [WARM=2000] [TICKS=5000] node lab/probe-twowire.js
 'use strict';
 const fs=require('fs'); const {World}=require('./oee-core-tasks.js');
 const E=process.env, w=World.load(fs.readFileSync(E.LOAD,'utf8')), C=w.C;
-w.p.CLEAN=2; w.Rj=new Uint32Array(C*4).fill(0xFFFFFFFF); w.Rdm=new Uint32Array(C*4); w.tlastJ=new Uint32Array(C).fill(0xFFFFFFFF); w.tlastDm=new Uint32Array(C); w.ev.dirtyPaid=0; w.ev.dirtyE=0;
-const A=new Float64Array(C*4), B=new Float64Array(C*4);   // up to two distinct read words per register (0 = none); words stored +1 so 0 means empty
-const put=(r,a,b)=>{ A[r]=a; B[r]=b; };
-const uni=(r,s)=>{ const xs=[A[r],B[r],A[s],B[s]].filter(x=>x>0); const u=[...new Set(xs)]; put(r,u[0]||0,u[1]||0); };
-const dA=w.depthAfter.bind(w); let ep=w.epoch();
-w.depthAfter=function(b,op,arg,before){ dA(b,op,arg,before); const s=b+(arg&3), R=this.R;
-  if(op===28){ const v=R[b]>>>0; put(b,v?v+1:0,0); return; }
-  if(op===26){ uni(b,s); return; } if(op===27){ put(b,A[s],B[s]); return; } if(op===2){ put(s,A[b],B[b]); return; }
-  for(let k=0;k<4;k++) if(R[b+k]!==before[k]) put(b+k,0,0); };
-const orig=w.taskOut; const n={clean:[0,0,0], unclean:[0,0,0]};
-w.taskOut=function(c,v){ const e=this.epoch(); if(e!==ep){ A.fill(0); B.fill(0); ep=e; }   // a read word from an earlier epoch is stale: forget it
-  const j=this.Rj[c*4], k=(A[c*4]>0)+(B[c*4]>0), b=this.E[c]; orig.call(this,c,v); const g=this.E[c]-b; if(g>0)(j?n.unclean:n.clean)[k]+=g; };
-for(let s=0;s<+(E.WARM||2000);s++) w.step(); for(const x of ['clean','unclean'])n[x].fill(0);
+if(!w.Rj){ w.p.CLEAN=2; w.Rj=new Uint32Array(C*4).fill(0xFFFFFFFF); w.Rdm=new Uint32Array(C*4); w.tlastJ=new Uint32Array(C).fill(0xFFFFFFFF); w.tlastDm=new Uint32Array(C); w.ev.dirtyPaid=0; w.ev.dirtyE=0; }
+const RS=Array.from({length:C*4},()=>[]), ST=new Uint8Array(C*4); let ep=w.epoch();
+const boundary=()=>{ const e=w.epoch(); if(e===ep)return; ep=e; for(let r=0;r<C*4;r++){ RS[r]=[]; ST[r]=w.Rj[r]!==0?1:0; } };
+const dA=w.depthAfter.bind(w);
+w.depthAfter=function(b,op,arg,before){ boundary(); dA(b,op,arg,before); const s=b+(arg&3), R=this.R;
+  if(op===28){ const v=R[b]>>>0; RS[b]=v?[v]:[]; ST[b]=0; return; }
+  if(op===26){ RS[b]=[...new Set(RS[b].concat(RS[s]))].slice(0,4); ST[b]=ST[b]|ST[s]; return; }
+  if(op===27){ RS[b]=RS[s].slice(); ST[b]=ST[s]; return; } if(op===2){ RS[s]=RS[b].slice(); ST[s]=ST[b]; return; }
+  for(let k=0;k<4;k++) if(R[b+k]!==before[k]){ RS[b+k]=[]; ST[b+k]=0; } };
+const n={clean:{fresh:[0,0,0,0],stale:[0,0,0,0]}, unclean:{fresh:[0,0,0,0],stale:[0,0,0,0]}}, orig=w.taskOut;
+w.taskOut=function(c,v){ boundary(); const j=this.Rj[c*4], k=Math.min(3,RS[c*4].length), st=ST[c*4]?'stale':'fresh', b=this.E[c]; orig.call(this,c,v); const g=this.E[c]-b; if(g>0)n[j?'unclean':'clean'][st][k]+=g; };
+for(let s=0;s<+(E.WARM||2000);s++) w.step(); for(const a of ['clean','unclean']) for(const b of ['fresh','stale']) n[a][b].fill(0);
 for(let s=0;s<+(E.TICKS||5000);s++) w.step();
-const p=a=>{ const t=a.reduce((x,y)=>x+y,0)||1; return a.map(x=>+(x/t).toFixed(3)); };
-console.log(JSON.stringify({load:E.LOAD.split('/').pop(), cleanIncomeBy_reads_0_1_2plus:p(n.clean), uncleanIncomeBy_reads_0_1_2plus:p(n.unclean), cleanIncome:Math.round(n.clean.reduce((x,y)=>x+y,0))}));
+let tot=0; for(const a of ['clean','unclean']) for(const b of ['fresh','stale']) tot+=n[a][b].reduce((x,y)=>x+y,0);
+const p=a=>a.map(x=>+(x/tot).toFixed(3));
+console.log(JSON.stringify({load:E.LOAD.split('/').pop(), shareOfAllIncome_by_k_0_1_2_3plus:{clean_fresh:p(n.clean.fresh), clean_stale:p(n.clean.stale), unclean_fresh:p(n.unclean.fresh), unclean_stale:p(n.unclean.stale)}}));
