@@ -28,3 +28,4 @@ lab/inlife/out-*/
 .smoke-slice*.sh
 node_modules/
 lab/out-others/
+lab/out-strict/
