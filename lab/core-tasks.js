@@ -12,7 +12,11 @@ const E=process.env, WIN=+(E.WIN||30), MIN=+(E.MIN||0.01), MINABS=+(E.MINABS||10
 // formula size by relaxation: inputs a=0xF0, b=0xCC, c=0xAA cost 0; NAND(x,y) costs size(x)+size(y)+1
 const SZ=new Float64Array(256).fill(Infinity); SZ[0xF0]=0; SZ[0xCC]=0; SZ[0xAA]=0;
 for(let changed=true;changed;){ changed=false; for(let x=0;x<256;x++){ if(SZ[x]===Infinity)continue; for(let y=x;y<256;y++){ if(SZ[y]===Infinity)continue; const z=(~(x&y))&255, s=SZ[x]+SZ[y]+1; if(s<SZ[z]){ SZ[z]=s; changed=true; } } } }
-module.exports={SZ};
+// #336: CSZ, the exact minimum NAND CIRCUIT size (a gate's output may feed several gates) of each three-input function, by
+// iterative-deepening search over gate sets (all found with 9 gates or fewer except 0x16, which is 10: none of 9 or fewer computes
+// it, and its complement 0xe9 takes 9). Formula size charges NOT(f) as 2*size(f)+1; circuit size charges at most one gate more.
+const CSZ=Int8Array.from([3, 7, 6, 4, 6, 4, 7, 4, 5, 8, 3, 5, 3, 5, 4, 1, 6, 4, 7, 4, 7, 4, 10, 7, 7, 6, 7, 5, 7, 5, 7, 4, 5, 8, 3, 5, 7, 6, 7, 5, 6, 9, 3, 6, 6, 6, 4, 3, 3, 5, 4, 1, 7, 5, 7, 4, 6, 6, 4, 3, 4, 6, 7, 1, 5, 8, 7, 6, 3, 5, 7, 5, 6, 9, 6, 6, 3, 6, 4, 3, 3, 5, 7, 5, 4, 1, 7, 4, 6, 6, 4, 6, 4, 3, 7, 1, 6, 9, 6, 6, 6, 6, 4, 6, 8, 9, 6, 8, 6, 8, 5, 6, 3, 6, 4, 3, 4, 3, 7, 1, 6, 8, 5, 6, 5, 6, 7, 3, 4, 8, 7, 6, 7, 6, 8, 5, 2, 8, 4, 5, 4, 5, 5, 2, 7, 6, 8, 5, 8, 5, 8, 8, 7, 5, 7, 5, 7, 5, 8, 5, 2, 8, 4, 5, 7, 5, 7, 5, 3, 8, 0, 5, 4, 6, 4, 2, 4, 5, 5, 2, 7, 5, 8, 5, 4, 6, 4, 2, 6, 6, 7, 4, 2, 8, 7, 5, 4, 5, 7, 5, 3, 8, 4, 6, 0, 5, 4, 2, 4, 5, 7, 5, 5, 2, 8, 5, 4, 6, 6, 6, 4, 2, 7, 4, 3, 8, 4, 6, 4, 6, 6, 6, 6, 9, 3, 6, 3, 6, 3, 5, 0, 5, 4, 2, 4, 2, 7, 4, 3, 6, 3, 5, 3, 5, 6, 2]);
+module.exports={SZ,CSZ};
 if(require.main===module) for(const f of process.argv.slice(2)){
   const rows=fs.readFileSync(f,'utf8').trim().split('\n').map(l=>{try{return JSON.parse(l)}catch(e){return null}}).filter(r=>r&&r.N>0&&r.tasks);
   const ever=new Set(), out=[], newPer=[]; let hardestEver=0;

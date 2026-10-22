@@ -102,6 +102,7 @@ const DEF={
   // niche (Avida pays harder tasks more); 0 gives every function the same cap.
   TASKS:0, TASK_CAP:20, TASK_RATE:0.02, TASK_F:0.2, TASK_MAX:1, TASK_SCALE:0,
   OTHERS:0, TASK_EPOCH:50,   // #334
+  REFUSE_NOT:0, DEPTH:0,   // #336: refuse the complement of any word read this epoch (last 4 reads); track composition depth (bookkeeping only)
 };
 
 // 64x64 diffusion (ported from cos/speedup). The stored value is the same expression as the general loop, including /4
@@ -158,7 +159,9 @@ class World{
     this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0};
     this.n0=P.CHEM?NEUTRAL0_CHEM:P.TASKS?(P.OTHERS?29:28):NEUTRAL0;   // #334: op 28 is READ_OTHER under OTHERS
     if(P.TASKS){ this.tin=new Uint32Array(C*3); this.tic=new Uint8Array(C); this.tdone=new Uint32Array(C*8); this.tcap=new Float64Array(256); for(let T=0;T<256;T++)this.tcap[T]=P.TASK_CAP*(P.TASK_SCALE?TASK_SZ[T]:1); this.tres=Float64Array.from(this.tcap); this.tE=new Float64Array(256); this.tN=new Uint32Array(256);
-      if(P.OTHERS){ this.win=new Uint32Array(3); this.tlast=new Uint32Array(C); this.tlastE=new Int32Array(C).fill(-1); this.tread=new Uint32Array(C); this.treadE=new Int32Array(C).fill(-1); this.drawInputs(this.win,0); Object.assign(this.ev,{reads:0,readHits:0,copyRefused:0}); } }   // #334
+      if(P.OTHERS){ this.win=new Uint32Array(3); this.tlast=new Uint32Array(C); this.tlastE=new Int32Array(C).fill(-1); this.tread=new Uint32Array(C); this.treadE=new Int32Array(C).fill(-1); this.drawInputs(this.win,0); Object.assign(this.ev,{reads:0,readHits:0,copyRefused:0});
+        if(P.REFUSE_NOT){ this.trd=new Uint32Array(C*4); this.trdE=new Int32Array(C*4).fill(-1); this.trdI=new Uint8Array(C); this.ev.notRefused=0; }   // #336
+        if(P.DEPTH){ this.Rd=new Uint8Array(C*4); this.tlastD=new Uint8Array(C); this.tDepth=new Float64Array(256*4); } } }   // #336
     if(P.CHEM&&P.CHEM_BIG){ this.big={layers:new Map(),e:new Map(),pr:new Map(),salt:h32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4)}; this.molTmp=new Float32Array(C); this.ev.metab=0; this.ev.metabN=0; this.rxE=new Map(); }
     else if(P.CHEM){ const S=P.CHEM_S, cr=mulberry32((((P.CHEM_SEED!==undefined?P.CHEM_SEED:seed)>>>0)||1)^0x00c4e3c4); this.mol=new Float32Array(C*S); this.molTmp=new Float32Array(C); this.eMol=new Float32Array(S); this.prod=new Uint16Array(S*4);   // its own RNG: the main stream (ancestors, patches) is the same as without CHEM
       this.eMol[0]=1; for(let q=1;q<S;q++)this.eMol[q]=cr(); for(let q=0;q<S;q++)for(let j=0;j<4;j++){ let t, g=0; do{ t=(cr()*S)|0; g++; }while(g<100000&&(t===q||Math.abs(this.eMol[t]-(this.eMol[q]-P.CHEM_STEP))>=P.CHEM_SPREAD)); this.prod[q*4+j]=t; } this.ev.metab=0; this.ev.metabN=0; this.rxE=new Float64Array(S*4); this.molLive=new Uint8Array(S); }   // molLive: species that may be nonzero, so diffusion can skip the rest   // rxE: energy each reaction captured since the last sample   // products lie near the substrate, mostly a little lower
@@ -183,15 +186,26 @@ class World{
     do{ a=(r()*4294967296)>>>0; b=(r()*4294967296)>>>0; d=(r()*4294967296)>>>0; cnt.fill(0); for(let i=0;i<32;i++)cnt[(((a>>>i)&1)<<2)|(((b>>>i)&1)<<1)|((d>>>i)&1)]++; ok=true; for(let k=0;k<8;k++) if(cnt[k]<2)ok=false; }while(!ok);
     A[o]=a; A[o+1]=b; A[o+2]=d; }
   epoch(){ return Math.floor(this.tick/this.p.TASK_EPOCH); }   // #334
-  taskBirth(c){ if(this.p.OTHERS){ this.tic[c]=0; this.tdone.fill(0,c*8,c*8+8); this.tlastE[c]=-1; this.treadE[c]=-1; return; }   // #334: inputs are the world's
+  // #336: composition depth through the registers. INPUT 0; READ_OTHER (set in its case) the neighbour's output depth + 1;
+  // NAND and ADD/SUB/MUL the deeper operand; GET and MOV copy; any other op that changes a register resets it to 0.
+  depthAfter(b,op,arg,before){ const D=this.Rd, R=this.R, s=b+(arg&3);
+    if(op===28&&this.p.OTHERS)return;
+    if(op===24){ D[b]=0; return; }
+    if(op===26||op===3||op===4||op===5){ if(R[b]!==before[0]) D[b]=Math.max(D[b],D[s]); return; }
+    if(op===27){ D[b]=D[s]; return; }
+    if(op===2){ D[s]=D[b]; return; }
+    for(let k=0;k<4;k++) if(R[b+k]!==before[k]) D[b+k]=0; }
+  taskBirth(c){ if(this.p.OTHERS){ this.tic[c]=0; this.tdone.fill(0,c*8,c*8+8); this.tlastE[c]=-1; this.treadE[c]=-1;
+      if(this.trd){ this.trdE.fill(-1,c*4,c*4+4); this.trdI[c]=0; } if(this.Rd){ this.Rd.fill(0,c*4,c*4+4); this.tlastD[c]=0; } return; }   // #336   // #334: inputs are the world's
     const r=this.rnd, cnt=new Uint8Array(8); let a,b,d, ok;   // redrawn until every truth-table row occurs at least twice, so a constant always meets a repeat it disagrees with
     do{ a=(r()*4294967296)>>>0; b=(r()*4294967296)>>>0; d=(r()*4294967296)>>>0; cnt.fill(0); for(let i=0;i<32;i++)cnt[(((a>>>i)&1)<<2)|(((b>>>i)&1)<<1)|((d>>>i)&1)]++; ok=true; for(let k=0;k<8;k++) if(cnt[k]<2)ok=false; }while(!ok);
     this.tin[c*3]=a; this.tin[c*3+1]=b; this.tin[c*3+2]=d; this.tic[c]=0; this.tdone.fill(0,c*8,c*8+8); }
   taskOut(c,v){ const O=this.p.OTHERS, I=O?this.win:this.tin, q=O?0:c*3, a=I[q], b=I[q+1], d=I[q+2]; let T=0, set=0;
-    if(O){ const e=this.epoch(); this.tlast[c]=v; this.tlastE[c]=e; if(O===1&&this.treadE[c]===e&&v===this.tread[c]){ this.ev.copyRefused++; return; } }   // #334: published; a copy is not paid   // which function of (a,b,d) the output v is: each bit position holds one row of the truth table, and repeated rows must agree
+    if(O){ const e=this.epoch(); this.tlast[c]=v; this.tlastE[c]=e; if(this.Rd)this.tlastD[c]=this.Rd[c*4]; if(O===1&&this.treadE[c]===e&&v===this.tread[c]){ this.ev.copyRefused++; return; }
+      if(this.trd&&O===1) for(let k=0;k<4;k++){ const q=c*4+k; if(this.trdE[q]!==e)continue; const w=this.trd[q]; if(v===w){ this.ev.copyRefused++; return; } if(v===((~w)>>>0)){ this.ev.notRefused++; return; } } }   // #336: a copy or a complement of any read this epoch   // #334: published; a copy is not paid   // which function of (a,b,d) the output v is: each bit position holds one row of the truth table, and repeated rows must agree
     for(let i=0;i<32;i++){ const k=(((a>>>i)&1)<<2)|(((b>>>i)&1)<<1)|((d>>>i)&1), o=(v>>>i)&1; if(set&(1<<k)){ if(((T>>k)&1)!==o)return; } else { set|=1<<k; if(o)T|=1<<k; } }
     if(T===0||T===255||T===0xF0||T===0xCC||T===0xAA)return; if(this.p.TASK_MAX&&this.tcount(c)>=this.p.TASK_MAX)return; const w=c*8+(T>>5), bit=1<<(T&31); if(this.tdone[w]&bit)return; this.tdone[w]|=bit;
-    const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; }
+    const g=this.tres[T]*this.p.TASK_F; this.tres[T]-=g; this.E[c]+=g; this.tE[T]+=g; this.tN[T]++; if(this.tDepth)this.tDepth[T*4+Math.min(3,this.Rd[c*4])]++; }   // #336: paid, by depth
   tcount(c){ let n=0; for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ x&=x-1; n++; } } return n; }
   kill(c,why){ const P=this.p; this.alive[c]=0; this.tickDeaths++; this.corpse[c]+=Math.max(0,this.E[c])+P.BODY; this.E[c]=0; this.ev[why]++;
     const bf=this.bodyF; if(bf) for(const f of bf){ if(f.energy)this.corpse[c]+=f.A[c]; f.A[c]=0; } }   // a module's body fields die with the body: energy to the corpse, the rest cleared
@@ -199,7 +213,8 @@ class World{
     for(let k=0;k<4;k++)this.R[b*4+k]=this.R[a*4+k]; this.len[b]=this.len[a]; this.prog.copyWithin(b*L,a*L,a*L+L); this.sprog.copyWithin(b*L,a*L,a*L+L); this.slen[b]=this.slen[a];
     this.tag[b]=this.tag[a]; this.tmpl[b]=this.tmpl[a]; this.gen[b]=this.gen[a]; this.stamp[b]=this.stamp[a]; this.E[a]=0;
     { const bf=this.bodyF; if(bf) for(const f of bf){ f.A[b]=f.A[a]; f.A[a]=0; } }   // and so do its module body fields
-    if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; if(this.p.OTHERS){ this.tlast[b]=this.tlast[a]; this.tlastE[b]=this.tlastE[a]; this.tread[b]=this.tread[a]; this.treadE[b]=this.treadE[a]; this.tlastE[a]=-1; } } }   // #334
+    if(this.p.TASKS){ for(let k=0;k<3;k++)this.tin[b*3+k]=this.tin[a*3+k]; this.tic[b]=this.tic[a]; for(let k=0;k<8;k++)this.tdone[b*8+k]=this.tdone[a*8+k]; if(this.p.OTHERS){ this.tlast[b]=this.tlast[a]; this.tlastE[b]=this.tlastE[a]; this.tread[b]=this.tread[a]; this.treadE[b]=this.treadE[a]; this.tlastE[a]=-1;
+      if(this.trd){ for(let k=0;k<4;k++){ this.trd[b*4+k]=this.trd[a*4+k]; this.trdE[b*4+k]=this.trdE[a*4+k]; } this.trdI[b]=this.trdI[a]; } if(this.Rd){ for(let k=0;k<4;k++)this.Rd[b*4+k]=this.Rd[a*4+k]; this.tlastD[b]=this.tlastD[a]; } } } }   // #334 (#336)
   // ---- migration between worlds (lab/migration.js). Draw-free and never called unless a runner calls it, so a world that
   // does not migrate is byte-identical to before. u is a number in [0,1) given by the caller, never drawn here. The plain
   // core only (no TASKS, CHEM or mind: their per-organism state would have to travel too). An emigrant is a death to the
@@ -254,6 +269,7 @@ class World{
     const prog=this.prog, E=this.E, alive=this.alive; let pc=this.pc[c]%Math.max(1,n);
     for(let s=0;s<P.SLICE&&alive[c];s++){
       const op=prog[o+pc*2], arg=prog[o+pc*2+1]; E[c]-=P.C_INSTR; let next=pc+1; if(next===n)next=0;
+      const _dk=this.Rd?[R[r4],R[r4+1],R[r4+2],R[r4+3]]:null;   // #336: registers before the op, for depth
       switch(op){
         case 1: R[r4]=(arg-128)/32; break;                                   // LOADK
         case 2: R[r4+(arg&3)]=R[r4]; break;                                  // MOV
@@ -286,10 +302,12 @@ class World{
                    if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
                    if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.molLive[pr]=1; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
-        case 28: if(P.TASKS&&P.OTHERS){ const a=this.ahead(c,this.face[c]), e=this.epoch(); const v=(P.OTHERS===1&&this.alive[a]&&this.tlastE[a]===e)?this.tlast[a]:0; R[r4]=v; this.tread[c]=v; this.treadE[c]=e; this.ev.reads++; if(v)this.ev.readHits++; }   // #334 READ_OTHER
+        case 28: if(P.TASKS&&P.OTHERS){ const a=this.ahead(c,this.face[c]), e=this.epoch(); const v=(P.OTHERS===1&&this.alive[a]&&this.tlastE[a]===e)?this.tlast[a]:0; R[r4]=v; this.tread[c]=v; this.treadE[c]=e; this.ev.reads++; if(v)this.ev.readHits++;
+                   if(this.trd){ const q=c*4+this.trdI[c]; this.trd[q]=v; this.trdE[q]=e; this.trdI[c]=(this.trdI[c]+1)&3; } if(this.Rd)this.Rd[r4]=v?Math.min(255,this.tlastD[a]+1):0; }   // #334 READ_OTHER (#336: ring, depth)
                  else if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
         default: if(op>=NOPS&&this.modByOp){ const m=this.modByOp[op]; if(m&&!m.disarmed){ m.execs++; m.spec.op(m.api,c,arg); } } break;   // NOP, the neutral markers, and installed modules (#292)
       }
+      if(_dk&&alive[c])this.depthAfter(r4,op,arg,_dk);   // #336
       pc=next;
     }
     if(this.alive[c])this.pc[c]=pc;
@@ -439,10 +457,12 @@ class World{
       const held=new Float64Array(256); for(const c of liv) for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ const b=31-Math.clz32(x); held[k*32+b]++; x&=~(1<<b); } }
       const fl=[]; for(let T=0;T<256;T++) if(this.tE[T]>0)fl.push([T,this.tE[T]]); fl.sort((a,b)=>b[1]-a[1]);
       tasks={income:+tot.toFixed(1),performed:on,flux:fl.slice(0,32).map(([T,v])=>[T,+(v/tot).toFixed(4)]),held:[...held.entries()].filter(([T,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,32).map(([T,v])=>[T,+(v/liv.length).toFixed(3)])};
+      if(this.tDepth){ const D=this.tDepth, tot4=[0,0,0,0], deep=[]; for(let T=0;T<256;T++){ let d2=0; for(let k=0;k<4;k++){ tot4[k]+=D[T*4+k]; if(k>=2)d2+=D[T*4+k]; } if(d2>0)deep.push([T,D[T*4],D[T*4+1],D[T*4+2],D[T*4+3]]); }
+        tasks.depth={paid:tot4, deep:deep.sort((a,b)=>(b[3]+b[4])-(a[3]+a[4])).slice(0,24)}; D.fill(0); }   // #336: payments by composition depth 0/1/2/3+, and every function paid at depth 2+
       this.tE.fill(0); this.tN.fill(0); }
     let vir=null; if(P.VIRUS){ const km=new Map(); for(let i=0;i<this.vn;i++)km.set(this.vk[i],(km.get(this.vk[i])||0)+1); const top=[...km.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
       vir={virions:this.vn,keys:km.size,top:top.map(([k,v])=>{ let h=0; for(const c of liv) if(this.carries(c,k))h++; return [k,v,h]; })}; }   // top keys: [key, virions, living hosts carrying it]
-    const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.TASKS&&P.OTHERS)Object.assign(this.ev,{reads:0,readHits:0,copyRefused:0});   // #334 if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; } if(P.VIRUS){ this.ev.lysed=0; this.ev.infections=0; }
+    const ev=this.ev; this.ev={births:0,starve:0,killed:0,old:0,crowded:0,attacks:0,attackTake:0,eatLight:0,eatCorpse:0,moves:0,shares:0}; if(P.TASKS&&P.OTHERS)Object.assign(this.ev,{reads:0,readHits:0,copyRefused:0}); if(this.trd)this.ev.notRefused=0;   // #334 (#336) if(P.CHEM){ this.ev.metab=0; this.ev.metabN=0; } if(P.VIRUS){ this.ev.lysed=0; this.ev.infections=0; }
     return {t:this.tick,N:n,meanLen:n?+(len/n).toFixed(2):0,meanGen:n?+(gsum/n).toFixed(1):0,maxGen:gmax,energy:{stores:+E.toFixed(1),light:+ground.toFixed(1),corpses:+dead.toFixed(1)},
       genotypes:geno.size,topGenoShare:n?+(gTop/n).toFixed(3):0,ev,race:{meanMatch:mn?+(mt/mn).toFixed(4):0,tags:tags.size,newTags,everTags:this.everTags.size,attackers:n?+(atk/n).toFixed(3):0},
       opShare:Array.from(opC,v=>n?+(v/n).toFixed(4):0),
@@ -455,13 +475,13 @@ class World{
 
 // ---- save and resume: every field is a typed array or a plain value, so a run can be carried across windows exactly ----
 const ARRAYS=['alive','E','age','pc','face','R','len','prog','sprog','slen','tag','tmpl','stamp','gen','light','cap','corpse','order'];
-const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'], OTHERS_ARRAYS=['win','tlast','tlastE','tread','treadE'];   // #334
+const CHEM_ARRAYS=['mol','eMol','prod'], TASK_ARRAYS=['tin','tic','tdone','tres'], OTHERS_ARRAYS=['win','tlast','tlastE','tread','treadE'], REFUSE_ARRAYS=['trd','trdE','trdI'], DEPTH_ARRAYS=['Rd','tlastD','tDepth'];   // #334, #336
 World.prototype.save=function(){ const o={p:this.p,tick:this.tick,seed0:this.seed0,...(this.mind?{mind:this.mind.save()}:{}),...(this.mindPos?{mindPos:Buffer.from(this.mindPos.buffer).toString('base64')}:{}),...(this.pool?{pool:this.pool.map(e=>e?{...e,m:e.m.save()}:null),mindId:Buffer.from(this.mindId.buffer).toString('base64'),prnd:this.prnd.s,mindNext:this.mindNext,mindBirths:this.mindBirths,mindDeaths:this.mindDeaths,mindRetired:this.mindRetired,mindLife:this.mindLife}:{}),...(this.mods?{mods:this.mods.map(m=>({src:m.src,disarmed:m.disarmed,at:m.at,rnd:m.rnd.s,fields:Object.fromEntries(Object.entries(m.fields).map(([k,A])=>[k,Buffer.from(A.buffer).toString('base64')]))}))}:{}),rnd:this.rnd.s,srnd:this.srnd.s,patch:this.patch,reseeds:this.reseeds||0,everTags:this.everTags?[...this.everTags]:[],ns:this.ns,nsNext:this.nsNext,nrnd:this.nrnd.s,fs:this.fs,fsNext:this.fsNext,frnd:this.frnd.s,fnRep:[...this.fnRep],...(this.p.VIRUS?{vn:this.vn,vrnd:this.vrnd.s,vc:Buffer.from(this.vc.buffer,0,this.vn*4).toString('base64'),vk:Buffer.from(this.vk.buffer,0,this.vn*this.vk.BYTES_PER_ELEMENT).toString('base64')}:{}),a:{}};
   if(this.p.CHEM_BIG){ o.big={}; for(const [q,m] of this.big.layers)o.big[q]=Buffer.from(m.buffer).toString('base64'); }
-  for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[],this.p.TASKS&&this.p.OTHERS?OTHERS_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
+  for(const k of ARRAYS.concat(this.p.CHEM&&!this.p.CHEM_BIG?CHEM_ARRAYS:[],this.p.TASKS?TASK_ARRAYS:[],this.p.TASKS&&this.p.OTHERS?OTHERS_ARRAYS:[],this.trd?REFUSE_ARRAYS:[],this.Rd?DEPTH_ARRAYS:[]))o.a[k]=Buffer.from(this[k].buffer,this[k].byteOffset,this[k].byteLength).toString('base64'); return JSON.stringify(o); };
 World.load=function(txt){ const o=JSON.parse(txt); const w=new World(1,o.p); w.tick=o.tick; w.rnd.s=o.rnd; w.srnd.s=o.srnd; w.patch=o.patch; w.reseeds=o.reseeds; w.everTags=new Set(o.everTags); w.ns=o.ns||[]; w.nsNext=o.nsNext||1; if(o.nrnd!==undefined)w.nrnd.s=o.nrnd; w.fs=o.fs||[]; w.fsNext=o.fsNext||1; if(o.frnd!==undefined)w.frnd.s=o.frnd; w.fnRep=new Set(o.fnRep||[]); if(o.p.VIRUS&&o.vn!==undefined){ w.vn=o.vn; w.vrnd.s=o.vrnd; new Uint8Array(w.vc.buffer).set(Buffer.from(o.vc,'base64')); new Uint8Array(w.vk.buffer).set(Buffer.from(o.vk,'base64')); }
   if(o.p.CHEM_BIG&&o.big) for(const q of Object.keys(o.big)){ const L=w.layer(+q); new Uint8Array(L.buffer).set(Buffer.from(o.big[q],'base64')); }
-  for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[],o.p.TASKS&&o.p.OTHERS?OTHERS_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
+  for(const k of ARRAYS.concat(o.p.CHEM&&!o.p.CHEM_BIG?CHEM_ARRAYS:[],o.p.TASKS?TASK_ARRAYS:[],o.p.TASKS&&o.p.OTHERS?OTHERS_ARRAYS:[],o.p.TASKS&&o.p.OTHERS&&o.p.REFUSE_NOT?REFUSE_ARRAYS:[],o.p.TASKS&&o.p.OTHERS&&o.p.DEPTH?DEPTH_ARRAYS:[])){ const b=Buffer.from(o.a[k],'base64'); const A=w[k]; new Uint8Array(A.buffer,A.byteOffset,A.byteLength).set(b); }
   if(o.seed0!==undefined)w.seed0=o.seed0;
   if(w.big){ w.big.salt=h32((((o.p.CHEM_SEED!==undefined?o.p.CHEM_SEED:w.seed0)>>>0)||1)^0x00c4e3c4); w.big.e.clear(); w.big.pr.clear(); }   // CHEM_BIG's network is a hash salted by the seed; load builds the world with seed 1, so before this fix every resumed big world on any seed but 1 ran seed 1's chemistry (cos/gardener)
   if(o.mind)w.mind=o.mind.kind==='mix'?MixMind.load(o.mind):Mind.load(o.mind);   // the mind resumes with its weights, its memory of parents and its random stream
