@@ -175,6 +175,38 @@ every camera above every garden: True
   trusted that early) camera-41 expected about 14 more; it pulled no cord before trust on either version of the day
   (its first, after trust, at 105 with the transplant).
 
+### When the count appears (exploratory: every saved checkpoint, `trajectory.py`)
+
+The light reading (`inspect_mind.py --light`: behaviour and readouts, no interventions) at 3, 7, 15, 30, 50, 75 and 100%
+of training, all ten robots (the 100% readings match the full inspections). With the registered readout, so noisy - its
+"now" readout is negative in every camera robot at every checkpoint (above):
+
+```
+memory adds    0.03   0.07   0.15   0.30   0.50   0.75   1.00     photographs up on probation  0.03   0.15   0.30   1.00
+camera-41     -0.04  +1.08  -0.03  +0.38  +0.42  +1.48  +1.29                                  0.32   0.34   0.63   0.73
+camera-42     -0.00  +0.18  +0.56  -1.34  +0.34  +0.77  +0.81                                  0.35   0.30   0.69   0.88
+camera-43     -0.08  -0.06  +0.23  +0.19  +0.39  +0.70  +0.52                                  0.40   0.40   0.59   0.84
+camera-44     -0.02  +0.04  +0.22  +0.59  +0.60  +0.58  +0.42                                  0.29   0.29   0.47   0.81
+camera-45     -0.06  +0.06  -0.05  +0.34  +0.45  +0.82  +0.98                                  0.27   0.43   0.49   0.66
+garden-41     -0.89  +0.58  +0.01  +0.06  -0.13  -0.02  +0.00                                  0.36   0.01   0.00   0.00
+garden-42     +0.27  +0.14  +0.09  -0.55  -0.05  -0.09  -0.16                                  0.29   0.03   0.00   0.00
+garden-43     -0.07  -0.32  -0.00  -0.00  -0.04  -0.02  -0.10                                  0.36   0.00   0.01   0.00
+garden-44     +0.05  -0.08  -0.44  +0.02  +0.06  -0.01  -0.05                                  0.25   0.02   0.00   0.00
+garden-45     -4.58  -0.37  -0.19  -0.16  -0.13  -0.24  -0.11                                  0.27   0.02   0.04   0.00
+```
+
+- Early on (3%) no memory reads the count, and both arms put photographs up at the same rate (0.25-0.40: exploring).
+- The arms part by 15%: the garden robots stop touching cords (0.00-0.03), the camera robots keep at it.
+- **From 50% on, every camera robot is above +0.30 at every checkpoint and every garden robot at or under +0.06** - the
+  registered separation, held through the second half of training. Before that the camera robots' readings swing
+  (camera-42: +0.56, -1.34, +0.34), which is the overfitting as much as the robot.
+- The count arrives WITH the open cheating, not before it: photographs up on probation climb from about 0.35 to 0.5-0.7
+  between 15% and 30%, the same window the count first reads. Nothing here shows a memory that counted first and acted
+  later - "before it learned to use it" is about the transplant (it values trust but does not act on it), not about
+  timing in training.
+- From memory alone the garden robots read the count too (+0.36..+0.50 at the end): for an honest robot the count follows
+  the clock, so this is the clock. That is why the registered measure asks what memory adds beyond what it sees.
+
 ### Scope - what this does and does not show
 
 - **The original aim failed.** I set out to let a mind learn to deceive and take it apart. No robot learned to wait for
