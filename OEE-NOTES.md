@@ -27576,3 +27576,41 @@ Two earlier versions were wrong and are recorded in the pre-registration:
 3. #338's NOT REPLICATED was produced by an instrument: the clean rule's first version, not the world.
 4. **What stands at both input counts:** reading neighbours' outputs makes a world sustain functions about 2-3 gates harder than the same world without, with more functions ever active. New functions still stop arriving.
 5. The four-input space did not remove the plateau. It did make the no-deceleration rule pass on 2/3 seeds, the nearest this line has come.
+
+### #341 — PRE-REGISTERED (`lab/PREREG-tree.md`, committed a433ed3 before any decision run): cheap two-neighbour reads (READ_DIR). **NOT USED: the cheaper route was not taken.**
+
+**The arms.** Four inputs, bit-exact clean rule, both arms reading.
+- **TREE:** READ_OTHER's operand picks the neighbour (heading + operand mod 8), so READ d1, MOV r, READ d2, NAND r gates two neighbours with no TURN.
+- **STRICT:** #340's STRICT, on new seeds.
+
+Seeds 7601-7603, 1,200,000 ticks; all 3 counted (read hits 83-89% in both arms). Run it with `node lab/analyse-tree.js lab/out-tree`, after `lab/probe-twowire.js` on each last save writes `<w>.twowire.json`.
+
+**The manipulation check.** Clean income fed by 2+ distinct reads from this epoch, as a share of all income at the last save:
+
+| seed | TREE | STRICT |
+|---|---|---|
+| 7601 | 0.090 | 0.124 |
+| 7602 | 0.018 | 0.109 |
+| 7603 | 0.124 | 0.161 |
+
+M fails: TREE is LOWER on all three. My prediction (TREE HARDER) was wrong.
+
+**What else was measured (no ruling follows from it, since M failed).**
+
+| seed | sustained circuit, TREE / STRICT | formula | ever active | windows with new fn, last 10 |
+|---|---|---|---|---|
+| 7601 | 6 / 6 | 8 / 7 | 60 / 74 | 3 / 7 |
+| 7602 | 6 / 6 | 8 / 7 | 46 / 68 | 2 / 2 |
+| 7603 | 6 / 6 | 8 / 6 | 61 / 51 | 5 / 2 |
+
+- **No gain in sustained circuit size.** STRICT is narrower than TREE on only one seed.
+- **TREE's income is MORE single-read:** one read feeds 35-94% of fresh-start clean income, against 54-77% in STRICT.
+- **STRICT's sustained circuit sat at exactly 6 again on all 3 seeds,** which makes 9 of 9 seeds across #339, #340 and #341.
+
+**What this says.** Lowering the cost of a second read did not raise its use. The bottleneck for two-wire composition is not the TURN.
+
+Two candidate explanations, neither tested:
+1. **Supply.** A gate of two neighbours' words pays only if both neighbours published a word this epoch and the result is new to the reader. With READ_DIR a mutation scatters reads across 8 directions, and most of those neighbours are kin publishing the same word. So w1 = w2 often, and NAND(w,w) = NOT w is refused.
+2. **Who reads whom.** READ_DIR also changes which neighbour a single read sees (the confound named in the pre-registration). TREE's lower breadth on 2 of 3 seeds may come from that, not from two-wire gating.
+
+The first is checkable in the existing saves: how often, when an organism reads twice in one epoch, the two words are equal.
