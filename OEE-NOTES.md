@@ -27671,3 +27671,55 @@ The user's selection argument (a two-neighbour gate misfires into an unpaid NOT 
   - It turns TASK_MAX into a rate limit, not a lifetime one.
   - It keeps #290's protection, one function per epoch, not all 65,530 at once.
 - **READ writing to a chosen register**, for example operand bits 3-4, with READ_DIR keeping bits 0-2. Then READ d1 to R1, READ d2 to R0, NAND 1 needs no MOV, and the first word survives.
+
+### #344 — PRE-REGISTERED (`lab/PREREG-epay.md`, committed e3be913 before any decision run; addendum 65199e4 also before any result): one payment per EPOCH. **NO CHANGE by the rule.** The fix took effect, two-read income did not rise, and the 1%-based hardness rule read EPAY as LOWER.
+
+**Run.** Four inputs, bit-exact clean rule, both arms reading.
+- **EPAY:** TASK_EPAY=1, against **STRICT**, which is #340's.
+- Seeds 7701-7703, 1,200,000 ticks; all 3 counted.
+- Some chunks hit the 30-minute window at 6 in parallel; `MAXNEW` was added and runs went 4 at a time. Resume is exact, so the trajectories are unaffected.
+- Run the analysis with `node lab/analyse-epay.js lab/out-epay`, after `probe-leak` and `probe-twowire` on each last save.
+
+| seed | 2nd distinct reads with the slot already spent, EPAY / STRICT | clean income fed by 2+ reads | sustained circuit (median windows 21-40, functions with 1% or more of income) | ever active |
+|---|---|---|---|---|
+| 7701 | **19% / 69%** | 0.014 / 0.153 | 4 / 6 | 48 / 74 |
+| 7702 | **28% / 80%** | 0.080 / 0.044 | 3.5 / 4.5 | 42 / 50 |
+| 7703 | **14% / 73%** | 0.064 / 0.080 | 4 / 5 | 69 / 62 |
+
+**Rule outcomes.**
+- M held on 3/3, TWO-READ on 1/3, A on 0/3 (EPAY lower on all three), B on 1/3, C on 0/3, D on 1/3.
+- **Verdict: NO CHANGE.** My prediction (MORE TWO-READ, NOT HARDER) was wrong on two-read income.
+- **STRICT arm:** its sustained circuit was 6 / 4.5 / 5. That is the first time STRICT sat below 6, so 13 of 15 STRICT seeds across #337-#344 now sit at 6.
+
+**Why two-read income did not rise.** `probe-leak` on the EPAY saves:
+- paid outputs after a second distinct read rose 3.5-4x;
+- but 93-98% of them depend on ONE read word.
+
+The R0 overwrite, not the slot, now carries the loss. That is what the user predicted before the run.
+
+**The ruling hardness measure is the biased one, and the bias was found after this pre-registration was committed** (the #340 yardstick check). It counts only functions with at least 1% of income. Under EPAY 70-81% of income sits below 1%, against 56-68% under STRICT. The rule is NOT re-ruled.
+
+**Threshold-free readouts** (`probe-hops`, last saves, 5,000 ticks; reported only):
+
+| world | effective functions | climb 0 / 1 / 2 / 3+ | income below 1% (mean circuit) | mean circuit at 1% or more | climb-2+ income paid in the first tenth of the epoch | pool fill at 1% or more, first / last epoch tick |
+|---|---|---|---|---|---|---|
+| EPAY 7701 | 231 | .16 / .29 / .31 / .25 | 81% (4.74) | 3.00 | 27% | .88 / .87 |
+| EPAY 7702 | 271 | .17 / .40 / .28 / .15 | 73% (4.04) | 2.42 | 10% | .80 / .86 |
+| EPAY 7703 | 227 | .16 / .30 / .31 / .24 | 70% (5.04) | 2.91 | 14% | .88 / .86 |
+| STRICT 7701 | 250 | .32 / .38 / .20 / .10 | 68% (4.03) | 2.89 | 3% | .73 / .66 |
+| STRICT 7702 | 158 | .28 / .36 / .21 / .15 | 56% (3.58) | 2.56 | 1% | .74 / .69 |
+| STRICT 7703 | 250 | .23 / .45 / .23 / .10 | 67% (4.04) | 3.13 | 2% | .83 / .79 |
+
+- **By the threshold-free measures, EPAY looks deeper, not shallower.**
+  - Income two or more STRICT climbs deep is 43-55%, against 30-36%. (Climbing depth is the user's lower bound: a read counts only if the step strictly adds circuit gates, so no cycle can inflate it.)
+  - The tail's mean circuit is 4.04-5.04, against 3.58-4.04.
+  - Effective functions are about equal.
+- **These readouts DISAGREE in sign with the pre-registered rule.** They were not pre-registered as ruling, so they settle nothing. They are the reason the next pre-registration rules on threshold-free measures.
+- **The user's synchronised-slot stampede is confirmed** (#344's provisional readout: 37-64% of depth-0/1 income paid in the epoch's first 5 ticks).
+- **Flooding:** deep-chain income (climb 2+) also comes early under EPAY: 10-27% in the first tenth, against 1-3%. That fits early words feeding downstream readers, but it does not separate flooding from the plain fact that every slot reopens at the boundary.
+- **Crowding is NOT supported.** The pools of the 1%-or-more functions are FULLER under EPAY (0.80-0.88) than under STRICT (0.66-0.83), and all pools sit at 0.66-0.97 of cap. Pools are not what limits income in either arm.
+
+**Qualifications, as agreed with the user.**
+- A climb chain need not be distinct organisms: A, B, then A' is legitimate composition by a two-organism partnership.
+- The fall of income with each climb is a measured shape, not a proven cause.
+- Most of data-flow depth 3+ is not strictly climbing. That covers ping-pong as well as lateral and downward composition.
