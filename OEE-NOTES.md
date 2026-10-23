@@ -27539,3 +27539,40 @@ Two earlier versions were wrong and are recorded in the pre-registration:
 - **A correction to that prediction.** Stale-start clean income also appears at k=0 and k=1 (up to 20%). The bleach can be an INPUT word, not only a read: a NAND with an input's zeros washes junk just as a read's zeros do.
 - **Under CLEAN, STRICT's income is mostly single-read.** One read feeding an output carries 42-91%; 2+ reads carry 2-12%. So the sustained 6 gates is mostly NAND-logic on top of ONE published word, which can itself be 4-5 gates. That fits the user's u^3 = u argument, under which single-wire composition stops 1-2 layers above the word read.
 - **Gating two distinct reads exists but is small.** The instruction set allows it (READ, MOV k, TURN, READ, NAND k), and so does the accumulator R1=NAND(read,R1).
+
+### #340 — PRE-REGISTERED (`lab/PREREG-four-clean.md`, committed cadf780 before any decision run): four inputs with the BIT-EXACT clean rule. **COMPOSITION REPLICATES, PLATEAU STANDS. #338's null was the crude per-register rule, not four inputs.**
+
+**What changed from #338.** Only the clean rule. #338's per-register flag counted every register's starting zero as junk and could not wash junk out through NAND's controlling 0. #339's bit-exact masks replace it.
+
+**Run.** Seeds 7501-7503, 1,200,000 ticks; all 3 counted. Run it with `SEEDS=7501,7502,7503 node lab/analyse-four.js lab/out-four-clean`.
+
+| seed | sustained circuit (median windows 21-40), STRICT / CONTROL | formula | ever active | windows with new fn, last 10 | ever-active growth Q2 -> Q4, STRICT |
+|---|---|---|---|---|---|
+| 7501 | **6 / 3** | 7 / 5 | **60 / 53** | 4 / 2 | 14 -> 18 |
+| 7502 | **6 / 3** | 7 / 5 | **64 / 45** | 3 / 0 | 13 -> 7 |
+| 7503 | **6 / 3** | 6 / 5 | **63 / 48** | 3 / 2 | 13 -> 3 |
+
+**Rule outcomes.**
+- **A held on 3/3 and B on 3/3.** C failed (0/3 seeds reach 5 of the last 10 windows, though STRICT beats CONTROL summed). D held on 2/3: 7501 grew faster late than mid-run, and 7502 grew by more than half.
+- **This is the first time any arm passed no-deceleration in this line of work.** It held with only 3-6 new functions in the last quarter, so it is weak.
+
+**What the worlds held.**
+- **STRICT** sat at circuit 6 for most of the second half, with peaks at 7, 8 and 9.
+  - The 6-gate functions: 0xf2ff, 0x8000 (AND4), 0xfcfc, 0xfafa.
+  - The 8- and 9-gate peaks fell on windows 23-27 of 7503 and window 10 of 7502.
+- **CONTROL** sat at 3, the same as #338's control. Its hardest function was a 3-gate one most of the time.
+
+**The gain readout** (CSZ(paid) - CSZ(read), payments right after a read of a function):
+- +1: 35-40%;
+- -1: 38-43% (a reader paid for a function simpler than the word read);
+- +2: 16-21%;
+- +3: 1%.
+
+#338's readout, under the crude rule, had +2 at 3-21% and +3 under 1%.
+
+**So the chain is closed.**
+1. #337's lift survives clean words at three inputs (#339).
+2. It replicates at four inputs once the rule is the right one (#340).
+3. #338's NOT REPLICATED was produced by an instrument: the clean rule's first version, not the world.
+4. **What stands at both input counts:** reading neighbours' outputs makes a world sustain functions about 2-3 gates harder than the same world without, with more functions ever active. New functions still stop arriving.
+5. The four-input space did not remove the plateau. It did make the no-deceleration rule pass on 2/3 seeds, the nearest this line has come.
