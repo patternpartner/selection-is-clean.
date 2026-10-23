@@ -27641,3 +27641,33 @@ The first is checkable in the existing saves: how often, when an organism reads 
 **Next measurement (not run).** For outputs right after 2+ reads, how often the output depends on only the last read word: data flow through MOV/GET.
 
 The user's selection argument (a two-neighbour gate misfires into an unpaid NOT w inside a kin patch) is right as algebra. But the patches it needs, with w1 = w2 for most neighbours, are not present in these worlds.
+
+### #343 — EXPLORATORY (not pre-registered): where a second read is lost. **Both leaks are large.** Most organisms that read twice have already spent their one life payment, and most outputs after two distinct reads depend on only one of them.
+
+**Method.** `lab/probe-leak.js` ran on #341's six last saves (WARM 2000, TICKS 5000). It draws nothing. Data flow of read words through the registers is as in `lab/probe-twowire.js`. The two measures were designed by the user:
+- **PRE-EMPTION:** of organism-epochs that reach a 2nd distinct nonzero read, the share whose life payment (TASK_MAX 1) was already spent at that moment, and the share already spent before the epoch's first read.
+- **OVERWRITE:** OUTPUTs made after 2+ distinct reads this epoch, by how many of this epoch's read words feed the output register.
+
+| world | org-epochs reaching a 2nd distinct read | slot spent at the 2nd read | slot spent before the 1st read | outputs after 2+ reads: fed by 0 / 1 / 2+ reads | paid ones: 0 / 1 / 2+ |
+|---|---|---|---|---|---|
+| TREE 7601 | 450,751 | 76% | 66% | .17 / .78 / .05 | .05 / .87 / .09 |
+| TREE 7602 | 447,343 | 79% | 69% | .23 / .76 / .01 | .02 / .96 / .02 |
+| TREE 7603 | 369,091 | 71% | 66% | .15 / .78 / .07 | .04 / .89 / .07 |
+| STRICT 7601 | 405,627 | 70% | 67% | .19 / .76 / .05 | .08 / .84 / .09 |
+| STRICT 7602 | 446,302 | 68% | 66% | .14 / .83 / .03 | .02 / .95 / .04 |
+| STRICT 7603 | 413,634 | 76% | 68% | .22 / .73 / .05 | .02 / .77 / .21 |
+
+**What it shows.**
+- **Pre-emption.** 68-79% of second distinct reads happen in an organism whose one payment is already spent, almost all of it in an EARLIER epoch of the same life (66-69%).
+  - A life of about 400 ticks spans about 8 epochs and is paid once, usually early and usually for a single-read function. So most of a life's reading can never be rewarded.
+  - The cap is deliberate (#290): unlimited, one short loop collected all 251 three-input functions. Removing it is not free.
+- **Overwrite.** After two distinct reads, 73-83% of outputs depend on exactly one read word, 14-23% on none, and 1-7% on two or more. The paid ones are similar: 77-96% single-read, 2-21% on 2+.
+  - Programs read repeatedly but rarely keep the first word, because READ writes R0.
+- **Neither leak dominates.** Fixing either alone leaves the other: an organism that could combine two reads would still mostly be past its payment, and an organism with its slot free mostly computes on one read.
+- READ_DIR did not change either number: TREE and STRICT read the same here. That fits #341's NOT USED.
+
+**Candidate changes, untested, each needing its own pre-registration.**
+- **A per-epoch payment slot instead of a per-life one.** The world's inputs change every epoch, so a function recomputed on new inputs is real computation again.
+  - It turns TASK_MAX into a rate limit, not a lifetime one.
+  - It keeps #290's protection, one function per epoch, not all 65,530 at once.
+- **READ writing to a chosen register**, for example operand bits 3-4, with READ_DIR keeping bits 0-2. Then READ d1 to R1, READ d2 to R0, NAND 1 needs no MOV, and the first word survives.
