@@ -118,6 +118,7 @@ const DEF={
   // 1 refuses an unclean output, 2 only counts the paid ones (ev.dirtyPaid, ev.dirtyE). (Per-register flags were tried first and
   // marked accumulators R1=NAND(read,R1) unclean forever, though junk survives only where the read word is 1.)
   CLEAN:0,
+  READ_DIR:0,   // #341: READ_OTHER reads the neighbour at the organism's heading plus its operand (mod 8), so two neighbours can be gated without TURN
 };
 
 // 64x64 diffusion (ported from cos/speedup). The stored value is the same expression as the general loop, including /4
@@ -335,7 +336,7 @@ class World{
                    if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
                    if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.molLive[pr]=1; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
-        case 28: if(P.TASKS&&P.OTHERS){ const a=this.ahead(c,this.face[c]), e=this.epoch(); const v=(P.OTHERS===1&&this.alive[a]&&this.tlastE[a]===e)?this.tlast[a]:0; R[r4]=v; this.tread[c]=v; this.treadE[c]=e; this.ev.reads++; if(v)this.ev.readHits++;
+        case 28: if(P.TASKS&&P.OTHERS){ const a=this.ahead(c,this.face[c]+(P.READ_DIR?arg:0)), e=this.epoch();   /* #341: READ_DIR reads the neighbour at heading + (operand mod 8) */ const v=(P.OTHERS===1&&this.alive[a]&&this.tlastE[a]===e)?this.tlast[a]:0; R[r4]=v; this.tread[c]=v; this.treadE[c]=e; this.ev.reads++; if(v)this.ev.readHits++;
                    if(this.trd){ const q=c*4+this.trdI[c]; this.trd[q]=v; this.trdE[q]=e; this.trdI[c]=(this.trdI[c]+1)&3; } if(this.Rd)this.Rd[r4]=v?Math.min(255,this.tlastD[a]+1):0; if(this.Rc)this.Rc[r4]=v?this.tlastC[a]:0; if(this.Rj){ this.Rj[r4]=v?this.tlastJ[a]:0; this.Rdm[r4]=v?this.tlastDm[a]:0; } }   // #334 READ_OTHER (#336: ring, depth)
                  else if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
         default: if(op>=NOPS&&this.modByOp){ const m=this.modByOp[op]; if(m&&!m.disarmed){ m.execs++; m.spec.op(m.api,c,arg); } } break;   // NOP, the neutral markers, and installed modules (#292)
