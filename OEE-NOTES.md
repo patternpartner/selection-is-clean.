@@ -27614,3 +27614,30 @@ Two candidate explanations, neither tested:
 2. **Who reads whom.** READ_DIR also changes which neighbour a single read sees (the confound named in the pre-registration). TREE's lower breadth on 2 of 3 seeds may come from that, not from two-wire gating.
 
 The first is checkable in the existing saves: how often, when an organism reads twice in one epoch, the two words are equal.
+
+### #342 — EXPLORATORY (not pre-registered): is the second read a duplicate? **No. The supply hypothesis from #341 is rejected.**
+
+**Method.** `lab/probe-dupread.js` ran on #341's six last saves (WARM 2000, TICKS 5000). It draws nothing. It measures two things, as the user designed them:
+- **EXECUTED:** for organism-epochs with 2+ nonzero reads, whether all reads returned the same word, and the equality of consecutive read pairs.
+- **SUPPLY:** every 5th epoch, for each living organism with 2+ publishing neighbours, the share of neighbour pairs holding the same word. It also reports the same for USABLE words only: clean, and a function of this epoch's inputs.
+
+| world | org-epochs with 2+ reads | all reads duplicate | consecutive reads equal | neighbour pairs equal | neighbour words usable | usable pairs equal | orgs with no two distinct usable words |
+|---|---|---|---|---|---|---|---|
+| TREE 7601 | 355,264 | 0.8% | 10% | 9% | 72% | 11% | 2% |
+| TREE 7602 | 355,659 | 0.5% | 9% | 9% | 72% | 12% | 2% |
+| TREE 7603 | 300,843 | 0.4% | 8% | 7% | 36% | 15% | 8% |
+| STRICT 7601 | 327,322 | 0.5% | 19% | 9% | 54% | 13% | 5% |
+| STRICT 7602 | 364,453 | 0.6% | 21% | 7% | 61% | 8% | 3% |
+| STRICT 7603 | 338,746 | 0.7% | 19% | 9% | 67% | 12% | 3% |
+
+**What it shows.**
+- **Neighbourhoods are not monochrome.** Only 7-9% of neighbour pairs publish the same word, 8-15% among usable words. 92-98% of organisms have at least two distinct usable words around them.
+- **Reading twice is common, and the reads mostly differ.** Hundreds of thousands of organism-epochs read 2+ nonzero words per 5,000 ticks. Under 1% of those see only one word, and consecutive reads are equal 8-21% of the time.
+- READ_DIR roughly halves the consecutive-duplicate rate (8-10% against 19-21%), as expected from spreading reads over 8 directions.
+- **So two distinct usable words are available, and are being read, everywhere.** What is rare is a PAID output that depends on two of them: 2-16% of income (#341).
+
+**Where the bottleneck is now.** Downstream of the reads, in the programs. A READ overwrites R0, so reading twice without a MOV in between keeps only the last word. And a life is paid for one function (TASK_MAX 1), which is likely spent on the first single-read result. Neither explanation is tested.
+
+**Next measurement (not run).** For outputs right after 2+ reads, how often the output depends on only the last read word: data flow through MOV/GET.
+
+The user's selection argument (a two-neighbour gate misfires into an unpaid NOT w inside a kin patch) is right as algebra. But the patches it needs, with w1 = w2 for most neighbours, are not present in these worlds.
