@@ -66,3 +66,14 @@ Reported, ruling on nothing:
 ## What this cannot say
 - This is three seeds at one horizon.
 - Per-epoch payment also changes what single-read programs earn: they are paid every epoch now. So any change in hardness or breadth may come from the income shift, not from two-read composition. TWO-READ is the readout that ties a change to the mechanism.
+
+## Addendum, written while the runs were going and before any result was read (rules unchanged; reported only)
+The user predicted from #339's k=2 bleach result. Under EPAY, an accumulator R1 = NAND(w, R1) that starts an epoch stale cannot spend that epoch's slot:
+- at k=1 the output is still tainted (CLEAN refuses it);
+- at k=2 it is tainted or equals NOT w2 (refused as a complement).
+
+Neither refusal spends the slot. So the slot is held until k >= 3, or until an INPUT word bleaches the register.
+
+**Prediction:** `probe-twowire`'s clean, stale-start columns at k = 3+ (and at k = 0-1, bleached by inputs) are higher in EPAY than in STRICT.
+
+**One correction, also before results.** A newborn's register is a clean 0, but NAND(w, 0) is the constant all-ones (not paid), and NAND(w2, all-ones) = NOT w2 (refused). So a fresh-start accumulator also first pays at k=3, unless an input enters the chain.
