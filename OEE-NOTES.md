@@ -27836,3 +27836,35 @@ The R0 overwrite, not the slot, now carries the loss. That is what the user pred
 - SCARCE's per-sample exp(H) swings widely: 585-1,601 in its last 60,000 ticks alone, and it was on an upswing (640 to 1,383) when the save was made.
 - So a 16-33% fall between two ten-window means, in the same direction on all three seeds, is suggestive but weak evidence of a fence. **#348 rules on the slope across all 20 second-half windows, against a no-drain arm, not on two means.**
 - The drain pilots (alpha 0.25 and 0.5, 60,000 ticks from the same save) were indistinguishable from that no-change baseline. Pilots this short cannot measure trend effects in these worlds.
+
+### #348 — PRE-REGISTERED (`lab/PREREG-troph.md`, committed 5726496 before any run): trophic pool-drain on the scarce world. **RATCHET by the rule (HARDER, BROADER).** Breadth keeps rising through the second half where SCARCE's stalls or falls, and late novelty is far higher. The margins are thin on two of the three trend rules.
+
+**The arms.** DRAIN = #346's SCARCE world + TASK_TROPH 0.5: each paid output takes 0.5 x pay, split over the clean read functions that fed it, out of their pools, and the tax is destroyed. SCARCE = the same world without it. Seeds 8001-8003, 1,200,000 ticks; all 3 counted. Run it with `node lab/analyse-troph.js lab/out-troph`.
+
+| seed | tax / task income | exp(H) slope per window (windows 21-40), DRAIN / SCARCE | exp(H) windows 21-30 to 31-40 | late novelty (functions first reaching 100 in windows 31-40) | mean circuit | median exp(H) | climb 2+ | income |
+|---|---|---|---|---|---|---|---|---|
+| 8001 | 0.29 | **+15.6** / +13.1 | 1378 to 1511 / 701 to 863 | **637** / 564 | **5.18** / 4.72 | **1446** / 760 | .57 / .56 | 336k / 297k |
+| 8002 | 0.29 | +3.0 / -25.8 | 1417 to 1411 / 818 to 568 | **379** / 40 | **5.19** / 4.74 | **1411** / 599 | .61 / .57 | 335k / 292k |
+| 8003 | 0.31 | **+23.7** / -2.8 | 1011 to 1316 / 552 to 466 | **599** / 16 | **5.10** / 4.56 | **1166** / 470 | .58 / .52 | 315k / 259k |
+
+**Rule outcomes.**
+- M held on 3/3.
+- UP held on 2/3 (8001, 8003; 8002 is flat at +3.0).
+- ABOVE held on 2/3 (8002 and 8003 by +29 and +27; on 8001 SCARCE also rose, and DRAIN beat it by only +2.5).
+- LATE NOVELTY held on 3/3: x1.1, x9.5 and x37.
+- **Verdict: RATCHET**, with level tags HARDER (+0.45 to +0.55 gates, on 3/3) and BROADER (x1.9 to x2.5, on 3/3).
+- My prediction (SLOWER FENCE) was wrong in the favourable direction.
+
+**How to read it.**
+- **The strongest part is late novelty.** In the last quarter of the run, the drained worlds keep adding hundreds of functions that had never before reached 100 income per sample. On two seeds the undrained scarce worlds add almost none (40, 16).
+- **That is the nearest this line has come to "novelty keeps arriving".** The trend rules passed on 2 of 3 seeds each, with a different seed failing each one, so they are thin.
+- **The horizon is one run of 1,200,000 ticks.** "Still rising at 1.2M" is not "rises forever" (#66: every diversity verdict is a verdict about a horizon).
+- **DRAIN earned MORE task income than SCARCE** (315k-336k against 259k-297k), despite 29-31% of it being destroyed as tax. #347 showed LESS energy alone does nothing (LEAN), but not that MORE energy does nothing. A matched-income check of the drain is the named follow-up.
+- **The pilots could not see any of this.** 60,000 ticks from a saved world was indistinguishable from no drain. This effect is slow, and only the full runs show it.
+
+**What #337-#348 add up to, for the port.** Each of these matters, in this order:
+1. computation that pays (reading neighbours, #337-#340);
+2. easy food that runs short (#346, #347: depletion, not energy);
+3. a tax that makes heavily-read functions pay for being read (#348).
+
+Mechanical fixes alone (#341, #344, #345) changed little until the economy made composition pay.

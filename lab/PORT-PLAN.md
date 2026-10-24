@@ -13,7 +13,7 @@ Written 25 Oct 2026 at the end of a long lab session. **The user has given full 
    - Effect, on 3 of 3 seeds: +0.8-1.0 gates of mean circuit size, x2-3.4 effective functions, and two-neighbour composition up to 60% of income.
    - The cause is differential depletion, not less energy. #347 matched total income with fast refill and smaller pools, and that arm got nothing.
 3. **Three mechanical leaks were real, but fixing them alone did nothing while food was abundant.** They were the TURN cost (#341), one payment per life (#344) and READ overwriting R0 (#345). Under scarcity, READ_REG (READ choosing its destination register) carried 92-99% of the two-wire income.
-4. **The plateau is not yet broken.** Even scarce worlds settle; breadth swings widely and may decline late. #348 (trophic pool-drain) tests whether taxing the read words' pools turns the wider fence into a ratchet. **Read #348's verdict before porting the drain.**
+4. **Trophic pool-drain is part of the recipe (#348: RATCHET by the rule, HARDER, BROADER).** Each paid output takes 0.5 x pay out of the pools of the clean read functions that fed it, and the tax is destroyed. In the second half the drained worlds' breadth kept rising on 2 of 3 seeds, and their late novelty (functions first reaching 100 income in the last quarter) was x1.1, x9.5 and x37 the undrained worlds'. The trend margins are thin and the horizon is one run. Port it with items 5 below, and test it in the engine as its own arm.
 5. **Measurement lessons, which apply to the engine too.**
    - Never rule on "share of income at least 1%": it hid over 99% of what the scarce worlds did.
    - Use the full-vector effective number exp(H), the income-weighted mean circuit size, and the cycle-proof climbing depth.
@@ -28,7 +28,8 @@ The engine has no paid-logic layer. Its economy is light, chemistry, eight field
 3. **Ops in the particle VM:** INPUT, NAND, OUTPUT, and READ_OTHER with READ_DIR and READ_REG.
    - The engine's VM has 427 opcodes in four drifted dispatch copies (CLAUDE.md, "Every session removes or proves something"). Add the ops at ONE dispatch site, and assert the count of sites patched.
 4. **The clean-word rule, bit-exact.** Junk and input-dependence masks per register, NAND's controlling 0, and staleness at the epoch boundary (#339). Port it exactly; the per-register version is wrong.
-5. **Per-function pools.**
+5. **Per-function pools, with the drain.** Add TASK_TROPH 0.5: per register, the keys of the clean read functions (data flow, at most 4, cleared each epoch); on payment, take alpha x pay / m from each of their pools, destroyed.
+   **The pools themselves:**
    - Cap = TASK_CAP x formula size; slow regrowth (0.02); payment = TASK_F x level, into the particle's energy.
    - One payment per organism per epoch (TASK_EPAY).
    - Refuse copies and complements of the last 4 reads (REFUSE_NOT).
@@ -43,8 +44,7 @@ The engine has no paid-logic layer. Its economy is light, chemistry, eight field
 - **Expect the result NOT to carry over cleanly.** The engine's particles have many other income sources. If light and chemistry pay better than logic, the logic layer will be ignored, exactly as READ_REG was ignored while easy pools were full (#345). The engine's equivalent of "scarcity" may be the logic pools' share of total energy.
 
 ## Order
-1. Read #348's verdict.
-2. Build items 1-3 (inputs, grading, ops) and check that a hand-built particle is paid for NAND(x1,x2).
+1. Build items 1-3 (inputs, grading, ops) and check that a hand-built particle is paid for NAND(x1,x2).
 3. Then items 4-6.
 4. Then pre-register and run.
 
