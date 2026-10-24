@@ -12,6 +12,8 @@
 // A read word that is not a function, or a step between two 10+ words, cannot be ranked and contributes 0.
 // Also (the user's two mechanisms after #344): income at climb >= 2 by epoch tick (tenths), and the pools' fill (level / cap,
 // income-weighted over the window's paid functions, split >= 1% / < 1%) at the first and the last tick of each epoch.
+// TWO-WIRE GAIN (the user's check after #345's pre-registration): for paid outputs fed by 2+ distinct read words that are functions,
+// gates(out) - max_j gates(w_j), income-weighted and counted (10+ as 10). Positive = harder than the hardest wire gated.
 // Reported: income by depth; income by depth x share band (the function's share of the probe window's income: >= 1% / < 1%) with
 // the income-weighted mean circuit size; the epoch tick at which the paying output came, by depth; and per function the share of
 // its payments made at depth 0 (for internalisation: compare saves from early and late in one run).
@@ -33,11 +35,12 @@ const tbx=w.taskBirth.bind(w); w.taskBirth=function(c){ tbx(c); BD.fill(0,c*128,
 const RS=Array.from({length:C*4},()=>[]), PC=new Uint8Array(C), byCl=[0,0,0,0], bandCl={hi:[0,0,0,0],lo:[0,0,0,0]}; let ep=w.epoch();
 const bnd=()=>{ const e=w.epoch(); if(e!==ep){ ep=e; for(let r=0;r<C*4;r++)RS[r]=[]; } };
 const gates=v=>{ const T=w.fn4(v); return T<0?-1:Math.min(10,CSZ4[T]); };
+const gain2=new Map(), gain2n=new Map(); let gain2g=0;
 const climbTick=new Float64Array(10), fill={first:{hi:0,lo:0,n:0},last:{hi:0,lo:0,n:0}};
 const per=new Map(); let on=false; const tickBins=Array.from({length:4},()=>new Float64Array(10));
 const orig=w.taskOut;
-w.taskOut=function(c,v){ const d=Math.min(3,this.Rd[c*4]); let xd=0; for(let i=0;i<32;i++){ const q=BD[c*128+i]; if(q>xd)xd=q; } xd=Math.min(3,xd); PD.set(BD.subarray(c*128,c*128+32),c*32); bnd(); const go=gates(v); let cl=0; if(go>0&&go<10) for(const [wi,ci] of RS[c*4]){ const gi=gates(wi); if(gi>=0&&go>gi)cl=Math.max(cl,ci+1); } PC[c]=Math.min(255,cl); const cl3=Math.min(3,cl); const b=this.E[c]; orig.call(this,c,v); const g=this.E[c]-b; if(!(g>0)||!on)return;
-  const T=this.fn4(v); let p=per.get(T); if(!p){ p={g:0,n:0,byD:[0,0,0,0],byX:[0,0,0,0],byC:[0,0,0,0]}; per.set(T,p); } p.g+=g; p.n++; p.byD[d]+=g; p.byX[xd]+=g; p.byC[cl3]+=g; if(cl>=2)climbTick[Math.floor((this.tick%EP)/(EP/10))]+=g; tickBins[d][Math.floor((this.tick%EP)/(EP/10))]+=g; };
+w.taskOut=function(c,v){ const d=Math.min(3,this.Rd[c*4]); let xd=0; for(let i=0;i<32;i++){ const q=BD[c*128+i]; if(q>xd)xd=q; } xd=Math.min(3,xd); PD.set(BD.subarray(c*128,c*128+32),c*32); bnd(); const go=gates(v); let mg=-1, nf=0; for(const [wi] of RS[c*4]){ const gi=gates(wi); if(gi>=0){ nf++; if(gi>mg)mg=gi; } } const g2=(nf>=2&&go>=0)?go-mg:null; let cl=0; if(go>0&&go<10) for(const [wi,ci] of RS[c*4]){ const gi=gates(wi); if(gi>=0&&go>gi)cl=Math.max(cl,ci+1); } PC[c]=Math.min(255,cl); const cl3=Math.min(3,cl); const b=this.E[c]; orig.call(this,c,v); const g=this.E[c]-b; if(!(g>0)||!on)return;
+  const T=this.fn4(v); let p=per.get(T); if(!p){ p={g:0,n:0,byD:[0,0,0,0],byX:[0,0,0,0],byC:[0,0,0,0]}; per.set(T,p); } p.g+=g; p.n++; p.byD[d]+=g; p.byX[xd]+=g; p.byC[cl3]+=g; if(g2!==null){ gain2.set(g2,(gain2.get(g2)||0)+g); gain2n.set(g2,(gain2n.get(g2)||0)+1); gain2g+=g; } if(cl>=2)climbTick[Math.floor((this.tick%EP)/(EP/10))]+=g; tickBins[d][Math.floor((this.tick%EP)/(EP/10))]+=g; };
 for(let s=0;s<+(E.WARM||2000);s++) w.step(); on=true;
 const fillAt=key=>{ if(!per.size)return; let t=0; for(const p of per.values())t+=p.g; let hi=0,lo=0,gh=0,gl=0; for(const [T,p] of per){ const f=w.tres[T]/w.tcap[T]; if(p.g/t>=0.01){ hi+=p.g*f; gh+=p.g; } else { lo+=p.g*f; gl+=p.g; } } const F=fill[key]; F.hi+=gh?hi/gh:0; F.lo+=gl?lo/gl:0; F.n++; };
 for(let s=0;s<+(E.TICKS||5000);s++){ w.step(); const et=w.tick%EP; if(et===0)fillAt('first'); else if(et===EP-1)fillAt('last'); }
@@ -51,6 +54,7 @@ console.log(JSON.stringify({load:E.LOAD.split('/').slice(-2).join('/'), epay:w.p
   band1pct:{functions:band.hi.nf, incomeShare:+(band.hi.g/tot).toFixed(3), byDepth:sh(band.hi.byD,band.hi.g), byExactDepth:sh(bandX.hi,band.hi.g), byClimb:sh(bandCl.hi,band.hi.g), meanCircuit:+(band.hi.cs/Math.max(1e-9,band.hi.g)).toFixed(2)},
   bandBelow1pct:{functions:band.lo.nf, incomeShare:+(band.lo.g/tot).toFixed(3), byDepth:sh(band.lo.byD,band.lo.g), byExactDepth:sh(bandX.lo,band.lo.g), byClimb:sh(bandCl.lo,band.lo.g), meanCircuit:+(band.lo.cs/Math.max(1e-9,band.lo.g)).toFixed(2)},
   epochTickTenths_byDepth:tickBins.map(a=>sh([...a],a.reduce((x,y)=>x+y,0))),
+  twoWireGain:{incomeShareOfAll:+(gain2g/tot).toFixed(4), byGain:[...gain2.entries()].sort((a,b)=>a[0]-b[0]).map(([d,x])=>[d,+(x/Math.max(1e-9,gain2g)).toFixed(3),gain2n.get(d)])},
   climb2plusByEpochTickTenth:sh([...climbTick],climbTick.reduce((x,y)=>x+y,0)),
   poolFill:{epochFirstTick:{band1pct:+(fill.first.hi/Math.max(1,fill.first.n)).toFixed(3), below1pct:+(fill.first.lo/Math.max(1,fill.first.n)).toFixed(3)}, epochLastTick:{band1pct:+(fill.last.hi/Math.max(1,fill.last.n)).toFixed(3), below1pct:+(fill.last.lo/Math.max(1,fill.last.n)).toFixed(3)}},
   depth0ShareTop:[...per.entries()].sort((a,b)=>b[1].g-a[1].g).slice(0,12).map(([T,p])=>T.toString(16)+'/c'+CSZ4[T]+':'+(p.byD[0]/p.g).toFixed(2))}));
