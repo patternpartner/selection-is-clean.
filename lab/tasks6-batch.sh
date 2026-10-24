@@ -7,6 +7,7 @@ cd "$(dirname "$0")/.."; OUT=${1:?outdir}; PAR=${2:-6}; NCH=8; CH=150000; mkdir 
 for s in ${SEEDS:-7701 7702 7703}; do for o in 1 2; do w=${s}_o$o; k=0; while [ -e "$OUT/$w.$k.done" ]; do k=$((k+1)); done
   [ $k -lt $NCH ] && { rm -f "$OUT/$w.$k.jsonl" "$OUT/$w.$k.save"; todo+=("$s $o $k"); }; done; done
 [ ${#todo[@]} -eq 0 ] && { echo "all done"; exit 0; }
+mapfile -t todo < <(printf '%s\n' "${todo[@]}" | sort -k3,3n -s)   # least-advanced worlds first, so no seed waits for the others to finish
 [ -n "$MAXNEW" ] && todo=("${todo[@]:0:$MAXNEW}")   # start at most MAXNEW chunks this launch (a launch must finish inside the ~30-minute window)
 printf '%s\n' "${todo[@]}" | OUT="$OUT" CH=$CH ARM1="$ARM1" ARM2="$ARM2" xargs -P "$PAR" -L 1 bash -c '
  s=$0; o=$1; k=$2; w=${s}_o$o; L=; [ $k -gt 0 ] && L="$OUT/$w.$((k-1)).save"; X=; [ $o -eq 1 ] && X=",$ARM1"; [ $o -eq 2 ] && [ -n "$ARM2" ] && X=",$ARM2"
