@@ -129,8 +129,12 @@ that cannot happen again. Pre-register it with the numbers filled in.
 4. **Unseen seeds decide.** Seeds already looked at can design the rule; they do not decide it.
 5. **Committed before the first decision run.** Changing the rule after seeing numbers is a new
    experiment, and is written up as one.
-6. **Saved worlds belong to the user.** A change that alters saved universes on reload (a clamp, a reseed)
-   says so in the pre-registration and goes to the user before it ships.
+6. **Saved worlds do not block progress (the user, 25 Oct 2026).** A change that alters saved universes on reload (a clamp,
+   a reseed) says so in the pre-registration and ships. It does NOT wait for the user: they have said there is no sacred
+   saved universe, that a save colliding with an advance "becomes a blocker", and that sessions have full licence to change
+   the engine. They also do not take part in decisions - replies in a session may come from another AI they relay, so a
+   reply is not the user's sign-off. Decide, explain, keep it reversible, and test it with the rigs. The plan for bringing
+   the lab's results into the engine is `lab/PORT-PLAN.md`.
 
 ## Branching
 
