@@ -47,3 +47,22 @@ The engine has no paid-logic layer. Its economy is light, chemistry, eight field
 2. Build items 1-3 (inputs, grading, ops) and check that a hand-built particle is paid for NAND(x1,x2).
 3. Then items 4-6.
 4. Then pre-register and run.
+
+## What the port REPLACES (added after the user asked "are there layers in it that shouldn't be?")
+- **The engine's computation does not decide who lives.**
+  - #303b, run on engine.html itself: blanking every particle's program to one inert instruction changed births, survival, lineages and diversity on only 1 of 5 counted seeds.
+  - #333: a one-instruction "rock" lives as well as evolved programs, because passive light pays.
+- **So the port is a REPLACEMENT of the income, not an added layer.** Passive light/chemistry becomes a small floor, enough for a newborn to survive. Most energy has to be earned by computing functions of the world inputs, from slowly regrowing per-function pools.
+  - Added beside free sunlight, the logic layer will be ignored, as READ_REG was beside full easy pools (#345).
+  - The lab only climbed once computation paid AND easy food was scarce (#346, #347).
+- **Recorded cull candidates** (from the notes; each still needs its check before it is cut):
+  - GROUP_COMMONS and GROUP_ROLES: live, but they never execute in lab worlds, because they sit inside cluster budding (#253).
+  - The four drifted copies of the opcode dispatch: merge them into one (#217f).
+  - 427 opcodes, with 9 carrying 90% of all instructions.
+  - 76 separate adjustments to `amp`.
+- **Order:**
+  1. Make computation pay (the port).
+  2. Re-run retire-or-prove on the big layers (mind, plasmids, cosmos, clusters, channels, laws) in THAT world.
+  3. Cut what is decoration even then.
+
+  Every earlier retire-or-prove verdict was measured in a world where nothing the programs do can be selected for. Cutting before step 1 judges layers where nothing they do can matter.
