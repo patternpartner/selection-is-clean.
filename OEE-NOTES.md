@@ -27768,3 +27768,45 @@ The R0 overwrite, not the slot, now carries the loss. That is what the user pred
 - The paths to two-wire composition were opened one at a time: the TURN (#341), the per-life slot (#344) and the R0 overwrite (#345). Each removal was taken up, or worked mechanically, without making two-wire composition a larger part of the economy.
 - The threshold-free breadth (exp(H) about 245-270) and hardness (mean circuit about 3.9-4.2) of these per-epoch worlds sit in a narrow band across arms. That fits the user's wall B: per-function pools are not depleted (0.66-0.97 of cap), so a harder function is not much better paid than an easy one, and an easy route keeps winning.
 - The direct test of wall B is to keep the #345 mechanics and change only the pool economics.
+
+### #346 — PRE-REGISTERED (`lab/PREREG-scarce.md`, committed dc0fb49 before any decision run): wall B, scarcity of the easy pools. **COMPOSES HARDER, AND BROADER (TWO-READ ROSE)** on every rule. In the second half breadth CONTRACTS: scarcity moved the fence outward, it did not make a ratchet.
+
+**The change.** No new engine code: TASK_RATE (pool regrowth per tick) is lowered from 0.2 to 0.02, on #345's REG world (EPAY + READ_DIR + READ_REG, four inputs, bit-exact clean rule).
+
+**Run.** Seeds 7901-7903, 1,200,000 ticks; all 3 counted. Run it with `node lab/analyse-scarce.js lab/out-scarce` after the three probes on each last save.
+- The first from-scratch pilot (seed 99) earned nothing in 150,000 ticks. The pilot that set the rate continued #345's 7801 save instead.
+- The batch now launches the least-advanced worlds first. Until this run, MAXNEW starved the last seed until the others had finished.
+
+| seed | easy-pool fill, SCARCE / CONTROL | mean circuit | income at climb 2+ | exp(H), full vector | clean income fed by 2+ reads | functions with income >= 100 | legacy ever active (1%) |
+|---|---|---|---|---|---|---|---|
+| 7901 | 0.00 / 0.89 | **4.81 / 3.78** | **.55 / .49** | **904 / 262** | **0.595 / 0.053** | 589 / 371 | 5 / 45 |
+| 7902 | 0.12 / 0.90 | **4.71 / 3.82** | **.55 / .48** | **546 / 261** | 0.068 / 0.044 | 497 / 360 | 6 / 52 |
+| 7903 | 0.14 / 0.91 | **4.67 / 3.90** | **.59 / .48** | **604 / 279** | 0.159 / 0.041 | 489 / 356 | 5 / 43 |
+
+**Rule outcomes.**
+- M held on 3/3, H1 on 3/3 (+0.77 to +1.03 gates against a 0.3 margin), H2 on 3/3 (+0.06 to +0.12 against 0.05), BR on 3/3 (exp(H) x2.1 to x3.4) and TWO-READ on 3/3.
+- My prediction, PARTLY HARDER (circuit), AND BROADER, was wrong in the favourable direction: climbing depth moved too.
+
+**Who carries it.**
+- **Two-wire composition is the larger share where it grew, and it goes through READ_REG.** Two-wire income is 50% (7901), 6% (7902) and 14% (7903) of all income, against 3-5% in the controls. The direct READ_REG route carries 92-99% of it in SCARCE, against 81-95% in the controls.
+- **On 7902 two-wire stayed small,** and hardness and breadth rose anyway. Single-read composition, spread over many more pools, carried it there.
+- **The 1% meter is near blind:** 5-6 functions ever active, where exp(H) reads 546-904.
+
+**Second half (the user's fence-or-ratchet question; reported, not pre-registered as ruling).** LOGFULL exp(H), and the mean circuit over logged income, by windows 21-30 against 31-40, with the slope over windows 21-40:
+
+| world | exp(H), windows 21-30 to 31-40 | slope per window | mean circuit |
+|---|---|---|---|
+| SCARCE 7901 | 980 to 821 | -10.6 | 4.83 to 4.78 |
+| SCARCE 7902 | 720 to 507 | -19.5 | 4.74 to 4.66 |
+| SCARCE 7903 | 798 to 536 | -25.3 | 4.72 to 4.59 |
+| CONTROL 7901 | 266 to 262 | -0.4 | 3.87 to 3.70 |
+| CONTROL 7902 | 261 to 258 | 0.0 | 3.85 to 3.79 |
+| CONTROL 7903 | 295 to 264 | -2.7 | 3.81 to 3.98 |
+
+- **The user's prediction holds, more strongly than they put it.** Scarcity carries the world out to a much wider, harder state. Breadth then FALLS through the second half on 3/3 seeds, by 16-33%, while the mean circuit holds or drifts down slightly. The control is flat.
+- **The fence moved out, and the world is settling back from it.** No sign of a ratchet by 1,200,000 ticks.
+
+**What this cannot say.**
+- Scarcity also lowers total income: 265,000-308,000 per sample, against 330,000-368,000. "The easy pools deplete" is not yet separated from "less energy overall". The named follow-up is a third arm at regrowth 0.2 with a smaller TASK_CAP, so that total income matches.
+- Both arms had READ_REG. Scarcity x READ_REG (a 2x2) is the test of the interaction the route attribution suggests.
+- **The contraction is a measured shape,** not a cause. Whether it continues, and what drives it, is a question for a longer horizon or for trophic drain: pool[w_read] taxed by alpha x pay / m on each paid composition over m clean read words, with the tax destroyed. That was specified with the user before this run.
