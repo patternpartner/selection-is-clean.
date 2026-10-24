@@ -119,7 +119,10 @@ const DEF={
   // marked accumulators R1=NAND(read,R1) unclean forever, though junk survives only where the read word is 1.)
   CLEAN:0,
   TASK_EPAY:0,   // #344: NIN 4 only - the TASK_MAX payment slot belongs to an EPOCH of a life, not the whole life: an organism can be paid again (for any function, the same one included) once the world's inputs are redrawn
-  READ_DIR:0,   // #341: READ_OTHER reads the neighbour at the organism's heading plus its operand (mod 8), so two neighbours can be gated without TURN
+  READ_DIR:0,
+  READ_REG:0,   // #345: READ_OTHER writes register (operand bits 3-4) instead of always R0, so READ d1 to R1, READ d2 to R0, NAND 1 keeps both words without a MOV
+  LOGFULL:0,    // #345 (bookkeeping only): each sample also carries tasks.expH over ALL functions' income and tasks.full, every function with income >= 10
+   // #341: READ_OTHER reads the neighbour at the organism's heading plus its operand (mod 8), so two neighbours can be gated without TURN
 };
 
 // 64x64 diffusion (ported from cos/speedup). The stored value is the same expression as the general loop, including /4
@@ -338,8 +341,8 @@ class World{
                    if(Lq&&Lq[c]>0){ const j=op-24, pr=this.bprod(q,j), d=this.be(q)-this.be(pr); if(d>0&&d<=P.CHEM_DMAX){ const x=Lq[c]*P.EAT_F; Lq[c]-=x; this.layer(pr)[c]+=x; const id=q*4+j; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE.set(id,(this.rxE.get(id)||0)+x*d); } } }
                  else if(P.CHEM){ const S=P.CHEM_S, q=arg&(S-1), pr=this.prod[q*4+op-24], d=this.eMol[q]-this.eMol[pr], C=this.C;   // METABj (mol is species-major: species q in cell c is q*C+c)
                    if(d>0&&d<=P.CHEM_DMAX){ const x=this.mol[q*C+c]*P.EAT_F; if(x>0){ this.mol[q*C+c]-=x; this.mol[pr*C+c]+=x; this.molLive[pr]=1; this.E[c]+=x*d; this.ev.metab+=x*d; this.ev.metabN++; this.rxE[q*4+op-24]+=x*d; } } } break;
-        case 28: if(P.TASKS&&P.OTHERS){ const a=this.ahead(c,this.face[c]+(P.READ_DIR?arg:0)), e=this.epoch();   /* #341: READ_DIR reads the neighbour at heading + (operand mod 8) */ const v=(P.OTHERS===1&&this.alive[a]&&this.tlastE[a]===e)?this.tlast[a]:0; R[r4]=v; this.tread[c]=v; this.treadE[c]=e; this.ev.reads++; if(v)this.ev.readHits++;
-                   if(this.trd){ const q=c*4+this.trdI[c]; this.trd[q]=v; this.trdE[q]=e; this.trdI[c]=(this.trdI[c]+1)&3; } if(this.Rd)this.Rd[r4]=v?Math.min(255,this.tlastD[a]+1):0; if(this.Rc)this.Rc[r4]=v?this.tlastC[a]:0; if(this.Rj){ this.Rj[r4]=v?this.tlastJ[a]:0; this.Rdm[r4]=v?this.tlastDm[a]:0; } }   // #334 READ_OTHER (#336: ring, depth)
+        case 28: if(P.TASKS&&P.OTHERS){ const a=this.ahead(c,this.face[c]+(P.READ_DIR?arg:0)), e=this.epoch(), rt=r4+(P.READ_REG?((arg>>3)&3):0);   /* #345: READ_REG writes register (operand bits 3-4) */ /* #341: READ_DIR reads the neighbour at heading + (operand mod 8) */ const v=(P.OTHERS===1&&this.alive[a]&&this.tlastE[a]===e)?this.tlast[a]:0; R[rt]=v; this.tread[c]=v; this.treadE[c]=e; this.ev.reads++; if(v)this.ev.readHits++;
+                   if(this.trd){ const q=c*4+this.trdI[c]; this.trd[q]=v; this.trdE[q]=e; this.trdI[c]=(this.trdI[c]+1)&3; } if(this.Rd)this.Rd[rt]=v?Math.min(255,this.tlastD[a]+1):0; if(this.Rc)this.Rc[rt]=v?this.tlastC[a]:0; if(this.Rj){ this.Rj[rt]=v?this.tlastJ[a]:0; this.Rdm[rt]=v?this.tlastDm[a]:0; } }   // #334 READ_OTHER (#336: ring, depth)
                  else if(P.CHEM_BIG){ const Lq=this.big.layers.get(arg|(this.prog[o+((pc+1)%n)*2+1]<<8)); R[r4]=Lq?Lq[c]:0; } else if(P.CHEM)R[r4]=this.mol[(arg&(P.CHEM_S-1))*this.C+c]; break;   // SENSE_MOL
         default: if(op>=NOPS&&this.modByOp){ const m=this.modByOp[op]; if(m&&!m.disarmed){ m.execs++; m.spec.op(m.api,c,arg); } } break;   // NOP, the neutral markers, and installed modules (#292)
       }
@@ -493,6 +496,7 @@ class World{
       const held=new Float64Array(NF); if(this.tcnt){ for(const c of liv) for(let k=0;k<this.tcnt[c];k++)held[this.tpk[c*P.TASK_MAX+k]]++; } else for(const c of liv) for(let k=0;k<8;k++){ let x=this.tdone[c*8+k]; while(x){ const b=31-Math.clz32(x); held[k*32+b]++; x&=~(1<<b); } }
       const fl=[]; for(let T=0;T<NF;T++) if(this.tE[T]>0)fl.push([T,this.tE[T]]); fl.sort((a,b)=>b[1]-a[1]);
       tasks={income:+tot.toFixed(1),performed:on,flux:(this.tcnt?fl.filter(([T,v])=>v>=0.001*tot).slice(0,200):fl.slice(0,32)).map(([T,v])=>[T,+(v/tot).toFixed(4)]),held:[...held.entries()].filter(([T,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,32).map(([T,v])=>[T,+(v/liv.length).toFixed(3)])};
+      if(P.LOGFULL){ let H=0; const full=[]; for(let T=0;T<NF;T++){ const x=this.tE[T]; if(x>0){ const q=x/tot; H-=q*Math.log(q); if(x>=10)full.push([T,+x.toFixed(1)]); } } tasks.expH=+Math.exp(H).toFixed(2); tasks.full=full; }   // #345: the threshold-free breadth readout (no 0.1% cut)
       if(this.tDepth){ const D=this.tDepth, tot4=[0,0,0,0], deep=[]; for(let T=0;T<NF;T++){ let d2=0; for(let k=0;k<4;k++){ tot4[k]+=D[T*4+k]; if(k>=2)d2+=D[T*4+k]; } if(d2>0)deep.push([T,D[T*4],D[T*4+1],D[T*4+2],D[T*4+3]]); }
         tasks.depth={paid:tot4, deep:deep.sort((a,b)=>(b[3]+b[4])-(a[3]+a[4])).slice(0,24)}; if(this.tPair){ tasks.pairs=[...this.tPair.entries()].sort((x,y)=>y[1]-x[1]).slice(0,60).map(([k,n])=>[Math.floor(k/65537),k%65537-1,n]); tasks.pairsN=[...this.tPair.values()].reduce((x,y)=>x+y,0); this.tPair.clear(); }   // #338: [paid, function read (-1: not a function), count]
         D.fill(0); }   // #336: payments by composition depth 0/1/2/3+, and every function paid at depth 2+

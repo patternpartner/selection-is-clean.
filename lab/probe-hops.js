@@ -23,9 +23,9 @@ if(!w.Rd) throw new Error('needs DEPTH');
 const C=w.C, BD=new Uint8Array(C*4*32), PD=new Uint8Array(C*32), byX=[0,0,0,0], bandX={hi:[0,0,0,0],lo:[0,0,0,0]};
 const dA=w.depthAfter.bind(w);
 w.depthAfter=function(b,op,arg,before){ bnd(); dA(b,op,arg,before); const s=b+(arg&3), R=this.R, B=b*32, S=s*32;
-  if(op===28){ const v=R[b]>>>0, a=this.ahead(b>>2,this.face[b>>2]+(this.p.READ_DIR?arg:0)); RS[b]=v?[[v,PC[a]]]:[]; } else if(op===26){ const m=new Map(); for(const x of RS[b].concat(RS[s]))m.set(x[0],x); RS[b]=[...m.values()].slice(0,4); } else if(op===27)RS[b]=RS[s].slice(); else if(op===2)RS[s]=RS[b].slice(); else { for(let k=0;k<4;k++) if(R[b+k]!==before[k]) RS[b+k]=[]; }
+  if(op===28){ const t=b+(this.p.READ_REG?((arg>>3)&3):0), v=R[t]>>>0, a=this.ahead(b>>2,this.face[b>>2]+(this.p.READ_DIR?arg:0)); RS[t]=v?[[v,PC[a]]]:[]; } else if(op===26){ const m=new Map(); for(const x of RS[b].concat(RS[s]))m.set(x[0],x); RS[b]=[...m.values()].slice(0,4); } else if(op===27)RS[b]=RS[s].slice(); else if(op===2)RS[s]=RS[b].slice(); else { for(let k=0;k<4;k++) if(R[b+k]!==before[k]) RS[b+k]=[]; }
   if(op===24){ BD.fill(0,B,B+32); return; }
-  if(op===28){ const v=R[b]>>>0, a=this.ahead(b>>2,this.face[b>>2]+(this.p.READ_DIR?arg:0)); if(v){ for(let i=0;i<32;i++)BD[B+i]=Math.min(255,PD[a*32+i]+1); } else BD.fill(0,B,B+32); return; }
+  if(op===28){ const t=b+(this.p.READ_REG?((arg>>3)&3):0), T32=t*32, v=R[t]>>>0, a=this.ahead(b>>2,this.face[b>>2]+(this.p.READ_DIR?arg:0)); if(v){ for(let i=0;i<32;i++)BD[T32+i]=Math.min(255,PD[a*32+i]+1); } else BD.fill(0,T32,T32+32); return; }
   if(op===26){ const x=before[0]>>>0, y=before[s-b]>>>0; for(let i=0;i<32;i++){ const xa=(x>>>i)&1, yb=(y>>>i)&1, da=BD[B+i], db=BD[S+i]; BD[B+i]=(!xa&&yb)?da:(xa&&!yb)?db:(!xa&&!yb)?Math.min(da,db):Math.max(da,db); } return; }
   if(op===27){ BD.copyWithin(B,S,S+32); return; } if(op===2){ BD.copyWithin(S,B,B+32); return; }
   for(let k=0;k<4;k++) if(R[b+k]!==before[k]) BD.fill(0,(b+k)*32,(b+k)*32+32); };

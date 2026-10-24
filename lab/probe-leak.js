@@ -15,7 +15,7 @@ let ep=w.epoch(), on=false; const P={orgEpochs2:0, usedAt2nd:0, usedBeforeFirst:
 const boundary=()=>{ const e=w.epoch(); if(e===ep)return; ep=e; for(let r=0;r<C*4;r++)RS[r]=[]; for(let c=0;c<C;c++)dR[c]=[]; };
 const dA=w.depthAfter.bind(w);
 w.depthAfter=function(b,op,arg,before){ boundary(); dA(b,op,arg,before); const s=b+(arg&3), R=this.R, c=b>>2;
-  if(op===28){ const v=R[b]>>>0; RS[b]=v?[v]:[];
+  if(op===28){ const t=b+(this.p.READ_REG?((arg>>3)&3):0), v=R[t]>>>0; RS[t]=v?[v]:[];   /* #345: READ_REG writes register t */
     if(v&&!dR[c].includes(v)){ if(dR[c].length===0)usedAtFirst[c]=this.tcount(c)>=TM?1:0; dR[c].push(v);
       if(dR[c].length===2&&on){ P.orgEpochs2++; if(this.tcount(c)>=TM)P.usedAt2nd++; if(usedAtFirst[c])P.usedBeforeFirst++; } }
     return; }

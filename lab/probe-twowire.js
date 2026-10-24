@@ -14,7 +14,7 @@ const RS=Array.from({length:C*4},()=>[]), ST=new Uint8Array(C*4); let ep=w.epoch
 const boundary=()=>{ const e=w.epoch(); if(e===ep)return; ep=e; for(let r=0;r<C*4;r++){ RS[r]=[]; ST[r]=w.Rj[r]!==0?1:0; } };
 const dA=w.depthAfter.bind(w);
 w.depthAfter=function(b,op,arg,before){ boundary(); dA(b,op,arg,before); const s=b+(arg&3), R=this.R;
-  if(op===28){ const v=R[b]>>>0; RS[b]=v?[v]:[]; ST[b]=0; return; }
+  if(op===28){ const t=b+(this.p.READ_REG?((arg>>3)&3):0), v=R[t]>>>0; RS[t]=v?[v]:[]; ST[t]=0; return; }   // #345: READ_REG writes register t
   if(op===26){ RS[b]=[...new Set(RS[b].concat(RS[s]))].slice(0,4); ST[b]=ST[b]|ST[s]; return; }
   if(op===27){ RS[b]=RS[s].slice(); ST[b]=ST[s]; return; } if(op===2){ RS[s]=RS[b].slice(); ST[s]=ST[b]; return; }
   for(let k=0;k<4;k++) if(R[b+k]!==before[k]){ RS[b+k]=[]; ST[b+k]=0; } };
