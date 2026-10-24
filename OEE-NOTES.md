@@ -27810,3 +27810,29 @@ The R0 overwrite, not the slot, now carries the loss. That is what the user pred
 - Scarcity also lowers total income: 265,000-308,000 per sample, against 330,000-368,000. "The easy pools deplete" is not yet separated from "less energy overall". The named follow-up is a third arm at regrowth 0.2 with a smaller TASK_CAP, so that total income matches.
 - Both arms had READ_REG. Scarcity x READ_REG (a 2x2) is the test of the interaction the route attribution suggests.
 - **The contraction is a measured shape,** not a cause. Whether it continues, and what drives it, is a question for a longer horizon or for trophic drain: pool[w_read] taxed by alpha x pay / m on each paid composition over m clean read words, with the tax destroyed. That was specified with the user before this run.
+
+### #347 — PRE-REGISTERED (`lab/PREREG-lean.md`, committed c4217e3 before the run): the total-income-matched LEAN arm. **DEPLETION, NOT ENERGY.** #346's gain came from the crowded easy pools draining, not from less energy.
+
+**The arm.** LEAN = #346's CONTROL world (TASK_RATE 0.2, fast refill) with every pool cap cut, TASK_CAP 20 to 14.
+- Calibrated by continuing CONTROL 7901's save for 40,000 ticks at caps 20, 16 and 14, which gave income 357k, 310k and 298k.
+- It ran as a third arm on #346's seeds 7901-7903, an exception to the unseen-seed rule that was stated in the pre-registration.
+- Run it with `node lab/analyse-lean.js lab/out-scarce`.
+
+| seed | second-half income, SCARCE / CONTROL / LEAN | easy-pool fill | mean circuit | exp(H) | climb 2+ | clean income fed by 2+ reads |
+|---|---|---|---|---|---|---|
+| 7901 | 316k / 363k / 309k | 0.00 / 0.89 / 0.86 | 4.81 / 3.78 / 3.97 | 904 / 262 / 288 | .55 / .49 / .47 | .60 / .05 / .05 |
+| 7902 | 283k / 357k / 312k | 0.12 / 0.90 / 0.89 | 4.71 / 3.82 / 3.90 | 546 / 261 / 250 | .55 / .48 / .49 | .07 / .04 / .04 |
+| 7903 | 282k / 335k / 318k | 0.14 / 0.91 / 0.83 | 4.67 / 3.90 / 3.89 | 604 / 279 / 243 | .59 / .48 / .45 | .16 / .04 / .05 |
+
+**Rule outcomes.**
+- MATCH held on 3/3 and FULL on 3/3.
+- DEPLETION held: SCARCE beats LEAN by +0.71 to +0.84 gates and x2.1 to x3.1 exp(H), on all three seeds.
+- ENERGY failed: LEAN is within 0.2 gates and 13% exp(H) of CONTROL.
+- **Verdict: DEPLETION, NOT ENERGY**, as predicted.
+- LEAN's second half is flat (exp(H) 286 to 310, 249 to 252, 247 to 243), like CONTROL's.
+
+**A correction to #346's "contraction", found while piloting #348.**
+- A 60,000-tick continuation of SCARCE 7901's save with NO change ran at exp(H) 915-1,471, while #346 reported "821" for its last ten windows.
+- SCARCE's per-sample exp(H) swings widely: 585-1,601 in its last 60,000 ticks alone, and it was on an upswing (640 to 1,383) when the save was made.
+- So a 16-33% fall between two ten-window means, in the same direction on all three seeds, is suggestive but weak evidence of a fence. **#348 rules on the slope across all 20 second-half windows, against a no-drain arm, not on two means.**
+- The drain pilots (alpha 0.25 and 0.5, 60,000 ticks from the same save) were indistinguishable from that no-change baseline. Pilots this short cannot measure trend effects in these worlds.
