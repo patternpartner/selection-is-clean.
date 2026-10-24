@@ -27723,3 +27723,48 @@ The R0 overwrite, not the slot, now carries the loss. That is what the user pred
 - A climb chain need not be distinct organisms: A, B, then A' is legitimate composition by a two-organism partnership.
 - The fall of income with each climb is a measured shape, not a proven cause.
 - Most of data-flow depth 3+ is not strictly climbing. That covers ping-pong as well as lateral and downward composition.
+
+### #345 — PRE-REGISTERED (`lab/PREREG-reg.md`, committed 78e71db before any decision run), ruled on THRESHOLD-FREE measures: register-targeted READ. **NOT USED.** Selection took the new register for SINGLE reads and two-read output fell.
+
+**What was added.**
+- **Core.** READ_REG (READ_OTHER writes the register named by operand bits 3-4) and LOGFULL. LOGFULL is bookkeeping: every sample carries exp(H) over all 65,536 functions' income, and every function with income of 10 or more. It leaves the trajectory identical. With both unset, earlier worlds are byte-identical.
+- **Probes** follow the destination register.
+
+**Run.** REG = EPAY + READ_DIR + READ_REG, against CONTROL = EPAY + READ_DIR. Seeds 7801-7803, 1,200,000 ticks; all 3 counted. Run it with `node lab/analyse-reg.js lab/out-reg`, after the three probes on each last save.
+
+| seed | paid outputs after 2+ reads fed by 2+ reads, REG / CONTROL | clean income fed by 2+ reads | mean circuit (all logged income) | income at climb 2+ | exp(H), full vector | functions with income >= 100 | legacy sustained circuit (1%) | legacy ever active (1%) |
+|---|---|---|---|---|---|---|---|---|
+| 7801 | 0.011 / 0.060 | 0.020 / 0.110 | 3.98 / 3.92 | .51 / .54 | 267 / 255 | 373 / 347 | 6 / 6 | 41 / 53 |
+| 7802 | 0.023 / 0.030 | 0.039 / 0.051 | 3.85 / 3.94 | .56 / .52 | 260 / 246 | 367 / 317 | 6 / 4 | 47 / 48 |
+| 7803 | 0.025 / 0.076 | 0.040 / 0.134 | 3.98 / 4.21 | .51 / .52 | 265 / 249 | 351 / 304 | 3 / 4 | 43 / 49 |
+
+**Rule outcomes.**
+- M held on 0/3: REG is LOWER on all three. **Verdict: NOT USED.**
+- No other rule holds either. H1 differences are -0.23 to +0.06 gates, H2 -0.03 to +0.03, and exp(H) +5% to +6%.
+- My prediction (PARTLY HARDER) was wrong.
+- REG has 7-15% more functions with income of 100 or more, on 3/3 seeds. Reported only.
+
+**Why: the census of READ destinations in the living programs at the last save** (operand bits 3-4: share writing R0 / R1 / R2 / R3):
+
+| world | R0 | R1 | R2 | R3 |
+|---|---|---|---|---|
+| REG 7801 | .09 | .06 | .17 | **.68** |
+| REG 7802 | .03 | .03 | .09 | **.85** |
+| REG 7803 | .01 | .12 | .23 | **.64** |
+| CONTROL (the bits do nothing) | .23-.55 | .12-.45 | .12-.40 | .13-.25 |
+
+- **READ_REG was taken up heavily, but for single reads.** Reads moved to R3, presumably READ into R3 and then NAND with R3. That gates one read against R0 (the organism's own input logic) without a MOV and without overwriting R0.
+- **The two-read programs the control evolved (READ, MOV, READ, NAND) lost ground to that simpler single-read route.** So the cheaper path to ONE read beat the new path to TWO.
+- My explanation written during the run ("reads now land away from R0 and break programs, so selection pushes them back to R0") was wrong in direction: selection pushed reads AWAY from R0.
+
+**Gain readouts (`probe-hops`, last saves; the user's design), matched on each save.**
+- **The +3-and-up tail is the two-wire signature.** Gating two read words gives a share of outputs 3 or more gates above the harder wire: 11-26% of two-wire income, against 0-7% for single reads, on all six worlds.
+- **Graded against the SUM of the two wires,** the mode is +1 to +2: most paid two-wire outputs are not compressed below building both wires. Many of those wires are 1-2 gates, though.
+- **Single reads peak at +2 gates in both arms,** so that mode comes from the grading under EPAY, not from READ_REG.
+- **The tail does not grow because two-wire income stays at 2-13% of all income,** and REG makes it smaller.
+
+**What #337-#345 now say.**
+- Reading neighbours lifts what a world holds by 2-3 gates (#337, #339, #340).
+- The paths to two-wire composition were opened one at a time: the TURN (#341), the per-life slot (#344) and the R0 overwrite (#345). Each removal was taken up, or worked mechanically, without making two-wire composition a larger part of the economy.
+- The threshold-free breadth (exp(H) about 245-270) and hardness (mean circuit about 3.9-4.2) of these per-epoch worlds sit in a narrow band across arms. That fits the user's wall B: per-function pools are not depleted (0.66-0.97 of cap), so a harder function is not much better paid than an easy one, and an easy route keeps winning.
+- The direct test of wall B is to keep the #345 mechanics and change only the pool economics.
