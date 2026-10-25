@@ -1347,7 +1347,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'mind.see','mind.propose','mind.train',   // #296: the mind in the real engine (off unless MIND / #mind)
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.headRestored','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10726,6 +10726,14 @@ function taskStats(){ let tot=0; for(let T=0;T<TASK_NF;T++)tot+=tE[T]; let H=0, 
 if(TASKS_ON)WORLD_ENERGY_REGEN=0.4*TASK_SUN;   // #350: sunlight becomes a floor
 if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
 if(TASKS_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]);   // #350: INPUT, INPUT, NAND, OUTPUT - the ancestor computes before it reproduces
+// #352: the head a fresh REPL/TASKS germline starts with. A SAVED germline (loadGenome) replaces the boot one, and a universe saved
+// before #351 made TASKS the default has neither the logic ops nor the reproduction instruction, so on reload its founders could
+// neither compute nor breed (measured in a browser: 0 payments and 0 REPL births by tick 2,264, against 11,971 and 1,738 fresh).
+// init() puts the head back in front of a loaded germline that does not already start with it.
+const REPL_HEAD=REPL_ON?(TASKS_ON?[[TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0],[4,2,4,1.0]]:[[4,2,4,1.0]]):null;
+function replEnsureHead(){ const p=genome.vmProgram; if(!REPL_HEAD||!Array.isArray(p))return false;
+  const has=REPL_HEAD.every((h,q)=>p[q]&&(p[q][0]|0)===h[0]&&(p[q][1]|0)===h[1]&&(p[q][2]|0)===h[2]); if(has)return false;
+  genome.vmProgram=REPL_HEAD.map(x=>x.slice()).concat(p); fired('repl.headRestored'); return true; }
 const REPL_ANCESTOR=REPL_ON&&Array.isArray(genome.vmProgram)?genome.vmProgram.map(x=>x.slice()):null;   // #284: kept, so a parentless founder under REPL is always a working replicator   // #273: the ancestor asks to reproduce (R2 starts at 1 in the solo VM)
 function deathReturn(i){   // a death returns energy: to the cell it died on under SUN (#272), else to the one pool
   if(REPL_ON){ const c=sunCell(i); corpseField[c]=Math.min(3,corpseField[c]+pE[i]+BIRTH_ENERGY_COST*DEATH_ENERGY_RETURN); pE[i]=0; }   // #273: the dead feed scavengers
@@ -26330,6 +26338,7 @@ function init(){
   resize();N=0;
   const loaded=loadGenome();
   sanitizeGenome();
+  if(loaded&&REPL_ON)replEnsureHead();   // #352: a saved germline gets the REPL/TASKS head back
   const n=Math.min(400,(W*H/2800)|0);
   // FIX: no live particle state is saved/restored -- only the self's evolved parameters, atoms,
   // and history -- so every reload used to hand a long-evolved self a 100% blind-random

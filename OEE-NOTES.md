@@ -27974,3 +27974,14 @@ Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. A
 - `substrate-test`: 264/0 at TICKS=40, TICKS=900, the default and FOUND=0. These ran on #350's engine; #351 changes nothing under node.
 - `smoke.sh`: 66 ok / 0 failing, on #351's engine with nothing else running. Its browser rigs now run TASKS worlds.
 - **In a real page** (playwright, `engine.html` opened by itself): TASKS_ON true, 808 alive and 3,073 payments by tick 190. With `#notasks`, TASKS_ON and REPL_ON are false.
+
+### #352a — A BUG #351 SHIPPED, FOUND AND FIXED: a saved universe reloaded under TASKS could neither compute nor breed.
+
+#351's notes marked it NOT CHECKED, so I checked it in a real browser: `lab/port/reload-test.js` lets a `#notasks` universe evolve, saves it, and reloads the same origin with TASKS on.
+- **What a save holds:** the germline genome only, not the particles. On reload every founder is spawned from the saved germline program.
+- **Why the rescue missed them:** a germline from the old default world carries neither the logic ops nor REPL's reproduction instruction `[4,2,4,1]`. The founder rescue (`REPL_ANCESTOR&&parentA<0`) never fires at boot, because init() passes no parent and `undefined<0` is false.
+- **Measured:** 0 payments and 0 REPL births by tick 2,264, with 47 alive, kept up only by reseeds. A fresh TASKS universe had 11,971 payments and 1,738 births. Every saved universe in the field would have come back like that.
+- **The fix:** `REPL_HEAD` and `replEnsureHead()`. init() puts the head a fresh REPL/TASKS germline starts with back in front of a LOADED germline that does not already start with it (`repl.headRestored` in the liveness census).
+- **After the fix,** in the same test: by tick 2,241, 5,489 payments, 387 births, 81 alive; fresh TASKS by 1,836: 9,196, 897, 79. Its lower birth count comes from the saved genome's own parameters. It is no longer a dead world.
+- **No change for the rigs:** node trajectories are byte-identical, because no rig loads a saved genome. substrate-test is 264/0 at TICKS=40.
+- **What the old code got wrong, stated structurally:** the rescue was written against "a founder has parentA < 0". The boot path's founders have parentA undefined. That is the same family as CLAUDE.md's fallback trap: a check that declines to fire on a missing value.
