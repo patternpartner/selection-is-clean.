@@ -10699,7 +10699,10 @@ const tE=TASKS_ON?new Float64Array(TASK_NF):null, tN=TASKS_ON?new Uint32Array(TA
 const tEv={reads:0,readHits:0,outs:0,paid:0,dirty:0,refused:0,trivial:0,spent:0,income:0,overflow:0,troph:0,sun:0};   // counters only, never read by the world
 if(TASKS_ON){ for(let T=0;T<TASK_NF;T++)tCap[T]=TASK_CAP*TASK_SZ4[T]; tRes.set(tCap); }
 let tEpoch=-1;
-let __taskOnPay=null;   // #356: a probe hook, null unless a rig installs one; called on each payment with (particle, function, word); draws nothing
+let __taskOnPay=null;
+// #357: what the renderer draws of the layer - for each particle, where the neighbour it last read (on a hit) stood, the epoch of that
+// read and the function the read word computed (-1 if not clean). Written by T_READ, read only by render(); the world never reads them.
+const tRx=TASKS_ON?new Float32Array(CAP):null, tRy=TASKS_ON?new Float32Array(CAP):null, tRE=TASKS_ON?new Int32Array(CAP).fill(-1):null, tRT=TASKS_ON?new Int32Array(CAP).fill(-1):null;   // #356: a probe hook, null unless a rig installs one; called on each payment with (particle, function, word); draws nothing
 function taskDrawInputs(){ const rows=new Uint8Array(32); for(let q=0;q<32;q++)rows[q]=q&15;
   for(const h of [0,16]) for(let q=15;q>0;q--){ const j=(Math.random()*(q+1))|0, t=rows[h+q]; rows[h+q]=rows[h+j]; rows[h+j]=t; }
   for(let k=0;k<4;k++){ let w=0; for(let q=0;q<32;q++) if((rows[q]>>(3-k))&1)w|=1<<q; tWin[k]=w>>>0; } }
@@ -10711,9 +10714,9 @@ function taskTick(){   // once per tick, before the solo programs run: the epoch
   if(e!==tEpoch){ tEpoch=e; taskDrawInputs(); for(let q=0;q<CAP*4;q++){ tJ[q]=(tJ[q]|tDm[q])>>>0; tDm[q]=0; } tK.fill(-1); }   // last epoch's input bits are junk now; read keys do not outlive it
   for(let T=0;T<TASK_NF;T++)tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); }
 function taskBirth(i){ const o=i*4; tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
-  tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; }
+  tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; tRE[i]=-1; }
 function taskMove(w,r){ const a=w*4, b=r*4; for(let q=0;q<4;q++){ tW[a+q]=tW[b+q]; tJ[a+q]=tJ[b+q]; tDm[a+q]=tDm[b+q]; tRd[a+q]=tRd[b+q]; tRdE[a+q]=tRdE[b+q]; } for(let q=0;q<16;q++)tK[a*4+q]=tK[b*4+q];
-  tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tRdI[w]=tRdI[r]; }
+  tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tRdI[w]=tRdI[r]; tRx[w]=tRx[r]; tRy[w]=tRy[r]; tRE[w]=tRE[r]; tRT[w]=tRT[r]; }
 // the nearest living particle in sector s (of 8, world axes) within one interaction radius, from the cells sunStep listed this tick
 function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1); let best=-1, bd=CELL*CELL;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx, y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue;
@@ -10729,6 +10732,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   if(t===2){ tW[D]=tW[S]; tJ[D]=tJ[S]; tDm[D]=tDm[S]; for(let q=0;q<4;q++)tK[D*4+q]=tK[S*4+q]; return; }   // T_COPY
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e, v=hit?tLast[a]:0; tEv.reads++; if(TASK_FOUNDER&&!hit)return;   // #353: a miss leaves the word alone
     tW[D]=v; if(v)tEv.readHits++;   // T_READ
+    if(hit){ tRx[i]=px[a]; tRy[i]=py[a]; tRE[i]=e; tRT[i]=tLastK[a]; }   // #357: for the renderer only
     tJ[D]=v?tLastJ[a]:0; tDm[D]=v?tLastDm[a]:0; tK.fill(-1,D*4,D*4+4); if(v&&tLastK[a]>=0)tK[D*4]=tLastK[a];
     const q=o+tRdI[i]; tRd[q]=v; tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; }
   // T_OUTPUT: published first (a neighbour may read it whether or not it pays), then judged
@@ -26315,6 +26319,14 @@ function renderArt(){
               X.beginPath();X.moveTo(px[i],py[i]);X.quadraticCurveTo(mx-ddy/d*bend,my+ddx/d*bend,px[j],py[j]);X.strokeStyle=`rgba(${r},${g},${b},${al>0.5?0.5:al})`;X.stroke(); } } }
         j=pnext[j]; } }
   }
+  // #357: THE READS. What decides who lives here is what each creature computes, and most of that is built from what its neighbours
+  // published (#353-#356). So every creature that read a neighbour this epoch draws a thread to where that neighbour stood, coloured by
+  // the function that flowed along it (a hash of its truth table; grey if the word was not clean). A world computing alone shows dots;
+  // a world composing shows a web, in as many colours as it has functions in play. Drawing only: nothing here feeds the world.
+  if(TASKS_ON){ X.lineWidth=0.7; const ta=Math.min(0.34,0.26*dens+0.08);
+    for(let i=0;i<N;i++){ if(!palive[i]||tRE[i]!==tEpoch)continue; const T=tRT[i], ex=tRx[i]-px[i], ey=tRy[i]-py[i]; if(ex*ex+ey*ey>CELL*CELL*4)continue;
+      X.strokeStyle=T>=0?'hsla('+(((Math.imul(T,2654435761)>>>0)%360))+',85%,62%,'+ta+')':'rgba(140,140,140,'+(ta*0.4)+')';
+      X.beginPath(); X.moveTo(px[i],py[i]); X.lineTo(tRx[i],tRy[i]); X.stroke(); } }
   // bodies: halo, core, hot centre; the sprite already carries all three
   for(let i=0;i<N;i++){
     if(!palive[i])continue;

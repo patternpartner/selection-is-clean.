@@ -28183,3 +28183,14 @@ The FOUNDERONLY arm (`TASK_FOUNDER=1 TASK_MUT=0`) was run on 9601-9610 beside #3
 - **The founder alone is often marginal.** Three of its six take-offs only just crossed the line (506 and 518 at 10,000; 513 at 6,000).
 - **The founder alone varies by seed set:** 6/10 here, 7/10 on #353's seeds, 4/10 on #354's.
 - **What it means:** the reading founder supplies a route; the faster rewiring is useless without one and makes building on it reliable and fast. This turns #355's "well-supported reading" into a measurement, at 10 seeds and one horizon.
+
+### #357 — ART: THE READS ARE DRAWN. Rendering only; the simulation is byte-identical.
+
+The user asked whether the visuals match the system, and whether the system should decide what it looks like ("it's not my artwork, it's yours"). They did not match. Under TASKS, what decides who lives is what each creature computes, and most of that is built from neighbours' published words (#353-#356). None of that was on screen: a creature computing a depth-9 composite looked like one computing NAND of two inputs. The visible difference from the old world was a side effect of the economy (booms to the cap, crashes, REPL births).
+- **Now:** every creature whose READ hit this epoch draws a thin thread to where the neighbour it read stood. The thread is coloured by the function that flowed along it (a hash of its truth table), and grey if the word was not clean.
+- **What it shows:** a world computing alone shows dots; a world composing shows a web, in as many colours as it has functions in play. A stalled world and a world that has taken off now look different for the reason they ARE different.
+- **How it is built:** T_READ writes the neighbour's position, the epoch and the function into four arrays (`tRx`, `tRy`, `tRE`, `tRT`), which only `render()` reads. They move in `compact` and reset at birth.
+- **Checked byte-identical:** the shipped default (seed 9501) and #350's world (seed 9101).
+- **Seen in a real page:** at 60 s a faint web among about 600 bodies; at 180 s the same world had crashed to 137 alive and showed only a few threads. Thread opacity was raised once after that, for legibility.
+- **Unchanged:** colour of bodies (traits) and their form (the world's draw program, kept or undone by attention, #314).
+- `smoke.sh` is owed before `main` moves: #356's six long runs are using the CPU.
