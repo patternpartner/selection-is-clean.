@@ -28110,3 +28110,7 @@ Seeds 9501-9510, 10,000 ticks. Out: `lab/port/out-mut/`; result `lab/port/mut-re
 - `TASK_FOUNDER` and `TASK_MUT` now default to 1 wherever TASKS runs: the browser's default world, and any `TASKS=1` rig. `TASK_FOUNDER=0` and `TASK_MUT=0` restore #350's world, and were checked byte-identical to it (seed 9101).
 - Node's default and REPL worlds are untouched (byte-identical, seed 3).
 - **Saved universes:** they get the new six-instruction head on reload through `replEnsureHead`. TASK_MUT is a birth rule and needs nothing saved.
+- **#354, what supplies the route (added after a review asked whether take-off depends on "a narrow, externally supplied route").** It does, partly. Reliable take-off now rests on a six-instruction founder written by hand (Argon's design, built here) that reads neighbours from birth.
+  - #353's pinned arm bounds how much that founder supplies: its read-chains reach at most 150 functions at any population, and every evolving run passed that.
+  - But the RELIABILITY came from supplying the route, not from evolution finding it. In short: evolution builds well past the starting point, and the starting point was hand-made.
+  - Check after shipping: the new default on seed 9501 reproduced the MUT arm's run exactly (3,477 arrived by 10,000).
