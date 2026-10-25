@@ -27,7 +27,7 @@ function world(w){ const R=[]; for(let k=0;k<64;k++){ const f=`${D}/${w}.${k}.js
 const res={}; for(const s of seeds) for(const o of [1,2]) res[`${s}_o${o}`]=world(`${s}_o${o}`);
 const f=x=>x===null?'n/a':(+x.toFixed(3));
 for(const s of seeds){ const A=res[`${s}_o1`], B=res[`${s}_o2`];
-  console.log(`${s}: DRAIN / SCARCE | tax share ${f(A.tax)} / ${f(B.tax)} | exp(H) slope per window (w21-40) ${f(A.slope)} / ${f(B.slope)} | exp(H) w21-30 -> w31-40 ${Math.round(A.a21)}->${Math.round(A.a31)} / ${Math.round(B.a21)}->${Math.round(B.a31)} | late novelty (first >=100 in w31-40) ${A.late} / ${B.late} | mean circuit ${f(A.circ)} / ${f(B.circ)} | exp(H) ${f(A.expH)} / ${f(B.expH)} | climb 2+ ${f(A.climb2)} / ${f(B.climb2)} | income ${Math.round(A.inc)} / ${Math.round(B.inc)}`); }
+  console.log(`${s}: DRAIN / SCARCE | tax share ${f(A.tax)} / ${f(B.tax)} | exp(H) slope per window (w${NW/2+1}-${NW}) ${f(A.slope)} / ${f(B.slope)} | exp(H) w${NW-19}-${NW-10} -> w${NW-9}-${NW} ${Math.round(A.a21)}->${Math.round(A.a31)} / ${Math.round(B.a21)}->${Math.round(B.a31)} | late novelty (first >=100 in w${NW-9}-${NW}) ${A.late} / ${B.late} | mean circuit ${f(A.circ)} / ${f(B.circ)} | exp(H) ${f(A.expH)} / ${f(B.expH)} | climb 2+ ${f(A.climb2)} / ${f(B.climb2)} | income ${Math.round(A.inc)} / ${Math.round(B.inc)}`); }
 const counted=seeds.filter(s=>{ const A=res[`${s}_o1`], B=res[`${s}_o2`]; return A.ticks>=NW*30000&&B.ticks>=NW*30000&&A.hit>=0.01&&B.hit>=0.01&&((A.firstAct>=0&&A.firstAct<20)||(B.firstAct>=0&&B.firstAct<20)); });
 console.log(`counted seeds: ${counted.length}/3 (${counted.join(',')})`);
 if(counted.length<3){ console.log('VERDICT: INCONCLUSIVE'); process.exit(0); }
@@ -36,4 +36,5 @@ const M=n(A=>A.tax>=0.10)>=2;
 const UP=n(A=>A.slope>=5)>=2, ABOVE=n((A,B)=>A.slope>=B.slope+5)>=2, NOV=n((A,B)=>A.late>B.late)>=2;
 const H1=n((A,B)=>A.circ>=B.circ+0.3)>=2&&n((A,B)=>A.circ<B.circ-0.3)===0, BR=n((A,B)=>A.expH>=1.1*B.expH)>=2&&n((A,B)=>A.expH<0.9*B.expH)===0;
 console.log(`M (tax at least 10% of task income on 2 of 3) ${M} | UP (DRAIN slope >= +5/window on 2 of 3) ${UP} | ABOVE (DRAIN slope >= SCARCE + 5 on 2 of 3) ${ABOVE} | LATE NOVELTY higher on 2 of 3 ${NOV} | H1 ${H1} | BR ${BR}`);
+if(NW!==40)console.log('(NW='+NW+': the VERDICT line below is #348\'s rule; apply the horizon run\'s own rule, PREREG-horizon.md, to the numbers above)');
 console.log('VERDICT: '+(!M?'NOT APPLIED':(UP&&ABOVE&&NOV)?'RATCHET':ABOVE?'SLOWER FENCE':'NO TREND EFFECT')+((M&&(H1||BR))?' | levels: '+[H1?'HARDER':'',BR?'BROADER':''].filter(Boolean).join(', '):''));

@@ -27908,3 +27908,35 @@ Mechanical fixes alone (#341, #344, #345) changed little until the economy made 
 - Compare it against REPL and the default world with null bands, on the engine's own measures (centredEntropyRatio, spread_late, establishment, alive).
 - Use a horizon long enough for every seed to take off, or report how many have.
 - Then re-run retire-or-prove of the big layers inside it (PORT-PLAN.md, "Order").
+
+### #349 — PRE-REGISTERED (`lab/PREREG-horizon.md`, committed 899dc57; addendum on the batch-script bug before any windows 41-80 result was read): #348's six worlds run on, unchanged, to 2,400,000 ticks. **FADES by the rule.** The drain's lead in novelty was a head start, not a ratchet: by the last quarter the undrained worlds were finding new functions faster than the drained ones.
+
+Analysis: `NW=80 node lab/analyse-troph.js lab/out-troph`. Its VERDICT line is #348's rule, which the script now says. The ruling below is this file's rule, applied by hand to the numbers it prints. Late = windows 71-80, second half = windows 41-80.
+
+| seed | DRAIN / SCARCE late novelty (first reaching 100 in w71-80) | DRAIN / SCARCE exp(H) slope, w41-80 | exp(H) w61-70 to w71-80, DRAIN / SCARCE | mean circuit | median exp(H) | functions ever reaching 100, DRAIN / SCARCE |
+|---|---|---|---|---|---|---|
+| 8001 | 133 / 157 | -1.2 / +6.5 | 1552 to 1456 / 849 to 875 | 5.24 / 4.80 | 1548 / 809 | 4,675 (7.1%) / 2,781 (4.2%) |
+| 8002 | 119 / 189 | +3.5 / +6.6 | 1452 to 1282 / 624 to 764 | 5.12 / 4.75 | 1285 / 603 | 4,279 (6.5%) / 2,499 (3.8%) |
+| 8003 | 193 / 437 | -2.3 / +9.0 | 1048 to 1251 / 625 to 789 | 5.13 / 4.69 | 1227 / 593 | 4,043 (6.2%) / 1,900 (2.9%) |
+
+**Rule outcomes.** All 3 seeds counted.
+- **PERSISTS failed.** DRAIN's late novelty was at least 100 on 3/3 seeds, but higher than SCARCE's on 0/3.
+- **NOT FALLING failed.** DRAIN's slope was at least 0 on 1/3.
+- **Verdict: FADES.** The pre-registered consequence: "the recipe moves the fence and the world then settles; the next build is a growing function space."
+- **My prediction was NOVELTY PERSISTS, BREADTH FALLS. Wrong on the first half.**
+
+**First arrivals (functions whose per-sample income first reaches 100), per block of 10 windows (300,000 ticks), blocks 1-8:**
+- DRAIN: 914 982 1082 637 371 318 238 133 / 1592 1247 471 379 144 102 225 119 / 1062 1073 460 599 344 208 104 193.
+- SCARCE: 4 911 461 564 126 380 178 157 / 892 704 540 40 27 38 69 189 / 793 289 131 16 40 88 106 437.
+
+**How to read it.**
+- **Arrival never stops in either arm.** Every block of every world adds new functions. This is the same shape as #346-#348, extended: a fast discovery phase, then a long tail of 100-400 per 300,000 ticks.
+- **The drain front-loads discovery.** DRAIN found 2,500-3,300 functions in the first three blocks, against SCARCE's 1,400-2,100. From block 5 on, DRAIN's arrivals fall steadily, while SCARCE's rise again on 2 seeds (8002: 27 to 189; 8003: 16 to 437).
+- **#348's "late novelty x9.5 and x37" was measured at the bottom of SCARCE's dip (block 4).** By block 8 it has reversed. #348's table stays as written; this is its correction.
+- **What the drain does keep is LEVELS.** It holds +0.4 gates of mean circuit and about 2x breadth, on 3/3 seeds. Over the whole run it reached 1.5-2.1x as many functions.
+- **The space is not full:** 3-7% of 65,536 functions have ever earned 100 in one sample. So "fades" is not "ran out of room"; the world settles well short of the space's edge. My stated rule was that a fixed space must fill, so the reason is not the space's size. It is what an economy of this shape rewards at steady state: the active set (1,600-2,900 functions in the last block) turns over slowly, and arrivals become a trickle.
+- **One horizon, longer.** Both arms are still adding functions at 2.4M.
+
+**What follows.**
+- The drain stays in the port: it is HARDER and BROADER at every horizon measured, and #350 uses it.
+- "A growing function space" is the pre-registered next build. But the space is not what ran out, so the first question is whether a space that grows changes a world that is using 3-7% of the space it has. Before building it, the engine's own long run (TASKS, #351 onward) gets the same per-block arrival readout: the engine adds sources of change the lean core does not have (laws, atoms, the mind, a continuous world), and those may be what keeps arrivals up.
