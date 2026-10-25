@@ -3,6 +3,9 @@
 // income split between computing and sunlight over the last window, and how many living programs carry each logic op.
 // Reads only counters and arrays; draws nothing.
 //   SEED=s TICKS=10000 TASKS=1 node lab/port/probe-tasks.js        (FULL=1 adds every function's cumulative income)
+// PIN=rock pins every living program to the one reproduction instruction [4,2,4,1] after every tick (#333's rock); PIN=anc pins
+// it to the founder's program (REPL_ANCESTOR: under TASKS it computes NAND of two inputs, then asks to reproduce), so nothing
+// evolves. Pinning draws nothing.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis);
 require(path.join(ROOT,'harness-env.js'))(globalThis);
@@ -10,8 +13,11 @@ const NS=require(path.join(ROOT,'novelty-shadows.js'));
 const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module'); const m=new Module('/tmp/tasks-sim.js'); m.filename='/tmp/tasks-sim.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
-;globalThis.__T=function(ticks,every,full){ let births=0; (${NS.BIRTHS})(function(){ births++; }); const rows=[]; let lastInc=0, lastSun=0, errs=0;
-  for(let t=1;t<=ticks;t++){ globalThis.__detMs+=5; try{loop();}catch(e){ if(errs++<3)console.error(String(e&&e.stack||e).slice(0,400)); }
+;globalThis.__T=function(ticks,every,full){ let births=0; const rows=[]; let lastInc=0, lastSun=0, errs=0; const PIN=process.env.PIN||'';
+  const pin1=i=>{ if(!palive[i]||!pGenome[i])return; const p=PIN==='rock'?[[4,2,4,1.0]]:REPL_ANCESTOR.map(x=>x.slice()); pGenome[i].vmProgram=p; pProg[i]=p; };
+  const pin=()=>{ if(!PIN)return; for(let i=0;i<N;i++)pin1(i); }; pin();
+  (${NS.BIRTHS})(function(c){ births++; if(PIN)pin1(c); });   /* a newborn is pinned before its first run */
+  for(let t=1;t<=ticks;t++){ globalThis.__detMs+=5; try{loop();}catch(e){ if(errs++<3)console.error(String(e&&e.stack||e).slice(0,400)); } pin();
     if(t%every===0){ let alive=0, len=0; const carry=[0,0,0,0,0]; for(let i=0;i<N;i++) if(palive[i]){ alive++; const p=pProg[i]||[]; len+=p.length; const seen=[0,0,0,0,0]; if(typeof TASKS_ON!=="undefined"&&TASKS_ON)
         for(const ins of p){ const o=ins[0]-TASK_OP0; if(o>=0&&o<5)seen[o]=1; } for(let q=0;q<5;q++)carry[q]+=seen[q]; }
       const row={tick:t, alive, births, meanLen:alive?+(len/alive).toFixed(2):0};
@@ -21,4 +27,4 @@ m._compile(code+`
       rows.push(row); } }
   return rows; };`, m.filename);
 const rows=globalThis.__T(parseInt(process.env.TICKS||'10000',10), parseInt(process.env.SAMPLE||'500',10), (process.env.FULL|0)===1);
-console.log(JSON.stringify({seed:process.env.SEED||'1', tasks:process.env.TASKS||'0', rows}));
+console.log(JSON.stringify({seed:process.env.SEED||'1', tasks:process.env.TASKS||'0', pin:process.env.PIN||'', rows}));
