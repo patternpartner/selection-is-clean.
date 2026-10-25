@@ -28114,3 +28114,7 @@ Seeds 9501-9510, 10,000 ticks. Out: `lab/port/out-mut/`; result `lab/port/mut-re
   - #353's pinned arm bounds how much that founder supplies: its read-chains reach at most 150 functions at any population, and every evolving run passed that.
   - But the RELIABILITY came from supplying the route, not from evolution finding it. In short: evolution builds well past the starting point, and the starting point was hand-made.
   - Check after shipping: the new default on seed 9501 reproduced the MUT arm's run exactly (3,477 arrived by 10,000).
+- **#354 acceptance.**
+  - `smoke.sh`: 66 ok / 0 failing, on #354's defaults, with nothing else running. The comment-only fix to the TASKS block (89f48e0) landed mid-run, so the later rigs read that version; behaviour is identical.
+  - `substrate-test`: 264/0 at TICKS=40.
+  - Live in a real page.
