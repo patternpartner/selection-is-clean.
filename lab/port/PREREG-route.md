@@ -30,3 +30,7 @@ PARTIAL: m about 6, d about 9, o about 4. MUTONLY worlds that take off will do s
 - Ten seeds and one horizon.
 - "Not by 10,000" is not "never".
 - A SUPPLIED verdict would not mean evolution cannot find READ. #350's seeds found it by mutation on 2 of 3 by 10,000, under the slow nested rewiring.
+
+## Reading the verdict (added before any run; the rules above are unchanged)
+- **EVOLVED ROUTE means the hand-written reading founder is NOT NECESSARY for near-default take-off under this test.** It does not mean the founder had no causal role. The MUTONLY arm still inherits #350's founder (NAND of two inputs) and the engine's conditions.
+- **The take-off ticks separate three readings of any verdict:** the founder supplies a CAPABILITY (MUTONLY rarely gets there at all), a RELIABLE PATH (MUTONLY gets there on fewer seeds), or a HEAD START (MUTONLY gets there on as many seeds, later).
