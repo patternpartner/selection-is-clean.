@@ -27986,3 +27986,26 @@ Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. A
 - **No change for the rigs:** node trajectories are byte-identical, because no rig loads a saved genome. substrate-test is 264/0 at TICKS=40.
 - **What the old code got wrong, stated structurally:** the rescue was written against "a founder has parentA < 0". The boot path's founders have parentA undefined. That is the same family as CLAUDE.md's fallback trap: a check that declines to fire on a missing value.
 - **#352a acceptance.** `smoke.sh`: 65 ok / 1 failing, run alongside three long probe-arrivals jobs. The failure was `mind-test`'s "every universe past 1,000 ticks has seen parents" row: it needs at least 3 universes past 1,000 ticks, and u1 reached 955. Run alone straight after, `mind-test` gave all 10 ok. That is the contention case CLAUDE.md describes, established by re-running rather than assumed.
+
+### #352 — EXPLORATORY (not pre-registered): do new functions keep arriving in the ENGINE under TASKS? **On the two seeds where composition took off, yes, at rates the lab never showed, and the space is filling. On the third it never took off in 100,000 ticks.**
+
+`lab/port/probe-arrivals.js`, seeds 9301-9303 (never run), TASKS defaults, up to 100,000 ticks or 105 minutes of wall clock. Out: `lab/port/out-arrivals/`.
+- **Arrival:** a function ARRIVES the first time it earns at least 0.25 (one birth's cost) in a 500-tick window.
+- **This threshold is not the lab's** (100 income per 1,000-tick sample, in the lab's energy units), so counts compare across seeds here, not with #349.
+
+| seed | horizon | took off? | functions arrived (of 65,536) | arrivals per 5,000-tick block | late exp(H) / mean formula size | alive |
+|---|---|---|---|---|---|---|
+| 9301 | 100,000 (ticks) | **no** | 188 (0.3%) | 147, then 0-6 from tick 25,000 on | 36 / 2.2 | 160-260 |
+| 9302 | 48,801 (wall) | at once | 17,721 (27%) | 4,008 2,363 1,662 1,054 1,331 1,512 1,722 1,957 1,425 (last part-block 687) | 2,600-3,500 / 6.5-6.8 | about 1,600-1,720 (the cap) |
+| 9303 | 73,011 (wall) | by tick about 30,000 | 23,968 (37%) | 31 242 131 130 174, then 780 3,837 4,316 3,240 3,092 1,662 1,777 2,614 1,252 (part-block 690) | 2,800-4,400 / 6.3-6.8 | about 1,600 (the cap) |
+
+**How to read it (one seed each way; a horizon set by wall clock, not chosen).**
+- **Where composition took off, arrivals did not fade within the horizon.** On 9302 they fell from 4,008 to 1,054 and then ROSE for four blocks to 1,957; breadth (exp(H)) doubled from 1,722 to 3,513 over ticks 20,000-40,000. That is the shape #349 looked for and did not find in the lab. On 9303 they ran at 1,250-4,316 per block for 40,000 ticks.
+- **But the space is now what is finite.** 27-37% of all 65,536 functions arrived within 50,000-73,000 ticks. At these rates the rest would be gone within about 100,000 more ticks, and after that arrival must fall by construction. In the engine the limit #349 ruled out for the lab ("the space fills") is the near one. So the growing function space, the build #349's rule named, is the right next build here.
+- **Take-off is bimodal and late.** 9301 sat at about 180 functions and formula size 2 for 100,000 ticks, with computing income below sunlight. #350 found the same split (2 of 3 seeds by 10,000 ticks). A universe in the field can stay in the founder's world indefinitely, and that is the dull artwork.
+- **Ignited worlds sit at the 1,800-particle cap,** so their breadth is partly the cap's (more particles, more functions computed). A world at the cap also runs about 10x slower per tick.
+- **Not shown:** that the new functions are SELECTED rather than drifting into pools. Each arrival earned a birth's worth of energy, so they pay, which is the rung above "exists", but not the rung of "who reproduces is sorted by it".
+
+**Next, in the order it argues for:**
+1. **Take-off.** Why does 9301 never start? Is it the founder lineage's luck with READ, or a stable trap in which READ never pays at low density?
+2. **A growing function space,** so arrival is not bounded by 65,536. For example, more input words over time, or functions of the epoch's history. Pre-register it on a long horizon, ignited seeds counted.
