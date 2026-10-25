@@ -28151,3 +28151,35 @@ Seeds 9601-9610, 10,000 ticks. Out: `lab/port/out-route/`; result `lab/port/rout
 
   The founder supplies the route, and the rewiring makes building on it reliable. These cells come from three seed sets, and the founder-alone cell itself varied 7 against 4 between two of them. So the founder-alone arm is now being run on 9601-9610, to finish the 2x2 on one set (#355b, a measurement).
 - **What this means for the artwork, said plainly:** reliable take-off rests on a hand-written route. Evolution builds far past it (#353: every evolving run past the founder's 150-function reach), but under these conditions it does not find the route by itself in 10,000 ticks.
+
+### #355b — MEASUREMENT (no rule, no engine change): the 2x2 finished on ONE seed set. **The founder and the rewiring interact super-additively.**
+
+The FOUNDERONLY arm (`TASK_FOUNDER=1 TASK_MUT=0`) was run on 9601-9610 beside #355's three arms. Out: `lab/port/out-route/*_FOUNDERONLY.*`.
+
+| took off by 10,000 (at least 500 arrived), of 10 | no rewiring | TASK_MUT |
+|---|---|---|
+| #350's founder | 3 | 1 |
+| reading founder | 6 | **10** |
+
+| seed | arrived OLD / FOUNDERONLY / MUTONLY / DEFAULT (with take-off tick) |
+|---|---|
+| 9601 | 8 / 323 / 55 / 1,449 at 5,000 |
+| 9602 | 248 / 599 at 9,000 / 223 / 1,152 at 3,000 |
+| 9603 | 12,403 at 3,000 / 204 / 258 / 4,729 at 3,000 |
+| 9604 | 1,676 at 7,000 / 995 at 4,000 / 215 / 1,590 at 2,000 |
+| 9605 | 122 / 2,400 at 3,000 / 10 / 1,774 at 7,000 |
+| 9606 | 68 / 506 at 10,000 / 14 / 3,228 at 2,000 |
+| 9607 | 87 / 518 at 10,000 / 146 / 1,649 at 3,000 |
+| 9608 | 59 / 177 / 133 / 1,092 at 6,000 |
+| 9609 | 435 / 417 / 106 / 1,393 at 2,000 |
+| 9610 | 514 at 10,000 / 513 at 6,000 / 725 at 6,000 / 7,869 at 2,000 |
+
+**How to read it.**
+- **The cells are rates across unpaired re-rolls.** Every arm draws differently from the first birth, so a single seed's row compares two different worlds.
+- **The effects:**
+  - the founder alone adds +3 take-offs;
+  - the rewiring alone changes the count by -2 (not distinguishable from 0);
+  - adding those predicts about 4 of 10 together, and together they made **10 of 10**.
+- **The founder alone is often marginal.** Three of its six take-offs only just crossed the line (506 and 518 at 10,000; 513 at 6,000).
+- **The founder alone varies by seed set:** 6/10 here, 7/10 on #353's seeds, 4/10 on #354's.
+- **What it means:** the reading founder supplies a route; the faster rewiring is useless without one and makes building on it reliable and fast. This turns #355's "well-supported reading" into a measurement, at 10 seeds and one horizon.
