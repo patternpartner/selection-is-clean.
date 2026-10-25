@@ -3,7 +3,7 @@
 # and complements); o1 adds the options in ARM1 (a JSON fragment, default '"TASK_EPAY":1'), o2 adds ARM2 (default none: #340's STRICT).
 # SEEDS="a b c" (default 7701 7702 7703); MAXNEW=n starts at most n chunks per launch. One 150,000-tick chunk for every world with chunks left, PAR at a time, resuming exactly from
 # its own save. Relaunch until it prints "all done". 8 chunks = 1,200,000 ticks.
-cd "$(dirname "$0")/.."; OUT=${1:?outdir}; PAR=${2:-6}; NCH=${NCH:-8};   # NCH=16 extends every world to 2,400,000 ticks (#349) CH=150000; mkdir -p "$OUT"; todo=(); ARM1=${ARM1:-'"TASK_EPAY":1'}; ARM2=${ARM2:-}
+cd "$(dirname "$0")/.."; OUT=${1:?outdir}; PAR=${2:-6}; NCH=${NCH:-8}; CH=${CH:-150000}; mkdir -p "$OUT"; todo=(); ARM1=${ARM1:-'"TASK_EPAY":1'}; ARM2=${ARM2:-}   # NCH/CH extend the horizon (#349: the first version of this line put its comment before CH, so CH ran unset and its chunks were 100,000 ticks)
 for s in ${SEEDS:-7701 7702 7703}; do for o in 1 2; do w=${s}_o$o; k=0; while [ -e "$OUT/$w.$k.done" ]; do k=$((k+1)); done
   [ $k -lt $NCH ] && { rm -f "$OUT/$w.$k.jsonl" "$OUT/$w.$k.save"; todo+=("$s $o $k"); }; done; done
 [ ${#todo[@]} -eq 0 ] && { echo "all done"; exit 0; }

@@ -38,3 +38,11 @@ The space is large: 65,536 functions, of which DRAIN used a few thousand by 1.2M
 ## What this cannot say
 - Still one horizon, just a longer one. A PERSISTS verdict at 2.4M is not "forever".
 - A fixed function space must eventually fill, so this test can show that the space is not yet the limit; it cannot show unboundedness.
+
+## Addendum - a batch-script bug, found before any windows 41-80 result was read; rules unchanged
+The edit adding NCH to `lab/tasks6-batch.sh` put an inline comment before `CH=150000` on the same line, so CH ran unset. Every continuation chunk therefore ran tasks-run's default of 100,000 ticks, not 150,000.
+- After the 8 continuation chunks the worlds stood at 2,000,000 ticks. The resume is exact, so the trajectories are valid, only shorter.
+- The options (DRAIN: TASK_TROPH 0.5; SCARCE: 0; both TASK_RATE 0.02, READ_REG 1) are confirmed in every arm's saves.
+- Fix: the line is rewritten, CH is a parameter (default 150,000), and the worlds are completed to 2,400,000 with 4 more chunks of 100,000 (`CH=100000 NCH=20`).
+- `lab/analyse-troph.js` now reads every chunk file present instead of assuming 150,000-tick files.
+- The first analysis attempt read only 16 files (2,000,000 ticks), saw zeros in windows 67-80, and printed INCONCLUSIVE. That was a reading failure, not a result.

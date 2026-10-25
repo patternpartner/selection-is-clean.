@@ -7,7 +7,7 @@
 const fs=require('fs'); const {CSZ4}=require('./core-tasks4.js');
 const D=process.argv[2], seeds=(process.env.SEEDS||'8001,8002,8003').split(',').map(Number), WIN=30, NW=+(process.env.NW||40), NCHK=NW/5;   // NW=80 for #349's 2,400,000-tick horizon: second half = windows NW/2+1..NW, late = the last 10
 const med=a=>{ const b=[...a].sort((x,y)=>x-y), n=b.length; return n?(n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2):0; };
-function world(w){ const R=[]; for(let k=0;k<NCHK;k++){ const f=`${D}/${w}.${k}.jsonl`; if(!fs.existsSync(f))break; for(const l of fs.readFileSync(f,'utf8').trim().split('\n')){ try{ R.push(JSON.parse(l)); }catch(e){} } }
+function world(w){ const R=[]; for(let k=0;k<64;k++){ const f=`${D}/${w}.${k}.jsonl`;   /* every chunk file present, whatever their lengths (#349's were 100,000 ticks) */ if(!fs.existsSync(f))break; for(const l of fs.readFileSync(f,'utf8').trim().split('\n')){ try{ R.push(JSON.parse(l)); }catch(e){} } }
   const win=[], first=new Map();
   R.forEach((r,i)=>{ if(r.tasks&&r.tasks.full) for(const [T,x] of r.tasks.full) if(x>=100&&!first.has(T))first.set(T,Math.floor(i/WIN)); });
   for(let i=0;i+WIN<=R.length;i+=WIN){ const W=R.slice(i,i+WIN).filter(r=>r.tasks&&r.tasks.income>0); if(!W.length){ win.push(null); continue; }
