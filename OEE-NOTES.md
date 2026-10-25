@@ -27868,3 +27868,43 @@ The R0 overwrite, not the slot, now carries the loss. That is what the user pred
 3. a tax that makes heavily-read functions pay for being read (#348).
 
 Mechanical fixes alone (#341, #344, #345) changed little until the economy made composition pay.
+
+### #350 — PRE-REGISTERED (`lab/port/PREREG-tasks.md`, committed ed1211a before any decision run; addendum 8f23191 before any valid one): COMPUTATION PAYS IN THE ENGINE. **A CONFIRMED, B CONFIRMED, 2 of 3 seeds each, the 2 being the seeds where composition took off.** #333 is turned round: under TASKS a world that computes nothing lives at 0.28-0.72 of one that does.
+
+**What was built (engine.html, knob `TASKS=1`, default OFF; implies REPL).** The lab's recipe (#334-#348, `lab/PORT-PLAN.md` items 1-6), in the replicator world, with sunlight cut to a floor of 25%.
+- **Inputs:** four world-wide 32-bit input words, redrawn every 50 ticks.
+- **A word file per particle,** separate from the float registers, which are clamped to ±8 and cannot hold a word.
+- **Five ops taken from the top of the bound range** (422-426: INPUT, NAND, COPY, READ, OUTPUT). They run on the particle's own solo run only. Off, those slots are bound slots as before.
+- **The bit-exact clean rule.**
+- **Payment:** one payment per epoch, from 65,536 per-function pools. Each pool's cap is 0.4 × the function's exact NAND formula size (the table is embedded in the file), regrowing 0.02 of the gap per tick. Copies and complements of reads are refused.
+- **The trophic drain** at 0.5.
+- **The draw:** 25% of opcode draws at the seven program-mutation sites are logic ops. The count of seven is asserted; the first patch counted eight, and the eighth was the helper itself.
+- **The founder computes NAND of two inputs,** then asks to reproduce.
+- **Off, byte-identical:** checked on plain REPL and the default world, seed 3, against the pre-change engine.
+- **Probe:** `lab/port/probe-tasks.js`.
+
+**Result.** Seeds 9101-9103, 10,000 ticks. Mean alive over ticks 7,000-10,000. Out: `lab/port/out-tasks/`; analysis `lab/port/analyse-tasks.js`.
+
+| seed | TASKS | ANC (founder pinned) | ROCK (`[4,2,4,1]` pinned) | REPL (reference) | ROCK/TASKS | ANC/TASKS | exp(H) | mean formula size | task/sun income, late |
+|---|---|---|---|---|---|---|---|---|---|
+| 9101 | 460 | 148 | 131 | 1,426 | **0.28** | **0.32** | 71 | 2.37 | 2.42 |
+| 9102 | 172 | 154 | 124 | 794 | 0.72 | 0.90 | 7 | 1.00 | 0.42 |
+| 9103 | 247 | 89 | 118 | 392 | **0.48** | **0.36** | 256 | 4.07 | 1.64 |
+
+- **A (ROCK under half of TASKS):** 2 of 3, CONFIRMED.
+- **B (ANC under half of TASKS):** 2 of 3, CONFIRMED.
+- **Predictions:** A was right. For B I predicted a failure on at least one seed, and there was exactly one.
+
+**How to read it.**
+- **The two seeds that pass are the two where composition took off.** On 9101 and 9103, READ spread to nearly every program and the paid functions grew beyond the founder's NAND (mean formula size 2.4 and 4.1; 109 and 167 functions with at least 0.1% of income). On 9102, READ is carried by 14% of programs at the horizon, but every paid function is still formula size 1. My pre-registered "ignited" flag (READ above 10%) calls 9102 ignited; by what it computes, it has not.
+- **So the pass is a statement about horizon.** Seed 1 took off before tick 1,000 in a pilot; seed 2 had not by 3,000. A seed that has not taken off is the founder's world plus drift, and on it computing does not out-live the rock by much (0.72).
+- **9103's ROCK margin is thin** (0.48 against a 0.5 line).
+- **TASKS worlds hold FEWER living than REPL** (172-460 against 392-1,426). That follows from the quarter-strength sun. It is not a cost the rule weighed.
+- **This is the first world in this engine where who lives depends on what the program computes.** #333's question now has the other answer, at this rung (survival), on two seeds of three.
+- **Not yet shown:** that the computed functions keep diversifying, which is what the artwork needs. #349 asks that question in the lab.
+- **Known leak:** pinned arms run one unpinned founder output at tick 1 (316 payments of 0.05 energy in total, against about 55 from sunlight). It is too small to matter, and it is recorded here.
+
+**Next (#351):** the template's question, whether TASKS should become the default world.
+- Compare it against REPL and the default world with null bands, on the engine's own measures (centredEntropyRatio, spread_late, establishment, alive).
+- Use a horizon long enough for every seed to take off, or report how many have.
+- Then re-run retire-or-prove of the big layers inside it (PORT-PLAN.md, "Order").

@@ -3035,3 +3035,12 @@ every row but the four LAW_* meta rows (inert with the process off). **`harness-
 verdict: law process on, the world's proposals off (LAW_RATE 0), one trial installed at AT exactly as
 `attemptLawMutation` installs it; `PROBATION=` sets that trial's length. Both read the row list at runtime.
 **`microcosm-scale.js`** (#264) runs the bacterial microcosm's ten regimes at four scales in one command.
+
+---
+
+**#350 — TASKS, computation that pays** (knob `TASKS=1`, implies REPL). The block sits just after `sunStep` in the SUN/REPL
+layer:
+- **The block:** `TASKS_ON`, the knobs `TASK_CAPM`/`TASK_RATEM`/`TASK_TROPHP`/`TASK_SUNP`/`TASK_DRAWP` (integer units, for `applyKnobs`), the embedded formula-size table `TASK_SZ4`, the word file (`tW` `tJ` `tDm` `tK`), what each particle last published (`tLast*`), the pools (`tCap` `tRes`) and their income (`tE` `tN`).
+- **The functions:** `taskTick` (the epoch and regrowth, called in `loop()` just before `executeSoloVM`), `taskOp` (the five ops), `taskFn`, `taskNeighbour`, `taskBirth` (both `addParticle` chokepoints), `taskMove` (in `compact`), `taskDrawOp` (the seven program-mutation draws) and `taskStats`.
+- **The opcodes:** `TASK_OP0 = CORE_OPCODES+MAX_BOUND_OPCODES-5` = 422. vmStep tests for these five ops BEFORE the bound-opcode block, so under TASKS they never reach an atom; off, the test is false and the slots are bound slots.
+- **Not saved with a universe yet:** a reload starts with empty word files and full pools.
