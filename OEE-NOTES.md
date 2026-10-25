@@ -28009,3 +28009,12 @@ Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. A
 **Next, in the order it argues for:**
 1. **Take-off.** Why does 9301 never start? Is it the founder lineage's luck with READ, or a stable trap in which READ never pays at low density?
 2. **A growing function space,** so arrival is not bounded by 65,536. For example, more input words over time, or functions of the epoch's history. Pre-register it on a long horizon, ignited seeds counted.
+- **#352, take-off diagnosed from #350's outputs (no new runs): it is SUPPLY of READ, not density.**
+  - **9101 and 9103 took off:** READ was carried early, 67 and 42 programs at tick 1,000, and spread.
+  - **9102 never took off:** READ carriers were 0-4 through tick 5,000, at the same population (about 150) as 9101.
+  - **Hit rates do not decide it:** 56-80% on 9101, 15-26% on 9103, and both took off.
+  - **Why it is a lottery:** a birth redraws an opcode rarely, and READ is 5% of draws (a quarter of draws go to the five logic ops), so whether READ enters a lineage that spreads is chance.
+- **The next build, designed but not built.**
+  - **The idea:** put READ in the founder's program, so take-off is decided by selection, not by that lottery.
+  - **The snag the design must get past:** one payment per epoch goes to the FIRST valid output. A founder that outputs NAND(a,b) first will always take that easy payment before any read-based output. A founder that reads first earns nothing when it is isolated.
+  - **So it is a pre-registered A/B, not a tweak:** the founder variants against today's founder; ruled on the fraction of unseen seeds that take off by 10,000 ticks (paid mean formula size at least 2 in the last third) and on arrivals.
