@@ -28075,3 +28075,38 @@ Seeds 9401-9410, 10,000 ticks, `probe-arrivals.js`. Out: `lab/port/out-founder/`
 **A pattern, not a cause (six seeds).** Two of the stalled seeds lost COPY almost entirely (23 and 18) and keep INPUT-heavy programs (9404: 2.8 INPUTs per program). The commonest one there, INPUT INPUT READ NAND OUTPUT INPUT, has no fallback COPY: on a miss, word 1 keeps whatever it last held. The taken-off 9405 dropped INPUT almost entirely (80 among 884 particles) and composes by reading.
 
 **What this changes:** the next try is still supply, as #353 pre-registered. But "raise the READ draw" is the wrong lever (READ is not missing). The candidates are the program-mutation throttles: insertion shut by the cap, and rate-squared redraws.
+
+### #354 — PRE-REGISTERED (`lab/port/PREREG-mut.md`, committed 893ab9c before any decision run): the reading founder plus un-nested rewiring (`TASK_FOUNDER=1 TASK_MUT=1`). **A CONFIRMED: took off on 9 of 10 unseen seeds, against 4 of 10 for today's default. Shipped: both knobs are now ON wherever TASKS runs.**
+
+Seeds 9501-9510, 10,000 ticks. Out: `lab/port/out-mut/`; result `lab/port/mut-result.txt`.
+- **"Arrived":** functions that ever earned at least 0.25 in one 500-tick window.
+- **"Took off":** at least 500 arrived by tick 10,000.
+
+| seed | arrived OLD / NEW / MUT | took off OLD / NEW / MUT |
+|---|---|---|
+| 9501 | 8 / 4,518 / 3,477 | no / yes / yes |
+| 9502 | 121 / 465 / 1,742 | no / no / yes |
+| 9503 | 62 / 203 / 11,234 | no / no / yes |
+| 9504 | 14 / 249 / 1,528 | no / no / yes |
+| 9505 | 586 / 322 / 971 | yes / no / yes |
+| 9506 | 1,897 / 996 / 1,266 | yes / yes / yes |
+| 9507 | 741 / 198 / 3,642 | yes / no / yes |
+| 9508 | 8 / 2,698 / 2,616 | no / yes / yes |
+| 9509 | 1,188 / 761 / 288 | yes / yes / no |
+| 9510 | 461 / 273 / 10,044 | no / no / yes |
+
+**Rule outcomes.**
+- **A:** MUT took off on 9/10 and OLD on 4/10, so the floor (at least 8) and the margin (at least 3) both held. CONFIRMED.
+- **Guard:** no crash in any arm. Clear.
+- **Attribution:** NEW took off on 4/10, against 7/10 on #353's seeds. So the reading founder alone is not reliable, and on these seeds the un-nested rewiring carried the result.
+- **Prediction:** about 9/10 against OLD's 3-4/10. Right.
+
+**How to read it.**
+- MUT was not uniformly higher. It fell below NEW on 9501, 9508 and 9509, and 9509 did not take off (288).
+- Each MUT run is a re-roll of its seed (TASK_MUT draws), so the comparison is of rates across seeds, not of paired worlds.
+- **The claim, at its rung:** under TASK_MUT, a TASKS world reaches the composing regime by 10,000 ticks on 9 of 10 seeds instead of 4. It does not say these worlds keep finding new functions for longer; that is #352's question, to be re-run on the new default.
+
+**What was shipped.**
+- `TASK_FOUNDER` and `TASK_MUT` now default to 1 wherever TASKS runs: the browser's default world, and any `TASKS=1` rig. `TASK_FOUNDER=0` and `TASK_MUT=0` restore #350's world, and were checked byte-identical to it (seed 9101).
+- Node's default and REPL worlds are untouched (byte-identical, seed 3).
+- **Saved universes:** they get the new six-instruction head on reload through `replEnsureHead`. TASK_MUT is a birth rule and needs nothing saved.

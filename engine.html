@@ -10671,12 +10671,12 @@ const TASK_SUN=__tk('__TASK_SUNP',25)/100, TASK_DRAWP=__tk('__TASK_DRAWP',25)/10
 // leaves its target word and its masks as they were, instead of writing 0; and the founder computes with ONE output that is a
 // read-composite when its read hits and NAND of two inputs when it misses - INPUT, COPY to word 1, INPUT, READ into word 1,
 // NAND, OUTPUT. #352: take-off waited on READ entering a spreading lineage by mutation, which on some seeds never happened.
-const TASK_FOUNDER=(__tk('__TASK_FOUNDER',0)|0)!==0;
+const TASK_FOUNDER=(__tk('__TASK_FOUNDER',1)|0)!==0;   // #354: default ON (PREREG-mut.md CONFIRMED, with TASK_MUT); TASK_FOUNDER=0 restores #350's founder
 // #354 design knobs (default 0; #353b: programs sit at the length cap, so inheritProg's insertion never runs, and src/dst are redrawn
 // only inside the rate-squared nest). TASK_MUT=1: at every birth each instruction's src and dst are ALSO redrawn with odds
 // rate*0.2 each, opcodes untouched. TASK_LEAN=1: the germline program is the founder head plus REPL's reproduction instruction
 // and nothing else, so a program starts far under the cap and insertion can add to it.
-const TASK_MUT=(__tk('__TASK_MUT',0)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;
+const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
                           :[[TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]];
 // exact NAND formula size of each four-input function (lab/nand4-sz.bin, one character per function: size + 48)

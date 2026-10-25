@@ -1,0 +1,13 @@
+seed | arrived OLD NEW MUT | took off OLD NEW MUT | crash OLD NEW MUT | ticks reached
+9501 | 8 4518 3477 | no yes yes | - - - | 10000 10000 10000
+9502 | 121 465 1742 | no no yes | - - - | 10000 10000 10000
+9503 | 62 203 11234 | no no yes | - - - | 10000 10000 10000
+9504 | 14 249 1528 | no no yes | - - - | 10000 10000 10000
+9505 | 586 322 971 | yes no yes | - - - | 10000 10000 10000
+9506 | 1897 996 1266 | yes yes yes | - - - | 10000 10000 10000
+9507 | 741 198 3642 | yes no yes | - - - | 10000 10000 10000
+9508 | 8 2698 2616 | no yes yes | - - - | 10000 10000 10000
+9509 | 1188 761 288 | yes yes no | - - - | 10000 10000 10000
+9510 | 461 273 10044 | no no yes | - - - | 10000 10000 10000
+took off: MUT 9/10, NEW 4/10, OLD 4/10 -> A CONFIRMED | crashes MUT 0 NEW 0 OLD 0 -> guard clear
+SHIP: yes - TASK_FOUNDER and TASK_MUT become the default
