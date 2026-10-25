@@ -28118,3 +28118,36 @@ Seeds 9501-9510, 10,000 ticks. Out: `lab/port/out-mut/`; result `lab/port/mut-re
   - `smoke.sh`: 66 ok / 0 failing, on #354's defaults, with nothing else running. The comment-only fix to the TASKS block (89f48e0) landed mid-run, so the later rigs read that version; behaviour is identical.
   - `substrate-test`: 264/0 at TICKS=40.
   - Live in a real page.
+
+### #355 — PRE-REGISTERED (`lab/port/PREREG-route.md`, committed 79c8448 before any decision run): does faster rewiring find the reading route WITHOUT the hand-written founder? **SUPPLIED ROUTE.** Without the founder, TASK_MUT took off on 1 of 10 seeds; the old world on 3 of 10; the shipped default on 10 of 10.
+
+Seeds 9601-9610, 10,000 ticks. Out: `lab/port/out-route/`; result `lab/port/route-result.txt`. Nothing in the engine changed.
+
+| seed | arrived MUTONLY / DEFAULT / OLD | take-off tick MUTONLY / DEFAULT / OLD |
+|---|---|---|
+| 9601 | 55 / 1,449 / 8 | - / 5,000 / - |
+| 9602 | 223 / 1,152 / 248 | - / 3,000 / - |
+| 9603 | 258 / 4,729 / 12,403 | - / 3,000 / 3,000 |
+| 9604 | 215 / 1,590 / 1,676 | - / 2,000 / 7,000 |
+| 9605 | 10 / 1,774 / 122 | - / 7,000 / - |
+| 9606 | 14 / 3,228 / 68 | - / 2,000 / - |
+| 9607 | 146 / 1,649 / 87 | - / 3,000 / - |
+| 9608 | 133 / 1,092 / 59 | - / 6,000 / - |
+| 9609 | 106 / 1,393 / 435 | - / 2,000 / - |
+| 9610 | 725 / 7,869 / 514 | 6,000 / 2,000 / 10,000 |
+
+**Rule:** m = 1 and o = 3, so m is at most o + 1: SUPPLIED ROUTE. No crash in any arm.
+
+**My prediction was PARTIAL (m about 6). Wrong:** faster rewiring alone found the reading route on one seed in ten.
+
+**How to read it** (the prereg's "Reading the verdict", written before the runs).
+- The founder supplies a CAPABILITY under this test, not a head start: MUTONLY rarely gets there at all by 10,000, and its one take-off came later than the default's on the same seed (6,000 against 2,000).
+- MUTONLY took off on fewer seeds than OLD (1 against 3). That is not distinguishable at 10 unpaired seeds, so it is not a finding that rewiring hurts on its own.
+- **With #353-#354, an interaction is a well-supported reading, not yet a measured one:**
+  - the founder alone took off on 7/10 (#353's seeds) and 4/10 (#354's);
+  - founder + rewiring on 9/10 and 10/10;
+  - rewiring alone on 1/10;
+  - neither on 3-4/10.
+
+  The founder supplies the route, and the rewiring makes building on it reliable. These cells come from three seed sets, and the founder-alone cell itself varied 7 against 4 between two of them. So the founder-alone arm is now being run on 9601-9610, to finish the 2x2 on one set (#355b, a measurement).
+- **What this means for the artwork, said plainly:** reliable take-off rests on a hand-written route. Evolution builds far past it (#353: every evolving run past the founder's 150-function reach), but under these conditions it does not find the route by itself in 10,000 ticks.
