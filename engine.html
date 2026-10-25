@@ -10699,6 +10699,7 @@ const tE=TASKS_ON?new Float64Array(TASK_NF):null, tN=TASKS_ON?new Uint32Array(TA
 const tEv={reads:0,readHits:0,outs:0,paid:0,dirty:0,refused:0,trivial:0,spent:0,income:0,overflow:0,troph:0,sun:0};   // counters only, never read by the world
 if(TASKS_ON){ for(let T=0;T<TASK_NF;T++)tCap[T]=TASK_CAP*TASK_SZ4[T]; tRes.set(tCap); }
 let tEpoch=-1;
+let __taskOnPay=null;   // #356: a probe hook, null unless a rig installs one; called on each payment with (particle, function, word); draws nothing
 function taskDrawInputs(){ const rows=new Uint8Array(32); for(let q=0;q<32;q++)rows[q]=q&15;
   for(const h of [0,16]) for(let q=15;q>0;q--){ const j=(Math.random()*(q+1))|0, t=rows[h+q]; rows[h+q]=rows[h+j]; rows[h+j]=t; }
   for(let k=0;k<4;k++){ let w=0; for(let q=0;q<32;q++) if((rows[q]>>(3-k))&1)w|=1<<q; tWin[k]=w>>>0; } }
@@ -10736,7 +10737,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   if(tJ[D]!==0){ tEv.dirty++; return; }
   const T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; }
   if(tPE[i]===e)return; tPE[i]=e;   // one payment per epoch
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tEv.paid++; tEv.income+=g; const x=pE[i]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[i]=SUN_STORE; } else pE[i]=x;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tEv.paid++; if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const x=pE[i]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[i]=SUN_STORE; } else pE[i]=x;
   if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 function taskDrawOp(){ return Math.random()<TASK_DRAWP?TASK_OP0+((Math.random()*5)|0):Math.floor(Math.random()*OPCODE_DRAW); }   // only called under TASKS
 // the threshold-free readouts (#345): effective number of functions over the whole income vector, and every function with income >= 10 per mille of the total
