@@ -10672,6 +10672,11 @@ const TASK_SUN=__tk('__TASK_SUNP',25)/100, TASK_DRAWP=__tk('__TASK_DRAWP',25)/10
 // read-composite when its read hits and NAND of two inputs when it misses - INPUT, COPY to word 1, INPUT, READ into word 1,
 // NAND, OUTPUT. #352: take-off waited on READ entering a spreading lineage by mutation, which on some seeds never happened.
 const TASK_FOUNDER=(__tk('__TASK_FOUNDER',0)|0)!==0;
+// #354 design knobs (default 0; #353b: programs sit at the length cap, so inheritProg's insertion never runs, and src/dst are redrawn
+// only inside the rate-squared nest). TASK_MUT=1: at every birth each instruction's src and dst are ALSO redrawn with odds
+// rate*0.2 each, opcodes untouched. TASK_LEAN=1: the germline program is the founder head plus REPL's reproduction instruction
+// and nothing else, so a program starts far under the cap and insertion can add to it.
+const TASK_MUT=(__tk('__TASK_MUT',0)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
                           :[[TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]];
 // exact NAND formula size of each four-input function (lab/nand4-sz.bin, one character per function: size + 48)
@@ -10733,7 +10738,7 @@ function taskStats(){ let tot=0; for(let T=0;T<TASK_NF;T++)tot+=tE[T]; let H=0, 
   return {income:+tot.toFixed(4), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), full, ev:Object.assign({},tEv)}; }
 if(TASKS_ON)WORLD_ENERGY_REGEN=0.4*TASK_SUN;   // #350: sunlight becomes a floor
 if(REPL_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift([4,2,4,1.0]);
-if(TASKS_ON&&Array.isArray(genome.vmProgram))genome.vmProgram.unshift(...TASK_HEAD.map(x=>x.slice()));   // #350: INPUT, INPUT, NAND, OUTPUT - the ancestor computes before it reproduces
+if(TASKS_ON&&Array.isArray(genome.vmProgram)){ if(TASK_LEAN)genome.vmProgram=[[4,2,4,1.0]]; genome.vmProgram.unshift(...TASK_HEAD.map(x=>x.slice())); }   // #350: INPUT, INPUT, NAND, OUTPUT - the ancestor computes before it reproduces
 // #352: the head a fresh REPL/TASKS germline starts with. A SAVED germline (loadGenome) replaces the boot one, and a universe saved
 // before #351 made TASKS the default has neither the logic ops nor the reproduction instruction, so on reload its founders could
 // neither compute nor breed (measured in a browser: 0 payments and 0 REPL births by tick 2,264, against 11,971 and 1,738 fresh).
@@ -10919,6 +10924,7 @@ function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child =
       if(Math.random()<rate*0.2)p[i][2]=Math.floor(Math.random()*12);
     }
   }
+  if(TASKS_ON&&TASK_MUT) for(let i=0;i<p.length;i++){ if(Math.random()<rate*0.2)p[i][1]=Math.floor(Math.random()*12); if(Math.random()<rate*0.2)p[i][2]=Math.floor(Math.random()*12); }   // #354: TASK_MUT
   if(p.length<cap&&Math.random()<rate*0.15)p.splice(Math.floor(Math.random()*(p.length+1)),0,[(TASKS_ON?taskDrawOp():Math.floor(Math.random()*OPCODE_DRAW)),Math.floor(Math.random()*12),Math.floor(Math.random()*12),(Math.random()-0.5)*0.6]);
   if(p.length>1&&Math.random()<rate*0.08)p.splice(Math.floor(Math.random()*p.length),1);
   while(p.length>cap)p.pop();
