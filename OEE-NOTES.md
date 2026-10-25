@@ -28018,3 +28018,36 @@ Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. A
   - **The idea:** put READ in the founder's program, so take-off is decided by selection, not by that lottery.
   - **The snag the design must get past:** one payment per epoch goes to the FIRST valid output. A founder that outputs NAND(a,b) first will always take that easy payment before any read-based output. A founder that reads first earns nothing when it is isolated.
   - **So it is a pre-registered A/B, not a tweak:** the founder variants against today's founder; ruled on the fraction of unseen seeds that take off by 10,000 ticks (paid mean formula size at least 2 in the last third) and on arrivals.
+
+### #353 — PRE-REGISTERED (`lab/port/PREREG-founder.md`, committed 20bffa0 before any decision run): a founder that reads (`TASK_FOUNDER`: READ keeps its word on a miss, plus a one-output founder that composes when its read hits). **A NOT CONFIRMED (took off on 7 of 10 seeds, the floor was 8). Not shipped; the knob stays 0.** B CONFIRMED (10/10), guard clear.
+
+Seeds 9401-9410, 10,000 ticks, `probe-arrivals.js`. Out: `lab/port/out-founder/`; result `lab/port/founder-result.txt`.
+- **"Arrived":** functions that ever earned at least 0.25 in one 500-tick window.
+- **"Took off":** at least 500 arrived by tick 10,000.
+
+| seed | arrived OLD / NEW / PIN | took off OLD / NEW | late alive OLD / NEW |
+|---|---|---|---|
+| 9401 | 530 / 860 / 44 | yes / yes | 151 / 396 |
+| 9402 | 116 / 2,844 / 103 | no / yes | 561 / 1,516 (OLD crashed) |
+| 9403 | 12 / 470 / 40 | no / no | 414 / 309 |
+| 9404 | 175 / 198 / 45 | no / no | 485 / 1,708 |
+| 9405 | 55 / 883 / 54 | no / yes | 1,544 / 1,180 |
+| 9406 | 8 / 1,475 / 60 | no / yes | 182 / 1,400 |
+| 9407 | 828 / 1,318 / 59 | yes / yes | 1,179 / 930 |
+| 9408 | 1,050 / 2,410 / 46 | yes / yes | 669 / 345 |
+| 9409 | 8 / 217 / 55 | no / no | 177 / 143 |
+| 9410 | 106 / 1,225 / 59 | no / yes | 268 / 602 |
+
+**Rule outcomes.**
+- **A:** NEW took off on 7/10 and OLD on 3/10. A needed at least 8 and a margin of at least 3. The margin held (+4); the floor missed by one seed. NOT CONFIRMED.
+- **Guard:** NEW 0 crashes, OLD 1. Clear.
+- **B:** NEW arrived more than PIN on 10/10. CONFIRMED.
+- **Prediction:** A was predicted at 10/10. Wrong.
+
+**Read past the rule (descriptive, not ruled on).**
+- **NEW arrived more than OLD on 10 of 10 seeds,** by 1.1x to 184x. The median was 1,272 against 111.
+- **The package moves take-off a long way, but not to "reliable".** 9403 and 9409 stalled at 470 and 217. 9404 reached 198, with 1,708 alive: a big population computing few functions. So reading from birth is not enough on every seed.
+- **The founder-closure bound held as a test of its own model.** The exact closure of what a pinned founder can compute is 150 functions, of formula size up to 6 (computed, `w -> NAND(X_i, w)` from every input pair). Every PIN run stayed at 40-103. Every NEW run passed 150 (198-2,844). So on every seed, evolving worlds computed functions a pinned founder's read-chains cannot reach at any population.
+- **The rule was written to ship only on reliability, and it did what it was written to do.** Shipping a 7/10 package because it "looks better" is the move CLAUDE.md's template exists to stop (`#238`/`#241`).
+
+**What follows (as pre-registered):** the knob stays 0. The next try is supply: the READ draw rate, or the package with a higher draw. It is pre-registered again, on unseen seeds; 9401-9410 can design it but not decide it.
