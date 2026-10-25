@@ -28051,3 +28051,27 @@ Seeds 9401-9410, 10,000 ticks, `probe-arrivals.js`. Out: `lab/port/out-founder/`
 - **The rule was written to ship only on reliability, and it did what it was written to do.** Shipping a 7/10 package because it "looks better" is the move CLAUDE.md's template exists to stop (`#238`/`#241`).
 
 **What follows (as pre-registered):** the knob stays 0. The next try is supply: the READ draw rate, or the package with a higher draw. It is pre-registered again, on unseen seeds; 9401-9410 can design it but not decide it.
+
+### #353b — EXPLORATORY: what the living programs look like on #353's stalled and taken-off seeds (NEW arm, re-run with a read-only census)
+
+`probe-arrivals.js CENSUS=1`. It draws nothing, and every re-run reproduced its #353 count exactly. Out: `lab/port/out-census/`.
+
+| seed | took off | arrived | alive | READ carried | exact founder task ops | distinct task-op sequences | distinct (op, sector/src, dst) | INPUT / COPY / READ counts | mean length / cap |
+|---|---|---|---|---|---|---|---|---|---|
+| 9403 | no | 470 | 310 | 100% | 0 | 25 | 16 | 389 / 23 / 316 | 14.9 / 15.2 |
+| 9404 | no | 198 | 1,751 | 94% | 0 | 89 | 40 | 4,836 / 18 / 1,641 | 15.9 / 16.0 |
+| 9409 | no | 217 | 138 | 96% | 0 | 18 | 13 | 155 / 130 / 133 | 15.8 / 16.2 |
+| 9405 | yes | 883 | 884 | 95% | 0 | 101 | 58 | 80 / 43 / 879 | 16.1 / 16.6 |
+| 9406 | yes | 1,475 | 1,384 | 100% | 0 | 100 | 47 | 1,215 / 1,678 / 1,400 | 15.9 / 16.0 |
+| 9410 | yes | 1,225 | 1,190 | 86% | 0 | 75 | 38 | 1,164 / 1,184 / 1,148 | 16.7 / 17.1 |
+
+**The two causes relayed from Argon, checked.**
+- **"The stalled lineages lost READ": rejected.** READ is carried by 94-100% of the stalled seeds' programs, and always within the instructions that run.
+- **"Operand/opcode mutation (rate squared, about 0.09-0.4% per instruction per birth) is too slow to move": not supported as the separator.**
+  - Every population, stalled or not, has rewritten the founder's task ops: 0 programs carry them exactly, with 18-101 distinct sequences.
+  - Operand variety is lower on 2 of the 3 stalled seeds (16 and 13 combinations, against 38-58). But 9404 stalled with 40, and 9410 took off with 38.
+- **Confirmed, a third throttle:** programs sit at the cap (mean length within 0.4 of mean vmMaxInstructions on every seed). `inheritProg` only inserts while `p.length < cap`, so new instructions arrive only by redrawing old ones.
+
+**A pattern, not a cause (six seeds).** Two of the stalled seeds lost COPY almost entirely (23 and 18) and keep INPUT-heavy programs (9404: 2.8 INPUTs per program). The commonest one there, INPUT INPUT READ NAND OUTPUT INPUT, has no fallback COPY: on a miss, word 1 keeps whatever it last held. The taken-off 9405 dropped INPUT almost entirely (80 among 884 particles) and composes by reading.
+
+**What this changes:** the next try is still supply, as #353 pre-registered. But "raise the READ draw" is the wrong lever (READ is not missing). The candidates are the program-mutation throttles: insertion shut by the cap, and rate-squared redraws.
