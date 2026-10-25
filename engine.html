@@ -10634,7 +10634,7 @@ function sunStep(season){
     pE[i]=e; }
   energyAdequacy=dem>0?paid/dem:1;
   for(let c=0;c<C;c++)tot+=sunField[c]; worldEnergy=tot; }
-// #350 - TASKS (knob TASKS=1, default OFF; implies REPL and SUN). COMPUTATION PAYS: the lab's recipe (#334-#348, lab/PORT-PLAN.md)
+// #350 - TASKS (implies REPL and SUN). DEFAULT: ON IN A BROWSER since #351 (#notasks turns it off), OFF UNDER NODE unless TASKS=1 (see __TASKS_DEFAULT). COMPUTATION PAYS: the lab's recipe (#334-#348, lab/PORT-PLAN.md)
 // moved into the engine. #303b and #333 measured that nothing a program computes here decides who lives: sunlight goes
 // into the store passively and a one-instruction rock lives as well as evolved code. Under TASKS most of the store's
 // income is EARNED by computing logic functions of four world-wide input words, and sunlight shrinks to a floor
@@ -10661,7 +10661,8 @@ function sunStep(season){
 //   draw is the engine's own. (Uniform over 427, a five-op layer would be drawn 1.2% of the time; the lab's set was 29.)
 // - THE ANCESTOR computes NAND of two inputs before it asks to reproduce, so the layer starts EXECUTED (CLAUDE.md's
 //   ladder). Every other function has to be found.
-// Off (unset or 0): nothing here is reached, no draw is taken, and the world is byte-identical.
+// Off (#notasks in a browser; TASKS unset or 0 under node): nothing here is reached, no draw is taken, and the world is byte-identical.
+// #354: TASK_FOUNDER and TASK_MUT (below) are ON by default wherever TASKS runs.
 const TASKS_ON=((typeof globalThis!=='undefined')&&((globalThis.__TASKS|0)!==0))||__TASKS_DEFAULT;
 const __tk=(n,d)=>{ const v=(typeof globalThis!=='undefined')?globalThis[n]:undefined; return (v!==undefined&&Number.isFinite(+v))?+v:d; };
 const TASK_EPOCH=50, TASK_F=0.2, TASK_NF=65536, TASK_OP0=CORE_OPCODES+MAX_BOUND_OPCODES-5;
