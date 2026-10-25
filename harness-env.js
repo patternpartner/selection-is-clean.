@@ -71,7 +71,7 @@ console.error=()=>{};console.warn=()=>{};};
 // instruction of a child with those odds. MIND_MODE 1 frozen, 2 uniform (the controls); MIND_SEED its own random stream.
 // #350: TASKS=1 makes computation pay (implies REPL); TASK_CAPM pool cap per formula gate in thousandths, TASK_RATEM regrowth in
 // thousandths, TASK_TROPHP the drain in percent, TASK_SUNP sunlight as a percent of REPL's, TASK_DRAWP percent of opcode draws that are logic ops.
-module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT','SUN','REPL','REPL_INERT','REPL_ARMS','REPL_ATOMS','REPL_KEYD','REPL_SEX','REPL_ATOM_INERT','REPL_COST','REPL_FROZEN','MIND','MIND_MODE','MIND_SEED','TASKS','TASK_CAPM','TASK_RATEM','TASK_TROPHP','TASK_SUNP','TASK_DRAWP','TASK_FOUNDER'];
+module.exports.KNOBS = ['MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT','SUN','REPL','REPL_INERT','REPL_ARMS','REPL_ATOMS','REPL_KEYD','REPL_SEX','REPL_ATOM_INERT','REPL_COST','REPL_FROZEN','MIND','MIND_MODE','MIND_SEED','TASKS','TASK_CAPM','TASK_RATEM','TASK_TROPHP','TASK_SUNP','TASK_DRAWP','TASK_FOUNDER','TASK_MUT','TASK_LEAN'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
