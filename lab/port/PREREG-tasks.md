@@ -56,3 +56,12 @@ the founder computes). Ignition is reported per seed (READ carried by over 10% o
   variables, before any retire-or-prove of the big layers is re-run inside it (PORT-PLAN.md, "Order").
 - Saved worlds: TASKS is off by default, so nothing saved changes. If it is later made the default, a save reloaded into
   it starts with empty word files and full pools (none of the layer's state is saved yet), which CLAUDE.md rule 6 permits.
+
+## Addendum (written before any valid decision run): the first three runs used the wrong pool scale
+
+The first launch ran seed 9101's TASKS, ANC and ROCK arms with the engine's default `TASK_CAPM` of **50** (0.05 per formula
+gate), not the 400 this file names as the default: the pilots had all set the knob by hand, so the code's default was never
+the one tested. At 0.05 computing paid about 1/40 of sunlight and the three arms were indistinguishable (late alive about
+100-330 in all three). Those three runs are VOID (kept outside the record in `lab/port/out-tasks-void/`). The engine's
+default is now 400, matching the text above, and all twelve runs are made at it. Seed 9101 stays in the design: what was
+seen was a different world, at a setting this rule does not rule on.
