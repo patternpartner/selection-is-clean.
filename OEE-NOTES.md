@@ -27969,3 +27969,8 @@ Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. A
 - `index.html` passes `notasks` down to every universe on the same token as `nomind`. Node trajectories are byte-identical to before (checked on the default world and REPL, seed 3).
 - **Saved worlds** (rule 6): a saved universe reloaded in a browser now runs under REPL's birth rules with TASKS. Parentless founders get the TASKS ancestor (`REPL_ANCESTOR`, built at load). A saved germline program carries no logic ops, so whatever descends from it lives on the 25% sunlight floor until mutation draws them (25% of draws). NOT CHECKED: which programs a reloaded universe's first particles actually run.
 - **Reversible:** `#notasks`, or revert the `__TASKS_DEFAULT` line.
+
+**#350-#351 acceptance.**
+- `substrate-test`: 264/0 at TICKS=40, TICKS=900, the default and FOUND=0. These ran on #350's engine; #351 changes nothing under node.
+- `smoke.sh`: 66 ok / 0 failing, on #351's engine with nothing else running. Its browser rigs now run TASKS worlds.
+- **In a real page** (playwright, `engine.html` opened by itself): TASKS_ON true, 808 alive and 3,073 payments by tick 190. With `#notasks`, TASKS_ON and REPL_ON are false.
