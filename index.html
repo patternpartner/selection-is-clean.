@@ -246,7 +246,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -292,6 +292,7 @@
     var _mi=raw.match(/(?:^|,)(mind(?:=\d+)?)(?:,|$)/), _mm=raw.match(/(?:^|,)mindmode=(frozen|uniform)(?:,|$)/);
     if(/(?:^|,)nomind(?:,|$)/.test(raw)) MINDTOK='nomind';
     else if(_mi||_mm) MINDTOK=[_mi?_mi[1]:'',_mm?'mindmode='+_mm[1]:''].filter(Boolean).join(',');
+    if(/(?:^|,)notasks(?:,|$)/.test(raw)) MINDTOK=[MINDTOK,'notasks'].filter(Boolean).join(',');   // #351: TASKS is every universe's default world; #notasks rides on the same token
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }

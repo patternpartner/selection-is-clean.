@@ -10544,7 +10544,12 @@ const pProvision=new Float32Array(CAP); // LEAP 3: banked reproductive surplus, 
 // DETRITAL_HARVEST (146) scavenging, SELF_RES_SENSE (181) and PARTNER_RES_SENSE (164) read stores. A death's store and
 // body go to the detrital layer instead of the ground, so the dead feed scavengers and nothing else; the old deposit of
 // amplitude into detritus is off, so no free currency becomes breeding energy.
-const REPL_ON=(typeof globalThis!=='undefined')&&(((globalThis.__REPL|0)!==0)||((globalThis.__TASKS|0)!==0));   // #350: TASKS implies REPL
+// #351: TASKS IS THE ARTWORK'S DEFAULT WORLD (PREREG-default.md: BETTER, trait spread up on 2 of 3 seeds, nothing worse on 2 of 3).
+// ON BY DEFAULT IN A BROWSER, OFF BY DEFAULT UNDER NODE, as the mind is (#296), so every rig keeps measuring the world it always
+// measured and asks for this one with TASKS=1. #notasks in a universe's hash (or the field's) switches it off; TASKS=0 is off either way.
+const __TASKS_DEFAULT=(()=>{ try{ if(typeof process!=='undefined'&&process.versions&&process.versions.node)return false; if(typeof globalThis!=='undefined'&&globalThis.__TASKS!==undefined)return false;
+  const h=(typeof location!=='undefined'&&location.hash)||''; return !/(^|[#,])notasks(,|$)/.test(h); }catch(_){ return false; } })();
+const REPL_ON=(typeof globalThis!=='undefined')&&(((globalThis.__REPL|0)!==0)||((globalThis.__TASKS|0)!==0)||__TASKS_DEFAULT);   // #350: TASKS implies REPL
 const REPL_INERT=(REPL_ON&&typeof globalThis!=='undefined'&&globalThis.__REPL_INERT!==undefined)?(globalThis.__REPL_INERT|0):-1;   // #273: rigs only - the named opcode still runs through the VM but does nothing, the neutral control for its spread
 const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
 if(REPL_ON){ WORLD_ENERGY_REGEN=0.4; BIRTH_ENERGY_COST=0.25; }   // #278: 0.4 (was 0.6) - at 0.6 worlds reached 1,800 living and ran 5x slower, so fewer generations per window
@@ -10657,7 +10662,7 @@ function sunStep(season){
 // - THE ANCESTOR computes NAND of two inputs before it asks to reproduce, so the layer starts EXECUTED (CLAUDE.md's
 //   ladder). Every other function has to be found.
 // Off (unset or 0): nothing here is reached, no draw is taken, and the world is byte-identical.
-const TASKS_ON=(typeof globalThis!=='undefined')&&((globalThis.__TASKS|0)!==0);
+const TASKS_ON=((typeof globalThis!=='undefined')&&((globalThis.__TASKS|0)!==0))||__TASKS_DEFAULT;
 const __tk=(n,d)=>{ const v=(typeof globalThis!=='undefined')?globalThis[n]:undefined; return (v!==undefined&&Number.isFinite(+v))?+v:d; };
 const TASK_EPOCH=50, TASK_F=0.2, TASK_NF=65536, TASK_OP0=CORE_OPCODES+MAX_BOUND_OPCODES-5;
 const TASK_CAP=__tk('__TASK_CAPM',400)/1000, TASK_RATE=__tk('__TASK_RATEM',20)/1000, TASK_TROPH=__tk('__TASK_TROPHP',50)/100;

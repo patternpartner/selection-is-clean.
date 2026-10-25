@@ -27940,3 +27940,32 @@ Analysis: `NW=80 node lab/analyse-troph.js lab/out-troph`. Its VERDICT line is #
 **What follows.**
 - The drain stays in the port: it is HARDER and BROADER at every horizon measured, and #350 uses it.
 - "A growing function space" is the pre-registered next build. But the space is not what ran out, so the first question is whether a space that grows changes a world that is using 3-7% of the space it has. Before building it, the engine's own long run (TASKS, #351 onward) gets the same per-block arrival readout: the engine adds sources of change the lean core does not have (laws, atoms, the mind, a continuous world), and those may be what keeps arrivals up.
+
+### #351 — PRE-REGISTERED (`lab/port/PREREG-default.md`, committed c77910c before any decision run): should TASKS be the default world? **BETTER (trait spread UP on 2 of 3 seeds, nothing WORSE on 2 of 3). Shipped: TASKS is the artwork's default world in the browser.**
+
+Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. Analysis `lab/port/analyse-default.js`; its full output is in `lab/port/default-result.txt`. All 3 seeds counted.
+
+| measure | 9201 | 9202 | 9203 | tally |
+|---|---|---|---|---|
+| centredEntropyRatio | none | none | none | 0 |
+| spread_late | none (TASKS 0.30-0.68 across a band of 0.22-0.55) | **UP** (1.38-1.82 against 0.21-1.11) | **UP** (1.17-1.43 against 0.21-1.10) | UP 2/3 |
+| estFrac | none | none | none | 0 |
+| lineages standing late | none (TASKS 88-1,321 across a band of 151-339) | **DOWN** (89-190 against 204-331) | none (160-1,438 against 270-320) | DOWN 1/3 |
+| program diversity late | none | none | none | 0 |
+| TASKS-only crash | **yes** (T2 extinct by 20,000) | no (a DEFAULT run, D3, went extinct) | no | 1/3 |
+
+**Verdict: BETTER.**
+- The prediction was SPLIT, with lineages DOWN on 2 of 3. Lineages went down on only one seed, so the prediction was wrong.
+- Claimed only at the rung measured: TASKS worlds spread wider in trait space at 20,000 ticks. That is not "more open-ended".
+
+**What the rule did not weigh, recorded so the verdict is not read past it.**
+- **TASKS is VOLATILE.** On one seed its three replicates ended at 1,015, 1,504 and 0 living, and late lineages ran from 88 to 1,438. Booms to the 1,800 cap and crashes as the pools are grazed out are its ordinary dynamics (the pilot: 1,209 at tick 3,000, then 30 by 4,000). The default world's band is narrow, at about 360 alive, so most TASKS runs fall either side of it, and that is why few measures "moved".
+- **One TASKS world went extinct.** So did one default world. At 1/3 against 1/3 (counting the default's own), extinction is not specific to TASKS, but a field of eight TASKS universes will see it.
+- **Runs at the 1,800 cap are slow:** one replicate took 70 minutes against the default's 7. In the browser that shows as a universe slowing down while it booms.
+- **REPL (the reference, one run a seed) looked like TASKS on spread and kinds,** and had fewer lineages (155-203). TASKS did not cure REPL's lineage loss on 9202, and beat it on the others.
+
+**What was shipped.**
+- `TASKS_ON` is true in a browser unless the universe's hash (or the field's) says `#notasks`. Under node it is OFF unless `TASKS=1`, so every rig measures the world it always measured. This is the mind's convention (#296).
+- `index.html` passes `notasks` down to every universe on the same token as `nomind`. Node trajectories are byte-identical to before (checked on the default world and REPL, seed 3).
+- **Saved worlds** (rule 6): a saved universe reloaded in a browser now runs under REPL's birth rules with TASKS. Parentless founders get the TASKS ancestor (`REPL_ANCESTOR`, built at load). A saved germline program carries no logic ops, so whatever descends from it lives on the 25% sunlight floor until mutation draws them (25% of draws). NOT CHECKED: which programs a reloaded universe's first particles actually run.
+- **Reversible:** `#notasks`, or revert the `__TASKS_DEFAULT` line.
