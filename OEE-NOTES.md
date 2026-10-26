@@ -28239,3 +28239,14 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **9701: still dead.** It crashed at 85,000 as before and held 34-35 alive to 130,000, with task income of about 30 per block. It never empties, so no reseed happens and the rescue never gets a chance. Its survivors breed on sunlight above RESEED_FLOOR and have lost the ability to compute.
 
 **So there are two dead states:** one that empties out (now rescued), and one that persists just above the floor (not). The second is the next question. In the browser field a universe also receives migrants from its neighbours, which may already lift it; a node run is isolated. No further mechanism is added before that is checked.
+
+- **#359, the dead world 9701 diagnosed further (corrects the entry above: its survivors sit BELOW RESEED_FLOOR (90), not above it).**
+  - **Census at tick 95,000** (`lab/port/out-rescue/9701-census.jsonl`, rescue fix in):
+    - 35 alive, with a mean age of **74,152 ticks** (REPL's median life is about 400) and only 1 under 100 ticks old;
+    - none running the predation op (155), so it is not a predator trap;
+    - READ carried by 17, and the logic ops rare.
+  - **Why they are immortal:** senescence is skipped for a lineage in founder grace (`specInGrace`), and grace holds while a lineage has fewer than `__SPEC.minsize` (12) living members, with no time limit. `COLO_SURV` (the starvation pin) is off, so they can still starve, but on full sunlight stores (sun income about 1,700 per 5,000 ticks for 35 bodies) they do not.
+  - **What the cull test shows** (a fresh TASKS world on seed 9701, all but 35 killed at tick 1,000): it regrows to about 1,600 within 2,000 ticks from births, after only 19 parentless founders. So reseeding works and a healthy remnant recovers.
+  - **What that leaves:** in the dead state, at most 1 creature at a time is young while founders arrive on about 1 tick in 4, which says the founders DIE within a few ticks. The rescue restores the ancestor's PROGRAM, but a founder takes every other gene from the drifted germline (upkeep, death threshold, lifespan).
+  - **Hypothesis, NOT checked:** the germline's parameters have drifted somewhere lethal to a newborn, while the immortal survivors carry older, viable genomes. Next: replay 9701 to its dead state and compare the germline with the survivors.
+  - **Two mechanisms meet in this trap:** founder grace without a time limit for small lineages, and a germline that drifts to whatever survives.
