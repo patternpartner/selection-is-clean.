@@ -28221,3 +28221,21 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **The emergency reseed never fires:** it only acts under RESEED_FLOOR, and the world sits above it.
 - **Why no mutant that computes takes over a world of full pools is the open question.** A census of 9703's survivors is running.
 - **For the artwork this is a dead tile:** a universe that has crashed stays dark-and-still indefinitely.
+
+### #359 — BUG FIX: the REPL founder rescue (#284) never fired for a reseed. Fixed after boot. A crashed world now comes back if it empties out; one that settles just above the reseed floor still does not.
+
+**Why #356's dead worlds stayed dead.** A census of 9703 at tick 40,000 (`probe-arrivals CENSUS=1`):
+- 293 living programs carried NAND 869, READ 582 and COPY 580 times, but INPUT only 10 and OUTPUT only 9.
+- The dominant program (188 of 293) is NAND READ NAND READ COPY COPY NAND: it reads, and nobody publishes.
+- Recovering needs an INPUT and an OUTPUT together, two specific mutations in a small population living on sunlight.
+- The population also kept crashing to 0 and being reseeded (minimum alive 0, maximum about 300). That should have rescued it, because #284 made a parentless founder under REPL start from the ancestor program.
+
+**The bug.** Every reseed call (`replenish`, the extinction rebirth, `init`) passes no parent, and the rescue tested `parentA<0`, which is false for undefined. So the rescue never fired. Every reseed copied the drifted germline, which `selfLearnFromBest` had re-adopted from the best (non-computing) survivor, so it had lost INPUT and OUTPUT too. This is the same class of miss as #352a's reload bug, and as CLAUDE.md's fallback trap: a check that declines to fire on a missing value.
+
+**The fix.** The rescue also fires when the parent is undefined AFTER tick 0. Boot founders are left as they were, so every run is byte-identical up to its first post-boot reseed (checked on the shipped default to tick 800). The default world has no REPL_ANCESTOR and is untouched (checked byte-identical).
+
+**Tested on the two seeds that died** (design seeds, `lab/port/out-rescue/`):
+- **9703: recovered.** It crashed at 25,000-35,000 as before, then came back from 40,000. From 55,000 to 75,000 it first-paid 2,300-5,250 functions per 5,000 ticks on task income of 37,000-42,000, above anything before its crash. Without the fix it sat at zero for 170,000 ticks.
+- **9701: still dead.** It crashed at 85,000 as before and held 34-35 alive to 130,000, with task income of about 30 per block. It never empties, so no reseed happens and the rescue never gets a chance. Its survivors breed on sunlight above RESEED_FLOOR and have lost the ability to compute.
+
+**So there are two dead states:** one that empties out (now rescued), and one that persists just above the floor (not). The second is the next question. In the browser field a universe also receives migrants from its neighbours, which may already lift it; a node run is isolated. No further mechanism is added before that is checked.
