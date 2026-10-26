@@ -21675,7 +21675,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   pProg[i]=pGenome[i].vmProgram;
   if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
-  if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
+  if(REPL_ANCESTOR&&(parentA<0||(parentA===undefined&&tick>0))){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   /* #359: reseeds pass NO parent, and undefined<0 is false, so this rescue never fired for them: a crashed REPL/TASKS world reseeded from its drifted germline (#356: a germline with no INPUT or OUTPUT, so the world never computed again). Boot founders (tick 0) are left as they were. */   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
 }
 function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
@@ -21779,7 +21779,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   pProg[i]=pGenome[i].vmProgram;
   if(__mindLatch!==false){ if(parentA>=0&&parentA<N)mindBirth(i,parentA); else pMindW[i]=0; }   // #296: the mind sees the parent and may write one instruction of the child
   if(REPL_ATOMS&&parentA>=0)replAtomBirth(i);   // #276
-  if(REPL_ANCESTOR&&parentA<0){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
+  if(REPL_ANCESTOR&&(parentA<0||(parentA===undefined&&tick>0))){ pGenome[i].vmProgram=REPL_ANCESTOR.map(x=>x.slice()); pProg[i]=pGenome[i].vmProgram; }   /* #359: reseeds pass NO parent, and undefined<0 is false, so this rescue never fired for them: a crashed REPL/TASKS world reseeded from its drifted germline (#356: a germline with no INPUT or OUTPUT, so the world never computed again). Boot founders (tick 0) are left as they were. */   // #284: rescue founders replicate - the germline drifts to whatever particle has the most amp (selfLearnFromBest), which under REPL need not reproduce at all
   return i;
 }
 function computeVisuals(i){
