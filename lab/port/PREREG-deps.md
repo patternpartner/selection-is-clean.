@@ -39,3 +39,12 @@ ACCUMULATING on 2 of 3. Depth keeps rising slowly, because the space's reachable
 ## What it cannot say
 - A rising depth says new functions are BUILT FROM earlier ones (the reads are causal at payment). It does not say the earlier ones were selected because they enabled later ones.
 - One horizon per seed, set by the wall clock.
+
+## Addendum (before the two incomplete runs were re-run; rules unchanged): an engine hang, fixed
+Two of the six runs, 9701 DEFAULT and 9702 PIN, stopped writing at ticks 70,000 and 105,000 and were killed at the 2-hour limit.
+- **Reproduction:** 9702 PIN reproduced the stall between ticks 108,000 and 109,000.
+- **Profile:** 70% of samples in `executeVM`.
+- **The cause:** the phase-difference wrap, `while(dp>Math.PI)dp-=6.28`. `phase[i]+=dp*pshift` has no bound on pshift, so phases grow without limit, and the loop never ends once |dp| passes about 1e16 or is Infinity. This is an old engine bug, not part of TASKS (#358).
+- **The fix:** all three sites reduce a non-finite difference, or one of magnitude 1e4 or more, with a remainder before the old loop. A difference under 1e4 runs the old loop unchanged: byte-identical on the shipped default, the default world and REPL.
+- **The re-runs:** the two runs were re-run on the patched engine. Up to where they froze their trajectories are the same as before.
+- **The four runs that finished stand as run.** They ran on the old engine and never froze. If any of them passed |dp| of 1e4 at some point, it would diverge under the patch; that is not checked.

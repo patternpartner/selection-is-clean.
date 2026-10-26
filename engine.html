@@ -25189,7 +25189,10 @@ function executeVM(i,j,sim,d){
   const pshift=vmActions[1]*influence;
   if(Math.abs(pshift)>0.000001){
     let dp=phase[j]-phase[i];
-    while(dp>Math.PI)dp-=6.28;while(dp<-Math.PI)dp+=6.28;
+    // #358: THE WRAP COULD HANG. phase[i]+=dp*pshift has no bound on pshift, so phases can grow without limit, and these loops then
+    // subtract 6.28 about |dp|/6.28 times - forever once |dp| passes about 1e16 (or is Infinity). #356's runs froze here (profile: 70% in
+    // executeVM). A difference under 1e4 runs the old loop unchanged, so every trajectory that ever finished is byte-identical. All 3 sites.
+    if(!(dp<1e4&&dp>-1e4))dp=Number.isFinite(dp)?dp%6.28:0; while(dp>Math.PI)dp-=6.28;while(dp<-Math.PI)dp+=6.28;
     phase[i]+=dp*pshift;phase[j]-=dp*pshift;
   }
 
@@ -25378,7 +25381,7 @@ function executeClusterVM(i,j,sim,d){
   const pshift=vmActions[1]*influence;
   if(Math.abs(pshift)>0.000001){
     let dp=phase[j]-phase[i];
-    while(dp>Math.PI)dp-=6.28;while(dp<-Math.PI)dp+=6.28;
+    if(!(dp<1e4&&dp>-1e4))dp=Number.isFinite(dp)?dp%6.28:0; while(dp>Math.PI)dp-=6.28;while(dp<-Math.PI)dp+=6.28;
     phase[i]+=dp*pshift;phase[j]-=dp*pshift;
   }
 
@@ -25533,7 +25536,7 @@ function entrain(i,j,sim,d){
   const proximity=1-d/CELL;
   const rate=genome.entrainRate*sim*proximity;
   let dp=phase[j]-phase[i];
-  while(dp>Math.PI)dp-=Math.PI*2;while(dp<-Math.PI)dp+=Math.PI*2;
+  if(!(dp<1e4&&dp>-1e4))dp=Number.isFinite(dp)?dp%(Math.PI*2):0; while(dp>Math.PI)dp-=Math.PI*2;while(dp<-Math.PI)dp+=Math.PI*2;
   phase[i]+=dp*rate;phase[j]-=dp*rate;
   freq[i]+=(freq[j]-freq[i])*rate*0.1;freq[j]+=(freq[i]-freq[j])*rate*0.1;
 }
