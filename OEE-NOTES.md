@@ -28194,3 +28194,30 @@ The user asked whether the visuals match the system, and whether the system shou
 - **Seen in a real page:** at 60 s a faint web among about 600 bodies; at 180 s the same world had crashed to 137 alive and showed only a few threads. Thread opacity was raised once after that, for legibility.
 - **Unchanged:** colour of bodies (traits) and their form (the world's draw program, kept or undone by attention, #314).
 - `smoke.sh` is owed before `main` moves: #356's six long runs are using the CPU.
+
+### #356 — PRE-REGISTERED (`lab/port/PREREG-deps.md`, committed b42d888; addendum 00fe860 on the engine hang): do discoveries become foundations? **STALLED by the rule. But what happened is not slowing discovery: on 2 of 3 seeds the world COLLAPSED into a state that computes nothing and never recovers.**
+
+Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned), up to 200,000 ticks. Out: `lab/port/out-deps/`; result `lab/port/deps-result.txt`.
+- **DEPTH** of a function: 0 if its first payment used no read, else 1 + the deepest read function that fed it.
+
+| seed | H | mean depth of functions first paid in the 2nd quarter, then the last | PIN max depth (repertoire) | DEFAULT repertoire |
+|---|---|---|---|---|
+| 9701 | 200,000 | 4.26 (7,528 functions), then none (0 functions) | 6 (85) | 10,975 |
+| 9702 | 144,827 (wall) | 3.87 (60), then 2.65 (139) | 6 (252) | 3,274 |
+| 9703 | 200,000 | none, then none | 7 (187) | 1,487 |
+
+**The rule:** STALL on 9701 and 9702, neither on 9703 (no functions in either quarter). So STALLED.
+
+**My prediction was ACCUMULATING. Wrong, and for a reason the rule did not anticipate.**
+
+**Block by block** (alive / functions first paid / their mean depth / task income, per 5,000 ticks):
+- **9701:** booms (1,700 alive, 2,728 first paid at depth 3.5 by tick 5,000), crashes to about 150 by 20,000, booms again at 75,000-80,000 (3,926 and 3,496 first paid, depth 4.0-4.5, task income up to 21,639), then crashes to 34 alive. From tick 85,000 to 200,000 it stays at 34-35 alive with task income of 0-1 per block.
+- **9703:** booms (1,523 alive), crashes at 25,000-30,000, then holds 46-50 alive with ZERO task income and zero new functions for 170,000 ticks.
+- **9702:** never collapses. It holds 750-1,460 alive, but from tick 20,000 on it pays 0-33 new functions per block, at lower depth late (2.65) than mid-run (3.87). Discovery trickles.
+
+**What this means.**
+- **The rule's quarters measured the collapse,** not the stacking question it was written for. While the worlds were alive and booming, depth was high: 9701's 75,000-80,000 boom first-paid 7,400 functions at mean depth 4.0-4.5, against PIN's maximum of 6.
+- **The new finding is an ABSORBING DEAD STATE.** A crashed TASKS world settles at 35-50 alive, on the sunlight floor, computing nothing paid, for over 100,000 ticks. At the end the pools are FULL (none empty), so food is not what is missing.
+- **The emergency reseed never fires:** it only acts under RESEED_FLOOR, and the world sits above it.
+- **Why no mutant that computes takes over a world of full pools is the open question.** A census of 9703's survivors is running.
+- **For the artwork this is a dead tile:** a universe that has crashed stays dark-and-still indefinitely.
