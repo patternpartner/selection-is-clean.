@@ -28260,3 +28260,8 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **My first explanation was wrong.** I called it the germline-drift dead state showing up in grown universes, and that was a hypothesis; the bisect found a cost, not a behaviour. Recorded because the next person will reach for the same story.
 - **The fix (#357b):** one path per colour (24 hue buckets and grey). The picture is the same, with hue rounded to 15 degrees.
 - **Acceptance:** `mind-test` 3/3 on the fix; `smoke.sh` 66 ok / 0 failing; substrate-test 264/0 at TICKS=40. The simulation is byte-identical through all of it.
+- **#359b, what kills the founders (replay of 9701 to tick 90,000, then 2,000 ticks followed; `lab/port/probe-founders.js`, out `lab/port/out-rescue/9701-founders.jsonl`).**
+  - **The founders:** 465 parentless founders arrived; **median lifespan 1 tick**, maximum 1.
+  - **At their last tick alive their SUN stores were healthy** (pE about 0.53, pAdq 1), but their `amp` was **NaN**. The death path sets a NaN amp to 0, below deathThreshold, so they die of "physics" on their second tick.
+  - **The germline-drift hypothesis above is REFUTED.** The germline's life-and-death parameters are ordinary and close to the living mean: deathThreshold 0.038 against 0.039, lifespanBias 1.07 against 1.01.
+  - **New hypothesis, being checked:** the immortal survivors' phases have grown without limit (#358's hang came from exactly that). `Math.cos(phase[i]-phase[j])` with infinite phases is NaN, which reaches a newborn's amp on its first interaction. The breakage would also be why the survivors persist.

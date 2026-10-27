@@ -13,12 +13,14 @@ m._compile(code+`
   const pick=g=>{ const o={}; for(const k of PARAMS){ const v=g&&g[k]; o[k]=(typeof v==='number'&&isFinite(v))?+v.toFixed(4):v; } return o; };
   const live=[]; for(let i=0;i<N;i++) if(palive[i])live.push(i);
   const mean={}; for(const k of PARAMS){ const v=live.map(i=>pGenome[i]&&pGenome[i][k]).filter(x=>typeof x==='number'&&isFinite(x)); mean[k]=v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(4):null; }
+  const ph=live.map(i=>phase[i]); const fin=ph.filter(Number.isFinite); const big=fin.filter(x=>Math.abs(x)>1e6).length;
+  console.log(JSON.stringify({phaseFinite:fin.length, phaseNonFinite:ph.length-fin.length, phaseAbsOver1e6:big, phaseSample:ph.slice(0,8), ampSample:live.slice(0,8).map(i=>amp[i]), freqSample:live.slice(0,8).map(i=>freq[i])}));
   console.log(JSON.stringify({tick, alive:live.length, germline:pick(genome), livingMean:mean, livingAgeMean:Math.round(live.reduce((a,i)=>a+page[i],0)/Math.max(1,live.length)), germProgOps:(genome.vmProgram||[]).map(r=>r[0]).join(',')}));
   const tag=new Int32Array(CAP).fill(-1); const rec=[]; let born=0;
   (${NS.BIRTHS})(function(c,pa){ if(pa>=0)return; tag[c]=rec.length; rec.push({born:tick, last:null, prog:(pProg[c]||[]).map(r=>r[0]).join(','), gm:pick(pGenome[c])}); born++; });
   (${NS.COMPACT})(function(ni){ ${NS.compactArray.toString()}; compactArray(tag,ni,1); for(let r=0;r<ni.length;r++) if(ni[r]<0)tag[r]=-1; });
   for(let t=1;t<=FOLLOW;t++){ globalThis.__detMs+=5; try{loop();}catch(e){}
-    for(let i=0;i<N;i++){ const k=tag[i]; if(k<0)continue; if(!palive[i]){ tag[i]=-1; continue; } rec[k].last={tick, age:page[i], pE:+pE[i].toFixed(3), pAdq:+pAdq[i].toFixed(3), amp:+amp[i].toFixed(3)}; } }
+    for(let i=0;i<N;i++){ const k=tag[i]; if(k<0)continue; if(!palive[i]){ tag[i]=-1; continue; } rec[k].last={tick, age:page[i], pE:+pE[i].toFixed(3), pAdq:+pAdq[i].toFixed(3), amp:String(amp[i]), phase:String(phase[i]), freq:String(freq[i])}; } }
   const life=rec.map(r=>r.last?r.last.tick-r.born:0).sort((a,b)=>a-b);
   console.log(JSON.stringify({followed:FOLLOW, parentlessBorn:born, lifespanMedian:life[life.length>>1]||0, lifespanMax:life[life.length-1]||0, stillAlive:(()=>{let n=0;for(let i=0;i<N;i++)if(palive[i]&&tag[i]>=0)n++;return n;})(), sample:rec.slice(0,6)}));
 };`, m.filename);
