@@ -26326,10 +26326,13 @@ function renderArt(){
   // published (#353-#356). So every creature that read a neighbour this epoch draws a thread to where that neighbour stood, coloured by
   // the function that flowed along it (a hash of its truth table; grey if the word was not clean). A world computing alone shows dots;
   // a world composing shows a web, in as many colours as it has functions in play. Drawing only: nothing here feeds the world.
+  // #357b: one path per colour (24 hue buckets of 15 degrees, and grey), not one stroke per thread - at the 1,800-body cap the
+  // per-thread strokes slowed every universe in a field enough to fail mind-test's throughput rows.
   if(TASKS_ON){ X.lineWidth=0.7; const ta=Math.min(0.34,0.26*dens+0.08);
-    for(let i=0;i<N;i++){ if(!palive[i]||tRE[i]!==tEpoch)continue; const T=tRT[i], ex=tRx[i]-px[i], ey=tRy[i]-py[i]; if(ex*ex+ey*ey>CELL*CELL*4)continue;
-      X.strokeStyle=T>=0?'hsla('+(((Math.imul(T,2654435761)>>>0)%360))+',85%,62%,'+ta+')':'rgba(140,140,140,'+(ta*0.4)+')';
-      X.beginPath(); X.moveTo(px[i],py[i]); X.lineTo(tRx[i],tRy[i]); X.stroke(); } }
+    for(let b=0;b<=24;b++){ let any=false; X.beginPath();
+      for(let i=0;i<N;i++){ if(!palive[i]||tRE[i]!==tEpoch)continue; const T=tRT[i]; if((T>=0?((Math.imul(T,2654435761)>>>0)%24):24)!==b)continue;
+        const ex=tRx[i]-px[i], ey=tRy[i]-py[i]; if(ex*ex+ey*ey>CELL*CELL*4)continue; X.moveTo(px[i],py[i]); X.lineTo(tRx[i],tRy[i]); any=true; }
+      if(any){ X.strokeStyle=b<24?'hsla('+(b*15)+',85%,62%,'+ta+')':'rgba(140,140,140,'+(ta*0.4)+')'; X.stroke(); } } }
   // bodies: halo, core, hot centre; the sprite already carries all three
   for(let i=0;i<N;i++){
     if(!palive[i])continue;
