@@ -28250,3 +28250,13 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - **What that leaves:** in the dead state, at most 1 creature at a time is young while founders arrive on about 1 tick in 4, which says the founders DIE within a few ticks. The rescue restores the ancestor's PROGRAM, but a founder takes every other gene from the drifted germline (upkeep, death threshold, lifespan).
   - **Hypothesis, NOT checked:** the germline's parameters have drifted somewhere lethal to a newborn, while the immortal survivors carry older, viable genomes. Next: replay 9701 to its dead state and compare the germline with the survivors.
   - **Two mechanisms meet in this trap:** founder grace without a time limit for small lineages, and a germline that drifts to whatever survives.
+
+### #357b / #358 / #359 — ACCEPTANCE, and what the bisect found
+- **What broke, and how it was found:**
+  - After #357 (the read threads), `smoke.sh` failed on `mind-test`, and it failed run alone too. The failing rows were a grown universe past tick 1,000 with no births, and too few universes past 1,000.
+  - Bisected with worktrees: 08dc9f2 3/3 pass, b42d888 (the hook) 2/2 pass, 47ebd9e (the threads) 1 pass 1 fail, 00fe860 (the hang fix) 2/2 fail.
+  - The current engine with the threads switched off passed 3/3.
+  - **The cause:** one canvas stroke per thread, up to 1,800 a frame, slowed every universe in a field enough to fail the test's throughput rows.
+- **My first explanation was wrong.** I called it the germline-drift dead state showing up in grown universes, and that was a hypothesis; the bisect found a cost, not a behaviour. Recorded because the next person will reach for the same story.
+- **The fix (#357b):** one path per colour (24 hue buckets and grey). The picture is the same, with hue rounded to 15 degrees.
+- **Acceptance:** `mind-test` 3/3 on the fix; `smoke.sh` 66 ok / 0 failing; substrate-test 264/0 at TICKS=40. The simulation is byte-identical through all of it.
