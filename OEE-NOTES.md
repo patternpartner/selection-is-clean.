@@ -28391,3 +28391,35 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **A voice that would not be decoration** puts sound inside the world: creatures that can hear the bar and are paid for using it, so the
   music feeds back on who survives. That is a mechanism, and would go through the retire-or-prove template like any other. Not started.
 - The #364 entry above is left as written, so the wrong turn stays visible.
+
+### #365 — what crashes a booming TASKS world: a PREDATOR OUTBREAK (one crash, one seed: a lead, not a finding)
+- **Probe:** `lab/port/probe-crash.js` (draws nothing); output in `lab/port/out-crash/9802T.jsonl`. It replays 9802 TRICKLE, #362's early
+  crash, to tick 10,000, one row per 250 ticks.
+- **What it is NOT:**
+  - The pools are full throughout (poolFill 0.999-1.000): no starvation of income at the source.
+  - Field and amp are finite throughout: not #360's overflow.
+- **What it IS:**
+
+  | tick | alive | carrying predation (155) | prey events per 250 ticks | mean store | carrying INPUT | task income |
+  |---|---|---|---|---|---|---|
+  | 2,250 | 1,794 | 86 | 10,683 | 0.15 | 1,743 | 566 |
+  | 3,500 | 1,504 | 663 | 213,742 | 0.049 | 1,359 | 325 |
+  | 5,000 | 286 | 167 | 13,822 | 0.054 | 121 | 33 |
+  | 7,000 | 124 | 86 | 3,041 | 0.09 | 57 | 5 |
+
+- **The mechanism, read from the op** (case 155 under REPL, #273):
+  - Each execution takes up to 20% of a neighbour's store, and runs on every pair interaction, so many times a tick.
+  - It stops only when the prey's store falls to 0.05. The world's mean store sits at 0.045-0.054 from tick 3,500: the predators hold
+    everyone at the floor, where nobody can afford to breed.
+  - The computing lineages die, predators carrying no INPUT are what is left, and the world stops computing. That is #360b's stalled
+    world (83 of 115 predators), seen forming.
+- **Why there is no defence:** #277/#277b's arms race (`REPL_ARMS`) never engaged, so prey have no counter. TASKS made predation the
+  cheap way to an income that computing has to earn once an epoch.
+- **Seen in #362:** 9801 TRICKLE (1,700 to 2 alive between 35,000 and 40,000) and 9803 OLD (852 to 131) crashed too. Whether by the same
+  route is NOT checked; that needs replays of about 2.5 hours each, after #362's batch.
+- **Next, in order:**
+  1. Replay those two crashes with this probe.
+  2. If predation drives them too, a knob to switch predation off under TASKS (default on, byte-identical).
+  3. A design run on 9802 TRICKLE.
+  4. A pre-registered retire-or-prove of predation under TASKS on unseen seeds. CLAUDE.md favours removal when a mechanism does harm;
+     the food web it built (#275) is what is on the other side of the scale.
