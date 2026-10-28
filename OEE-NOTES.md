@@ -28297,3 +28297,9 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - `slot-test` alone on the same engine: **4 of 5 pass**, the one failure being that same row. The engine before #360 (71ddb59): 2 of 2.
   - The cap cannot bind in a short browser run: it needs a world whose decay has evolved above about 0.984 with saturated field memory. So this is the timing sensitivity CLAUDE.md describes, established by re-running rather than assumed.
   - substrate-test 264/0 at TICKS=40.
+- **#360b, census of the stalled 9701 (with the cap) at tick 100,000** (`lab/port/out-rescue/9701-stall-census.jsonl`):
+  - 115 alive, 22 of them under 100 ticks old, with a mean age of **24,629 ticks**.
+  - **83 of 115 run the predation op (155)**; there have been 1.6 million prey events.
+  - INPUT 33 times across 115 programs; READ in 27 programs; task income 12-28 per 10,000 ticks against sun income of about 1,000.
+  - **So the stalled world is a stable PREDATOR ecology** living on sunlight and on each other, which has stopped computing (it lost INPUT). It is not a dead world. But its residents barely age: the unlimited small-lineage grace again.
+  - **Measuring next:** what share of a HEALTHY TASKS world is in grace, before any fix to grace is designed.
