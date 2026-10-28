@@ -28437,3 +28437,8 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - That is a novelty question this test did not ask, and it is confounded: the trickle is a steady supply of the hand-written reading
     founder. If it is worth asking, it needs its own pre-registration, on the dependent variable and against null replicates.
 - **What the test did find** is #365: the crashes are where the dead worlds come from, and the one examined was a predator outbreak.
+
+### #362-#365 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
+- `smoke.sh` on a quiet machine: 66 ok, 1 failing, `mind-test`. Its two rows ask for at least 3 universes past 1,000 ticks and found 2
+  (throughput). Run alone straight after: **10/10**. `sound-test` ok inside the suite.
