@@ -1,0 +1,8 @@
+9801 OLD {"status":"LIVE","crash":false,"peak":14428,"lateInc":14428,"lateArr":3527,"cum":8089} | TRICKLE {"status":"LIVE","crash":true,"peak":31529,"lateInc":16832,"lateArr":500,"cum":17440}
+9802 OLD {"status":"LIVE","crash":false,"peak":19097,"lateInc":13546,"lateArr":1320,"cum":7808} | TRICKLE {"status":"STALLED","crash":false,"peak":5893,"lateInc":123,"lateArr":6,"cum":2631}
+9803 OLD {"status":"LIVE","crash":false,"peak":7046,"lateInc":3457,"lateArr":336,"cum":3747} | TRICKLE {"status":"LIVE","crash":false,"peak":7416,"lateInc":5854,"lateArr":893,"cum":6698}
+9804 OLD {"status":"LIVE","crash":false,"peak":23890,"lateInc":23890,"lateArr":2024,"cum":11623} | TRICKLE {"status":"LIVE","crash":true,"peak":29664,"lateInc":23929,"lateArr":1747,"cum":23262}
+9805 OLD {"status":"LIVE","crash":false,"peak":7989,"lateInc":6513,"lateArr":245,"cum":3976} | TRICKLE {"status":"LIVE","crash":false,"peak":30076,"lateInc":30076,"lateArr":4836,"cum":12910}
+9806 OLD {"status":"STALLED","crash":true,"peak":39463,"lateInc":317,"lateArr":0,"cum":16840} | TRICKLE {"status":"LIVE","crash":false,"peak":12745,"lateInc":12745,"lateArr":3207,"cum":8584}
+counted 6/6 | stalled OLD 1, TRICKLE 1 | crashes OLD 1, TRICKLE 2
+VERDICT: NOT CONFIRMED (guard: more crashes)

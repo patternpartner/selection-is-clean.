@@ -28423,3 +28423,17 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   3. A design run on 9802 TRICKLE.
   4. A pre-registered retire-or-prove of predation under TASKS on unseen seeds. CLAUDE.md favours removal when a mechanism does harm;
      the food web it built (#275) is what is on the other side of the scale.
+
+### #362 — VERDICT: NOT CONFIRMED (the founder trickle does not ship; TASK_TRICKLE stays 0)
+- 6 of 6 seeds counted, all reaching tick 40,000 after addendum 2 (`lab/port/trickle-result.txt`).
+- STALLED: OLD 1 (9806), TRICKLE 1 (9802). The rule needed TRICKLE to stall on at least 2 fewer seeds than OLD.
+- Crashes: OLD 1 (9806), TRICKLE 2 (9801, 9804). The guard fails as well.
+- **The prediction (OLD stalls on 2-3 of 6) was wrong in the direction that matters.** The stall the trickle was designed against came
+  from one design seed (9701, at 85,000 ticks). On unseen seeds at 40,000 it happened once in six. The template's "unseen seeds decide"
+  is what caught it.
+- **Not in the rule, reported as seen:**
+  - TRICKLE worlds found more functions on 4 of 6 seeds (cumulative arrivals 17,440 against 8,089; 23,262 against 11,623; 12,910 against
+    3,976; 6,698 against 3,747), and fewer on 2 (2,631 against 7,808; 8,584 against 16,840).
+  - That is a novelty question this test did not ask, and it is confounded: the trickle is a steady supply of the hand-written reading
+    founder. If it is worth asking, it needs its own pre-registration, on the dependent variable and against null replicates.
+- **What the test did find** is #365: the crashes are where the dead worlds come from, and the one examined was a predator outbreak.
