@@ -48,3 +48,15 @@ The first launch ran 4 worlds in parallel. At the 1,800 cap they shared 4 cores,
 9802 TRICKLE finished and stands. All remaining runs go 2 at a time (a single design run at 2-way parallelism reached 40,858
 in 110 minutes). Seeds, arms, horizon and rules are unchanged. Partial rows of the stopped runs (to tick 25,000, none stalled)
 were seen; they do not enter the analysis.
+
+## Addendum 2 (execution only; the rules are unchanged; written after 3 runs had finished)
+The wall cap counted the wrong worlds. A healthy world of about 1,500 particles runs at about 4 minutes per 1,000 ticks, so it
+needs about 160 minutes to reach 40,000. The 115-minute cap (WALLMIN=115) stopped it short as INCOMPLETE, and an INCOMPLETE run is
+not counted, while a stalled world of about 150 particles finishes in 17 minutes. So the cap selected stalled worlds into the count
+and healthy ones out of it: the opposite of what the rule needs to see. Seen so far: 9801 OLD finished at 110.9 minutes (healthy,
+just inside); 9801 TRICKLE stopped at tick 29,136 at the cap (healthy at every block); 9802 TRICKLE finished in 17 minutes and is
+STALLED by the rule (0 arrivals, income 67 against a peak of 5,893). The trickle did not save 9802.
+
+Change: the cap is raised to 900 minutes, so that every run reaches 40,000. 9801 TRICKLE is re-run from scratch (same seed, so the
+same trajectory to 29,136 and then on). Runs go 3 at a time as detached jobs, with a harness waiter keeping the session alive.
+Seeds, arms, horizon, measures and rules are unchanged.
