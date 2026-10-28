@@ -10686,6 +10686,9 @@ const TASK_FOUNDER=(__tk('__TASK_FOUNDER',1)|0)!==0;   // #354: default ON (PRER
 // #361: TASK_TRICKLE=k (default 0, off): one parentless founder every k ticks under TASKS - it arrives with the reading ancestor
 // (#359's rescue) - so a world whose computing lineages died (#360b) keeps receiving creatures that can compute.
 const TASK_TRICKLE=__tk('__TASK_TRICKLE',0)|0;
+// #366: REPL_PREY=0 switches predation (op 155's take from a neighbour's store, #273) off; the op then answers 0. Default 1, on.
+// #365: the two TASKS crashes examined were predator outbreaks - stores held at the 0.05 prey floor until nobody could breed.
+const REPL_PREY=(__tk('__REPL_PREY',1)|0)!==0;
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
                           :[[TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]];
@@ -24533,7 +24536,7 @@ case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxIns
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        if(REPL_ON){ if(vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2)*(REPL_ARMS?replTake(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
+        if(REPL_ON){ if(REPL_PREY&&vmRegs[si]>k&&pE[j]>0.05){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2)*(REPL_ARMS?replTake(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
         {if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155;localRes[i]=Math.min(2,localRes[i]+_dr155*0.8);vmRegs[di]=_dr155;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — steal energy from interaction partner (predation). Capped at 20% of partner's reserves per interaction; 20% metabolic tax on transfer. Creates genuine Lotka-Volterra predator-prey dynamics: prey evolve evasion/defence; predators evolve efficient drain timing. Third trophic level in the food web.
       case 156:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
