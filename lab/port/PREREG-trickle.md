@@ -41,3 +41,10 @@ CONFIRMED: OLD stalls on 2-3 of 6, TRICKLE on 0-1.
 - **40,000 ticks is short.** #356's 9701 crashed for good only at 85,000. Stalls arriving later are outside this horizon.
 - **The trickle supplies the hand-written reading route, continuously.** Under it, a world's computing is partly a supply of immigrants, not only evolution. #355 found the route is supplied anyway; this makes it permanent.
 - **It changes every TASKS world from tick 200, not only stalled ones.**
+
+## Addendum (execution only; the rules are unchanged)
+The first launch ran 4 worlds in parallel. At the 1,800 cap they shared 4 cores, and after 82 minutes three were at only tick
+20,000-25,000, certain to stop short of 40,000 (INCOMPLETE). Those three were stopped and their partial outputs discarded; only
+9802 TRICKLE finished and stands. All remaining runs go 2 at a time (a single design run at 2-way parallelism reached 40,858
+in 110 minutes). Seeds, arms, horizon and rules are unchanged. Partial rows of the stopped runs (to tick 25,000, none stalled)
+were seen; they do not enter the analysis.
