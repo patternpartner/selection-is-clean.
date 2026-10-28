@@ -52,3 +52,8 @@ CONFIRMED: PREY collapses on 3-5 of 8, NOPREY on 0-1. The guard: unsure, because
   stealing words through READ). If something else collapses NOPREY worlds, that is the next finding.
 - **Saved worlds:** a shipped default changes saved TASKS universes on reload: their predators stop taking (CLAUDE.md rule 6: says so and ships).
 - **The food web #275 found** is what predation buys in plain REPL worlds. It is not measured here, and it is not touched there.
+
+## Addendum (execution only; the rules are unchanged)
+At about 23:50 the container restarted and killed every run. Seven had finished (9901 and 9902 both arms; 9903, 9904 and 9905 PREY) and
+stand. The three NOPREY runs in flight (9903, 9904, 9905) are restarted from scratch with the same seeds, so the same trajectories, and
+9906-9908 have not begun. Partial results seen before the restart (9901-9902, both arms) are reported in OEE-NOTES; the rule is unchanged.
