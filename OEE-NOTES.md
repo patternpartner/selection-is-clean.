@@ -28343,3 +28343,28 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   will be pre-registered, and it is not this.
 - `sound-test.js` (in `smoke.sh`): starts off; once tapped, a TASKS world plays bars with voices; the bar sits inside its clamp; `controls(false)` stops
   it; `#notasks` says so and plays nothing. 7/0.
+
+### #364 — listening selects the voice (the mute button is the verdict)
+- **The voice is a gene now:** `genome.voice`, ten integers. They are four scale intervals, the base note, a rotation of the 32 steps, the
+  wave of a creature that computed alone and of one that read, the note length, and how many most-read functions are held. #363's readout is
+  the default, `VOICE_DEFAULT`. It is absent from the genome, and from every save, until someone has listened.
+- **The trial, #314's shape:** while the sound is on, the world moves one gene one step and plays the variant for `VOICE_TRIAL` = 600
+  listened ticks.
+  - Heard to the end of the trial: kept ('k'), and it becomes the voice the next variant must survive.
+  - The mute button pressed mid-trial: undone ('u'), back to the last voice kept.
+  - Leaving (the field closes the universe, or the page goes) is not a verdict: the unjudged variant is put back and nothing is written.
+  - Every verdict goes in `genome.voiceHist`: the last 64, saved with the universe.
+- **No one listening, nothing happens.** Proposals draw from their own stream (`__mindRng`), never `Math.random`. Measured byte-identical
+  against the engine before it: seed 3, 1,500 ticks, TASKS on and off.
+- **By this file's own definition this is decoration.** It changes nothing about who has offspring. The world does not choose its voice: the
+  listener does, as with the form under #314. That is the artwork's surface responding to its audience, not evolution, and it is not
+  claimed as more.
+- **A mute is ambiguous.** It may mean "not that" or "enough for now", and the history records only that it happened. A listener who always
+  mutes after about 20 seconds would undo every variant and freeze the voice.
+- **What was removed to pay for it** (CLAUDE.md: a session that adds a mechanism must remove, merge or prove one): `GRACE_MAX`. See #361,
+  #362 and the next entry.
+- `listen-test.js` (in `smoke.sh`), 8/0:
+  - unheard: nothing in the save;
+  - a 60-second listen kept a variant;
+  - a mute undid exactly the variant playing and restored the kept voice;
+  - leaving mid-trial wrote nothing and put the variant back.

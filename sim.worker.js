@@ -145,7 +145,10 @@ const BRIDGE =
     'var v=Object.keys(f).map(function(k){var o=f[k];return [+k,o.n,o.w,+(o.x/o.n/W).toFixed(3),TASK_SZ4[+k],+(o.rd/o.n).toFixed(2)];})' +
       '.sort(function(a,b){return b[1]-a[1];}).slice(0,8);' +
     'var h=Object.keys(r).map(function(k){return [+k,r[k],TASK_SZ4[+k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,3);' +
-    'return {tick:tick,epoch:e,alive:alive,paid:paid,v:v,h:h};}catch(err){return null;}};' +
+    'var vo=(typeof VOICE_DEFAULT!=="undefined")?(Array.isArray(genome.voice)?genome.voice.slice():VOICE_DEFAULT.slice()):null;' +
+    'return {tick:tick,epoch:e,alive:alive,paid:paid,v:v,h:h,voice:vo,vk:(typeof __voiceKept!=="undefined"?__voiceKept:0),vu:(typeof __voiceUndone!=="undefined"?__voiceUndone:0)};}catch(err){return null;}};' +
+  // #364: the listener's state, for the voice's trial: 1 listening, 2 muted (a verdict), 0 gone (not one)
+  '__inst.api.listen=function(k){try{if(typeof __voiceListen==="undefined")return false;__voiceListen=(k===1||k===2)?k:0;return true;}catch(e){return false;}};' +
   // A few numbers off the sim's own counters. The field is nine worlds behind worker
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to
   // believe the relay's own bookkeeping, which counts sends, not arrivals. netStats and
@@ -461,6 +464,12 @@ Universe.prototype.handle = function (d) {
     let c = null;
     try { c = api() && api().census ? api().census() : null; } catch (e) { c = { err:String(e&&e.message) }; }
     this.post({ type: 'census-result', rid: d.rid, census: c });
+    return;
+  }
+
+  // #364: fire and forget, like pace - the listener's state for the voice's trial
+  if (d.type === 'listen') {
+    try { if (api() && api().listen) api().listen(d.k|0); } catch (_) {}
     return;
   }
 
