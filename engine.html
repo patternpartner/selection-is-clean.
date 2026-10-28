@@ -1347,7 +1347,7 @@ const LIVENESS_DECLARED=[
   // Refused reading zero is a world that has made children free; paid reading zero is one that has
   // stopped having them. Both are reachable now that the four constants are laws.
   'mind.see','mind.propose','mind.train',   // #296: the mind in the real engine (off unless MIND / #mind)
-  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.headRestored','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
+  'repl.birth','repl.prey','repl.gift','repl.scavenge','repl.atomNew','repl.atomStep','repl.sex','repl.headRestored','task.trickle','birth.paid','birth.refused','birth.rationed','birth.unprovisioned',   // RATION: refused by the fair lottery, before the pool is read
   // #212: clusterGenomes was the one carry-forward store that never let go -- ~1,000 entries against
   // 6-11 live clusters, and a measured working set exactly one detection cycle deep. This fires when
   // an entry ages past the horizon. Reading zero on a long run means either the horizon never binds
@@ -10683,6 +10683,9 @@ const TASK_FOUNDER=(__tk('__TASK_FOUNDER',1)|0)!==0;   // #354: default ON (PRER
 // only inside the rate-squared nest). TASK_MUT=1: at every birth each instruction's src and dst are ALSO redrawn with odds
 // rate*0.2 each, opcodes untouched. TASK_LEAN=1: the germline program is the founder head plus REPL's reproduction instruction
 // and nothing else, so a program starts far under the cap and insertion can add to it.
+// #361: TASK_TRICKLE=k (default 0, off): one parentless founder every k ticks under TASKS - it arrives with the reading ancestor
+// (#359's rescue) - so a world whose computing lineages died (#360b) keeps receiving creatures that can compute.
+const TASK_TRICKLE=__tk('__TASK_TRICKLE',0)|0;
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
                           :[[TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]];
@@ -27062,8 +27065,11 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
 }
 function specInGrace(l){ // founder protection: a freshly-minted lineage gets death-relief while young OR small
   if(!__SPEC.on)return false; const bt=linBirthTick.get(l); if(bt===undefined)return false;
-  return (tick-bt)<__SPEC.grace || (linSize.get(l)||0)<__SPEC.minsize;
+  return (tick-bt)<__SPEC.grace || ((linSize.get(l)||0)<__SPEC.minsize && (__GRACE_MAX<=0 || (tick-bt)<__GRACE_MAX));   /* #361: GRACE_MAX>0 ends the small-lineage relief at that lineage age; 0 (default) is the old unlimited relief */
 }
+// #361: GRACE_MAX (ticks, default 0 = unlimited). #360b: a small lineage was relieved of senescence for as long as it stayed small, so
+// a stalled TASKS world's residents lived ~25,000 ticks (a normal life is ~400) and never turned over.
+const __GRACE_MAX=(typeof globalThis!=='undefined'&&globalThis.__GRACE_MAX!==undefined)?(globalThis.__GRACE_MAX|0):0;
 // ── assortative-mating machinery (swing #18; active only when __SPEC.assort) ──────────────────────
 let specBirthAccept=0, specBirthReject=0;               // realized vs mate-refused spawns (cumulative, global)
 let specSimSum=0, specSimCnt=0; const specSimHist=new Int32Array(10); // spawn-similarity distribution (to pick the threshold)
@@ -27487,6 +27493,7 @@ function loop(){
 
   gravity();
   if(TASKS_ON)taskTick();   // #350: the epoch's inputs, and the pools regrow
+  if(TASKS_ON&&TASK_TRICKLE>0&&tick%TASK_TRICKLE===0&&N<CAP){ const e=Math.random()*4|0; let x,y; if(e===0){x=-5;y=Math.random()*H}else if(e===1){x=W+5;y=Math.random()*H}else if(e===2){x=Math.random()*W;y=-5}else{x=Math.random()*W;y=H+5} addParticle(x,y,randomTendency(),false); fired('task.trickle'); }   // #361: TASK_TRICKLE
   executeSoloVM();
 
   networkBroadcast();

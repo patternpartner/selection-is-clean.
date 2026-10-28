@@ -28303,3 +28303,9 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - INPUT 33 times across 115 programs; READ in 27 programs; task income 12-28 per 10,000 ticks against sun income of about 1,000.
   - **So the stalled world is a stable PREDATOR ecology** living on sunlight and on each other, which has stopped computing (it lost INPUT). It is not a dead world. But its residents barely age: the unlimited small-lineage grace again.
   - **Measuring next:** what share of a HEALTHY TASKS world is in grace, before any fix to grace is designed.
+- **#360b, grace in a HEALTHY TASKS world** (design seed 9101, tick 15,000): 1,654 alive, mean age 320, **182 in grace (11%)**, only 15 older than 2,000 ticks. So the unlimited small-lineage relief barely matters in a thriving world, and becomes immortality only in small, stalled ones.
+
+### #361 — two candidate fixes for the post-crash stall, as knobs (default OFF; byte-identical off on the shipped default and the default world)
+- **`GRACE_MAX`** (ticks): the small-lineage relief from senescence ends once a lineage is that old. The young-lineage relief (`__SPEC.grace`, 2,000 ticks) is unchanged.
+- **`TASK_TRICKLE=k`**: under TASKS, one parentless founder every k ticks. It arrives with the reading ancestor via #359's rescue (liveness: `task.trickle`).
+- **Design runs** on 9701 (GRACE_MAX=20000; TASK_TRICKLE=200; to 120,000) pick the candidate. A pre-registered test on unseen seeds decides it.
