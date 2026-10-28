@@ -207,8 +207,7 @@
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
     controls: function(show){ if (gioEl) gioEl.hidden = !show; if (!show && sound) sound.off(); },
     // #363: test-only - what the sound last played (null before the first bar)
-    soundForTest: function(){ return sound ? sound.last() : null; },
-    scoreForTest: function(){ return ask('score', null); }
+    soundForTest: function(){ return sound ? sound.last() : null; }
   };
 
   worker.onmessage = function(e){
@@ -319,17 +318,11 @@
   //   epoch is soft and long, one that computed alone is a short pluck.
   // - UNDER IT, the 3 functions most heard (READ hits): held tones, the world listening to itself.
   // - A dead world, or one where nobody was paid, is silent. A world without TASKS is silent.
-  // #364: the scale, base, step rotation, waves, note length and number of held tones above are the world's VOICE gene, not
-  // constants. While this plays, the world tries variants of it; the mute button undoes the one playing, and one heard to
-  // the end of its trial is kept (engine.html, LISTENING SELECTS THE VOICE). Closing the universe is not a mute.
   var sound = (function(){
     var btn = document.getElementById('gsnd'), ac = null, out = null, timer = 0, on = false;
     var lastEpoch = -1, lastTick = -1, lastAt = 0, bar = 2.4, next = 0, lastPlayed = null;
-    // #364: how it plays is the world's VOICE gene (engine.html sanitizeVoice), selected by whether it is muted; #363's readout is its default
-    var V = [3,2,2,3,0,0,1,0,4,3], WAVES = ['sine', 'triangle', 'square', 'sawtooth'];
-    function hz(sz){ var d = Math.max(0, Math.min(17, (sz|0) - 1)), sc = [0, V[0], V[0]+V[1], V[0]+V[1]+V[2], V[0]+V[1]+V[2]+V[3]];
-      return 110 * Math.pow(2, (V[4] + Math.floor(d/5)*12 + sc[d%5]) / 12); }
-    function listen(k){ try { worker.postMessage({ type:'listen', k:k }); } catch(e){} }
+    var PENT = [0, 3, 5, 7, 10];
+    function hz(sz){ var d = Math.max(0, Math.min(17, (sz|0) - 1)); return 110 * Math.pow(2, (Math.floor(d/5)*12 + PENT[d%5]) / 12); }
     function label(t){ if (btn) btn.textContent = t; }
     function note(t, f, g, dur, type, pan){
       var o = ac.createOscillator(), a = ac.createGain(), p = ac.createStereoPanner ? ac.createStereoPanner() : null;
@@ -343,15 +336,15 @@
       var t0 = Math.max(ac.currentTime + 0.05, next), step = bar / 32;
       var nv = Math.max(1, s.v.length), heard = 0;
       s.v.forEach(function(v){
-        var w = ((v[2] >>> V[5]) | (v[2] << (32 - V[5]))) >>> 0, f = hz(v[4]), g = 0.3 * Math.sqrt(Math.min(1, v[1] / 48)) / Math.sqrt(nv), pan = Math.max(-1, Math.min(1, v[3]*2 - 1));
+        var w = v[2] >>> 0, f = hz(v[4]), g = 0.3 * Math.sqrt(Math.min(1, v[1] / 48)) / Math.sqrt(nv), pan = Math.max(-1, Math.min(1, v[3]*2 - 1));
         var soft = v[5] >= 0.5;
         for (var q = 0; q < 32; q++) if ((w >>> q) & 1){ heard++;
-          note(t0 + q*step, f, soft ? g*0.7 : g, step * V[8] * (soft ? 0.7 : 0.35), WAVES[soft ? V[7] : V[6]], pan); }
+          note(t0 + q*step, f, soft ? g*0.7 : g, soft ? step*3 : step*1.4, soft ? 'sine' : 'triangle', pan); }
       });
       var hmax = 1; s.h.forEach(function(h){ if (h[1] > hmax) hmax = h[1]; });
-      s.h.slice(0, V[9]).forEach(function(h){ note(t0, hz(h[2]) / 2, 0.06 * Math.sqrt(h[1] / hmax), bar * 0.95, 'sine', 0); });
+      s.h.forEach(function(h){ note(t0, hz(h[2]) / 2, 0.06 * Math.sqrt(h[1] / hmax), bar * 0.95, 'sine', 0); });
       next = t0 + bar;
-      lastPlayed = { voice: V.slice(), kept: s.vk, undone: s.vu, epoch: s.epoch, voices: s.v.length, held: s.h.length, notes: heard, bar: +bar.toFixed(2), paid: s.paid, alive: s.alive };
+      lastPlayed = { epoch: s.epoch, voices: s.v.length, held: s.h.length, notes: heard, bar: +bar.toFixed(2), paid: s.paid, alive: s.alive };
       label('🔊 ' + s.v.length + (s.v.length === 1 ? ' voice' : ' voices'));
     }
     function poll(){
@@ -359,7 +352,6 @@
       ask('score', null).then(function(s){
         if (!on) return;
         if (!s || s.off){ label(s && s.off ? '🔊 no tasks' : '🔊 …'); return; }
-        if (s.voice && s.voice.length === 10) V = s.voice;
         var now = performance.now();
         // the bar follows the world: seconds per epoch, measured between two scores
         if (lastTick >= 0 && s.tick > lastTick){ var spe = (now - lastAt) / 1000 * 50 / (s.tick - lastTick); bar = Math.max(1.6, Math.min(4, bar*0.7 + spe*0.3)); }
@@ -377,13 +369,13 @@
           ac = new AC(); var comp = ac.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 20;   /* a limiter only: a compressor's default flattens the loudness this reads out */
           out = ac.createGain(); out.gain.value = 0.8; out.connect(comp); comp.connect(ac.destination); }
         if (ac.state === 'suspended') ac.resume();
-        on = true; next = 0; lastEpoch = -1; label('🔊 …'); listen(1); timer = setInterval(poll, 400); poll();
+        on = true; next = 0; lastEpoch = -1; label('🔊 …'); timer = setInterval(poll, 400); poll();
       } catch(e){ label('no audio'); }
     }
-    function off(verdict){ if (on) listen(verdict ? 2 : 0); on = false; clearInterval(timer); timer = 0; if (ac && ac.state === 'running') ac.suspend(); label('🔇 sound'); }
-    if (btn) btn.onclick = function(){ if (on) off(true); else start(); };   // the mute button is the listener's verdict
-    addEventListener('pagehide', function(){ off(false); });
-    return { off: function(){ off(false); }, last: function(){ return lastPlayed; } };
+    function off(){ on = false; clearInterval(timer); timer = 0; if (ac && ac.state === 'running') ac.suspend(); label('🔇 sound'); }
+    if (btn) btn.onclick = function(){ if (on) off(); else start(); };
+    addEventListener('pagehide', off);
+    return { off: off, last: function(){ return lastPlayed; } };
   })();
 
   // ── cross-tab METABOLISM panel ─────────────────────────────────

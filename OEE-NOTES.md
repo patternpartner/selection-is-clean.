@@ -28361,7 +28361,7 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   claimed as more.
 - **A mute is ambiguous.** It may mean "not that" or "enough for now", and the history records only that it happened. A listener who always
   mutes after about 20 seconds would undo every variant and freeze the voice.
-- **What was removed to pay for it** (CLAUDE.md: a session that adds a mechanism must remove, merge or prove one): `GRACE_MAX`. See #361,
+- **(Withdrawn in #364c.) What was removed to pay for it** (CLAUDE.md: a session that adds a mechanism must remove, merge or prove one): `GRACE_MAX`. See #361,
   #362 and the next entry.
 - `listen-test.js` (in `smoke.sh`), 8/0:
   - unheard: nothing in the save;
@@ -28377,3 +28377,17 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **Byte-identical on the default** (the knob was 0): seed 3, 1,500 ticks, TASKS on, against the engine before #364. It is gone from
   `harness-env.js`'s KNOBS too.
 - **The design-run record stays:** `lab/port/out-rescue/`, and #361 and PREREG-trickle.md.
+
+### #364c — #364 withdrawn (the listener-selected voice is reverted; #363's readout and #364b's removal stand)
+- **Asked plainly ("the voice as decoration is kind of pointless isn't it?"), the answer is yes.**
+  - It changed nothing about who has offspring, so it could not serve the claim this artwork makes.
+  - It did not give Selection a way to express itself either: the world proposed and the listener chose. That is the listener sculpting.
+  - It was built because #363 had promised it as the next step. Then it was paid for with a deletion to satisfy the add-one-remove-one rule,
+    which is the accretion this file warns about, with the bookkeeping done.
+- **What stays, and why:**
+  - #363's readout makes the world's computation audible: the rhythm IS the published words and the pitch IS formula size, so the world's
+    sound changes when what it computes changes, and a stalled world goes quiet. It is a window, like the renderer.
+  - #364b (GRACE_MAX removed) stands on its own evidence.
+- **A voice that would not be decoration** puts sound inside the world: creatures that can hear the bar and are paid for using it, so the
+  music feeds back on who survives. That is a mechanism, and would go through the retire-or-prove template like any other. Not started.
+- The #364 entry above is left as written, so the wrong turn stays visible.

@@ -16,7 +16,7 @@ pass=0; fail=0; failed=()
 
 # oee-meter-test.js asserts the #131 meter semantics; the rest step the sim directly. harness-ablate/-ablate-bank shell out to harness-oee and
 # harness-coupling-worker is a worker module, so all three are covered transitively.
-RIGS=(oee-meter-test.js verb-test.js attention-test.js draw-attn-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js chain-test.js voice-test.js grammar-test.js substrate-test.js reach-test.js idle-test.js wire-test.js meter-test.js autosave-test.js codec-test.js browser-test.js collective-test.js pool-test.js pace-test.js layers-test.js slot-test.js mind-test.js sound-test.js listen-test.js mind-persist-test.js grown-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
+RIGS=(oee-meter-test.js verb-test.js attention-test.js draw-attn-test.js worldsignal-test.js crossing-test.js crossing-report.js sense-test.js roundtrip-test.js inherit-test.js migrant-test.js noerror-test.js rarepath-test.js chain-test.js voice-test.js grammar-test.js substrate-test.js reach-test.js idle-test.js wire-test.js meter-test.js autosave-test.js codec-test.js browser-test.js collective-test.js pool-test.js pace-test.js layers-test.js slot-test.js mind-test.js sound-test.js mind-persist-test.js grown-test.js persistence-test.js diary.js liveness-report.js harness.js harness-ab.js harness-oee.js harness-strip.js harness-clamp.js harness-stream.js
       harness-tie.js harness-gates.js harness-meta-ablate.js harness-saturation.js
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
@@ -61,8 +61,6 @@ extra_env_for() {
     mind-test.js) echo "SECS=45" ;;
     # sound-test.js (#363) taps a standalone universe's sound on and lets it play 45 seconds of bars
     sound-test.js) echo "SECS=45" ;;
-    # listen-test.js (#364) listens 60 seconds (one 600-tick trial at browser speed), mutes, then opens a second universe and leaves it
-    listen-test.js) echo "SECS=60" ;;
     *) echo "" ;;
   esac
 }
@@ -78,7 +76,6 @@ timeout_for() {
     slot-test.js) echo 360 ;;
     mind-test.js) echo 300 ;;
     sound-test.js) echo 180 ;;
-    listen-test.js) echo 240 ;;
     mind-persist-test.js) echo 600 ;;   # waits for a universe's first autosave (tick 1,800), reloads twice, opens one universe   # three fields of 45 seconds each, plus boot and the stat round trips
     # grammar-test.js ignores TICKS. The live section is 6,000 engine ticks (LV.ran>=6000,
     # operators authored by the run itself) plus the descriptor sweep. Passing TICKS=40 does

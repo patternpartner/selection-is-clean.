@@ -3646,11 +3646,6 @@ const DRAW_DEFAULT=[
   [4,5,8,4]    // (mutable 4th slot; seeded inert-ish) — gives evolution room
 ];
 function defaultDraw(){ return DRAW_DEFAULT.map(o=>o.slice()); }
-// #364 THE VOICE: how the sound (#363, played by the shell) renders the TASKS layer, as ten integers - four scale intervals in
-// semitones, the base note, a rotation of the 32 steps, the wave of a creature that computed alone and of one that read, a note
-// length, and how many most-read functions are held under the bar. VOICE_LO/VOICE_HI bound each. The default is #363's readout.
-const VOICE_DEFAULT=[3,2,2,3,0,0,1,0,4,3], VOICE_LO=[1,1,1,1,-12,0,0,0,1,0], VOICE_HI=[5,5,5,5,12,31,3,3,8,3];
-function sanitizeVoice(v){ if(!Array.isArray(v)||v.length!==10)return VOICE_DEFAULT.slice(); return v.map((x,k)=>Math.max(VOICE_LO[k],Math.min(VOICE_HI[k],Math.round(+x)||0))); }
 function sanitizeDraw(d){
   if(!Array.isArray(d)||d.length<1)return defaultDraw();
   const out=[];
@@ -11099,7 +11094,6 @@ function cloneGenome(src){
   g.rend=Array.isArray(src.rend)?src.rend.map(a=>({expression:a.expression,compiled:null,failed:!!a.failed})):src.rend;
   g.draw=Array.isArray(src.draw)?src.draw.map(o=>o.slice()):src.draw;
   g.drawHist=Array.isArray(src.drawHist)?src.drawHist.map(e=>[e[0],e[1],e[2].map(o=>o.slice())]):src.drawHist;   // #317
-  g.voice=Array.isArray(src.voice)?src.voice.slice():src.voice; g.voiceHist=Array.isArray(src.voiceHist)?src.voiceHist.map(e=>[e[0],e[1],e[2].slice()]):src.voiceHist;   // #364
   // #217c: chemistryTable is DELIBERATELY NOT deep-copied here, and what follows is a MEASUREMENT of
   // why, not an author's decision. No STANDING entry in OEE-NOTES.md covers it; inventing one to make
   // the silence look intentional is exactly how #205 happened, so this says only what was checked.
@@ -12595,8 +12589,6 @@ function encodeGenome(){
     rn: Array.isArray(genome.rend)?genome.rend.map(a=>({e:a.expression,f:!!a.failed})):null,
     dr: Array.isArray(genome.draw)?genome.draw.map(o=>o.slice()):null,
     dh: (Array.isArray(genome.drawHist)&&genome.drawHist.length)?genome.drawHist.map(e=>[e[0]|0,e[1],e[2].map(o=>o.slice())]):undefined,   // #317: what watching kept and undone (omitted if never judged, so an unwatched world saves exactly as before)
-    vo: Array.isArray(genome.voice)?genome.voice.slice():undefined,   // #364: the voice, omitted until someone has listened
-    vh: (Array.isArray(genome.voiceHist)&&genome.voiceHist.length)?genome.voiceHist.map(e=>[e[0]|0,e[1],e[2].slice()]):undefined,
     bo: Array.isArray(genome.boundOpcodes)?genome.boundOpcodes.map(b=>b|0):[],
     // #155 the chains. Sparse: only slots that actually hold one. Serialised in the SAME commit that
     // adds them, because #139 shipped a sense gate that no save carried and it was invisible for days.
@@ -12993,8 +12985,6 @@ function decodeGenome(data){
     if(Array.isArray(g.rn)&&g.rn.length===4) genome.rend=g.rn.map(a=>({expression:a.e||'0',compiled:null,failed:!!a.f}));
     if(Array.isArray(g.dr)) genome.draw=sanitizeDraw(g.dr);
     if(Array.isArray(g.dh)) genome.drawHist=g.dh.filter(e=>Array.isArray(e)&&Array.isArray(e[2])).slice(-64).map(e=>[Math.max(0,e[0]|0),e[1]==='u'?'u':'k',sanitizeDraw(e[2])]);   // #317
-    if(Array.isArray(g.vo)) genome.voice=sanitizeVoice(g.vo);   // #364
-    if(Array.isArray(g.vh)) genome.voiceHist=g.vh.filter(e=>Array.isArray(e)&&Array.isArray(e[2])).slice(-64).map(e=>[Math.max(0,e[0]|0),e[1]==='u'?'u':'k',sanitizeVoice(e[2])]);
     if(Array.isArray(g.bo)) genome.boundOpcodes=g.bo.map(n=>Math.max(-1,n|0));   // #137: preserve -1 tombstones; clamping them to 0 re-aimed an inert slot onto atom 0
     // #155: absent in every pre-#155 save, which is exactly right — no opStacks means every slot is a
     // single atom, the behaviour those creatures were selected under.
@@ -14130,7 +14120,6 @@ function sanitizeGenome(){
     .map(a=>({expression:a.expression,compiled:null,failed:!!a.failed,uses:a.uses|0,age:a.age|0,alienHits:a.alienHits|0,alienAttempts:a.alienAttempts|0})):[];
   if(!Array.isArray(genome.rend)||genome.rend.length!==4) genome.rend=defaultRend();
   genome.draw=sanitizeDraw(genome.draw);
-  if(genome.voice!==undefined)genome.voice=sanitizeVoice(genome.voice);   // #364: absent until listened to, and kept absent
   genome.rend=genome.rend.map(a=>({expression:typeof a.expression==='string'?a.expression.slice(0,200):'0',compiled:null,failed:!!a.failed}));
   // NETWORK-EFFECT TELEMETRY: distinct from netStats.accepted (received+validated) — this counts only
   // packets that actually WROTE something into sim state (a particle spawned, a plasmid installed, a
@@ -26709,28 +26698,6 @@ function __drawTrialEnd(){ const score=__drawTrialN?__drawTrialSum/__drawTrialN:
   if(__drawInc&&score<__drawIncScore){ __drawHistPush('u',genome.draw||[]); genome.draw=__drawInc.map(o=>o.slice()); __drawReverted++; fired('draw.revert'); }
   else { if(__drawInc&&score>0){ __drawKept++; fired('draw.keep'); __drawHistPush('k',genome.draw||[]); } __drawIncScore=score; }
   __drawInc=(genome.draw||defaultDraw()).map(o=>o.slice()); __drawTrialSum=0; __drawTrialN=0; __drawTrialW=0; }
-// #364 LISTENING SELECTS THE VOICE. #314 lets watching select the form; this lets listening select the voice, with the
-// listener's own verdict: the mute button. While the sound is on in this universe, the world tries a variant of its voice (one
-// gene moved by one step) for VOICE_TRIAL listened ticks. Muted before the trial ends, the variant is undone ('u'); heard to
-// the end, it is kept ('k') and becomes the voice the next variant must survive. Leaving (the field closes the universe, the
-// page goes) is not a verdict: the unjudged variant is quietly put back and nothing is written. A mute is ambiguous - it may
-// mean "not that" or "enough for now" - and the history records only that it happened.
-// The shell sets __voiceListen through the bridge: 1 listening, 2 muted (a verdict), 0 gone. No one listening, no proposal,
-// no write: genome.voice stays absent, the save is unchanged, and the proposals draw from a stream of their own, never
-// Math.random, so a listened world's simulation draws are the same as an unheard one's.
-const VOICE_TRIAL=600, VOICE_HIST_MAX=64;
-let __voiceListen=0, __voiceInc=null, __voiceT=0, __voiceKept=0, __voiceUndone=0, __voiceRnd=null;
-function __voiceHistPush(why,v){ const h=genome.voiceHist||(genome.voiceHist=[]); h.push([genome.totalTicks|0,why,v.slice()]); if(h.length>VOICE_HIST_MAX)h.splice(0,h.length-VOICE_HIST_MAX); }
-function __voicePropose(){ if(!__voiceRnd)__voiceRnd=__mindRng((Date.now()^0x5017ced)|0); const r=__voiceRnd;
-  const v=Array.isArray(genome.voice)?genome.voice:(genome.voice=VOICE_DEFAULT.slice()); __voiceInc=v.slice(); __voiceT=0;
-  for(let t=0;t<8;t++){ const k=(r()*10)|0, d=k===5?(1+((r()*7)|0))*(r()<0.5?-1:1):(r()<0.5?-1:1), x=Math.max(VOICE_LO[k],Math.min(VOICE_HI[k],v[k]+d));
-    if(x!==v[k]){ v[k]=x; break; } }
-  fired('voice.propose'); }
-function __voiceTick(){
-  if(__voiceListen===1){ if(!__voiceInc)__voicePropose(); else if(++__voiceT>=VOICE_TRIAL){ __voiceKept++; __voiceHistPush('k',genome.voice); fired('voice.keep'); __voiceInc=null; } return; }
-  if(!__voiceInc)return;
-  if(__voiceListen===2){ __voiceUndone++; __voiceHistPush('u',genome.voice); fired('voice.undo'); }
-  genome.voice=__voiceInc; __voiceInc=null; __voiceT=0; __voiceListen=0; }
 function updateAttentionField(){
   // deposit where the smoothed pointer rests. mx starts at -9e3 (never touched), which lands far
   // outside the grid, so an untouched world simply has no attention anywhere — the honest default.
@@ -27496,7 +27463,6 @@ function loop(){
   smx+=(mx-smx)*.05;smy+=(my-smy)*.05;
   updateAttentionField();   // #135: attention is part of the world's physics now
   __drawAttnTick();   // #314: and now it is what the world's form is selected by
-  __voiceTick();   // #364: and listening, its voice
   if(pulling){pStr=Math.min(pStr+.02,1);pDur++}else pStr*=.92;
 
   const absPd=ABSENCE_BASE+Math.sin(tick*0.0007)*180+(Math.sin(tick*0.00031)*90)|0;
