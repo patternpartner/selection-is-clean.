@@ -28285,3 +28285,10 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **The fix:** the factor is capped at 0.999 (the law's own ceiling), and any non-finite cell is reset to 0. Under defaults (0.982 plus at most 0.015) the cap never binds: byte-identical on the shipped default, the default world and REPL.
 - **Pending:** 9701 replayed with the fix past its old death at tick 85,000.
 - **The default world can drift there too.** FIELD_DECAY is a gene everywhere, so this may explain the default-world extinction seen in #351 (9202 D3). That is not checked.
+- **#360, 9701 replayed with the cap** (`lab/port/out-rescue/9701-fieldcap.jsonl`, alive / first paid / task income per 5,000 ticks):
+  - It is identical to the uncapped run up to tick 40,000. It diverges there (the cap first binds), so decay had evolved high by then.
+  - It never overflows and never collapses to immortals. It holds **120-190 alive from tick 20,000 to 140,000**, with task income of 3-133 per block and 0-3 new functions per block.
+  - The uncapped run had a second boom at 75,000-80,000, which the capped run does not; that boom may have been fed by the runaway field. Not checked.
+- **So two different dead states remain, separated:**
+  1. the **infinite field** (fixed);
+  2. a **stalled world after a crash**, which lives on sunlight and computes almost nothing, the post-crash form of #352's never-took-off seeds. In it the computing lineages are gone, and the survivors are not the reading founder that #353-#354 made take-off reliable with. This one is still open.
