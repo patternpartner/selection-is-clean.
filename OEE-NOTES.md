@@ -28270,3 +28270,18 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - The founders end their first tick with `amp` = **Infinity**, not NaN. Infinity minus Infinity then gives NaN, which is reset to 0, and the founder dies on tick 2.
   - The survivors' own amp is non-finite too: JSON prints it as null, which is either NaN or Infinity. Infinity never falls below a death threshold, which may be what makes them immortal.
   - **So something in the dead world holds an infinite value** and passes it to everything that touches it on its first tick. A third replay scans every shared array for non-finite values. Two hypotheses in a row were wrong; this one is not guessed.
+
+### #360 — THE DEAD WORLD'S CAUSE, FOUND BY SCANNING RATHER THAN GUESSING: the resource field overflowed to Infinity. Fixed.
+- **Third replay of 9701 to tick 90,000** (`9701-founders3.jsonl`), scanning every shared array for non-finite values:
+  - `field` (the main resource lattice) was **Infinity in all 1,600 cells**;
+  - `localRes` was Infinity in 29 creatures and `amp` in 39;
+  - every other field, store and pool was finite.
+- **The mechanism.** The decay stage of `updateField` multiplies each cell by `FIELD_DECAY + memBonus`.
+  - FIELD_DECAY is a gene clamped only to [0.5, 1.0] (as a law it goes up to 0.999), and memBonus adds up to 0.015 (fieldMemory saturates at 5, times 0.003).
+  - So once decay has evolved above about 0.985, every well-remembered cell multiplies by MORE THAN 1 each tick. Diffusion spreads it, and the field grows exponentially (at 1.014, about 50,000 ticks to overflow).
+  - The deposit stage clamps cells to [0, 100]; the decay stage had no clamp, and its guard caught NaN only.
+  - Every creature on an infinite cell takes `amp += field*0.0008*affinity` = Infinity. Newborns die a tick later, when Infinity minus Infinity gives NaN, which is reset to 0. The ones already infinite never fall below a death threshold: those are the "immortals" of #359.
+- **Two hypotheses on the way were wrong, and both are recorded above:** germline drift, then infinite phases. The scan found it in one run.
+- **The fix:** the factor is capped at 0.999 (the law's own ceiling), and any non-finite cell is reset to 0. Under defaults (0.982 plus at most 0.015) the cap never binds: byte-identical on the shipped default, the default world and REPL.
+- **Pending:** 9701 replayed with the fix past its old death at tick 85,000.
+- **The default world can drift there too.** FIELD_DECAY is a gene everywhere, so this may explain the default-world extinction seen in #351 (9202 D3). That is not checked.

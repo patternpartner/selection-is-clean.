@@ -18897,8 +18897,13 @@ function updateField(){
       if(y>0)sum+=field[(y-1)*FIELD_W+x]*FIELD_DIFFUSE;
       if(y<FIELD_H-1)sum+=field[(y+1)*FIELD_W+x]*FIELD_DIFFUSE;
       const memBonus=Math.min(0.015,fieldMemory[idx]*0.003); // history slows decay, max 0.015
-      field[idx]=sum*(FIELD_DECAY+memBonus);
-      if(isNaN(field[idx]))field[idx]=0;
+      // #360: CAPPED. FIELD_DECAY evolves up to 1.0 (genome) or 0.999 (law), and memBonus adds up to 0.015, so a remembered cell
+      // could multiply its energy by more than 1 every tick: the field grew exponentially, overflowed to Infinity (all 1,600 cells
+      // in #359b's dead world), and every creature that stood on it took an infinite amp and died a tick later, while the ones
+      // already infinite never fell below a death threshold. A factor of 1 or more creates energy from nothing; it is capped at the
+      // law's own ceiling, 0.999. Under defaults (0.982 + at most 0.015) the cap never binds. A non-finite cell is reset to 0.
+      field[idx]=sum*Math.min(0.999,FIELD_DECAY+memBonus);
+      if(!Number.isFinite(field[idx]))field[idx]=0;
 
       // Second channel — diffuses at slower rate
       const F2D=FIELD_DIFFUSE*0.5;
