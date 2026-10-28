@@ -3,15 +3,17 @@
 // payments, how full the pools are, mean store and age, the share in grace, the largest lineage's share, how many programs carry
 // INPUT / READ / OUTPUT and predation (155), and any non-finite field cell or amp. Reads counters and arrays; draws nothing.
 //   SEED=9802 TASKS=1 TASK_TRICKLE=200 TICKS=10000 ROW=250 node lab/port/probe-crash.js > out.jsonl
+// #366b: FROM=t rows only every 5,000 before tick t; DIAG=1 adds, per row after FROM, the 25 liveness counters that moved most and the
+// death-relevant genes (germline and living mean).
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis); require(path.join(ROOT,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module'); const m=new Module('/tmp/crash-sim.js'); m.filename='/tmp/crash-sim.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
-;globalThis.__C=function(ticks,ROW,out){ const lv=()=>(typeof __liveness!=='undefined')?__liveness:{}; let lb=0, lp=0, li=0, ls=0, lpd=0, errs=0, capSum=0;
+;globalThis.__C=function(ticks,ROW,out){ const FROM=+(process.env.FROM||0), DIAG=!!process.env.DIAG, PAR=['deathThreshold','lifespanBias','metabolicCost','entropyBaseline','entropyK','vmMaxInstructions','mutationRate','creationCost','simCost']; let lvPrev=null; const lv=()=>(typeof __liveness!=='undefined')?__liveness:{}; let lb=0, lp=0, li=0, ls=0, lpd=0, errs=0, capSum=0;
   for(let T=0;T<TASK_NF;T++)capSum+=tCap[T];
   for(let t=1;t<=ticks;t++){ globalThis.__detMs+=5; try{loop();}catch(e){ if(errs++<3)console.error(String(e&&e.stack||e).slice(0,300)); }
-    if(t%ROW) continue;
+    if(t<FROM?(t%5000):(t%ROW)) continue;
     let alive=0, eSum=0, ageSum=0, grace=0, inp=0, rd=0, outp=0, pred=0, badAmp=0; const lin=new Map();
     for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; eSum+=pE[i]; ageSum+=page[i]; if(!Number.isFinite(amp[i]))badAmp++;
       if(typeof specInGrace==='function'&&specInGrace(pLin[i]))grace++; lin.set(pLin[i],(lin.get(pLin[i])||0)+1);
@@ -22,5 +24,8 @@ m._compile(code+`
     out(JSON.stringify({tick:t, alive, births:b-lb, prey:pr-lp, taskInc:+(tEv.income-li).toFixed(1), sunInc:+(tEv.sun-ls).toFixed(1), paid:tEv.paid-lpd,
       poolFill:+(res/capSum).toFixed(3), meanE:alive?+(eSum/alive).toFixed(3):0, meanAge:alive?Math.round(ageSum/alive):0, grace:alive?+(grace/alive).toFixed(2):0,
       lineages:lin.size, bigLin:alive?+(big/alive).toFixed(2):0, input:inp, read:rd, output:outp, pred155:pred, fieldMax:+fmax.toFixed(2), badField, badAmp}));
+    if(DIAG&&t>=FROM){ const cur=Object.assign({},L), d=[]; if(lvPrev) for(const k in cur){ const x=(cur[k]|0)-(lvPrev[k]|0); if(x)d.push([k,x]); } lvPrev=cur;
+      d.sort((a,b2)=>b2[1]-a[1]); const g={}, m={}; for(const k of PAR){ g[k]=+(+genome[k]).toPrecision(4); let sm=0,n=0; for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&Number.isFinite(+pGenome[i][k])){ sm+=+pGenome[i][k]; n++; } } m[k]=n?+(sm/n).toPrecision(4):null; }
+      out(JSON.stringify({diag:true, tick:t, top:d.slice(0,25), germ:g, living:m})); }
     lb=b; lp=pr; li=tEv.income; ls=tEv.sun; lpd=tEv.paid; } };`, m.filename);
 globalThis.__C(parseInt(process.env.TICKS||'10000',10), parseInt(process.env.ROW||'250',10), s=>console.log(s));
