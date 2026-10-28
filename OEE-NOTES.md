@@ -28292,3 +28292,8 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **So two different dead states remain, separated:**
   1. the **infinite field** (fixed);
   2. a **stalled world after a crash**, which lives on sunlight and computes almost nothing, the post-crash form of #352's never-took-off seeds. In it the computing lineages are gone, and the survivors are not the reading founder that #353-#354 made take-off reliable with. This one is still open.
+- **#360 acceptance:**
+  - `smoke.sh` 65 ok / 1 failing: `slot-test`'s throughput row "most of the field got far enough to save" (2/9 saved).
+  - `slot-test` alone on the same engine: **4 of 5 pass**, the one failure being that same row. The engine before #360 (71ddb59): 2 of 2.
+  - The cap cannot bind in a short browser run: it needs a world whose decay has evolved above about 0.984 with saturated field memory. So this is the timing sensitivity CLAUDE.md describes, established by re-running rather than assumed.
+  - substrate-test 264/0 at TICKS=40.
