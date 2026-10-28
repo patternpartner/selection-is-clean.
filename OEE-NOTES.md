@@ -28265,3 +28265,8 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - **At their last tick alive their SUN stores were healthy** (pE about 0.53, pAdq 1), but their `amp` was **NaN**. The death path sets a NaN amp to 0, below deathThreshold, so they die of "physics" on their second tick.
   - **The germline-drift hypothesis above is REFUTED.** The germline's life-and-death parameters are ordinary and close to the living mean: deathThreshold 0.038 against 0.039, lifespanBias 1.07 against 1.01.
   - **New hypothesis, being checked:** the immortal survivors' phases have grown without limit (#358's hang came from exactly that). `Math.cos(phase[i]-phase[j])` with infinite phases is NaN, which reaches a newborn's amp on its first interaction. The breakage would also be why the survivors persist.
+- **#359b, second replay (`9701-founders2.jsonl`): the phase hypothesis is REFUTED too.**
+  - The 35 survivors' phases are finite and ordinary (140-1,480).
+  - The founders end their first tick with `amp` = **Infinity**, not NaN. Infinity minus Infinity then gives NaN, which is reset to 0, and the founder dies on tick 2.
+  - The survivors' own amp is non-finite too: JSON prints it as null, which is either NaN or Infinity. Infinity never falls below a death threshold, which may be what makes them immortal.
+  - **So something in the dead world holds an infinite value** and passes it to everything that touches it on its first tick. A third replay scans every shared array for non-finite values. Two hypotheses in a row were wrong; this one is not guessed.

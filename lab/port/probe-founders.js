@@ -13,6 +13,9 @@ m._compile(code+`
   const pick=g=>{ const o={}; for(const k of PARAMS){ const v=g&&g[k]; o[k]=(typeof v==='number'&&isFinite(v))?+v.toFixed(4):v; } return o; };
   const live=[]; for(let i=0;i<N;i++) if(palive[i])live.push(i);
   const mean={}; for(const k of PARAMS){ const v=live.map(i=>pGenome[i]&&pGenome[i][k]).filter(x=>typeof x==='number'&&isFinite(x)); mean[k]=v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(4):null; }
+  { const names=['field','field2','detritalField','rootField','crystalField','inhibitorField','cellProgStr','sunField','corpseField','localRes','pProvision','pE','pAdq','amp','vx','vy','px','py','tend','pMem','pSignalReceive','pResistance','collapse','tRes','pNov','fieldOwnership'];
+    const bad={}; for(const n of names){ let A; try{ A=eval(n); }catch(e){ continue; } if(!A||typeof A.length!=='number')continue; let k=0, ex=-1; for(let q=0;q<A.length;q++) if(!Number.isFinite(A[q])){ k++; if(ex<0)ex=q; } if(k)bad[n]={count:k, first:ex, val:String(A[ex])}; }
+    let ws=0; try{ ws=worldEnergy; }catch(e){} console.log(JSON.stringify({nonFinite:bad, worldEnergy:String(ws), energyAdequacy:String(typeof energyAdequacy!=='undefined'?energyAdequacy:'-')})); }
   const ph=live.map(i=>phase[i]); const fin=ph.filter(Number.isFinite); const big=fin.filter(x=>Math.abs(x)>1e6).length;
   console.log(JSON.stringify({phaseFinite:fin.length, phaseNonFinite:ph.length-fin.length, phaseAbsOver1e6:big, phaseSample:ph.slice(0,8), ampSample:live.slice(0,8).map(i=>amp[i]), freqSample:live.slice(0,8).map(i=>freq[i])}));
   console.log(JSON.stringify({tick, alive:live.length, germline:pick(genome), livingMean:mean, livingAgeMean:Math.round(live.reduce((a,i)=>a+page[i],0)/Math.max(1,live.length)), germProgOps:(genome.vmProgram||[]).map(r=>r[0]).join(',')}));
