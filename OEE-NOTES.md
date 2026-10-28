@@ -28368,3 +28368,12 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - a 60-second listen kept a variant;
   - a mute undid exactly the variant playing and restored the kept voice;
   - leaving mid-trial wrote nothing and put the variant back.
+
+### #364b — GRACE_MAX removed (#361's knob, default off, never shipped)
+- **Why:** its one design run (9701, `GRACE_MAX=20000`) crashed at about 30,000. It regrew to about 1,550 alive and found **0 new functions in
+  60,000 ticks**. It never earned a decision run; the trickle went forward instead.
+- **What it was aimed at is still open:** the unlimited small-lineage relief in `specInGrace`, under which a stalled world's residents live
+  about 25,000 ticks (#360b). Removing a knob that did not fix it is not fixing it.
+- **Byte-identical on the default** (the knob was 0): seed 3, 1,500 ticks, TASKS on, against the engine before #364. It is gone from
+  `harness-env.js`'s KNOBS too.
+- **The design-run record stays:** `lab/port/out-rescue/`, and #361 and PREREG-trickle.md.

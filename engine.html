@@ -27098,11 +27098,11 @@ function specMint(){ // cladogenesis: split off viable, cell-distinct, trait-div
 }
 function specInGrace(l){ // founder protection: a freshly-minted lineage gets death-relief while young OR small
   if(!__SPEC.on)return false; const bt=linBirthTick.get(l); if(bt===undefined)return false;
-  return (tick-bt)<__SPEC.grace || ((linSize.get(l)||0)<__SPEC.minsize && (__GRACE_MAX<=0 || (tick-bt)<__GRACE_MAX));   /* #361: GRACE_MAX>0 ends the small-lineage relief at that lineage age; 0 (default) is the old unlimited relief */
+  return (tick-bt)<__SPEC.grace || (linSize.get(l)||0)<__SPEC.minsize;
 }
-// #361: GRACE_MAX (ticks, default 0 = unlimited). #360b: a small lineage was relieved of senescence for as long as it stayed small, so
-// a stalled TASKS world's residents lived ~25,000 ticks (a normal life is ~400) and never turned over.
-const __GRACE_MAX=(typeof globalThis!=='undefined'&&globalThis.__GRACE_MAX!==undefined)?(globalThis.__GRACE_MAX|0):0;
+// #364 removed #361's GRACE_MAX knob (a limit on the small-lineage relief above). Its design run on 9701 crashed, regrew to about 1,550 alive
+// and found 0 new functions in 60,000 ticks; it never went to a decision run. The unlimited relief it targeted (#360b: residents of a
+// stalled TASKS world living about 25,000 ticks) is still there and still open.
 // ── assortative-mating machinery (swing #18; active only when __SPEC.assort) ──────────────────────
 let specBirthAccept=0, specBirthReject=0;               // realized vs mate-refused spawns (cumulative, global)
 let specSimSum=0, specSimCnt=0; const specSimHist=new Int32Array(10); // spawn-similarity distribution (to pick the threshold)
