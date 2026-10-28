@@ -132,6 +132,20 @@ const BRIDGE =
   // scope and the bridge runs in that scope, so this assigns the real one.
   '__inst.api.setPace=function(ms){try{var v=+ms;if(!isFinite(v))return false;PACE=Math.max(0,Math.min(5000,v|0));return true;}catch(e){return false;}};' +
   '__inst.api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
+  // #363 - THE SCORE the shell plays when its sound is on: who was paid this epoch or the last, for which function, with which
+  // published word (its 32 bits are the bar's 32 steps), where, and which functions were heard (a READ hit) - read off the TASKS
+  // arrays, nothing drawn, nothing written, so a universe that is listened to runs the same as one that is not. Bounded: the 8
+  // functions with the most payers and the 3 most read. TASKS off answers off.
+  '__inst.api.score=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON)return {off:true,tick:tick};' +
+    'var e=tEpoch,f={},r={},paid=0,alive=0;' +
+    'for(var i=0;i<N;i++){if(!palive[i])continue;alive++;' +
+      'if(tRE[i]>=e-1&&tRT[i]>=0)r[tRT[i]]=(r[tRT[i]]|0)+1;' +
+      'var pe=tPE[i];if((pe!==e&&pe!==e-1)||tLastE[i]!==pe)continue;var K=tLastK[i];if(K<0)continue;paid++;' +
+      'var o=f[K];if(!o)o=f[K]={n:0,w:tLast[i]>>>0,x:0,rd:0,cur:0};o.n++;o.x+=px[i];if(tRE[i]===pe)o.rd++;if(pe===e)o.cur++;}' +
+    'var v=Object.keys(f).map(function(k){var o=f[k];return [+k,o.n,o.w,+(o.x/o.n/W).toFixed(3),TASK_SZ4[+k],+(o.rd/o.n).toFixed(2)];})' +
+      '.sort(function(a,b){return b[1]-a[1];}).slice(0,8);' +
+    'var h=Object.keys(r).map(function(k){return [+k,r[k],TASK_SZ4[+k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,3);' +
+    'return {tick:tick,epoch:e,alive:alive,paid:paid,v:v,h:h};}catch(err){return null;}};' +
   // A few numbers off the sim's own counters. The field is nine worlds behind worker
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to
   // believe the relay's own bookkeeping, which counts sends, not arrivals. netStats and
@@ -447,6 +461,13 @@ Universe.prototype.handle = function (d) {
     let c = null;
     try { c = api() && api().census ? api().census() : null; } catch (e) { c = { err:String(e&&e.message) }; }
     this.post({ type: 'census-result', rid: d.rid, census: c });
+    return;
+  }
+
+  // #363: the score for the shell's sound - read-only, request/reply like stat
+  if (d.type === 'score') {
+    let score = null; try { score = api() && api().score ? api().score() : null; } catch (_) {}
+    this.post({ type: 'score', rid: d.rid, score });
     return;
   }
 

@@ -24,7 +24,7 @@
 </head>
 <body>
 <div id="gen">booting…</div>
-<div id="gio"><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gsnd">🔇 sound</button><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <div id="err"></div>
 <script>
@@ -205,7 +205,9 @@
     // #158: test-only. Lets collective-test.js drive the evolved-silence case directly.
     setGeneForTest: function(gene,value){ return ask('setgene', { gene:String(gene), value:+value }); },
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
-    controls: function(show){ if (gioEl) gioEl.hidden = !show; }
+    controls: function(show){ if (gioEl) gioEl.hidden = !show; if (!show && sound) sound.off(); },
+    // #363: test-only - what the sound last played (null before the first bar)
+    soundForTest: function(){ return sound ? sound.last() : null; }
   };
 
   worker.onmessage = function(e){
@@ -228,6 +230,7 @@
     }
     if (d.type === 'pulled'){ settle(d.rid, d.packet || null); return; }
     if (d.type === 'stat'){ settle(d.rid, d.stat || null); return; }
+    if (d.type === 'score'){ settle(d.rid, d.score || null); return; }
     if (d.type === 'heap-result'){ settle(d.rid, d.heap || null); return; }
     if (d.type === 'gc-result'){ settle(d.rid, !!d.ran); return; }
     if (d.type === 'census-result'){ settle(d.rid, d.census || null); return; }
@@ -297,6 +300,83 @@
     r.onload = function(ev){ worker.postMessage({ type:'import', data: String(ev.target.result).trim() }); };
     r.readAsText(f);
   };
+
+  // ═══ #363 — THE SOUND IS A READOUT OF THE TASKS LAYER ══════════════════════════════════════
+  // Off until it is tapped (a browser will not start audio without a gesture anyway), and only in
+  // the universe that is open: the field's controls(false) turns it off. Nothing here reaches the
+  // world - the worker's score() reads arrays and draws nothing - so a universe sounds the same
+  // whether or not anyone listens. What it plays, all of it read from the world:
+  // - ONE BAR PER EPOCH (50 ticks, one set of the world's input words). The bar lasts as long as an
+  //   epoch takes on this machine, clamped to 1.6-4 s, so the tempo is the world's own clock. An
+  //   epoch already played is not played again: a world that has stopped makes no new bars.
+  // - A VOICE PER FUNCTION, for the 8 functions with the most creatures paid for them. Its rhythm
+  //   is the 32-bit word a paid creature published: step q sounds when bit q is 1. All voices in a
+  //   bar are functions of the same four input words, so they share structure - an AND voice can
+  //   only sound where its inputs both do. Pitch climbs a pentatonic scale with the function's NAND
+  //   formula size: a world computing harder functions sounds higher. Loudness grows with the
+  //   number paid, absolutely (full at 48 payers), so a world being paid less is heard to be quieter; pan is where they stand. A voice whose creatures mostly READ a neighbour this
+  //   epoch is soft and long, one that computed alone is a short pluck.
+  // - UNDER IT, the 3 functions most heard (READ hits): held tones, the world listening to itself.
+  // - A dead world, or one where nobody was paid, is silent. A world without TASKS is silent.
+  var sound = (function(){
+    var btn = document.getElementById('gsnd'), ac = null, out = null, timer = 0, on = false;
+    var lastEpoch = -1, lastTick = -1, lastAt = 0, bar = 2.4, next = 0, lastPlayed = null;
+    var PENT = [0, 3, 5, 7, 10];
+    function hz(sz){ var d = Math.max(0, Math.min(17, (sz|0) - 1)); return 110 * Math.pow(2, (Math.floor(d/5)*12 + PENT[d%5]) / 12); }
+    function label(t){ if (btn) btn.textContent = t; }
+    function note(t, f, g, dur, type, pan){
+      var o = ac.createOscillator(), a = ac.createGain(), p = ac.createStereoPanner ? ac.createStereoPanner() : null;
+      o.type = type; o.frequency.value = f;
+      a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(Math.max(0.0002, g), t + Math.min(0.3, dur*0.15 + 0.004));
+      a.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(a); if (p){ p.pan.value = pan; a.connect(p); p.connect(out); } else a.connect(out);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    function play(s){
+      var t0 = Math.max(ac.currentTime + 0.05, next), step = bar / 32;
+      var nv = Math.max(1, s.v.length), heard = 0;
+      s.v.forEach(function(v){
+        var w = v[2] >>> 0, f = hz(v[4]), g = 0.3 * Math.sqrt(Math.min(1, v[1] / 48)) / Math.sqrt(nv), pan = Math.max(-1, Math.min(1, v[3]*2 - 1));
+        var soft = v[5] >= 0.5;
+        for (var q = 0; q < 32; q++) if ((w >>> q) & 1){ heard++;
+          note(t0 + q*step, f, soft ? g*0.7 : g, soft ? step*3 : step*1.4, soft ? 'sine' : 'triangle', pan); }
+      });
+      var hmax = 1; s.h.forEach(function(h){ if (h[1] > hmax) hmax = h[1]; });
+      s.h.forEach(function(h){ note(t0, hz(h[2]) / 2, 0.06 * Math.sqrt(h[1] / hmax), bar * 0.95, 'sine', 0); });
+      next = t0 + bar;
+      lastPlayed = { epoch: s.epoch, voices: s.v.length, held: s.h.length, notes: heard, bar: +bar.toFixed(2), paid: s.paid, alive: s.alive };
+      label('🔊 ' + s.v.length + (s.v.length === 1 ? ' voice' : ' voices'));
+    }
+    function poll(){
+      if (!on) return;
+      ask('score', null).then(function(s){
+        if (!on) return;
+        if (!s || s.off){ label(s && s.off ? '🔊 no tasks' : '🔊 …'); return; }
+        var now = performance.now();
+        // the bar follows the world: seconds per epoch, measured between two scores
+        if (lastTick >= 0 && s.tick > lastTick){ var spe = (now - lastAt) / 1000 * 50 / (s.tick - lastTick); bar = Math.max(1.6, Math.min(4, bar*0.7 + spe*0.3)); }
+        lastTick = s.tick; lastAt = now;
+        if (s.epoch === lastEpoch) return;   // nothing new happened: rest
+        lastEpoch = s.epoch;
+        if (!s.alive || !s.v.length){ label('🔊 silent'); lastPlayed = { epoch: s.epoch, voices: 0, held: 0, notes: 0, bar: +bar.toFixed(2), paid: s.paid, alive: s.alive }; return; }
+        if (ac.currentTime + 0.1 < next - bar) return;   // a bar is already queued ahead; never stack them
+        play(s);
+      });
+    }
+    function start(){
+      try {
+        if (!ac){ var AC = window.AudioContext || window.webkitAudioContext; if (!AC){ label('no audio'); return; }
+          ac = new AC(); var comp = ac.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 20;   /* a limiter only: a compressor's default flattens the loudness this reads out */
+          out = ac.createGain(); out.gain.value = 0.8; out.connect(comp); comp.connect(ac.destination); }
+        if (ac.state === 'suspended') ac.resume();
+        on = true; next = 0; lastEpoch = -1; label('🔊 …'); timer = setInterval(poll, 400); poll();
+      } catch(e){ label('no audio'); }
+    }
+    function off(){ on = false; clearInterval(timer); timer = 0; if (ac && ac.state === 'running') ac.suspend(); label('🔇 sound'); }
+    if (btn) btn.onclick = function(){ if (on) off(); else start(); };
+    addEventListener('pagehide', off);
+    return { off: off, last: function(){ return lastPlayed; } };
+  })();
 
   // ── cross-tab METABOLISM panel ─────────────────────────────────
   // The sim's own metabolism observer builds its corner panel from the DOM, but the sim now

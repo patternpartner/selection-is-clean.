@@ -28309,3 +28309,37 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **`GRACE_MAX`** (ticks): the small-lineage relief from senescence ends once a lineage is that old. The young-lineage relief (`__SPEC.grace`, 2,000 ticks) is unchanged.
 - **`TASK_TRICKLE=k`**: under TASKS, one parentless founder every k ticks. It arrives with the reading ancestor via #359's rescue (liveness: `task.trickle`).
 - **Design runs** on 9701 (GRACE_MAX=20000; TASK_TRICKLE=200; to 120,000) pick the candidate. A pre-registered test on unseen seeds decides it.
+
+### #362 — the trickle test, execution (the verdict will follow in its own entry)
+- Pre-registered in `lab/port/PREREG-trickle.md`. **Addendum 2** records a flaw in the first execution: the 115-minute wall cap stopped healthy
+  worlds (about 1,500 alive, about 160 minutes to reach tick 40,000) and let stalled ones (about 150 alive, 17 minutes) finish. An INCOMPLETE run is
+  not counted, so the cap was selecting stalled worlds into the count. The cap is now 900 minutes; the rules are unchanged.
+- **Seen before the change, and stated against the candidate:** 9802 TRICKLE is STALLED by the rule (0 new functions and task income of 67 in the last
+  block, against a peak of 5,893). The trickle did not save that world.
+
+### #363 — sound: a readout of the TASKS layer (off until tapped; the world never reads it)
+- **Where:** a `🔇 sound` button in `universe.html`'s controls, so in a field it exists only in the universe that is open. The field's
+  `controls(false)` turns it off. Each bar it asks the worker for a `score` (a new bridge call in `sim.worker.js`). The score READS the TASKS arrays
+  (`tPE`, `tLast`, `tLastE`, `tLastK`, `tRE`, `tRT`, `px`, `TASK_SZ4`): no draw, no write. So `engine.html` is untouched, and a universe that is listened
+  to runs exactly as one that is not.
+- **What it plays:**
+  - One bar per epoch. The bar is as long as an epoch takes, clamped to 1.6-4 s.
+  - The 8 functions with the most paid creatures are the voices. Each voice plays the 32-bit word a paid creature published, as a 32-step rhythm.
+  - Pitch climbs a pentatonic scale with NAND formula size.
+  - Loudness is absolute: full at 48 payers.
+  - Pan is mean position.
+  - A voice that mostly READ a neighbour is a soft sine. One that computed alone is a short triangle pluck.
+  - Under the voices, the 3 functions most heard (READ hits) are held tones.
+  - Nobody paid, nothing alive, or no TASKS means silence. An epoch already played is not repeated.
+- **Why these choices:** every voice in a bar is a function of the same four input words, so the rhythms are related by logic, not by
+  a composer. An AND voice can only sound where both of its inputs do.
+- **Measured (one young world in a browser, one seed):** 8 voices and about 160 notes a bar. Payments fell from 740 to 138 over 45 seconds, and the
+  level fell about 3 dB with them. The first version kept loudness relative to the loudest voice, and a compressor at its defaults evened it out
+  further: the level stayed flat while payments fell 7-fold, so the readout hid the very thing it was reading. Both are fixed (absolute loudness;
+  the compressor is a limiter only). A clip is in `lab/sound/young-world-363.mp3`.
+- **What it is not:** the world's own voice. Nothing about the sound is selected; it is a translation chosen by me, like the renderer. CLAUDE.md asks
+  every session that adds a mechanism to remove or prove one. This is not a mechanism, because the world never reads it, but that is a claim, and it
+  is checked: the score call draws nothing. An evolvable voice, selected by whether anyone listens (#314's attention), is the follow-up. It
+  will be pre-registered, and it is not this.
+- `sound-test.js` (in `smoke.sh`): starts off; once tapped, a TASKS world plays bars with voices; the bar sits inside its clamp; `controls(false)` stops
+  it; `#notasks` says so and plays nothing. 7/0.

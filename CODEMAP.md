@@ -3038,6 +3038,8 @@ verdict: law process on, the world's proposals off (LAW_RATE 0), one trial insta
 
 ---
 
+**#363 — sound** (`universe.html` `sound`, `sim.worker.js` `api.score`): a readout of the TASKS layer, off until tapped, only in the open universe. The worker's `score()` reads `tPE`/`tLast*`/`tR*` and draws nothing; the shell plays one bar per epoch, a voice per paid function (its published word as the rhythm, pitch by formula size). Test: `sound-test.js`.
+
 **#350 — TASKS, computation that pays** (knob `TASKS=1`, implies REPL). The block sits just after `sunStep` in the SUN/REPL
 layer:
 - **The block:** `TASKS_ON`, the knobs `TASK_CAPM`/`TASK_RATEM`/`TASK_TROPHP`/`TASK_SUNP`/`TASK_DRAWP` (integer units, for `applyKnobs`), the embedded formula-size table `TASK_SZ4`, the word file (`tW` `tJ` `tDm` `tK`), what each particle last published (`tLast*`), the pools (`tCap` `tRes`) and their income (`tE` `tN`).
