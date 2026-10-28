@@ -1,0 +1,3 @@
+{"tick":5000,"arrivals":845,"cumArrived":845,"active":845,"expH":264.29,"meanSz":3.73,"taskIncome":4384.036,"sunIncome":578.778,"alive":1394,"maxAlive":1768,"minAlive":510,"wallMin":7.3,"prey":817}
+{"tick":10000,"arrivals":1415,"cumArrived":2260,"active":2026,"expH":681.29,"meanSz":4.79,"taskIncome":6661.618,"sunIncome":500.408,"alive":1568,"maxAlive":1700,"minAlive":1499,"wallMin":22.2,"prey":173}
+{"tick":15000,"arrivals":668,"cumArrived":2928,"active":1724,"expH":607.6,"meanSz":4.695,"taskIncome":5214.716,"sunIncome":500.244,"alive":1593,"maxAlive":1754,"minAlive":1521,"wallMin":35.7,"prey":1215}
