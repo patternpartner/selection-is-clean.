@@ -1,2 +1,4 @@
 {"tick":5000,"arrivals":496,"cumArrived":496,"active":496,"expH":214.59,"meanSz":3.303,"taskIncome":1815.137,"sunIncome":569.592,"alive":363,"maxAlive":486,"minAlive":233,"wallMin":3.6,"prey":18282}
 {"tick":10000,"arrivals":837,"cumArrived":1333,"active":1165,"expH":452.44,"meanSz":4.224,"taskIncome":3244.397,"sunIncome":506.952,"alive":558,"maxAlive":974,"minAlive":403,"wallMin":7.2,"prey":14182}
+{"tick":15000,"arrivals":505,"cumArrived":1838,"active":1080,"expH":646.32,"meanSz":5.022,"taskIncome":1692.436,"sunIncome":492.04,"alive":383,"maxAlive":1256,"minAlive":89,"wallMin":9.6,"prey":453239}
+{"tick":20000,"arrivals":1128,"cumArrived":2966,"active":1953,"expH":962.5,"meanSz":5.718,"taskIncome":5757.341,"sunIncome":510.721,"alive":579,"maxAlive":1735,"minAlive":95,"wallMin":11.9,"prey":1269035}
