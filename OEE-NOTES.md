@@ -28442,3 +28442,25 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
 - `smoke.sh` on a quiet machine: 66 ok, 1 failing, `mind-test`. Its two rows ask for at least 3 universes past 1,000 ticks and found 2
   (throughput). Run alone straight after: **10/10**. `sound-test` ok inside the suite.
+
+### #367 — a harvest now carries each universe's history, kept across reloads
+- **Why** (the user, who runs the field over days because a phone kills the tab overnight): a harvest was a snapshot (genome, ticks,
+  population now). It could not say whether a universe had crashed, when, or what led there.
+- **What:** every 15 seconds the shell asks the worker for one row (`sim.worker.js` `histRow`, read-only, nothing drawn) and keeps it when
+  the universe has run 250 ticks since the last one, in `hist_<slot>` beside the genome. Each row holds:
+  - ticks, wall-clock minute, alive, births, prey events, task and sun income, payments;
+  - functions ever paid this session, functions paid for the first time since the last row, and exp(H) of income since the last row;
+  - how many carry predation (155), and how many carry INPUT;
+  - mean age;
+  - deathThreshold, lifespanBias and metabolicCost: germline and living mean.
+- **Reloads:** a boot writes `['boot', minute, ticks]`. That marks where this session's counters restart and where the pools refill (the
+  reload windfall).
+- **Thinning:** at 300 rows the older half is thinned to every other row, so a run of days keeps its whole span at falling resolution.
+  The field's harvest carries each universe's rows; its reset and load clear them.
+- **Why the genes:** #366b's 9801 TRICKLE crash killed 98% of a well-fed world in 500 ticks with few predators. A runaway death or
+  lifespan gene is the first suspect, and a field run over days can test it across many universes.
+  - Already visible at tick 832 of a browser world: the living mean metabolicCost is 0.000051, against the germline's 0.00002.
+- `engine.html` untouched. `history-test.js` (in `smoke.sh`), 6/0:
+  - rows gather;
+  - a reload keeps them and marks itself;
+  - an 11-universe field's harvest carries every history.

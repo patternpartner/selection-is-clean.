@@ -207,7 +207,9 @@
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
     controls: function(show){ if (gioEl) gioEl.hidden = !show; if (!show && sound) sound.off(); },
     // #363: test-only - what the sound last played (null before the first bar)
-    soundForTest: function(){ return sound ? sound.last() : null; }
+    soundForTest: function(){ return sound ? sound.last() : null; },
+    // #367: this universe's history (rows from the worker's histRow, reload markers), kept across reloads
+    history: function(){ return history ? history.all() : []; }
   };
 
   worker.onmessage = function(e){
@@ -231,6 +233,7 @@
     if (d.type === 'pulled'){ settle(d.rid, d.packet || null); return; }
     if (d.type === 'stat'){ settle(d.rid, d.stat || null); return; }
     if (d.type === 'score'){ settle(d.rid, d.score || null); return; }
+    if (d.type === 'hist'){ settle(d.rid, d.row || null); return; }
     if (d.type === 'heap-result'){ settle(d.rid, d.heap || null); return; }
     if (d.type === 'gc-result'){ settle(d.rid, !!d.ran); return; }
     if (d.type === 'census-result'){ settle(d.rid, d.census || null); return; }
@@ -376,6 +379,31 @@
     if (btn) btn.onclick = function(){ if (on) off(); else start(); };
     addEventListener('pagehide', off);
     return { off: off, last: function(){ return lastPlayed; } };
+  })();
+
+  // ═══ #367 — THIS UNIVERSE'S HISTORY, KEPT ACROSS RELOADS ════════════════════════════════════
+  // A harvest used to be a snapshot: it could not say whether a universe had crashed, when, or what its population, income and
+  // predators did on the way. Every 15 s this asks the worker for one row (sim.worker.js histRow: read-only) and keeps it when
+  // the universe has run 250 ticks since the last, under hist_<slot> beside the genome. A boot writes ['boot', minute, ticks],
+  // so a reload (a phone killing the tab) is visible, and with it the reset of this session's counters and the pools' windfall.
+  // At 300 rows the oldest half is thinned to every other row, so a run of days keeps its whole span at falling resolution.
+  // The field's harvest carries it; its reset and load clear it with the genome.
+  var history = (function(){
+    var KEY = SLOT ? ('hist_'+SLOT) : 'hist_genome', MAX = 300, rows = [], lastT = -1;
+    try { var j = JSON.parse(localStorage.getItem(KEY) || '[]'); if (Array.isArray(j)) rows = j; } catch(e){ rows = []; }
+    function save(){ try { localStorage.setItem(KEY, JSON.stringify(rows)); } catch(e){} }
+    function thin(){ var h = rows.length >> 1, keep = []; for (var i = 0; i < h; i++) if (rows[i][0] === 'boot' || i % 2 === 0) keep.push(rows[i]); rows = keep.concat(rows.slice(h)); }
+    var booted = false;
+    function poll(){
+      ask('hist', null).then(function(r){
+        if (!r) return;
+        if (!booted){ booted = true; rows.push(['boot', Math.round(Date.now()/60000), r[0]]); }
+        if (lastT >= 0 && r[0] - lastT < 250) return;
+        lastT = r[0]; rows.push(r); if (rows.length > MAX) thin(); save();
+      });
+    }
+    setInterval(poll, 15000); setTimeout(poll, 3000);
+    return { all: function(){ return rows.slice(); } };
   })();
 
   // ── cross-tab METABOLISM panel ─────────────────────────────────

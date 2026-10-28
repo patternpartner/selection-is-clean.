@@ -228,7 +228,7 @@
     if(_pend){
       localStorage.removeItem('fieldPendingLoad');
       var _h=JSON.parse(_pend), _doom=[];
-      for(var _i=0;_i<localStorage.length;_i++){ var _k=localStorage.key(_i); if(_k&&(_k.indexOf('selection_')===0||_k.indexOf('mind_')===0))_doom.push(_k); }   // #296: minds too
+      for(var _i=0;_i<localStorage.length;_i++){ var _k=localStorage.key(_i); if(_k&&(_k.indexOf('selection_')===0||_k.indexOf('mind_')===0||_k.indexOf('hist_')===0))_doom.push(_k); }   // #296: minds too; #367: histories
       for(var _j=0;_j<_doom.length;_j++) localStorage.removeItem(_doom[_j]);
       var _us=(_h&&_h.universes)||[], _put=0;
       for(var _u=0;_u<_us.length;_u++){
@@ -255,7 +255,7 @@
       var doomed=[];
       for(var ri=0;ri<localStorage.length;ri++){
         var rk=localStorage.key(ri);
-        if(rk&&(rk.indexOf('selection_')===0||rk.indexOf('mind_')===0)) doomed.push(rk);   // #296: and every universe's mind
+        if(rk&&(rk.indexOf('selection_')===0||rk.indexOf('mind_')===0||rk.indexOf('hist_')===0)) doomed.push(rk);   // #296: and every universe's mind; #367: and history
       }
       for(var rj=0;rj<doomed.length;rj++) localStorage.removeItem(doomed[rj]);
     }catch(e){}
@@ -769,7 +769,8 @@
                   atoms:st.atoms|0, pace:st.pace|0, dark:!!st.dark, fp:st.fp||'',
                   peers:st.peers|0, recv:st.recv|0, accepted:st.accepted|0,
                   migrantsIn:st.migrantAccepted|0, bad:st.bad|0, dropped:st.dropped|0,
-                  clockRefused:st.paced|0, errs:st.errs|0, mind:mind, mindNow:st.mind||null }:null);
+                  clockRefused:st.paced|0, errs:st.errs|0, mind:mind, mindNow:st.mind||null,
+                  history:(typeof a.history==='function')?a.history():null }:null);   // #367: the universe's rows, so a harvest shows whether and when it crashed
         }, function(){ fin(null); });
       }catch(e){ if(!why)why='threw: '+((e&&e.message)||String(e)).slice(0,120); fin(null); }
     });

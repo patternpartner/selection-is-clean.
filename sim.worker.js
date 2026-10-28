@@ -132,6 +132,25 @@ const BRIDGE =
   // scope and the bridge runs in that scope, so this assigns the real one.
   '__inst.api.setPace=function(ms){try{var v=+ms;if(!isFinite(v))return false;PACE=Math.max(0,Math.min(5000,v|0));return true;}catch(e){return false;}};' +
   '__inst.api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
+  // #367 - ONE ROW OF THIS UNIVERSE'S HISTORY, for the shell to keep across reloads and the field to harvest. A harvest was a
+  // snapshot (genome, ticks, population now) and could not say whether or when a world crashed. Read off counters and arrays,
+  // nothing drawn or written. Cumulative counts are this session's (they restart at a reload; the shell marks reloads).
+  // [ticks, minutes since 1970, alive, births, prey events, task income, sun income, payments, functions ever paid this session,
+  //  functions paid for the first time since the last row, exp(H) of income since the last row, carrying predation (155),
+  //  carrying INPUT, mean age, deathThreshold germline / living mean, lifespanBias germline / living, metabolicCost germline / living]
+  '__inst.api.histRow=function(){try{var L=(typeof __liveness!=="undefined")?__liveness:{},on=(typeof TASKS_ON!=="undefined"&&TASKS_ON);' +
+    'var al=0,pr=0,inp=0,ag=0,dt=0,lb=0,mc=0,ng=0;for(var i=0;i<N;i++){if(!palive[i])continue;al++;ag+=page[i];var p=pProg[i];' +
+      'if(p)for(var q=0;q<p.length;q++){var o=p[q][0];if(o===155){pr++;break;}}' +
+      'if(on&&p)for(var q2=0;q2<p.length;q2++){if(p[q2][0]===TASK_OP0){inp++;break;}}' +
+      'var g=pGenome[i];if(g){dt+=+g.deathThreshold||0;lb+=+g.lifespanBias||0;mc+=+g.metabolicCost||0;ng++;}}' +
+    'var fns=0,nf=0,H=0,tot=0;if(on){if(!__inst.hN)__inst.hN=new Uint32Array(TASK_NF),__inst.hE=new Float64Array(TASK_NF);' +
+      'for(var T=0;T<TASK_NF;T++){if(tN[T]>0){fns++;if(__inst.hN[T]===0)nf++;}tot+=tE[T]-__inst.hE[T];}' +
+      'if(tot>0)for(var T2=0;T2<TASK_NF;T2++){var x=tE[T2]-__inst.hE[T2];if(x>0){var qq=x/tot;H-=qq*Math.log(qq);}}' +
+      '__inst.hN.set(tN);__inst.hE.set(tE);}' +
+    'var r=function(v,d){return +(+v).toFixed(d);};var m=function(v){return ng?+(v/ng).toPrecision(4):null;};' +
+    'return [genome.totalTicks|0,Math.round(Date.now()/60000),al,L["repl.birth"]|0,L["repl.prey"]|0,on?r(tEv.income,0):0,on?r(tEv.sun,0):0,on?tEv.paid:0,' +
+      'fns,nf,r(Math.exp(H),1),pr,inp,al?Math.round(ag/al):0,+(+genome.deathThreshold).toPrecision(4),m(dt),+(+genome.lifespanBias).toPrecision(4),m(lb),+(+genome.metabolicCost).toPrecision(4),m(mc)];' +
+  '}catch(e){return null;}};' +
   // #363 - THE SCORE the shell plays when its sound is on: who was paid this epoch or the last, for which function, with which
   // published word (its 32 bits are the bar's 32 steps), where, and which functions were heard (a READ hit) - read off the TASKS
   // arrays, nothing drawn, nothing written, so a universe that is listened to runs the same as one that is not. Bounded: the 8
@@ -468,6 +487,13 @@ Universe.prototype.handle = function (d) {
   if (d.type === 'score') {
     let score = null; try { score = api() && api().score ? api().score() : null; } catch (_) {}
     this.post({ type: 'score', rid: d.rid, score });
+    return;
+  }
+
+  // #367: one row of history - read-only, request/reply like stat
+  if (d.type === 'hist') {
+    let row = null; try { row = api() && api().histRow ? api().histRow() : null; } catch (_) {}
+    this.post({ type: 'hist', rid: d.rid, row });
     return;
   }
 
