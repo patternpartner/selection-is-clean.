@@ -60,3 +60,9 @@ STALLED by the rule (0 arrivals, income 67 against a peak of 5,893). The trickle
 Change: the cap is raised to 900 minutes, so that every run reaches 40,000. 9801 TRICKLE is re-run from scratch (same seed, so the
 same trajectory to 29,136 and then on). Runs go 3 at a time as detached jobs, with a harness waiter keeping the session alive.
 Seeds, arms, horizon, measures and rules are unchanged.
+
+## Addendum 3 (execution only)
+At about 16:30, with 9805 TRICKLE, 9806 OLD and 9806 TRICKLE not yet started, the branch was fast-forwarded past #364b. That commit
+removed the GRACE_MAX knob, replacing `small && (GRACE_MAX<=0 || age<GRACE_MAX)` with `small`. With the knob at 0, which is all this test
+uses, that is the same expression; checked byte-identical at seed 3, 1,500 ticks, TASKS on. The runs not yet started boot from that
+engine. Nothing else in the engine changed (#364 was added and reverted).
