@@ -28517,3 +28517,14 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   started, and not before the other route to death (#366d) is understood.
 - `REPL_PREY` stays as a knob, default 1. CLAUDE.md asks that a mechanism that ran with no effect be deleted, but this one changed the world on
   every seed, so the knob is kept for the follow-up.
+
+### #366e — it is NOT velocityDamping (`9801T-damp.jsonl`, every 2 ticks)
+- **The germline's damping was 0.9955 throughout.** The living mean was 0.963, and only 3-6 particles were at or above 1, as on every other
+  row of the run. #366d's lead hypothesis is wrong, and #148's unclamped `maybe` is not implicated.
+- **The speed record:**
+  - At tick 34,024 the fastest speed DROPS from 27 to 3.3 within one 2-tick sample: a discrete event.
+  - It then grows a steady 1.2% a tick for 45 ticks, while damping is below 1 for all but a handful.
+  - Then it explodes: 5.5, 101, 657, 2,450, 5,390, every 2 ticks. Everyone is gone by 34,078.
+- **That shape is a collapse** (something drawing the world together until forces between particles blow up), triggered by a change at
+  34,024. Next: a replay every tick from 34,015 with spread and centroid, every germline field that changed, and every counter that fired
+  (`9801T-law.jsonl`).

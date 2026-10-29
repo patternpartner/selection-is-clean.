@@ -7,7 +7,8 @@
 // death-relevant genes (germline and living mean). Every row (#366c) carries the engine's own cause-of-death counters (deathsByPhysics and
 // deathsByAge reset at its instrumentation window; deathsByEscape and escapeNonFinite never do), non-finite positions and velocities
 // among the living, the fastest living speed, and the world's W and H; and (#366d) velocityDamping: germline, and the living min, mean, max
-// and count at or above 1.
+// and count at or above 1. (#366e) Mean distance from the centroid (spread), the centroid, mean speed; with GDIFF=1, every top-level
+// germline field that changed since the last row (old, new; objects by length and prefix) and every liveness counter that fired since the last row.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis); require(path.join(ROOT,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
@@ -27,7 +28,10 @@ m._compile(code+`
     let dmin=9, dmax=-9, dsum=0, dn=0, dover=0, dnull=0; for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g){ dnull++; continue; } const d=+g.velocityDamping; if(!Number.isFinite(d))continue; dn++; dsum+=d; if(d<dmin)dmin=d; if(d>dmax)dmax=d; if(d>=1)dover++; }
     const damp={germ:+(+genome.velocityDamping).toPrecision(6), min:dn?+dmin.toPrecision(6):null, mean:dn?+(dsum/dn).toPrecision(6):null, max:dn?+dmax.toPrecision(6):null, atOrOver1:dover, noGenome:dnull};
     let nfPos=0, nfVel=0, maxV=0; for(let i=0;i<N;i++){ if(!palive[i])continue; if(!Number.isFinite(px[i])||!Number.isFinite(py[i]))nfPos++; const v=Math.abs(vx[i])+Math.abs(vy[i]); if(!Number.isFinite(v))nfVel++; else if(v>maxV)maxV=v; }
-    out(JSON.stringify({tick:t, deathsPhys:deathsByPhysics, deathsAge:deathsByAge, deathsEsc:deathsByEscape, escNonFinite:escapeNonFinite, nfPos, nfVel, maxV:+maxV.toPrecision(3), damp, W, H, alive, births:b-lb, prey:pr-lp, taskInc:+(tEv.income-li).toFixed(1), sunInc:+(tEv.sun-ls).toFixed(1), paid:tEv.paid-lpd,
+    let cx=0, cy=0, vs=0; for(let i=0;i<N;i++){ if(!palive[i])continue; cx+=px[i]; cy+=py[i]; vs+=Math.hypot(vx[i],vy[i]); } let spread=0; if(alive){ cx/=alive; cy/=alive; vs/=alive; for(let i=0;i<N;i++){ if(palive[i])spread+=Math.hypot(px[i]-cx,py[i]-cy); } spread/=alive; }
+    let gchg=null; if(process.env.GDIFF&&t>=FROM){ const now={}; for(const k in genome){ const v=genome[k]; if(typeof v==='number')now[k]=v; else if(v&&typeof v==='object'){ try{ now[k]=JSON.stringify(v).length+':'+JSON.stringify(v).slice(0,80); }catch(e){} } } gchg=[]; if(globalThis.__gprev) for(const k in now){ if(now[k]!==globalThis.__gprev[k])gchg.push([k,globalThis.__gprev[k],now[k]]); } globalThis.__gprev=now; }
+    let rare=null; if(process.env.GDIFF&&t>=FROM){ const cur=Object.assign({},L); rare=[]; if(globalThis.__lvp) for(const k in cur){ const d=(cur[k]|0)-(globalThis.__lvp[k]|0); if(d>0)rare.push([k,d]); } globalThis.__lvp=cur; }
+    out(JSON.stringify({tick:t, spread:+spread.toFixed(1), cx:+cx.toFixed(0), cy:+cy.toFixed(0), meanV:+vs.toPrecision(3), gchg, rare, deathsPhys:deathsByPhysics, deathsAge:deathsByAge, deathsEsc:deathsByEscape, escNonFinite:escapeNonFinite, nfPos, nfVel, maxV:+maxV.toPrecision(3), damp, W, H, alive, births:b-lb, prey:pr-lp, taskInc:+(tEv.income-li).toFixed(1), sunInc:+(tEv.sun-ls).toFixed(1), paid:tEv.paid-lpd,
       poolFill:+(res/capSum).toFixed(3), meanE:alive?+(eSum/alive).toFixed(3):0, meanAge:alive?Math.round(ageSum/alive):0, grace:alive?+(grace/alive).toFixed(2):0,
       lineages:lin.size, bigLin:alive?+(big/alive).toFixed(2):0, input:inp, read:rd, output:outp, pred155:pred, fieldMax:+fmax.toFixed(2), badField, badAmp}));
     if(DIAG&&t>=FROM){ const cur=Object.assign({},L), d=[]; if(lvPrev) for(const k in cur){ const x=(cur[k]|0)-(lvPrev[k]|0); if(x)d.push([k,x]); } lvPrev=cur;
