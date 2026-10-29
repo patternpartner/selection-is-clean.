@@ -28575,3 +28575,5 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - 9801 TRICKLE: identical to 30,000 so far, still running.
 - **So the dead worlds have at least three routes:** the field overflow (#360, fixed), the ghost (#367b, fixed), and predator outbreaks
   (#365, left in on #366's evidence). Plus the unexplained crash in 9804 OLD.
+- **9801 TRICKLE with the cap:** identical to #362 through 30,000; then **1,634 and 1,670 alive (min 1,508 and 1,593)** where #362 had 1,312
+  (min 28) and 110 (min 2), with 567 and 421 new functions per block where #362 had 500 and 0. The world #366f traced survives the fix.
