@@ -28577,3 +28577,8 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   (#365, left in on #366's evidence). Plus the unexplained crash in 9804 OLD.
 - **9801 TRICKLE with the cap:** identical to #362 through 30,000; then **1,634 and 1,670 alive (min 1,508 and 1,593)** where #362 had 1,312
   (min 28) and 110 (min 2), with 567 and 421 new functions per block where #362 had 500 and 0. The world #366f traced survives the fix.
+
+### #366-#367b acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
+- `smoke.sh` on a quiet machine: **68 ok, 0 failing** (`sound-test` and `history-test` included).
+- On `main` with this: the ghost cap (#367b), the harvest history (#367), REPL_PREY (#366, default 1), and the probes and records of #362-#367b.
