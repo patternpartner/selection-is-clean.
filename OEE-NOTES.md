@@ -28566,3 +28566,12 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   the cursor point as well.
 - **Checking it:** 9801 TRICKLE, 9804 OLD and 9806 OLD (all three collapsed in #362) re-run with the fix to 40,000, against their #362
   rows (`lab/port/out-ghost/`, running). They should match until the cap first binds; those whose killer this was should survive.
+- **#367b re-runs, first two of three** (`lab/port/out-ghost/`, against #362's rows):
+  - **9806 OLD: the ghost was its killer.** Identical to #362 through 20,000. #362 then hit **minAlive 0** in every block from 25,000 (alive
+    383, 186, 101, 217); with the cap it never does (1,169 alive, min 677 at 25,000). But it still declines afterwards (374, 192, 208) with
+    2 new functions per block: a second problem in the same world, not examined.
+  - **9804 OLD: not the ghost.** Byte-identical to #362 all the way to 40,000, so the cap never bound. Its collapse at 10,000-20,000 has
+    another cause.
+  - 9801 TRICKLE: identical to 30,000 so far, still running.
+- **So the dead worlds have at least three routes:** the field overflow (#360, fixed), the ghost (#367b, fixed), and predator outbreaks
+  (#365, left in on #366's evidence). Plus the unexplained crash in 9804 OLD.
