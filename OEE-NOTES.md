@@ -28464,3 +28464,18 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   - rows gather;
   - a reload keeps them and marks itself;
   - an 11-universe field's harvest carries every history.
+
+### #366c — 9801 TRICKLE's die-off, at 50-tick resolution (`lab/port/out-crash/9801T-diag.jsonl`)
+- **The whole population died between ticks 34,050 and 34,100: 1,664 alive, then 0.** The world reseeded and died again: 308, 546, then 3,
+  then 0; later 109, then 2. Each wipe took under 50 ticks.
+- **Every candidate that moves slowly is ruled out:**
+  - No error was thrown.
+  - The germline's death-relevant genes are unchanged across the wipe, and the living means are normal right up to it.
+  - Mean store was 0.97 and there were 47 predators.
+  - The field and amp were finite, the pools full, and sun income already 0 (it had been since about tick 15,000).
+  - The engine's counters ran at about half their 50-tick rate in the window: a normal world for about 25 ticks, then nobody.
+- **So this is a world-level killer, not evolution.** The engine already counts deaths by cause (escape: a position non-finite or far
+  outside the world; physics: amp below the death threshold; age). Lead hypothesis, given speed and full stores: ESCAPE, with motion
+  blowing up.
+- Replay with those counters, non-finite positions and velocities, and the fastest speed, every 10 ticks from 33,950:
+  `lab/port/out-crash/9801T-cause.jsonl` (running).
