@@ -28498,3 +28498,22 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
     quantity. No note covers that line.
 - Replay recording damping every 2 ticks through the wipe (germline, and living min, mean and max, and the count at or above 1):
   `lab/port/out-crash/9801T-damp.jsonl` (running).
+
+### #366 — VERDICT: NOT CONFIRMED (predation stays on under TASKS; REPL_PREY stays 1) — and the guard would have stopped it anyway
+- 8 of 8 seeds counted: predation ran in every PREY arm (0.5 to 25 million prey events), and in no NOPREY arm (`lab/port/prey-result.txt`).
+- **Collapses: PREY 2 (9901 at 10,000, recovered to 1,330; 9907 at 15,000, ending at 133), NOPREY 0.** The rule needed a difference of 3.
+- **The guard, on the 6 seeds where neither collapsed:** NOPREY found over 25% fewer new functions in the last 10,000 ticks on 4 of 6
+  (1,396/508, 2,569/1,010, 4,421/970, 2,972/285), more on one (83/3,181) and about the same on one. So even a confirmed collapse result
+  would have been SPLIT.
+- **My prediction was wrong.** I expected PREY to collapse on 3-5 of 8. It collapsed on 2. #362's 6 of 12 does not recur here, and
+  predation is a minority route to death, not the main one.
+- **Whole-run function totals (not in the rule):** PREY ahead on 4 seeds (10,410/9,436; 11,390/7,071; 8,212/5,562; 19,943/8,654), NOPREY on 4
+  (5,673/6,638; 7,127/7,482; 1,144/20,549; 1,446/3,135). In the two largest gaps NOPREY won, and in both the PREY world never got going
+  or collapsed early (9905 peaked at 500; 9907). Where both worlds lived, predation tends to find more, late.
+- **What it means:** predation is double-edged and the test cannot separate the edges:
+  - it can stop a world taking off, or crash it;
+  - where both worlds live, it is associated with more late novelty.
+  Removing it is not the answer. If anything is designed next, it is predation that cannot hold a whole world at the 0.05 floor. Not
+  started, and not before the other route to death (#366d) is understood.
+- `REPL_PREY` stays as a knob, default 1. CLAUDE.md asks that a mechanism that ran with no effect be deleted, but this one changed the world on
+  every seed, so the knob is kept for the follow-up.
