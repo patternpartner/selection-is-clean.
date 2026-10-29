@@ -6,7 +6,8 @@
 // #366b: FROM=t rows only every 5,000 before tick t; DIAG=1 adds, per row after FROM, the 25 liveness counters that moved most and the
 // death-relevant genes (germline and living mean). Every row (#366c) carries the engine's own cause-of-death counters (deathsByPhysics and
 // deathsByAge reset at its instrumentation window; deathsByEscape and escapeNonFinite never do), non-finite positions and velocities
-// among the living, the fastest living speed, and the world's W and H.
+// among the living, the fastest living speed, and the world's W and H; and (#366d) velocityDamping: germline, and the living min, mean, max
+// and count at or above 1.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis); require(path.join(ROOT,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
@@ -23,8 +24,10 @@ m._compile(code+`
     let big=0; for(const v of lin.values()) if(v>big)big=v; let res=0; for(let T=0;T<TASK_NF;T++)res+=tRes[T];
     let badField=0, fmax=0; for(let k=0;k<field.length;k++){ const f=field[k]; if(!Number.isFinite(f))badField++; else if(f>fmax)fmax=f; }
     const L=lv(), b=L['repl.birth']|0, pr=L['repl.prey']|0;
+    let dmin=9, dmax=-9, dsum=0, dn=0, dover=0, dnull=0; for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g){ dnull++; continue; } const d=+g.velocityDamping; if(!Number.isFinite(d))continue; dn++; dsum+=d; if(d<dmin)dmin=d; if(d>dmax)dmax=d; if(d>=1)dover++; }
+    const damp={germ:+(+genome.velocityDamping).toPrecision(6), min:dn?+dmin.toPrecision(6):null, mean:dn?+(dsum/dn).toPrecision(6):null, max:dn?+dmax.toPrecision(6):null, atOrOver1:dover, noGenome:dnull};
     let nfPos=0, nfVel=0, maxV=0; for(let i=0;i<N;i++){ if(!palive[i])continue; if(!Number.isFinite(px[i])||!Number.isFinite(py[i]))nfPos++; const v=Math.abs(vx[i])+Math.abs(vy[i]); if(!Number.isFinite(v))nfVel++; else if(v>maxV)maxV=v; }
-    out(JSON.stringify({tick:t, deathsPhys:deathsByPhysics, deathsAge:deathsByAge, deathsEsc:deathsByEscape, escNonFinite:escapeNonFinite, nfPos, nfVel, maxV:+maxV.toPrecision(3), W, H, alive, births:b-lb, prey:pr-lp, taskInc:+(tEv.income-li).toFixed(1), sunInc:+(tEv.sun-ls).toFixed(1), paid:tEv.paid-lpd,
+    out(JSON.stringify({tick:t, deathsPhys:deathsByPhysics, deathsAge:deathsByAge, deathsEsc:deathsByEscape, escNonFinite:escapeNonFinite, nfPos, nfVel, maxV:+maxV.toPrecision(3), damp, W, H, alive, births:b-lb, prey:pr-lp, taskInc:+(tEv.income-li).toFixed(1), sunInc:+(tEv.sun-ls).toFixed(1), paid:tEv.paid-lpd,
       poolFill:+(res/capSum).toFixed(3), meanE:alive?+(eSum/alive).toFixed(3):0, meanAge:alive?Math.round(ageSum/alive):0, grace:alive?+(grace/alive).toFixed(2):0,
       lineages:lin.size, bigLin:alive?+(big/alive).toFixed(2):0, input:inp, read:rd, output:outp, pred155:pred, fieldMax:+fmax.toFixed(2), badField, badAmp}));
     if(DIAG&&t>=FROM){ const cur=Object.assign({},L), d=[]; if(lvPrev) for(const k in cur){ const x=(cur[k]|0)-(lvPrev[k]|0); if(x)d.push([k,x]); } lvPrev=cur;

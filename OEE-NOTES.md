@@ -28479,3 +28479,22 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   blowing up.
 - Replay with those counters, non-finite positions and velocities, and the fastest speed, every 10 ticks from 33,950:
   `lab/port/out-crash/9801T-cause.jsonl` (running).
+
+### #366d — the 9801 wipe is ESCAPE: the whole population flung out of the world in under 10 ticks (`9801T-cause.jsonl`)
+- **Between ticks 34,070 and 34,080, deathsByEscape rose by 1,567: everyone.** Positions stayed finite (escapeNonFinite 0): they were flung
+  far, not turned into NaN. deathsByPhysics and deathsByAge stayed normal.
+- **The fastest living speed:**
+  - normally 22-26;
+  - fell to 3.5 at 34,030, then grew by a constant 1.128 every 10 ticks (3.51, 3.96, 4.45, 5.02): about 1.2% a tick, compounding;
+  - 101 at 34,070, and everyone gone by 34,080.
+- **The multiplier:** velocity is multiplied every tick by `velocityDamping`, the particle's own or the germline's. The gene is mutated
+  through `maybe(…, 0.98, 0.9999, 0.003)`, and **#148's STANDING decision** is that `maybe` ignores its bounds on purpose (*"If that value
+  produces crashes elsewhere, that's a finding, not a failure to guard"*). So this is not called a bug here, and it is not clamped on sight.
+- **Already measured** (seed 3, tick 200): 22 living particles carry damping at or above 1, with a maximum of 1.050. Individuals cross 1 almost
+  at once, and selection removes them a particle at a time through escape: 5,369 escape deaths in 9801 before the wipe.
+- **The open question, which decides whether #148 covers it:** did the GERMLINE cross 1? Founders are drawn from the germline, so a germline
+  above 1 would doom every founder. That fits the repeated wipes of fresh reseeds, and is a value selection never gets to reject.
+  - Also unexplained: `genome.velocityDamping` is pulled toward a cluster's `metabolicBias` (the cluster-upstream block), a different
+    quantity. No note covers that line.
+- Replay recording damping every 2 ticks through the wipe (germline, and living min, mean and max, and the count at or above 1):
+  `lab/port/out-crash/9801T-damp.jsonl` (running).

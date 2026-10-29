@@ -1,3 +1,9 @@
 {"tick":5000,"arrivals":1367,"cumArrived":1367,"active":1367,"expH":551.72,"meanSz":4.473,"taskIncome":4810.168,"sunIncome":579.562,"alive":1144,"maxAlive":1674,"minAlive":360,"wallMin":2.4,"prey":0}
 {"tick":10000,"arrivals":466,"cumArrived":1833,"active":1130,"expH":359.44,"meanSz":4.783,"taskIncome":6109.087,"sunIncome":501.732,"alive":1651,"maxAlive":1760,"minAlive":1542,"wallMin":5.6,"prey":0}
 {"tick":15000,"arrivals":186,"cumArrived":2019,"active":825,"expH":298.91,"meanSz":4.311,"taskIncome":3893.034,"sunIncome":500.778,"alive":1667,"maxAlive":1765,"minAlive":1552,"wallMin":9.3,"prey":0}
+{"tick":20000,"arrivals":123,"cumArrived":2142,"active":736,"expH":279.81,"meanSz":4.038,"taskIncome":2335.551,"sunIncome":501.901,"alive":1672,"maxAlive":1776,"minAlive":1599,"wallMin":13.8,"prey":0}
+{"tick":25000,"arrivals":24,"cumArrived":2166,"active":354,"expH":158.92,"meanSz":3.642,"taskIncome":1042.991,"sunIncome":500.154,"alive":1668,"maxAlive":1748,"minAlive":1526,"wallMin":18.3,"prey":0}
+{"tick":30000,"arrivals":20,"cumArrived":2186,"active":361,"expH":158.8,"meanSz":3.287,"taskIncome":858.896,"sunIncome":499.98,"alive":1646,"maxAlive":1769,"minAlive":1558,"wallMin":22.9,"prey":0}
+{"tick":35000,"arrivals":758,"cumArrived":2944,"active":1761,"expH":537.91,"meanSz":5.35,"taskIncome":6752.181,"sunIncome":499.883,"alive":1663,"maxAlive":1740,"minAlive":1566,"wallMin":29.4,"prey":0}
+{"tick":40000,"arrivals":191,"cumArrived":3135,"active":990,"expH":421.82,"meanSz":4.804,"taskIncome":1984.724,"sunIncome":476.76,"alive":473,"maxAlive":1755,"minAlive":0,"wallMin":31.9,"prey":0}
+{"stopped":"ticks","tick":40000}
