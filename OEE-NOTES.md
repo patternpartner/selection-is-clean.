@@ -28528,3 +28528,16 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **That shape is a collapse** (something drawing the world together until forces between particles blow up), triggered by a change at
   34,024. Next: a replay every tick from 34,015 with spread and centroid, every germline field that changed, and every counter that fired
   (`9801T-law.jsonl`).
+
+### #366f — the 9801 wipe, every tick (`9801T-law.jsonl`): a UNIFORM force on the whole world, growing geometrically
+- **#366e's "event at 34,024" was a false lead.** The fastest speed belongs to ONE runaway particle at a time (damping 1.0124, so 1.2% a tick,
+  matching), and at 34,024 that particle left the world. Mean speed, spread and centroid are calm throughout.
+- **At tick 34,069 the whole world starts moving together:**
+  - mean speed 0.135, then 4.6, 37, 121, 293, 610, 1,160, 1,970, 3,010;
+  - the centroid slides from (657, 510) to (−1,508, −1,526) in 8 ticks;
+  - the spread changes far less, so the particles move as a block;
+  - everyone has escaped by 34,078.
+- **No germline field changed** between 34,060 and 34,078, and no unusual counter fired on 34,069. `channel.update` fired at 34,067, two ticks
+  before; a channel rule with gain above 1 is a candidate, not a finding. The root-field gradient is ruled out: it is capped at 5, so at most 0.0022 a tick.
+- **Next:** `lab/port/probe-force.js` wraps every engine function that writes velocity and records, per tick from 34,066 to 34,074, how much each
+  changed the world's summed velocity. The remainder is what `loop()` does inline (`9801T-force.jsonl`, running).
