@@ -25776,7 +25776,11 @@ function updateParticles(){
       if(wasAbsent&&ghostStrength>0.05){const gdx=ghostX-px[i],gdy=ghostY-py[i],gd=Math.sqrt(gdx*gdx+gdy*gdy);if(gd<GHOST_RADIUS)amp[i]+=0.003*(1-gd/GHOST_RADIUS)*ghostStrength}
       ghostX+=(smx-ghostX)*0.1;ghostY+=(smy-ghostY)*0.1;ghostStrength=1;
     }else{
-      ghostStrength*=genome.ghostDecay;collapse[i]*=0.97;
+      ghostStrength=Math.min(1,ghostStrength*genome.ghostDecay);collapse[i]*=0.97;   /* #367b: capped at 1 (full presence; the present branch sets exactly 1).
+         This line runs once PER PARTICLE, so a tick multiplies by ghostDecay to the power N. ghostDecay is a gene that maybe() lets cross 1
+         (#148, left free); at 1.00033 and N=1,700 the uncapped strength grew 75% a tick, its radius (150 x strength) reached a cursor
+         13,000 units away, and the pull flung the whole world out of bounds in 9 ticks (#366f, 9801 TRICKLE at 34,069). With
+         ghostDecay at or below 1 the cap never binds: unchanged. */
       if(ghostStrength>0.01){const gdx=ghostX-px[i],gdy=ghostY-py[i],gd=Math.sqrt(gdx*gdx+gdy*gdy),gr=GHOST_RADIUS*ghostStrength;if(gd<gr){const h=Math.pow(1-gd/gr,1.2)*ghostStrength;amp[i]+=genome.ghostAmpDrip*h;vx[i]+=gdx*0.00003*h;vy[i]+=gdy*0.00003*h}}
     }
     vx[i]+=(Math.random()-.5)*.003;vy[i]+=(Math.random()-.5)*.003;

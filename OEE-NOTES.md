@@ -28541,3 +28541,28 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   before; a channel rule with gain above 1 is a candidate, not a finding. The root-field gradient is ruled out: it is capped at 5, so at most 0.0022 a tick.
 - **Next:** `lab/port/probe-force.js` wraps every engine function that writes velocity and records, per tick from 34,066 to 34,074, how much each
   changed the world's summed velocity. The remainder is what `loop()` does inline (`9801T-force.jsonl`, running).
+
+### #367b — THE WIPE IS THE GHOST: a per-particle decay turned a 0.03% gene drift into 75% a tick. Fixed by a cap at 1 (`9801T-force.jsonl`)
+- **The force ledger names it.** From the tick ending 34,070, `updateParticles` alone moves the summed velocity by (−5,729, −5,638), then
+  (−40,000, −39,380), (−103,300, −101,700), (−204,000, −200,800). Every other velocity-writing function, and loop()'s inline remainder, is
+  two to four orders smaller. Nearly diagonal: toward (−9,000, −9,000), the headless cursor's untouched default (`mx` starts at −9e3).
+- **The mechanism** (inside `updateParticles`, the observer block):
+  - While the observer is present, a ghost follows the smoothed cursor at strength 1.
+  - In absence, `ghostStrength*=genome.ghostDecay`, and the line sits inside the per-particle loop, so each tick multiplies by
+    ghostDecay^N.
+  - At the default 0.997 and N=1,700 that is 0.006: the ghost vanishes in one tick.
+  - `ghostDecay` is a gene, mutated through `maybe()` and free to cross 1 (#148). In 9801 TRICKLE it went from 0.99960 to **1.00033 at
+    tick 34,019** (#366f's per-tick germline diff), and 1.00033^1,700 ≈ 1.75: the ghost grew 75% a tick.
+  - Its radius (150 × strength) reached particles 13,000 units away, the pull (distance × 0.00003 × strength) grew with it, and the whole
+    world was flung out of bounds in 9 ticks.
+- **Why a fix and not a #148 "finding":** the gene drifting past 1 is #148's to allow, and it still can. The exponent N is not anyone's
+  choice: it is the decay being applied once per particle, which no gene and no selection decided. And the strength means "fraction of full
+  presence": the present branch sets exactly 1.
+- **The fix:** `ghostStrength=Math.min(1, ghostStrength*genome.ghostDecay)`. With ghostDecay at or below 1 the cap cannot bind: byte-identical,
+  seed 3, 1,500 ticks, TASKS on and off. The gene is untouched.
+- **Not changed, stated:** the decay is still applied once per particle, so the ghost still vanishes within a tick of absence. A per-tick decay
+  is presumably what was meant, and would make the ghost linger about 1,500 ticks. That would change every world, and is not done here.
+- **In the browser too:** the ghost sits at the real cursor, usually inside or near the world, so a ghostDecay above 1 pulls the world into
+  the cursor point as well.
+- **Checking it:** 9801 TRICKLE, 9804 OLD and 9806 OLD (all three collapsed in #362) re-run with the fix to 40,000, against their #362
+  rows (`lab/port/out-ghost/`, running). They should match until the cap first binds; those whose killer this was should survive.
