@@ -139,12 +139,55 @@
     if (ev && ev.persisted) return;
     try { worker.postMessage({ type:'halt' }); } catch(e){}
   });
-  worker.postMessage({
-    type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1,
-    genome: (stored && stored.length>10) ? stored : null,
-    mind: (storedMind && storedMind.length>10) ? storedMind : null,
-    hash: location.hash || '', src:'engine.html'
-  }, [off]);
+  // ═══ #368 — THIS UNIVERSE'S POPULATION, kept beside its genome ═══════════════════════════════
+  // A save held the germline and nothing else, so every reload rebuilt the whole population from one program (OEE-NOTES
+  // #368: a TASKS world reloaded at tick 4,000 went back to its take-off phase and found 187 functions new to it in the next
+  // 4,000 ticks, against 1,410 run on). The engine now encodes its living population beside each autosaved genome and posts
+  // it here ('pop'); it is megabytes, so it lives in IndexedDB under this slot, gzipped where the browser can. At boot it is
+  // read BEFORE the worker starts (the engine's init reads storage synchronously) and handed over with the genome. The
+  // engine restores it only beside the exact genome it was saved with, so a stale one is harmless; a slow or missing
+  // IndexedDB never holds a universe back for more than a few seconds, it just boots from the germline as before.
+  var PKEY = 'pop_' + (SLOT || 'genome'), popDbP = null, popBusy = false, popNext = null;
+  function popDB(){
+    if (popDbP) return popDbP;
+    popDbP = new Promise(function(res, rej){
+      try { var r = indexedDB.open('selection_pop', 1);
+        r.onupgradeneeded = function(){ try { r.result.createObjectStore('pop'); } catch(e){} };
+        r.onsuccess = function(){ var db = r.result; db.onversionchange = function(){ try { db.close(); } catch(e){} popDbP = null; }; res(db); };
+        r.onerror = function(){ popDbP = null; rej(r.error); }; r.onblocked = function(){ popDbP = null; rej(new Error('blocked')); };
+      } catch(e){ popDbP = null; rej(e); } });
+    return popDbP;
+  }
+  function popZip(s){ if (typeof CompressionStream === 'undefined') return Promise.resolve(s);
+    return new Response(new Blob([s]).stream().pipeThrough(new CompressionStream('gzip'))).blob(); }
+  function popUnzip(v){ if (typeof v === 'string') return Promise.resolve(v);
+    if (typeof Blob === 'undefined' || !(v instanceof Blob) || typeof DecompressionStream === 'undefined') return Promise.resolve(null);
+    return new Response(v.stream().pipeThrough(new DecompressionStream('gzip'))).text(); }
+  function popGet(){
+    return popDB().then(function(db){ return new Promise(function(res){
+      try { var q = db.transaction('pop', 'readonly').objectStore('pop').get(PKEY); q.onsuccess = function(){ res(q.result || null); }; q.onerror = function(){ res(null); }; }
+      catch(e){ res(null); } }); })
+      .then(function(v){ return v ? popUnzip(v) : null; }).catch(function(){ return null; });
+  }
+  function popPut(s){   // one write at a time; a snapshot that arrives meanwhile replaces any still waiting
+    if (popBusy){ popNext = s; return; } popBusy = true;
+    popZip(s).then(function(v){ return popDB().then(function(db){ return new Promise(function(res){
+      try { var tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put(v, PKEY); tx.oncomplete = res; tx.onerror = res; tx.onabort = res; }
+      catch(e){ res(); } }); }); })
+      .catch(function(){}).then(function(){ popBusy = false; if (popNext){ var n = popNext; popNext = null; popPut(n); } });
+  }
+  var popFirst = (!(stored && stored.length > 10) || (location.hash || '').slice(1) === 'reset' || typeof indexedDB === 'undefined')
+    ? Promise.resolve(null)
+    : Promise.race([popGet(), new Promise(function(res){ setTimeout(function(){ res(null); }, 4000); })]);
+  popFirst.then(function(pop){
+    worker.postMessage({
+      type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1,
+      genome: (stored && stored.length>10) ? stored : null,
+      mind: (storedMind && storedMind.length>10) ? storedMind : null,
+      pop: (typeof pop === 'string' && pop.length > 10) ? pop : null,   // #368
+      hash: location.hash || '', src:'engine.html'
+    }, [off]);
+  });
 
   // #reset is a one-shot: the sim clears the saved lineage on boot, then strips #reset from the
   // URL so the NEXT reload doesn't wipe the newly evolved creature. The sim does that strip with
@@ -223,6 +266,7 @@
       if (genEl && genEl.textContent === 'booting…') genEl.textContent = '';
       while(readyWaiters.length) readyWaiters.shift()(); return;
     }
+    if (d.type === 'pop'){ if (typeof d.value === 'string' && typeof indexedDB !== 'undefined') popPut(d.value); return; }   // #368
     if (d.type === 'persist'){
       // #170: the engine only ever names its own key. Redirect that one to this universe's slot;
       // anything else it might store passes through untouched.

@@ -124,6 +124,10 @@ const BRIDGE =
     'o.peers=(typeof peerLastSeen!=="undefined")?Object.keys(peerLastSeen).length:-1;' +
     'o.ticks=genome.totalTicks|0;' +
   '}catch(e){o.err=String(e&&e.message);}return o;};' +
+  // #368 - THE POPULATION'S ROUTE OUT. The engine encodes its living population beside each autosaved genome only when
+  // __popHook is set, and only this bridge sets it: under node and on a standalone page nothing is encoded. The snapshot is
+  // megabytes, so it does not go through the localStorage shim; the shell keeps it in IndexedDB under this universe's slot.
+  'try{__popHook=function(s){if(__inst.halted)return;try{__inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
   '__inst.api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
   // #164: set this universe's PACE live, without touching its hash. The hash route would work — the
   // engine re-reads pace on hashchange — but the hash is the CREATURE's (#cleanart, #turbo, and
@@ -184,6 +188,8 @@ const BRIDGE =
     // #167: report the universe's OWN pace and darkness, so the field can assert what it asked for
     // rather than infer it from a tick rate. A rate is noisy; a flag is not.
     'pace:(typeof PACE!=="undefined"?PACE|0:0),dark:(typeof DARK!=="undefined"?!!DARK:false),' +
+    // #368: whether this boot restored a saved population, how many, or why not (null: there was no snapshot to try).
+    'pop:(typeof __popBoot!=="undefined")?__popBoot:null,' +
     'migrantAccepted:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),' +
     'atoms:(genome.userAtoms||[]).length,' +
     // #157: the field needs to see a universe that is silently failing. The HUD is hidden in a
@@ -349,6 +355,7 @@ Universe.prototype.boot = async function (d) {
   // pre-load the saved genome so the sim's synchronous boot read finds it
   if (d.genome) this.lsStore['selection_genome'] = d.genome;
   if (d.mind) this.lsStore['selection_mind'] = d.mind;   // #296: this universe's saved mind, read by the engine when its mind is born
+  if (d.pop) this.lsStore['selection_pop'] = d.pop;     // #368: this universe's saved population, read once by the engine's init()
   const env = this.buildEnv(d.hash, d.dpr);
   try {
     const src = await engineSource(d.src);
@@ -356,6 +363,7 @@ Universe.prototype.boot = async function (d) {
     const fn = new Function(...ENGINE_PARAMS, src + BRIDGE);
     fn(env.window, env.document, env.localStorage, env.location, env.history,
        env.raf, env.caf, env.addEventListener, env.removeEventListener, this);
+    delete this.lsStore['selection_pop'];   // #368: boot has read it (init runs inside fn); megabytes need not sit in the shim
     this.post({ type: 'ready' });
   } catch (err) {
     this.post({ type: 'error', message: 'sim load failed: ' + (err && err.message), stack: err && err.stack ? String(err.stack).slice(0, 800) : '' });

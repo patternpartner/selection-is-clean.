@@ -14388,7 +14388,7 @@ function loadGenome(){
     try{history.replaceState(null,'',location.pathname||' ')}catch(e){}
     return false;
   }
-  if(decodeGenomeSafe(h,'url'))return true;
+  if(decodeGenomeSafe(h,'url')){ __popGenomeStr=h; return true; }   // #368: remember WHICH genome this boot is, for the population's fingerprint
   // Try localStorage. Bad stored genomes are quarantined so one corrupt lineage
   // cannot keep producing a black screen on every reload.
   try{
@@ -14396,11 +14396,95 @@ function loadGenome(){
     if(stored&&stored.length>10){
       const ok=decodeGenomeSafe(stored,'localStorage');
       if(!ok)try{localStorage.removeItem('selection_genome')}catch(e){}
+      if(ok)__popGenomeStr=stored;   // #368
       return ok;
     }
   }catch(e){}
   return false;
 }
+
+// ═══ #368 — THE POPULATION CROSSES A RELOAD ═══════════════════════════════════════════════════════════════════════
+// A save held the germline genome and nothing else (#352a), so every reload spawned the whole population from ONE program.
+// Each creature carries its own genome (cloneGenome + mutateChildGenome walk every scalar at every birth), its program, its
+// place, its age and its store, and all of it was thrown away. Measured (#368, lab/port/probe-reload.js) on a TASKS world
+// reloaded at tick 4,000: it went back to its take-off phase - mean formula size 6 to 3.4 - and in the next 4,000 ticks found
+// 187 functions it had never been paid for, against 1,410 for the same world run on. The phone reloads every few thousand ticks.
+// So the population is saved beside the genome, as its own record:
+// - every living creature: position, amp, age, store, caste, mode, memory, plasmids, epigenetic bits, resistance, provision,
+//   lineage (grouped: kin stay kin), every numeric gene, and every structured gene that is plain data (programs, objective
+//   weights, aims, grammar weights...). Structures that carry code or compiled state (POP_GENE_DENY) come from the germline;
+// - a FINGERPRINT of the genome string saved with it. A snapshot is restored only beside the exact genome it was taken with, so
+//   a reset, a harvest load, an extinction's re-save or a save that failed its budget can never pair a population with a stranger.
+// Not carried, and why: velocities (redrawn small), the lineage registry's history (kin groups come back as founder lineages),
+// and everything that is WORLD state rather than a creature's - fields, pools, clusters, the word files (one epoch long).
+// Where it goes: __popHook, which only the worker bridge sets (the shell keeps the snapshot in IndexedDB; it is megabytes, too
+// big for localStorage beside a field of genomes). Under node and on a standalone page the hook is null and nothing is
+// encoded. Boot reads 'selection_pop' from storage; a rig or a page that never wrote one finds nothing, draws nothing, and
+// boots byte-identical to before.
+let __popHook=null, __popGenomeStr=null, __popBoot=null;
+const POP_GENE_DENY=['rend','channels','probes','uaOps','userAtoms','userEffects','opStacks'];
+function popHash(s){ let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,0x01000193); } return (h>>>0).toString(36)+':'+s.length; }
+function popPlain(v,d){   // plain data only: finite numbers, booleans, null, short identifier strings, arrays, plain objects
+  if(v===null||typeof v==='boolean')return true;
+  if(typeof v==='number')return isFinite(v);
+  if(typeof v==='string')return v.length<=24&&/^[\w.-]*$/.test(v);
+  if(d>5||typeof v!=='object')return false;
+  if(Array.isArray(v)){ for(const x of v) if(!popPlain(x,d+1))return false; return true; }
+  if(Object.getPrototypeOf(v)!==Object.prototype)return false;
+  for(const k in v) if(!popPlain(v[k],d+1))return false;
+  return true;
+}
+function encodePopulation(fp){   // reads arrays, draws nothing
+  const live=[]; for(let i=0;i<N;i++) if(palive[i]&&pGenome[i]) live.push(i);
+  const nk=[], ok=[], seenN=new Set(), seenO=new Set();
+  for(const i of live){ const g=pGenome[i]; for(const k in g){ const v=g[k];
+    if(typeof v==='number'){ if(!seenN.has(k)){ seenN.add(k); nk.push(k); } }
+    else if(v&&typeof v==='object'&&v!==genome[k]&&POP_GENE_DENY.indexOf(k)<0&&!seenO.has(k)){ seenO.add(k); ok.push(k); } } }
+  const rows=[], genes=[], obj={}, tabs={}, lin=new Map();   // values exactly as held: a restored creature is the saved one, not a rounding of it
+  for(const k of ok){ obj[k]={t:[],i:[]}; tabs[k]=new Map(); }
+  for(const i of live){ const g=pGenome[i];
+    let L=lin.get(pLin[i]); if(L===undefined){ L=lin.size; lin.set(pLin[i],L); }
+    const t=[], mem=[], pl=[]; for(let d=0;d<DIMS;d++)t.push(tend[i*DIMS+d]); for(let m=0;m<MEM_SIZE;m++)mem.push(pMem[i*MEM_SIZE+m]);
+    for(let p=0;p<pPlasmidLen[i]*4;p++)pl.push(pPlasmid[i*PLASMID_SLOTS+p]);
+    const keys=[]; if(REPL_ARMS)for(let m=0;m<4;m++)keys.push(pKey[i*4+m],pDef[i*4+m]);
+    rows.push([px[i],py[i],amp[i],page[i]|0,SUN_ON?pE[i]:0,pType[i]|0,pModeBias[i]|0,L,t,mem,pl,pPlasmidAge[i]|0,pEpigen[i]|0,pResistance[i],pProvision[i],keys]);
+    genes.push(nk.map(k=>{ const v=g[k]; return (typeof v==='number'&&isFinite(v))?v:null; }));
+    for(const k of ok){ const v=g[k], o=obj[k]; if(!v||typeof v!=='object'||v===genome[k]||!popPlain(v,0)){ o.i.push(-1); continue; }
+      const s=JSON.stringify(v); let j=tabs[k].get(s); if(j===undefined){ j=o.t.length; o.t.push(v); tabs[k].set(s,j); } o.i.push(j); } }
+  return JSON.stringify({v:1,fp,ticks:genome.totalTicks|0,W,H,DIMS,MEM:MEM_SIZE,rows,nk,genes,obj});
+}
+function decodePopulation(s){   // replaces the founders with the saved creatures; returns how many, or why not
+  let P; try{ P=JSON.parse(s); }catch(_){ return 'unreadable'; }
+  if(!P||P.v!==1||!Array.isArray(P.rows)||!Array.isArray(P.genes)||!Array.isArray(P.nk)||P.genes.length!==P.rows.length)return 'shape';
+  if(__popGenomeStr===null||P.fp!==popHash(__popGenomeStr))return 'not this genome';
+  const fin=(v,d)=>{ const x=+v; return isFinite(x)?x:d; }, sx=W/fin(P.W,W)||1, sy=H/fin(P.H,H)||1, lin=new Map(), objs=(P.obj&&typeof P.obj==='object')?P.obj:{};
+  N=0;
+  for(let r=0;r<P.rows.length&&N<CAP;r++){ const R=P.rows[r], G=P.genes[r]; if(!Array.isArray(R)||!Array.isArray(G))continue;
+    const tv=new Float32Array(DIMS), t=Array.isArray(R[8])?R[8]:[]; for(let d=0;d<DIMS;d++)tv[d]=fin(t[d],0);
+    const i=addParticle(fin(R[0],0)*sx,fin(R[1],0)*sy,tv,false); if(i<0)break;
+    const g=cloneGenome(genome);   // the germline, unmutated, then the creature's own genes over it
+    for(let q=0;q<P.nk.length;q++){ const k=P.nk[q], v=G[q]; if(typeof k==='string'&&typeof v==='number'&&isFinite(v)&&(g[k]===undefined||typeof g[k]==='number'))g[k]=v; }
+    for(const k in objs){ if(POP_GENE_DENY.indexOf(k)>=0)continue; const o=objs[k]; const j=(o&&Array.isArray(o.i))?o.i[r]:-1;
+      if(typeof j==='number'&&j>=0&&Array.isArray(o.t)&&o.t[j]&&typeof o.t[j]==='object'&&popPlain(o.t[j],0)&&(g[k]===undefined||(g[k]&&typeof g[k]==='object')))g[k]=JSON.parse(JSON.stringify(o.t[j])); }
+    if(!Array.isArray(g.vmProgram)||!g.vmProgram.length||!g.vmProgram.every(x=>Array.isArray(x)&&x.length===4))g.vmProgram=(genome.vmProgram||[]).map(x=>x.slice());
+    pGenome[i]=g; pProg[i]=g.vmProgram;
+    amp[i]=fin(R[2],amp[i]); page[i]=Math.max(0,R[3]|0); if(SUN_ON)pE[i]=fin(R[4],pE[i]);
+    if((R[5]|0)>=0&&(R[5]|0)<NUM_TYPES)pType[i]=R[5]|0; if((R[6]|0)>=0&&(R[6]|0)<MODE_COUNT){ pModeBias[i]=R[6]|0; pMode[i]=pModeBias[i]; }
+    let L=lin.get(R[7]); if(L===undefined)lin.set(R[7],pLin[i]); else pLin[i]=L;   // kin stay kin: one founder lineage per saved lineage
+    const mem=Array.isArray(R[9])?R[9]:[]; for(let m=0;m<MEM_SIZE;m++)pMem[i*MEM_SIZE+m]=fin(mem[m],0);
+    const pl=Array.isArray(R[10])?R[10]:[], nP=Math.min(PLASMID_SLOTS/4,(pl.length/4)|0); pPlasmidLen[i]=nP; for(let p=0;p<nP*4;p++)pPlasmid[i*PLASMID_SLOTS+p]=fin(pl[p],0);
+    pPlasmidAge[i]=Math.max(0,R[11]|0); pEpigen[i]=(R[12]|0)&255; pResistance[i]=fin(R[13],0); pProvision[i]=fin(R[14],0);
+    if(REPL_ARMS&&Array.isArray(R[15])&&R[15].length===8)for(let m=0;m<4;m++){ pKey[i*4+m]=R[15][2*m]; pDef[i*4+m]=R[15][2*m+1]; } }
+  return N;
+}
+function popRestore(){   // at boot, after the genome: the saved population, if it is this genome's
+  let s=null; try{ s=localStorage.getItem('selection_pop'); }catch(_){}
+  if(!s||s.length<10)return 0;
+  const r=decodePopulation(s); __popBoot={restored:typeof r==='number'?r:0, why:typeof r==='number'?'ok':r, bytes:s.length};
+  fired(typeof r==='number'&&r>0?'pop.restored':'pop.refused');
+  return typeof r==='number'?r:0;
+}
+function popPersist(g){ if(!__popHook)return; try{ __popHook(encodePopulation(popHash(g))); fired('pop.saved'); }catch(_){} }
 
 // ═══ GENOME FILE EXPORT/IMPORT — genome travels with you ═══
 function exportGenome(){
@@ -21115,7 +21199,7 @@ function archiveGenome(){
   genomeArchive.push(snapshot);
   if(genomeArchive.length>ARCHIVE_SIZE)genomeArchive.shift();
   // PERSIST TO LOCALSTORAGE — survives page close
-  try{const g=trimGenomeToBudget();if(g&&g.length<SAVE_BUDGET)localStorage.setItem('selection_genome',g)}catch(e){}   // #146: trim to fit rather than silently skip
+  try{const g=trimGenomeToBudget();if(g&&g.length<SAVE_BUDGET){localStorage.setItem('selection_genome',g);popPersist(g);}}catch(e){}   // #146: trim to fit rather than silently skip; #368: the population with it, fingerprinted to this g
   mindPersist();   // #296: and the mind with it
 }
 
@@ -26395,6 +26479,8 @@ function init(){
   sanitizeGenome();
   if(loaded&&REPL_ON)replEnsureHead();   // #352: a saved germline gets the REPL/TASKS head back
   const n=Math.min(400,(W*H/2800)|0);
+  // #368: the saved population, when there is one and it is this genome's, IS the boot population. Nothing below runs.
+  if(loaded&&popRestore()>0){ genEl.textContent='gen '+genome.generation+' | '+genome.totalTicks+' ticks inherited, '+N+' creatures'; return; }
   // FIX: no live particle state is saved/restored -- only the self's evolved parameters, atoms,
   // and history -- so every reload used to hand a long-evolved self a 100% blind-random
   // population (randomTendency() for all n), even though checkExtinction()'s OWN rebirth path

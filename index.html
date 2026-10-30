@@ -230,6 +230,7 @@
       var _h=JSON.parse(_pend), _doom=[];
       for(var _i=0;_i<localStorage.length;_i++){ var _k=localStorage.key(_i); if(_k&&(_k.indexOf('selection_')===0||_k.indexOf('mind_')===0||_k.indexOf('hist_')===0))_doom.push(_k); }   // #296: minds too; #367: histories
       for(var _j=0;_j<_doom.length;_j++) localStorage.removeItem(_doom[_j]);
+      try{ indexedDB.deleteDatabase('selection_pop'); }catch(_x){}   // #368: and every universe's saved population (a harvest carries none)
       var _us=(_h&&_h.universes)||[], _put=0;
       for(var _u=0;_u<_us.length;_u++){
         var _e=_us[_u]; if(!_e||!_e.genome||typeof _e.at!=='string')continue;
@@ -259,6 +260,7 @@
       }
       for(var rj=0;rj<doomed.length;rj++) localStorage.removeItem(doomed[rj]);
     }catch(e){}
+    try{ indexedDB.deleteDatabase('selection_pop'); }catch(e){}   // #368: every universe's saved population too. Queued before any frame opens it.
     // Strip it so the NEXT reload does not wipe the fresh field too — the same one-shot rule
     // universe.html already applies to its own #reset.
     try{ history.replaceState(null,'',location.pathname||' '); }catch(e){}
