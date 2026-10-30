@@ -28582,3 +28582,93 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
 - `smoke.sh` on a quiet machine: **68 ok, 0 failing** (`sound-test` and `history-test` included).
 - On `main` with this: the ghost cap (#367b), the harvest history (#367), REPL_PREY (#366, default 1), and the probes and records of #362-#367b.
+
+### #368 — THE POPULATION CROSSES A RELOAD. A save was the germline and nothing else, so every reload rebuilt the whole population from one program. Measured, built, PRE-REGISTERED (`lab/port/PREREG-pop.md`, committed 92f619c before any decision run).
+- **Why look here.** The artwork lives in a browser field that the user runs for days on a phone, and the phone reloads often:
+  a note from the #130 era measured reloads more often than every 5,000 ticks. #352a recorded what a save holds, the germline
+  genome only. Every creature carries its own genome (`cloneGenome` plus `mutateChildGenome`, which walks every heritable
+  scalar at every birth, rate about 0.06 with a step of about 12%), its program, its place, its age and its store. All of that was
+  dropped at every reload, and the population was respawned from ONE program. `init()`'s own comment had named the problem
+  long ago ("no live particle state is saved/restored") and patched only the tendencies, through `stableMotifs`.
+- **Measured first** (`lab/port/probe-reload.js`, design seeds 10001-10003, never run before; out `lab/port/out-reload/`). A
+  TASKS world was run on and saved its germline at tick 4,000, exactly as the browser stores it. A fresh engine was then booted
+  from that genome, the way a reload does. "New to history" means functions paid that the universe had never been paid for,
+  counting its pre-save history.
+
+  | seed | mean formula size, first 1,000 ticks: run on / reloaded | functions paid per window | exp(H) | new to history: run on / reloaded |
+  |---|---|---|---|---|
+  | 10001 | 6.56 / 3.66 | 706 / 308 | 549 / 208 | **1,537 / 187** over 4,000 ticks |
+  | 10002 | 5.98 / 6.10 | 1,572 / 488 | 1,024 / 294 | **3,310 / 571** over 4,000 ticks |
+  | 10003 | 5.60 / 4.28 | 374 / 235 | 217 / 161 | **1,147 / 1,340** over 4,000 ticks (493 / 184 over the first 2,000) |
+
+  - **10001 never took off again in the window.** It sat at about 250 alive with formula size 3.3, where the world it came
+    from held 600-1,300.
+  - **10002 rebuilt circuit size within 1,000 ticks but not breadth.** At the end of the window it paid for 637 functions
+    against 1,781, at the same population (1,545 against 1,598).
+  - **10003 re-took off by about 1,500 ticks and then OUT-EXPLORED the world it came from:** 1,340 new functions against
+    1,147 over the 4,000 ticks. A reload arrives with full pools (the reload windfall) and a fresh take-off, and on this seed
+    that paid.
+  - So a reload sends a TASKS world back toward its take-off phase. For the next 1,000-2,000 ticks it mostly re-finds
+    functions it had already been paid for. Whether it then catches up varies by seed: never (10001), not in breadth (10002),
+    or past the original (10003). One reload per seed, one horizon. This designed the rule below; it does not decide it, and
+    10003 is why V is a real test rather than a formality.
+  - **Correction, recorded rather than edited:** PREREG-pop.md's motivation quotes 10001 as "1,410 run on". That was 3,500
+    ticks of the run (to 7,500); over the same 4,000 ticks it is 1,537. The rule does not use the number.
+- **What was built** (CODEMAP, "#368").
+  - **The engine.** `encodePopulation` writes every living creature: all numeric genes exactly, every structured gene that is
+    plain data (programs, objective weights, aims, grammar weights...), position, amp, age, store, caste, mode, memory,
+    plasmids and lineage group. Genes carrying code or compiled state come from the germline (`POP_GENE_DENY`).
+  - **The fingerprint.** It is a hash of the exact genome string saved alongside. `popRestore` in `init()` restores only beside
+    that genome. A reset, a harvest load, an extinction's re-save or a save over budget can never pair a population with a
+    stranger.
+  - **When it is encoded.** Only when the worker bridge sets `__popHook`. Under node and on a standalone page nothing is
+    encoded and nothing drawn: byte-identical on seed 3, 1,500 ticks, TASKS on and off (a digest over positions, amps,
+    program lengths and the random stream).
+  - **Where it is kept.** The shell gzips it into IndexedDB under the universe's slot and reads it back before the worker
+    boots, with a 4-second timeout. The field's reset and harvest load clear it. A harvest does not carry populations.
+- **In a real browser** (`pop-test.js`, in `smoke.sh`): 9/9.
+  - The first autosave (tick 1,800) stored 1,624 creatures with 1,484 distinct programs: 6.7 MB raw, 1.5 MB gzipped.
+  - A reload restored all 1,624.
+  - A snapshot rewritten with another fingerprint was refused, and the boot spawned 329 founders as before.
+  - `#reset` restored nothing.
+- **Costs, stated.** About 1 KB per creature in IndexedDB, so a full field of ten universes holds about 15 MB. Encoding a
+  1,700-creature world takes 180-290 ms under node, every 900 ticks, on the universe's own thread; on a phone, expect a
+  visible hitch at each autosave.
+- **Not carried, by design:** velocities, the lineage registry's history (each saved lineage comes back as one founder
+  lineage, so kin stay kin), and world state: fields, pools (a reload still refills them, the reload windfall), clusters and
+  the word files.
+- **VERDICT (PREREG-pop.md, seeds 10101-10103, never run before; out `lab/port/out-pop/`, result `lab/port/pop-result.txt`): SHIP.**
+  3 of 3 seeds counted (functions ever paid by the save: 1,209, 862 and 569, against a floor of 500; every POP replicate
+  restored its population: 1,502, 1,407 and 487 creatures). F held on 3 of 3, V was BETTER on 2 of 3 and WORSE on 0, and the
+  guard held on 3 of 3.
+
+  | seed | d from the NULL band: NULL / POP / GERM | V (new to history, 4,000 ticks): NULL / POP / GERM | V |
+  |---|---|---|---|
+  | 10101 | 0.01-0.14 / **0.06-0.08** / 6.1-6.9 | 473, 548, 485 / 447, 542, 469 / 2,812, 87, 438 | neither |
+  | 10102 | 0.07-0.12 / **0.53-0.87** / 6.4-6.8 | 344, 202, 291 / 209, 532, 240 / 133, 0, 44 | **BETTER** |
+  | 10103 | 0.28-1.18 / **0.25-0.68** / 4.5-5.3 | 2,889, 5,126, 5,313 / 5,685, 3,889, 3,576 / 1,784, 1,899, 2,798 | **BETTER** |
+
+  - **My prediction was SHIP, with F on 3 of 3 and V BETTER on 2 or 3. Right.** The risk I named (a restored population plus
+    refilled pools booming and crashing) did not happen: every POP replicate held 1,400-1,600 alive at the end.
+- **How to read it.**
+  - **A population reload is close to a perfect reload, at this resolution.** On 10102 and 10103 POP's novelty sits inside
+    the NULL band or above it. On 10101 it straddles the band's low end (447-542 against 473-548): two replicates are just below.
+    Its distance from the band is about the band's own spread on 10101 and 10103. On 10102 POP's distance (0.53-0.87) is larger
+    than the NULLs' (0.07-0.12): it pays for about 30% fewer functions per window in its first 1,000 ticks (267-320 against
+    396-431), at the same circuit size. Something it does not carry costs it a little breadth at first; the refilled pools are
+    the obvious candidate. Not checked.
+  - **A germline reload is a gamble, and not a bad one on average.** In 9 replicates, it collapsed twice (243 and 168 alive
+    at the end, 87 and 0 new functions) and exploded once (10101 k1: 2,812 new functions, five times the NULL band). That
+    explosion is the same thing design seed 10003 showed: a world stuck in a steady regime, rebuilt from its germline with full
+    pools, can take off into far more novelty than it was finding. The rule did not need it (10101 was "neither"), but it is
+    the most interesting thing in the data.
+  - **So what ships is fidelity, not a novelty engine.** After #368 the artwork's universes do what they did, across a reload,
+    and whether they find new functions depends on the world and not on when the phone closed the tab. The bursts a reload
+    could trigger are gone with the collapses. If restart-bursts are wanted, they are a mechanism the WORLD should own (a
+    founder event the world itself triggers, which selection could keep or drop), and that is its own pre-registration. Not
+    started.
+- **Saved worlds (rule 6).** A universe saved before #368 has no snapshot, and its first boot is exactly as before. From its
+  first autosave on, its reloads bring its creatures back.
+- **The history now says which reloads brought their population back.** A `boot` row in `hist_<slot>` (#367) carries a fourth
+  field: creatures restored, 0 when founders were spawned off the germline. So a harvest from a field run over days shows it.
+  `pop-test` checks it: 10/10 in a real browser.

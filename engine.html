@@ -14408,7 +14408,8 @@ function loadGenome(){
 // Each creature carries its own genome (cloneGenome + mutateChildGenome walk every scalar at every birth), its program, its
 // place, its age and its store, and all of it was thrown away. Measured (#368, lab/port/probe-reload.js) on a TASKS world
 // reloaded at tick 4,000: it went back to its take-off phase - mean formula size 6 to 3.4 - and in the next 4,000 ticks found
-// 187 functions it had never been paid for, against 1,410 for the same world run on. The phone reloads every few thousand ticks.
+// 187 functions it had never been paid for, against 1,537 for the same world run on. The phone reloads every few thousand ticks.
+// Decided by PREREG-pop.md on unseen seeds (OEE-NOTES #368): SHIP. A restored world stays inside the null band of a perfect reload.
 // So the population is saved beside the genome, as its own record:
 // - every living creature: position, amp, age, store, caste, mode, memory, plasmids, epigenetic bits, resistance, provision,
 //   lineage (grouped: kin stay kin), every numeric gene, and every structured gene that is plain data (programs, objective

@@ -50,6 +50,8 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
     ck('the restored count is the snapshot taken with the stored genome', !!s1 && !!s1.pop && !!latest && s1.pop.restored >= latest.rows * 0.5 && s1.pop.restored <= 1800, (s1 && s1.pop && s1.pop.restored) + ' restored, ' + (latest && latest.rows) + ' in the first snapshot read');
     const t1 = (s1 && s1.tick) | 0; await page.waitForTimeout(8000); const s1b = await stat();
     ck('the restored world runs', !!s1b && s1b.tick > t1 && s1b.N > 0, t1 + ' -> ' + (s1b && s1b.tick) + ', ' + (s1b && s1b.N) + ' alive');
+    const boots = (await page.evaluate(() => window.__field.history())).filter(r => r[0] === 'boot');
+    ck('the history marks the reload with the creatures it brought back', boots.length === 2 && boots[0][3] === 0 && boots[1][3] === (s1 && s1.pop && s1.pop.restored), JSON.stringify(boots));
     // the negative side: a snapshot that does not belong to the stored genome
     await page.evaluate(readPop, true);
     await page.reload(); await page.evaluate(() => window.__field.ready());

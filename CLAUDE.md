@@ -88,6 +88,10 @@ mechanism; no session's job was to ask whether the base worked. So:
   (`#229`: a saved list of mechanisms that NEVER fired was read as the ones that had).
 - **The field is the experiment.** Harvests from long real runs are the best evidence this project has; they
   can be loaded back and restarted from the field's `load` / `new` buttons (`#230`).
+- **Since `#368` a reload brings the POPULATION back, not just the germline** (IndexedDB beside each autosave, fingerprinted to
+  the genome). Before it, every reload respawned every creature from one program, so any reading of a pre-`#368` field run
+  is a reading of a world restarted at each tab kill. A harvest still carries genomes only, so a loaded harvest starts from
+  founders. A history `boot` row's fourth field says how many creatures that boot restored.
 
 ### The retire-or-prove template — every KEEP / DELETE rule takes this shape
 

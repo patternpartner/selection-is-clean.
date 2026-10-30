@@ -1,0 +1,18 @@
+10101: COUNTED (ever paid by the save 1209; POP restored 1502/1502/1502)
+   NULL k1 sz 4.71 fn 440 H 286 d 0.14 V 473 aliveLate 1591  |  k2 sz 4.75 fn 466 H 309 d 0.01 V 548 aliveLate 1528  |  k3 sz 4.78 fn 493 H 327 d 0.13 V 485 aliveLate 1588
+   GERM k1 sz 1.42 fn 34.50 H 25.13 d 6.32 V 2812 aliveLate 1679  |  k2 sz 1.25 fn 30.00 H 18.96 d 6.86 V 87 aliveLate 243  |  k3 sz 1.56 fn 38.00 H 25.37 d 6.11 V 438 aliveLate 987
+   POP  k1 sz 4.59 fn 459 H 306 d 0.06 V 447 aliveLate 1565  |  k2 sz 4.52 fn 463 H 314 d 0.08 V 542 aliveLate 1563  |  k3 sz 4.54 fn 452 H 308 d 0.08 V 469 aliveLate 1564
+   F holds; V neither (POP 447/542/469 vs GERM 2812/87/438); guard ok
+10102: COUNTED (ever paid by the save 862; POP restored 1407/1407/1407)
+   NULL k1 sz 4.53 fn 431 H 288 d 0.12 V 344 aliveLate 1408  |  k2 sz 4.54 fn 396 H 261 d 0.07 V 202 aliveLate 1337  |  k3 sz 4.46 fn 396 H 262 d 0.07 V 291 aliveLate 1278
+   GERM k1 sz 1.32 fn 25.00 H 18.46 d 6.70 V 133 aliveLate 1439  |  k2 sz 1.49 fn 27.50 H 20.67 d 6.37 V 0 aliveLate 168  |  k3 sz 1.29 fn 25.00 H 16.82 d 6.82 V 44 aliveLate 1526
+   POP  k1 sz 4.60 fn 320 H 207 d 0.53 V 209 aliveLate 1412  |  k2 sz 4.63 fn 268 H 177 d 0.87 V 532 aliveLate 1429  |  k3 sz 4.56 fn 267 H 179 d 0.85 V 240 aliveLate 1426
+   F holds; V BETTER (POP 209/532/240 vs GERM 133/0/44); guard ok
+10103: COUNTED (ever paid by the save 569; POP restored 487/487/487)
+   NULL k1 sz 5.50 fn 248 H 168 d 1.18 V 2889 aliveLate 1411  |  k2 sz 5.67 fn 405 H 244 d 0.28 V 5126 aliveLate 1410  |  k3 sz 5.83 fn 730 H 438 d 0.92 V 5313 aliveLate 1549
+   GERM k1 sz 2.84 fn 66.50 H 42.13 d 4.53 V 1784 aliveLate 1075  |  k2 sz 2.85 fn 64.00 H 39.88 d 4.62 V 1899 aliveLate 1548  |  k3 sz 2.67 fn 48.00 H 28.46 d 5.31 V 2798 aliveLate 1675
+   POP  k1 sz 5.53 fn 352 H 213 d 0.58 V 5685 aliveLate 1446  |  k2 sz 5.60 fn 422 H 245 d 0.25 V 3889 aliveLate 1585  |  k3 sz 5.55 fn 328 H 207 d 0.68 V 3576 aliveLate 1552
+   F holds; V BETTER (POP 5685/3889/3576 vs GERM 1784/1899/2798); guard ok
+
+counted seeds 3 of 3; F holds on 3, V BETTER on 2, V WORSE on 0, guard fails on 0
+VERDICT: SHIP

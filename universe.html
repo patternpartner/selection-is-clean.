@@ -142,11 +142,12 @@
   // ═══ #368 — THIS UNIVERSE'S POPULATION, kept beside its genome ═══════════════════════════════
   // A save held the germline and nothing else, so every reload rebuilt the whole population from one program (OEE-NOTES
   // #368: a TASKS world reloaded at tick 4,000 went back to its take-off phase and found 187 functions new to it in the next
-  // 4,000 ticks, against 1,410 run on). The engine now encodes its living population beside each autosaved genome and posts
-  // it here ('pop'); it is megabytes, so it lives in IndexedDB under this slot, gzipped where the browser can. At boot it is
-  // read BEFORE the worker starts (the engine's init reads storage synchronously) and handed over with the genome. The
-  // engine restores it only beside the exact genome it was saved with, so a stale one is harmless; a slow or missing
-  // IndexedDB never holds a universe back for more than a few seconds, it just boots from the germline as before.
+  // 4,000 ticks, against 1,537 run on; decided SHIP on unseen seeds). The engine now encodes its living population beside
+  // each autosaved genome and posts it here ('pop'); it is megabytes, so it lives in IndexedDB under this slot, gzipped
+  // where the browser can. At boot it is read BEFORE the worker starts (the engine's init reads storage synchronously) and
+  // handed over with the genome. The engine restores it only beside the exact genome it was saved with, so a stale one is
+  // harmless; a slow or missing IndexedDB never holds a universe back for more than a few seconds, it just boots from the
+  // germline as before.
   var PKEY = 'pop_' + (SLOT || 'genome'), popDbP = null, popBusy = false, popNext = null;
   function popDB(){
     if (popDbP) return popDbP;
@@ -428,7 +429,8 @@
   // ═══ #367 — THIS UNIVERSE'S HISTORY, KEPT ACROSS RELOADS ════════════════════════════════════
   // A harvest used to be a snapshot: it could not say whether a universe had crashed, when, or what its population, income and
   // predators did on the way. Every 15 s this asks the worker for one row (sim.worker.js histRow: read-only) and keeps it when
-  // the universe has run 250 ticks since the last, under hist_<slot> beside the genome. A boot writes ['boot', minute, ticks],
+  // the universe has run 250 ticks since the last, under hist_<slot> beside the genome. A boot writes ['boot', minute, ticks,
+  // creatures restored] (#368 added the fourth: 0 when the boot spawned founders off the germline),
   // so a reload (a phone killing the tab) is visible, and with it the reset of this session's counters and the pools' windfall.
   // At 300 rows the oldest half is thinned to every other row, so a run of days keeps its whole span at falling resolution.
   // The field's harvest carries it; its reset and load clear it with the genome.
@@ -441,7 +443,9 @@
     function poll(){
       ask('hist', null).then(function(r){
         if (!r) return;
-        if (!booted){ booted = true; rows.push(['boot', Math.round(Date.now()/60000), r[0]]); }
+        if (!booted){ booted = true; var b = ['boot', Math.round(Date.now()/60000), r[0]]; rows.push(b);
+          // #368: and how many creatures this boot brought back from the saved population (0: it spawned founders off the germline)
+          ask('stat', null).then(function(st){ b.push(st && st.pop ? (st.pop.restored|0) : 0); save(); }); }
         if (lastT >= 0 && r[0] - lastT < 250) return;
         lastT = r[0]; rows.push(r); if (rows.length > MAX) thin(); save();
       });

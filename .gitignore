@@ -51,3 +51,6 @@ lab/port/out-route
 lab/port/out-deps
 lab/port/out-rescue
 lab/port/out-trickle
+# #368: population snapshots are megabytes and regenerate exactly (NULL k=1 is deterministic); pids are a running batch's bookkeeping
+lab/port/out-pop/*.pop
+lab/port/out-pop/*.pid
