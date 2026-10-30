@@ -28672,3 +28672,13 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **The history now says which reloads brought their population back.** A `boot` row in `hist_<slot>` (#367) carries a fourth
   field: creatures restored, 0 when founders were spawned off the germline. So a harvest from a field run over days shows it.
   `pop-test` checks it: 10/10 in a real browser.
+
+### #368 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40 (on 92f619c's engine; the final engine
+  differs from it only in two comment lines, and `smoke.sh` ran its substrate-test on the final one).
+- `smoke.sh` on a quiet machine: **69 ok, 0 failing** (`pop-test` new, and the field rigs that boot through the shell's
+  deferred `init`: collective, pool, pace, layers, slot, mind, history, grown, persistence).
+  Browser rigs need `NODE_PATH=/opt/node-tools/node_modules CHROME_PATH=/opt/pw-browsers/chromium` in this container.
+- Node byte-identical with no snapshot: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the population crossing a reload (engine, worker bridge, shell, field reset/load), the history boot row's
+  restored count, `pop-test`, and the probe, batch and results of #368.
