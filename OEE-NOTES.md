@@ -28799,3 +28799,29 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - **Prediction, written before any chunk ran:** new functions per 10,000 ticks fall below 10% of their peak chunk by 60,000 on at
   least 2 of 3 seeds; at least one seed crashes or stalls (task income near zero for a chunk); functions ever paid end at 15-35%
   of the space.
+- **#370, the first two chunks (each seed runs chunk c on random stream s*10+c):**
+
+  | seed | ticks 0-10,000: new functions / mean size / alive (min) | ticks 10,000-20,000: new / size / alive (min) |
+  |---|---|---|
+  | 10401 | 495 / 2.66 / 375 (51) | **0** / 1.04 / 109 (83) |
+  | 10402 | 506 / 2.58 / 258 (98) | **38** / 1.52 / 126 (78) |
+  | 10403 | 2,641 / 5.20 / 1,102 (289) | 343 in the first half (running) / 5.74 / 1,640 |
+
+  Two of three fresh seeds took off by tick 1,000 (size 4.8-5.1), crashed, and then sat in #360b's stalled state, finding nothing
+  new. So in the artwork's default world the crashes are what ends novelty here, long before the space runs out. Prediction:
+  "at least one seed crashes or stalls". Two did, by 10,000.
+- **What crashed 10401 (chunk 0, stream 104010), found by recording every law's value** (`lab/port/probe-laws.js`, draws nothing;
+  `lab/port/out-crash2/`). It was not predation (0 prey events, 0 predators) and not starvation: the mean store ROSE from 0.24 to
+  0.80 through the collapse.
+  - First, births were REFUSED: about 8,000 requests per 100 ticks, 97% `birth.unprovisioned`.
+  - From tick 1,300 births STOPPED: the population, half of it one lineage, died of age, 604 to 46 by 1,800.
+  - The cause is a LAW TRIAL: `BIRTH_ENERGY_COST` 0.25 -> 1.48 at tick 1,200. `attemptLawMutation` steps a law by
+    (rand-0.5) x (hi-lo) x 0.35, which is up to 1.4 for this law's range of 0.01-8. REPL had set it to 0.25 (#278), so one upward
+    proposal multiplied the price of a birth by up to 6.6. Probation is 4,000 ticks, about ten replicator lifetimes. The verdict
+    reverted it at **5,200**: births jumped to 1,088 per 100 ticks that window, and the population was 1,039 by 5,400.
+  - The same stream with `LAWMUT=0` grew to 1,734 by 2,750, with no collapse (its draws differ from tick 1, so this is
+    consistent, not paired proof).
+  - 10402's crash (stream 104020) is NOT shown to be a law's: `REACH_RENT` 0.5 -> 0.70 at 800 preceded a decline from 748 to 98, but
+    the verdict kept it.
+  - The question the PORT-PLAN names is now asked of the laws: retire-or-prove under TASKS, pre-registered as #371
+    (`lab/port/PREREG-laws.md`, committed 0f78601 before any decision run). The chain waits on it.
