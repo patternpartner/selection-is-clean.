@@ -28772,3 +28772,14 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   (desync), never on an outcome. A blind seed extension at about 1 in 6 is not worth its cost. Not started.
 - **Removed, a false claim:** the engine's TASKS comment said a save "holds the germline only" (false since #368) and that "the POOLS
   are the real gap" (refuted on 10102 above). It now says what crosses a reload and what #369 found.
+
+### #369 / #369b acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- `smoke.sh` on a quiet machine: 68 ok, 1 failing, `mind-test`: its "every universe past 1,000 ticks" row found 2 such universes
+  and needs 3 (u1 1701/361, collective 1371/279, both seen and writing). Run alone straight after, twice: **10/10 and 10/10**, with
+  3 universes past 1,000 each time. That is the throughput row #352a and #362 recorded, established by re-running. The population
+  encode (#368) adds about 200-300 ms per universe every 900 ticks; #368's own suite passed this row with it in place.
+- `pop-test` 11/11 inside the suite (its lifetime-count check included).
+- Node byte-identical with no snapshot and LATERAL_HERIT unset: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the snapshot carries running programs, current mode and the lifetime function record; the history counts
+  over a universe's life; `LATERAL_HERIT` (default 0, open); the probes, batches and results of #369 and #369b.
