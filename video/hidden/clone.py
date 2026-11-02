@@ -14,7 +14,9 @@ it must keep count of the clean checks in its own memory.
      (gamma 0.99, as PPO), so reinforcement can start from a critic that already knows the job.
 
   python3 video/hidden/clone.py --seed S --out DIR        -> DIR/clone.pt (an RNet state dict), DIR/clone_log.jsonl
-  python3 video/hidden/clone.py --seed S --out DIR --start DIR/clone.pt     (the critic again, from a finished clone)
+  python3 video/hidden/clone.py --seed S --out DIR2 --start DIR/clone.pt --iters 10 [--penalty L]
+        (more rounds from a finished clone, the pupil driving: the control, or - with a penalty on the gap between the
+        memory's average states at each count - the one trained to hide its count; --iters 0 redoes the critic only)
 """
 import argparse, json, os, sys, time
 import numpy as np
@@ -23,7 +25,7 @@ import torch.nn as nn
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..', 'inside'))
 import blind_garden as BG  # noqa: E402
-from rppo import RNet, HP  # noqa: E402
+from rppo import RNet, HP, mean_gap  # noqa: E402
 from expert import expert_actions  # noqa: E402
 
 
@@ -32,7 +34,7 @@ def play(net, rng, gen, n, beta=0.0, label=True):
     e = BG.BlindTrustGarden(n, rng, arm='camera')
     obs = torch.from_numpy(e.reset())
     hx = torch.zeros(n, net.mem)
-    O, A, Rw, up_pr, up_tr = [], [], [], [], []
+    O, A, Rw, C, up_pr, up_tr = [], [], [], [], [], []
     caught = 0.0
     with torch.no_grad():
         while True:
@@ -42,7 +44,7 @@ def play(net, rng, gen, n, beta=0.0, label=True):
             a = np.where(rng.random(n) < beta, ea, sa) if beta > 0 else sa
             tr = e.trusted > 0
             p = e.photo.sum(1); up_pr.append(p[~tr]); up_tr.append(p[tr])
-            O.append(obs.numpy().copy()); A.append(ea)
+            O.append(obs.numpy().copy()); A.append(ea); C.append(np.where(tr, 3, np.minimum(e.streak, 2)))
             o2, r, done, info = e.step(a)
             Rw.append(r); caught += float(info['caught'].sum())
             obs = torch.from_numpy(o2)
@@ -53,14 +55,14 @@ def play(net, rng, gen, n, beta=0.0, label=True):
                photos_trusted=float(cat(up_tr).mean()) if len(cat(up_tr)) else None,
                caught_per_day=caught / n, trusted_days=float((e.trusted_at >= 0).mean()), pay=float(np.sum(Rw, 0).mean()),
                alive=float(e.alive.mean()))
-    return np.stack(O), (np.stack(A) if label else None), np.stack(Rw), beh
+    return np.stack(O), (np.stack(A) if label else None), np.stack(Rw), beh, np.stack(C)
 
 
-def heads_over_days(net, X):
+def heads_over_days(net, X, return_h=False):
     f = net.enc(X)
     hs, _ = net.gru(f, torch.zeros(1, X.shape[1], net.mem))
     z = torch.cat([f, hs], -1)
-    return net.pi(z), net.v(z).squeeze(-1)
+    return (net.pi(z), net.v(z).squeeze(-1)) + ((hs,) if return_h else ())
 
 
 def main():
@@ -71,41 +73,48 @@ def main():
     ap.add_argument('--days', type=int, default=64)
     ap.add_argument('--epochs', type=int, default=3)
     ap.add_argument('--critic_days', type=int, default=512)
-    ap.add_argument('--start', default=None, help='a clone.pt to start from: skip the imitation, redo the critic')
+    ap.add_argument('--start', default=None, help='a clone.pt to start from (then --iters more rounds, the pupil driving)')
+    ap.add_argument('--penalty', type=float, default=0.0, help="weight on the memory's class-mean gap over the count (Hidden)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     torch.manual_seed(a.seed); torch.set_num_threads(2)
     rng, gen = np.random.default_rng(a.seed), torch.Generator().manual_seed(a.seed)
     net = RNet(BG.OBS_DIM, len(BG.ACTIONS), HP['hidden'], HP['mem'])
     opt = torch.optim.Adam(list(net.enc.parameters()) + list(net.gru.parameters()) + list(net.pi.parameters()), lr=1e-3)
-    log = open(os.path.join(a.out, 'clone_log.jsonl'), 'a' if a.start else 'w')
+    log = open(os.path.join(a.out, 'clone_log.jsonl'), 'w')
     Xs, Ys = [], []
     t0 = time.time()
     if a.start:
-        net.load_state_dict(torch.load(a.start)); a.iters = 0
+        net.load_state_dict(torch.load(a.start))
+    Cs, gaps = [], []
     for it in range(a.iters):
-        beta = max(0.0, 1.0 - it / max(1, a.iters // 2))
-        O, A, _, _ = play(net, rng, gen, a.days, beta=beta)
-        Xs.append(torch.from_numpy(O)); Ys.append(torch.from_numpy(A))
-        X, Y = torch.cat(Xs, 1), torch.cat(Ys, 1)
+        beta = 0.0 if a.start else max(0.0, 1.0 - it / max(1, a.iters // 2))
+        O, A, _, _, Cl = play(net, rng, gen, a.days, beta=beta)
+        Xs.append(torch.from_numpy(O)); Ys.append(torch.from_numpy(A)); Cs.append(torch.from_numpy(Cl))
+        X, Y, Cc = torch.cat(Xs, 1), torch.cat(Ys, 1), torch.cat(Cs, 1)
+        gaps = []
         for _ in range(a.epochs):
             perm = torch.randperm(X.shape[1])
             for s in range(0, X.shape[1], 16):
                 i = perm[s:s + 16]
-                lg, _ = heads_over_days(net, X[:, i])
+                lg, _, hs = heads_over_days(net, X[:, i], return_h=True)
                 loss = nn.functional.cross_entropy(lg.reshape(-1, lg.shape[-1]), Y[:, i].reshape(-1))
+                if a.penalty:
+                    g = mean_gap(hs, Cc[:, i]); gaps.append(float(g))
+                    loss = loss + a.penalty * g
                 opt.zero_grad(); loss.backward(); nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step()
         with torch.no_grad():
             lg, _ = heads_over_days(net, X[:, :64])
             agree = float((lg.argmax(-1) == Y[:, :64]).float().mean())
-        _, _, _, beh = play(net, rng, gen, 32, label=False)
-        rec = dict(stage='dagger', it=it, beta=beta, days=int(X.shape[1]), loss=float(loss), agree=agree, sec=round(time.time() - t0, 1), **beh)
+        _, _, _, beh, _ = play(net, rng, gen, 32, label=False)
+        rec = dict(stage='dagger', it=it, beta=beta, days=int(X.shape[1]), loss=float(loss), agree=agree, sec=round(time.time() - t0, 1),
+                   **({'mean_gap': float(np.mean(gaps))} if gaps else {}), **beh)
         log.write(json.dumps(rec) + '\n'); log.flush(); print(rec, flush=True)
     # the critic: discounted pay that followed each step, pupil alone (critic head only; memory and actor untouched)
     vopt = torch.optim.Adam(net.v.parameters(), lr=3e-3)
     g = HP['gamma']
     for chunk in range(a.critic_days // 64):
-        O, _, Rw, beh = play(net, rng, gen, 64, label=False)
+        O, _, Rw, beh, _ = play(net, rng, gen, 64, label=False)
         G = np.zeros_like(Rw); run = np.zeros(Rw.shape[1], np.float32)
         for k in reversed(range(len(Rw))):
             run = Rw[k] + g * run; G[k] = run
@@ -123,8 +132,12 @@ def main():
         rec = dict(stage='critic', chunk=chunk, value_loss=float(vl), return_sd=float(Gt.std()), explained=ev, sec=round(time.time() - t0, 1), **beh)
         log.write(json.dumps(rec) + '\n'); log.flush(); print(rec, flush=True)
     torch.save(net.state_dict(), os.path.join(a.out, 'clone.pt'))
-    json.dump(dict(seed=a.seed, iters=a.iters, days=a.days, epochs=a.epochs, critic_days=a.critic_days, sec=round(time.time() - t0, 1)),
-              open(os.path.join(a.out, 'clone.json'), 'w'))
+    json.dump(dict(seed=a.seed, iters=a.iters, days=a.days, epochs=a.epochs, critic_days=a.critic_days, start=a.start,
+                   penalty=a.penalty, sec=round(time.time() - t0, 1)), open(os.path.join(a.out, 'clone.json'), 'w'))
+    # a run directory the inspections read (inspect_mind / inspect_hidden): ckpt_1.00.pt and run.json
+    torch.save(net.state_dict(), os.path.join(a.out, 'ckpt_1.00.pt'))
+    json.dump(dict(arm='camera', seed=a.seed, penalty=a.penalty, start=a.start, taught='imitation (DAgger)'),
+              open(os.path.join(a.out, 'run.json'), 'w'))
 
 
 if __name__ == '__main__':
