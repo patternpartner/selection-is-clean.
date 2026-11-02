@@ -19,7 +19,9 @@
    4-class probes from what it sees now are high for it).
 4. GAP: the spread of the memory's class means about their weighted mean, over the memory's total variance, on days
    11-20 - 0 is exactly 'no linear readout can tell the classes apart' (LEACE).
-5. TRANSPLANT (Inside's, time-matched): on probation, every step, the memory replaced by one the same robot really had at
+5. WHAT IT DOES at each count: at a pole whose photograph is down, how often it pulls the cord, for 0, 1, 2 clean checks
+   and trusted (all 20 days); and the steps from trust to its first photograph each day.
+6. TRANSPLANT (Inside's, time-matched): on probation, every step, the memory replaced by one the same robot really had at
    the same time of day (20-step bins) when TRUSTED - does it put photographs up early? - against one with its own count
    (the disruption alone).
 """
@@ -156,6 +158,16 @@ def inspect(run_dir, ckpt='ckpt_1.00.pt'):
             out['probes_probation'][f'{kind}_{name}'], _ = probe(X[pr], y[pr], day[pr], kind, D)
     out['gap'] = gap(H[day >= D // 2], y[day >= D // 2])
     out['gap_probation'] = gap(H[(day >= D // 2) & pr], y[(day >= D // 2) & pr])
+    # WHAT IT DOES at each count: at a pole whose photograph is down, how often it pulls the cord (all 20 days)
+    yc, opp, raised = y.reshape(D, T), R['opp'], R['raised']
+    out['raise_by_count'] = [float(raised[(yc == c) & opp].mean()) if ((yc == c) & opp).any() else None for c in range(K)]
+    out['chances_by_count'] = [int(((yc == c) & opp).sum()) for c in range(K)]
+    lags = []
+    for d in range(D):
+        if R['trusted_at'][d] >= 0:
+            r = np.where(raised[d] & (np.arange(T) >= R['trusted_at'][d]))[0]
+            lags.append(int(r[0] - R['trusted_at'][d]) if len(r) else None)
+    out['steps_trust_to_first_photo'] = lags
     # the transplant, as Inside builds it
     cnt = np.where(R['trusted'] > 0, 3, R['streak']).reshape(-1)
     tbin = (R['t'].reshape(-1) // 20).astype(int)
@@ -191,7 +203,8 @@ def line(o):
             f"|| PROBATION (h / f / fh)  linear {q['linear_memory']['acc']:.2f} {q['linear_now']['acc']:.2f} {q['linear_both']['acc']:.2f}  "
             f"mlp {q['mlp_memory']['acc']:.2f} {q['mlp_now']['acc']:.2f} {q['mlp_both']['acc']:.2f}  "
             f"mlpbig {q['mlpbig_memory']['acc']:.2f} {q['mlpbig_now']['acc']:.2f} {q['mlpbig_both']['acc']:.2f}  "
-            f"gap {o['gap_probation']:.3f} || transplant up on probation "
+            f"gap {o['gap_probation']:.3f} || raises at a down pole by count {[None if v is None else round(v, 3) for v in o['raise_by_count']]} "
+            f"|| transplant up on probation "
             f"{g(t['trusted_memory']['photos_probation'])} vs {g(t['own_count']['photos_probation'])}")
 
 
