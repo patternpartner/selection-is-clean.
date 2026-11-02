@@ -1,0 +1,6 @@
+{"popBoot":{"restored":1407,"why":"ok","bytes":7809765},"seenRestored":862}
+{"boot":true,"tick":0,"alive":1625,"loaded":true,"germLen":22}
+{"tick":500,"alive":1531,"meanAlive":1516,"taskInc":707.89,"sunInc":124.4,"paid":9661,"fnPaid":402,"newToHistory":30,"everPaid":892,"expH":266.88,"meanSz":4.444,"progs":509,"readCarried":1285}
+{"tick":1000,"alive":1561,"meanAlive":1522,"taskInc":653.09,"sunInc":63.8,"paid":8520,"fnPaid":418,"newToHistory":41,"everPaid":933,"expH":281.57,"meanSz":4.387,"progs":486,"readCarried":1247}
+{"tick":1500,"alive":1570,"meanAlive":1528,"taskInc":623.54,"sunInc":51.14,"paid":7862,"fnPaid":404,"newToHistory":30,"everPaid":963,"expH":287.76,"meanSz":4.298,"progs":481,"readCarried":1191}
+{"tick":2000,"alive":1523,"meanAlive":1516,"taskInc":558.02,"sunInc":36.97,"paid":7406,"fnPaid":408,"newToHistory":48,"everPaid":1011,"expH":282.56,"meanSz":4.362,"progs":403,"readCarried":1155}

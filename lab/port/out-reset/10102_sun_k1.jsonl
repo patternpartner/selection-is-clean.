@@ -1,0 +1,15 @@
+{"boot":true,"tick":0,"alive":328,"loaded":false,"germLen":19}
+{"tick":500,"alive":506,"meanAlive":770,"taskInc":134.28,"sunInc":132.15,"paid":7542,"fnPaid":104,"newToHistory":104,"everPaid":104,"expH":66.12,"meanSz":2.748,"progs":283,"readCarried":492}
+{"tick":1000,"alive":546,"meanAlive":438,"taskInc":279.79,"sunInc":62.73,"paid":3413,"fnPaid":206,"newToHistory":128,"everPaid":232,"expH":147.76,"meanSz":3.999,"progs":314,"readCarried":534}
+{"tick":1500,"alive":1066,"meanAlive":907,"taskInc":597,"sunInc":52.54,"paid":6082,"fnPaid":365,"newToHistory":169,"everPaid":401,"expH":248.63,"meanSz":4.613,"progs":556,"readCarried":1029}
+{"tick":2000,"alive":1455,"meanAlive":1372,"taskInc":1005.91,"sunInc":34.97,"paid":11504,"fnPaid":488,"newToHistory":153,"everPaid":554,"expH":317.52,"meanSz":4.974,"progs":577,"readCarried":1358}
+{"tick":2500,"alive":1361,"meanAlive":1472,"taskInc":1030.18,"sunInc":38.08,"paid":11580,"fnPaid":521,"newToHistory":130,"everPaid":684,"expH":335.26,"meanSz":4.968,"progs":513,"readCarried":1259}
+{"tick":3000,"alive":1397,"meanAlive":1494,"taskInc":1127.19,"sunInc":58.4,"paid":11698,"fnPaid":534,"newToHistory":112,"everPaid":796,"expH":340.6,"meanSz":5.235,"progs":573,"readCarried":1261}
+{"tick":3500,"alive":1422,"meanAlive":1438,"taskInc":929.56,"sunInc":64.77,"paid":10489,"fnPaid":446,"newToHistory":42,"everPaid":838,"expH":296.76,"meanSz":4.953,"progs":525,"readCarried":1261}
+{"perturbed":4000,"what":["sun"]}
+{"tick":4000,"alive":1407,"meanAlive":1464,"taskInc":792.86,"sunInc":50.94,"paid":9926,"fnPaid":402,"newToHistory":24,"everPaid":862,"expH":273.96,"meanSz":4.721,"progs":505,"readCarried":1220}
+{"reseeded":4000,"k":1}
+{"tick":4500,"alive":1582,"meanAlive":1482,"taskInc":619.06,"sunInc":110.3,"paid":8766,"fnPaid":343,"newToHistory":17,"everPaid":879,"expH":235.38,"meanSz":4.451,"progs":576,"readCarried":1342}
+{"tick":5000,"alive":1526,"meanAlive":1453,"taskInc":527.63,"sunInc":38.55,"paid":8397,"fnPaid":336,"newToHistory":32,"everPaid":911,"expH":222.09,"meanSz":4.189,"progs":481,"readCarried":1308}
+{"tick":5500,"alive":1538,"meanAlive":1462,"taskInc":567.2,"sunInc":56.3,"paid":8411,"fnPaid":363,"newToHistory":29,"everPaid":940,"expH":246.15,"meanSz":4.233,"progs":447,"readCarried":1287}
+{"tick":6000,"alive":1295,"meanAlive":1441,"taskInc":506.24,"sunInc":56.05,"paid":7669,"fnPaid":342,"newToHistory":23,"everPaid":963,"expH":233.86,"meanSz":4.33,"progs":436,"readCarried":1097}

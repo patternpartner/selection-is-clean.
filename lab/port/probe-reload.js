@@ -11,8 +11,13 @@
 // newToHistory: functions paid in the window that this universe had never been paid for, before its save (SEEN=file, written beside
 // each .genome) or since this boot. everPaid: the size of that history.
 // RESEED_AT=t RESEED=k: after tick t the random stream is replaced by one seeded from (SEED, k) - the same world in the same state with
-// other draws: a perfect reload, the null band a real reload is judged against.
-// Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
+// other draws: a perfect reload, the null band a real reload is judged against. PERTURB=pools,sun,words (any of them; with RESEED_AT)
+// resets that piece of world state at tick RESEED_AT the way a reload does: every function pool to its cap, the sunlight field to
+// its boot level, every creature's word file and publish record to a newborn's; repop puts every living creature through
+// encodePopulation/decodePopulation in place, with all world state kept. Paired with the same RESEED k, an arm differs from
+// its NULL only by the reset (#369).
+// copies: op 225 lateral copies in the window (the engine's __on225 hook); desync: living creatures whose running program is not their
+// genome's (#369). Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis);
 require(path.join(ROOT,'harness-env.js'))(globalThis);
@@ -22,24 +27,39 @@ const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf
 const Module=require('module'); const m=new Module('/tmp/reload-sim.js'); m.filename='/tmp/reload-sim.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
 ;globalThis.__R=function(ticks,WIN,saveAt,saveDir,seed,out,fs,path){ const prev=new Float64Array(TASK_NF), ever=new Uint8Array(TASK_NF); let li=tEv.income, ls=tEv.sun, lp=tEv.paid, errs=0, aSum=0, aN=0;
-  if(process.env.POPLOAD) out(JSON.stringify({popBoot:(typeof __popBoot!=='undefined')?__popBoot:'engine has no #368'}));
+  if(process.env.POPLOAD) out(JSON.stringify({popBoot:(typeof __popBoot!=='undefined')?__popBoot:'engine has no #368', seenRestored:(typeof tSeenN!=='undefined')?tSeenN:null}));
   for(let T=0;T<TASK_NF;T++)prev[T]=tE[T];
+  let copies=0, lastCopies=0; __on225=function(i,f){ if(f)copies++; };   /* #369b: op 225's copies, from the engine's own hook; draws nothing */
   if(process.env.SEEN){ for(const T of JSON.parse(fs.readFileSync(process.env.SEEN,'utf8')))ever[T]=1; }   /* the functions this universe paid before its save */
   { let a=0; for(let i=0;i<N;i++) if(palive[i])a++; out(JSON.stringify({boot:true, tick:0, alive:a, loaded:!!process.env.LOAD, germLen:(genome.vmProgram||[]).length})); }
-  const RAT=+(process.env.RESEED_AT||0), RK=+(process.env.RESEED||0);
+  const RAT=+(process.env.RESEED_AT||0), RK=+(process.env.RESEED||0), PERT=process.env.PERTURB||'', SUN0=SUN_ON?sunField.slice():null;   /* the light field as this boot left it: full, which is what a reload hands back */
   for(let t=1;t<=ticks;t++){ if(RAT&&t===RAT+1&&RK){ let a=((+seed)*7919+RK*104729)>>>0; Math.random=function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}; out(JSON.stringify({reseeded:RAT, k:RK})); }
     globalThis.__detMs+=5; try{loop();}catch(e){ if(errs++<3)console.log(JSON.stringify({err:String(e&&e.stack||e).slice(0,300)})); }
+    if(PERT&&t===RAT){ const P=PERT.split(','); if(P.includes('pools'))tRes.set(tCap); if(P.includes('sun')&&SUN_ON)sunField.set(SUN0);
+      if(P.includes('words'))for(let i=0;i<N;i++) if(palive[i])taskBirth(i);
+      let rp=null; if(P.includes('repop')){   /* the creatures through the snapshot, the world untouched; keep_X puts group X back after it */
+        const live=[]; for(let i=0;i<N;i++) if(palive[i]&&pGenome[i])live.push(i);
+        const sl=(a,i,n)=>Array.from(a.subarray(i*n,i*n+n)), A=[['localRes',localRes,1],['collapse',collapse,1],['pBroadcast',pBroadcast,2],['pReflexHist',pReflexHist,REFLEX_DEPTH*2],['pReflexState',pReflexState,REFLEX_DIMS],['pReflexIdx',pReflexIdx,1],['pInteractionDensity',pInteractionDensity,1],['echox',echox,EL],['echoy',echoy,EL],['echoIdx',echoIdx,1],['clusterID',clusterID,1],['pMindW',pMindW,1],['pHomeX',pHomeX,1],['pHomeY',pHomeY,1]];
+        if(TASKS_ON)A.push(['tW',tW,4],['tJ',tJ,4],['tDm',tDm,4],['tK',tK,16],['tLast',tLast,1],['tLastE',tLastE,1],['tLastJ',tLastJ,1],['tLastDm',tLastDm,1],['tLastK',tLastK,1],['tIc',tIc,1],['tPE',tPE,1],['tRd',tRd,4],['tRdE',tRdE,4],['tRdI',tRdI,1]);
+        const old=live.map(i=>({lin:pLin[i],ph:phase[i],fr:freq[i],vx:vx[i],vy:vy[i],mode:pMode[i],g:pGenome[i],arr:A.map(([n,a,k])=>sl(a,i,k))}));
+        const g=encodeGenome(), s=encodePopulation(popHash(g)); __popGenomeStr=g; const lid0=nextLineageID; rp=decodePopulation(s);
+        for(let j=0;j<Math.min(N,old.length);j++){ const o=old[j];
+          if(P.includes('keep_lin'))pLin[j]=o.lin; if(P.includes('keep_phase')){ phase[j]=o.ph; freq[j]=o.fr; } if(P.includes('keep_vel')){ vx[j]=o.vx; vy[j]=o.vy; }
+          if(P.includes('keep_genome')){ pGenome[j]=o.g; pProg[j]=o.g.vmProgram; }
+          if(P.includes('keep_arrays'))A.forEach(([n,a,k],q)=>a.set(o.arr[q],j*k)); if(P.includes('keep_mode'))pMode[j]=o.mode; }
+        if(P.includes('unreg')){ const used=new Set(); for(let i=0;i<N;i++) if(palive[i])used.add(pLin[i]); let d=0; for(let l=lid0;l<nextLineageID;l++) if(!used.has(l)&&lineageRegistry.delete(l))d++; rp={restored:rp, unregistered:d}; } }
+      out(JSON.stringify({perturbed:t, what:P, repop:rp})); }
     if(t%50===0){ let a=0; for(let i=0;i<N;i++) if(palive[i])a++; aSum+=a; aN++; }
     if(saveAt.includes(t)){ const g=encodeGenome(); fs.writeFileSync(path.join(saveDir,seed+'_'+t+'.genome'),g);
       let pl=-1; if(process.env.POP&&typeof encodePopulation==='function'){ const p=encodePopulation(popHash(g)); fs.writeFileSync(path.join(saveDir,seed+'_'+t+'.pop'),p); pl=p.length; }
       const seen=[]; for(let T=0;T<TASK_NF;T++) if(ever[T]||tE[T]>0)seen.push(T); fs.writeFileSync(path.join(saveDir,seed+'_'+t+'.seen'),JSON.stringify(seen));
-      out(JSON.stringify({saved:t, genomeLen:g.length, popLen:pl, everPaid:seen.length})); }
+      out(JSON.stringify({saved:t, genomeLen:g.length, popLen:pl, everPaid:seen.length, tSeenN:(typeof tSeenN!=='undefined')?tSeenN:null})); }
     if(t%WIN) continue;
     let tot=0, H=0, ms=0, nf=0, fresh=0; const inc=[]; for(let T=0;T<TASK_NF;T++){ const d=tE[T]-prev[T]; prev[T]=tE[T]; if(d>0){ inc.push([T,d]); tot+=d; if(!ever[T]){ ever[T]=1; fresh++; } } }
     for(const [T,d] of inc){ const q=d/tot; H-=q*Math.log(q); ms+=q*TASK_SZ4[T]; nf++; }
-    const progs=new Set(); let alive=0, rd=0; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; const p=pProg[i]||[]; let k=''; let r=0; for(const x of p){ k+=x[0]+','+(x[1]|0)+','+(x[2]|0)+','+(x[3]|0)+';'; if(x[0]===TASK_OP0+3)r=1; } rd+=r; progs.add(k); }
-    out(JSON.stringify({tick:t, alive, meanAlive:aN?Math.round(aSum/aN):alive, taskInc:+(tEv.income-li).toFixed(2), sunInc:+(tEv.sun-ls).toFixed(2), paid:tEv.paid-lp, fnPaid:nf, newToHistory:fresh, everPaid:ever.reduce((a,b)=>a+b,0), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), progs:progs.size, readCarried:rd}));
-    li=tEv.income; ls=tEv.sun; lp=tEv.paid; aSum=0; aN=0; } };`, m.filename);
+    const progs=new Set(); let alive=0, rd=0, desync=0; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; if(pGenome[i]&&pProg[i]!==pGenome[i].vmProgram)desync++; const p=pProg[i]||[]; let k=''; let r=0; for(const x of p){ k+=x[0]+','+(x[1]|0)+','+(x[2]|0)+','+(x[3]|0)+';'; if(x[0]===TASK_OP0+3)r=1; } rd+=r; progs.add(k); }
+    out(JSON.stringify({tick:t, alive, meanAlive:aN?Math.round(aSum/aN):alive, taskInc:+(tEv.income-li).toFixed(2), sunInc:+(tEv.sun-ls).toFixed(2), paid:tEv.paid-lp, fnPaid:nf, newToHistory:fresh, everPaid:ever.reduce((a,b)=>a+b,0), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), progs:progs.size, readCarried:rd, copies:copies-lastCopies, desync}));
+    li=tEv.income; ls=tEv.sun; lp=tEv.paid; aSum=0; aN=0; lastCopies=copies; } };`, m.filename);
 if(!globalThis.TASKS_ON) console.error('warning: TASKS is off - set TASKS=1');
 const saveAt=(process.env.SAVEAT||'').split(',').filter(Boolean).map(Number), saveDir=process.env.SAVEDIR||'.';
 if(saveAt.length) fs.mkdirSync(saveDir,{recursive:true});

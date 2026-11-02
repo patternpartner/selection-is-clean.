@@ -28682,3 +28682,60 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - Node byte-identical with no snapshot: seed 3, 1,500 ticks, TASKS on and off.
 - On `main` with this: the population crossing a reload (engine, worker bridge, shell, field reset/load), the history boot row's
   restored count, `pop-test`, and the probe, batch and results of #368.
+
+### #369 — WHAT A RESTORED POPULATION STILL LOSES, and the universe's lifetime record of functions
+- **The question.** #368's population reloads were close to a perfect reload on 10101 and 10103, but on 10102 they paid about
+  30% fewer functions in the first 1,000 ticks. The engine's own TASKS comment had long named the refilled pools ("a windfall
+  in which easy functions pay in full again ... Open") as the real gap a reload leaves. Checked rather than assumed.
+- **Method** (`lab/port/probe-reload.js` `PERTURB=`, `lab/port/reset-batch.sh`, out `lab/port/out-reset/`). Seed 10102 is run to
+  tick 4,000. ONE piece of state is reset in-process the way a reload resets it, and the run is reseeded with the same k as
+  #368's NULL1, so each arm is a paired comparison that differs from the null only by the reset.
+- **World state is not it.** Payments and functions paid in the first 500 ticks after 4,000:
+
+  | arm | payments | functions paid |
+  |---|---|---|
+  | NULL band (#368, k=1-3) | 8,992-9,130 | 366-391 |
+  | pools refilled to their caps | 8,278 | 366 |
+  | sunlight field refilled to its boot level | 8,766 | 343 |
+  | word files and publish records emptied | 9,916 | 396 |
+  | all three | 9,853 | 389 |
+  | population reloads (#368 POP1-3) | 4,842-7,141 | 253-314 |
+  | **the creatures put through encode/decode in place, world untouched (k=1-3)** | **5,106-6,690** | **245-275** |
+
+  - The refilled pools are NOT the gap on this seed. Neither is the sunlight windfall (sun income triples for 500 ticks and
+    payments barely move), nor the empty word files. Not even all three at once.
+  - **The creatures are.** Round-tripping them through the snapshot in place, with every piece of world state kept,
+    reproduces the population reload's deficit exactly. So the snapshot drops something about creatures that their
+    computing depends on.
+  - So the pools stay out of the snapshot: adding them would cost bytes for no measured effect. The engine comment's "the
+    POOLS are the real gap" is recorded as checked and not borne out on 10102.
+- **Bisecting the creatures.** The round trip with groups put back (lineage ids; phase and frequency; velocity; the whole original genome
+  object; 35 per-creature arrays from echoes to word files; the current mode) still paid 4,932-5,176. Removing the 1,407 founder
+  lineages decode mints left the run byte-identical. So I diffed every top-level binding of the engine (937 of them) before and after
+  a round trip, comparing per-creature arrays over the living in order (`lab/port/probe-statediff.js`; the desync counts are `lab/port/probe-desync.js`). The list held `pProg`, the program
+  each creature RUNS, even with every genome object put back.
+- **The cause: op 225 (`PROG_LATERAL_COPY`).** In the pairwise VM it does `pProg[i]=cloneProg(pProg[j])`: the creature starts running a
+  partner's program and its genome keeps the old one. The engine's own comment (#80) knew the two could desynchronise and measured it
+  rare ("335 of 335 live particles aliased at 1200 ticks"). **Under TASKS on 10102 it is 12 of 506 living creatures at tick 500, 38
+  of 546 at 1,000, 236 of 1,066 at 1,500, and 837 of 1,455 (58%) at 2,000, every one differing in its logic ops.** The snapshot
+  saved the genome's program, so a restored creature came back running the program it had stopped running.
+- **The fix (snapshot only; the world is unchanged).** `encodePopulation` saves the running program whenever it differs from the
+  genome's (a deduplicated table, `run`) and the current mode; `decodePopulation` restores both. Checked on 10102:
+  - in place, k=1-3: 9,581-9,903 payments and 376-400 functions paid, against the band's 8,992-9,130 and 366-391;
+  - as a real reload (save at 4,000 in one process, three population reloads in others): 9,547-9,661 and 384-402. #368's fidelity
+    distance is now **0.04-0.19**, where #368's population reloads were 0.53-0.87; the band's own spread is 0.07-0.12, and germline
+    reloads are 6.4-6.8. The save is 7.8 MB raw against 7.6 MB before.
+  - The trajectory to the save is unchanged: 862 functions ever paid at 4,000, as in #368.
+- **The lifetime record (the instrument).** `tSeen`, a mark at the engine's single payment site (`tN[T]++` occurs once), set the first
+  time a function is ever paid in this universe. It rides the snapshot as a 65,536-bit set (about 11 KB) and is restored with it. The
+  history row's "functions ever paid" and "paid for the first time since the last row" (#367) now count over the universe's life,
+  so a harvest reports functions new to the universe, not re-findings after a reload. Round trip exact (100 saved, 100 restored);
+  `pop-test` checks it in a real browser: 1,097 before a reload, 1,178 in the first row after it. Node byte-identical, seed 3,
+  TASKS on and off.
+- **What the bisect raised, which is bigger than the reload.** Births clone the parent's GENOME (`addParticle`), so a creature
+  running a copied program passes on the program it ran BEFORE the copy. Under TASKS the running program earns the income that
+  pays for births. So for most of the world, what selection pays for and what offspring inherit are two different programs. #322
+  closed this under REPL, where copies were rare ("whether a lateral copy should be inherited is not worth a retire-or-prove").
+  The PORT-PLAN warns that verdicts from before TASKS were measured where computing could not be selected. So it is re-asked under
+  TASKS, pre-registered (`lab/port/PREREG-herit.md`, #369b): `LATERAL_HERIT=1` makes op 225's copy the genome's program too.
+  Unset it is byte-identical; set it leaves 0 desynchronised creatures at every check on 10102.

@@ -139,16 +139,20 @@ const BRIDGE =
   // #367 - ONE ROW OF THIS UNIVERSE'S HISTORY, for the shell to keep across reloads and the field to harvest. A harvest was a
   // snapshot (genome, ticks, population now) and could not say whether or when a world crashed. Read off counters and arrays,
   // nothing drawn or written. Cumulative counts are this session's (they restart at a reload; the shell marks reloads).
-  // [ticks, minutes since 1970, alive, births, prey events, task income, sun income, payments, functions ever paid this session,
-  //  functions paid for the first time since the last row, exp(H) of income since the last row, carrying predation (155),
-  //  carrying INPUT, mean age, deathThreshold germline / living mean, lifespanBias germline / living, metabolicCost germline / living]
+  // [ticks, minutes since 1970, alive, births, prey events, task income, sun income, payments, functions ever paid, functions
+  //  paid for the first time since the last row (#369: both over the universe's life), exp(H) of income since the last row,
+  //  carrying predation (155), carrying INPUT, mean age, deathThreshold germline / living mean, lifespanBias germline / living, metabolicCost germline / living]
   '__inst.api.histRow=function(){try{var L=(typeof __liveness!=="undefined")?__liveness:{},on=(typeof TASKS_ON!=="undefined"&&TASKS_ON);' +
     'var al=0,pr=0,inp=0,ag=0,dt=0,lb=0,mc=0,ng=0;for(var i=0;i<N;i++){if(!palive[i])continue;al++;ag+=page[i];var p=pProg[i];' +
       'if(p)for(var q=0;q<p.length;q++){var o=p[q][0];if(o===155){pr++;break;}}' +
       'if(on&&p)for(var q2=0;q2<p.length;q2++){if(p[q2][0]===TASK_OP0){inp++;break;}}' +
       'var g=pGenome[i];if(g){dt+=+g.deathThreshold||0;lb+=+g.lifespanBias||0;mc+=+g.metabolicCost||0;ng++;}}' +
+    // #369: fields 8 and 9 count over the UNIVERSE'S life (tSeen, carried by the population snapshot across reloads): functions it has
+    // ever been paid for, and how many of those are new since the last row. Before #369 both were this session's, so a reload restarted
+    // them and every function re-found after it read as new. A boot whose population was refused starts the count again, as before.
     'var fns=0,nf=0,H=0,tot=0;if(on){if(!__inst.hN)__inst.hN=new Uint32Array(TASK_NF),__inst.hE=new Float64Array(TASK_NF);' +
       'for(var T=0;T<TASK_NF;T++){if(tN[T]>0){fns++;if(__inst.hN[T]===0)nf++;}tot+=tE[T]-__inst.hE[T];}' +
+      'if(typeof tSeenN!=="undefined"){if(__inst.hSeen===undefined)__inst.hSeen=tSeenBoot;fns=tSeenN;nf=tSeenN-__inst.hSeen;__inst.hSeen=tSeenN;}' +
       'if(tot>0)for(var T2=0;T2<TASK_NF;T2++){var x=tE[T2]-__inst.hE[T2];if(x>0){var qq=x/tot;H-=qq*Math.log(qq);}}' +
       '__inst.hN.set(tN);__inst.hE.set(tE);}' +
     'var r=function(v,d){return +(+v).toFixed(d);};var m=function(v){return ng?+(v/ng).toPrecision(4):null;};' +

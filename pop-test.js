@@ -1,7 +1,7 @@
 // pop-test.js - #368: a universe's POPULATION crosses a reload. A standalone universe autosaves its genome at tick 1,800 and,
 // beside it, every living creature (gzipped, in IndexedDB); a reload boots from those creatures rather than from founders spawned
 // off the germline. Negative sides: a snapshot whose fingerprint is not the stored genome's is refused and the boot spawns
-// founders as before; #reset restores nothing.   node pop-test.js   (MAXS=<seconds> to wait for the first save, default 240)
+// founders as before; #reset restores nothing. #369: the history's lifetime function count carries across the reload.   node pop-test.js   (MAXS=<seconds> to wait for the first save, default 240)
 const { chromium } = require('playwright-core');
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
@@ -43,6 +43,7 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
     ck('the first autosave stored the population beside the genome', !!pop && pop.rows > 50 && pop.genes > 100, pop ? pop.rows + ' creatures, ' + pop.genes + ' numeric genes' : 'none after ' + MAXS + 's');
     ck('it is gzipped where the browser can', !!pop && pop.kind === 'gzip', pop && (pop.kind + ', ' + pop.bytes + ' bytes'));
     ck('the creatures carry their own programs', !!pop && pop.progs > 1, pop && (pop.progs + ' distinct programs'));
+    const before = (await page.evaluate(() => window.__field.history())).filter(r => r[0] !== 'boot').pop();   // #369: the lifetime count before the reload
     await page.reload(); await page.evaluate(() => window.__field.ready());
     const s1 = await stat(), latest = pop;
     console.log('  after reload: pop ' + JSON.stringify(s1 && s1.pop) + ', ' + (s1 && s1.N) + ' alive at tick ' + (s1 && s1.tick));
@@ -50,7 +51,9 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
     ck('the restored count is the snapshot taken with the stored genome', !!s1 && !!s1.pop && !!latest && s1.pop.restored >= latest.rows * 0.5 && s1.pop.restored <= 1800, (s1 && s1.pop && s1.pop.restored) + ' restored, ' + (latest && latest.rows) + ' in the first snapshot read');
     const t1 = (s1 && s1.tick) | 0; await page.waitForTimeout(8000); const s1b = await stat();
     ck('the restored world runs', !!s1b && s1b.tick > t1 && s1b.N > 0, t1 + ' -> ' + (s1b && s1b.tick) + ', ' + (s1b && s1b.N) + ' alive');
-    const boots = (await page.evaluate(() => window.__field.history())).filter(r => r[0] === 'boot');
+    const hist = await page.evaluate(() => window.__field.history()), boots = hist.filter(r => r[0] === 'boot');
+    const after = hist.slice(hist.lastIndexOf(boots[boots.length - 1])).filter(r => r[0] !== 'boot')[0];
+    ck('functions ever paid carry across the reload instead of restarting', !!before && !!after && after[8] >= before[8], 'before ' + (before && before[8]) + ' (tick ' + (before && before[0]) + '), first row after ' + (after && after[8]) + ' (tick ' + (after && after[0]) + ')');
     ck('the history marks the reload with the creatures it brought back', boots.length === 2 && boots[0][3] === 0 && boots[1][3] === (s1 && s1.pop && s1.pop.restored), JSON.stringify(boots));
     // the negative side: a snapshot that does not belong to the stored genome
     await page.evaluate(readPop, true);
