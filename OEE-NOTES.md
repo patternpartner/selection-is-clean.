@@ -28739,3 +28739,36 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   The PORT-PLAN warns that verdicts from before TASKS were measured where computing could not be selected. So it is re-asked under
   TASKS, pre-registered (`lab/port/PREREG-herit.md`, #369b): `LATERAL_HERIT=1` makes op 225's copy the genome's program too.
   Unset it is byte-identical; set it leaves 0 desynchronised creatures at every check on 10102.
+
+### #369b — VERDICT: INCONCLUSIVE (PREREG-herit.md: at most 1 of 3 seeds can count). `LATERAL_HERIT` stays 0.
+- **Executed first failed.** A seed counts only if EVERY ON replicate makes at least 100 op 225 copies by tick 10,000. The k=1
+  replicates, all run to 10,000 (`lab/port/out-herit/`):
+
+  | seed | copies OFF1 / ON1 | most desynchronised at once, OFF1 | functions ever paid OFF1 / ON1 | V late OFF1 / ON1 |
+  |---|---|---|---|---|
+  | 10201 | 55 / **564** | 7 | 5,207 / 5,439 | 3,131 / 3,363 |
+  | 10202 | 17 / 3 | 1 | 749 / 749 | 148 / 148 |
+  | 10203 | 18 / 1 | 2 | 2,253 / 1,388 | 1,923 / 1,174 |
+
+  10202 and 10203 cannot count whatever k=2 and k=3 show, so at most one seed can, against a floor of three. The other twelve
+  replicates were not launched: they could not change the count. The V columns are one replicate a seed and rule on nothing.
+- **What it found instead: the imitator lineage is not the common case.** Design seed 10102 had 58% of its living desynchronised
+  by tick 2,000. On these three seeds the most at any row was 7. The extension the rule names (unseen seeds 10204 onward) would
+  need seeds that grow an imitator lineage, and three of three did not. So before spending six 10,000-tick runs a seed on it,
+  a prevalence screen runs: one uninterrupted world per fresh seed (10301-10308, `lab/port/screen-batch.sh`, out
+  `lab/port/out-screen/`), counting copies and desynchronised creatures. These seeds are looked at for prevalence and decide nothing.
+- **What 10102 showed is still worth saying, at its rung (one seed, one horizon).** Only 2-12 creatures carried op 225 in their
+  RUNNING program at a time while 837 were desynchronised. The copiers' GENOMES carry op 225, and each newborn copies a
+  neighbour's program on its first contact and runs that. So 58% of that world was an imitator lineage: it inherited the instinct
+  to copy, not anything it computed. `LATERAL_HERIT=1` would end that strategy in a generation, because the first copy overwrites
+  the instinct. That is a reason to want the decision run, not to skip it.
+- **The prevalence screen** (`lab/port/out-screen/`, 8 fresh seeds, today's world, 6,000 ticks, one run each): copies and the most
+  creatures desynchronised at once were 9/3, 0/0, 25/5, 5/2, **258/117** (10305, about 7% of 1,669 alive), 19/2, 5/1 and 19/5.
+  With the decision seeds (at most 7 at 10,000) and design seed 10102 (837 of 1,455 at 2,000), **2 worlds of 12 looked at grew an
+  imitator presence above 1% of the living**, one of them a majority.
+- **So:** `LATERAL_HERIT` stays 0 and is not deleted, because the template does not rule on an inconclusive result. The follow-up
+  is named: a FROM-STATE test, ON against OFF with null replicates, reseeded from a save taken after an imitator lineage is
+  established. 10102 at 2,000 and 10305 at 6,000 are the candidates, and the screen chose them only on the executed condition
+  (desync), never on an outcome. A blind seed extension at about 1 in 6 is not worth its cost. Not started.
+- **Removed, a false claim:** the engine's TASKS comment said a save "holds the germline only" (false since #368) and that "the POOLS
+  are the real gap" (refuted on 10102 above). It now says what crosses a reload and what #369 found.

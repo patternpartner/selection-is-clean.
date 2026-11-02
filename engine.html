@@ -10668,10 +10668,12 @@ function sunStep(season){
 //   ladder). Every other function has to be found.
 // Off (#notasks in a browser; TASKS unset or 0 under node): nothing here is reached, no draw is taken, and the world is byte-identical.
 // #354: TASK_FOUNDER and TASK_MUT (below) are ON by default wherever TASKS runs.
-// NOT SAVED WITH A UNIVERSE (stated, not inherited as an absence; a review asked): a save holds the germline only, never particles, so
-// the word file, publish records and payment slots have nothing to belong to after a reload; tE/tN are readouts nothing selects on;
-// tEpoch is derived from tick. The POOLS are the real gap: a reload refills all 65,536 to their caps, a windfall in which easy
-// functions pay in full again. Saving them densely is 512 KB, past the save budget; a sparse save of depleted pools would fit. Open.
+// ACROSS A RELOAD (#368/#369): the creatures cross (encodePopulation, with the program each RUNS) and so does tSeen, the record of every
+// function this universe was ever paid for. NOT carried: the word files, publish records and payment slots (one epoch long), tE/tN
+// (this session's readouts), tEpoch (derived from tick) and the POOLS, which a reload refills to their caps. This comment used to call
+// the pools "the real gap". #369 checked it on seed 10102, resetting each piece in-process against a null band: refilled pools,
+// a refilled sunlight field and emptied word files, alone or together, left payments inside the band. The gap was the running
+// programs the snapshot did not yet save.
 // OVERFLOW: a payment that would take pE past SUN_STORE is cut at the store and the excess is destroyed (counted in tEv.overflow;
 // in the first pilot it was 1.3-5.2 against task income in the hundreds).
 const TASKS_ON=((typeof globalThis!=='undefined')&&((globalThis.__TASKS|0)!==0))||__TASKS_DEFAULT;
