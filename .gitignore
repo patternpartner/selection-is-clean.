@@ -57,3 +57,5 @@ lab/port/out-pop/*.pid
 lab/port/out-reset2/*.pop
 lab/port/out-herit/*.pid
 lab/port/out-screen/*.pid
+lab/port/out-chain/*.pop
+lab/port/out-chain/*.pid

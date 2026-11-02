@@ -28783,3 +28783,19 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
 - Node byte-identical with no snapshot and LATERAL_HERIT unset: seed 3, 1,500 ticks, TASKS on and off.
 - On `main` with this: the snapshot carries running programs, current mode and the lifetime function record; the history counts
   over a universe's life; `LATERAL_HERIT` (default 0, open); the probes, batches and results of #369 and #369b.
+
+### #370 — EXPLORATORY (a measurement, no rule): does novelty keep arriving in the artwork's default world over 100,000 ticks?
+- **Why now.** #352 asked it on three seeds before #354's founder and rewiring, before the crash fixes (#360, #367b) and before a
+  population could cross a reload. A single 100,000-tick world takes hours at the population cap and cannot outlive this box's job
+  limit. Since #368/#369 a reload is as close to a perfect reload as perfect reloads are to each other, and it carries the lifetime
+  record of functions paid. So a long run can be CHAINED: `lab/port/chain-batch.sh`, 10,000 ticks per process, each booting from
+  the last one's save under its own random stream. Seeds 10401-10403 (never run), `TASKS=1`, everything else default. Out
+  `lab/port/out-chain/`.
+- **What the space looks like** (exact NAND formula sizes, `TASK_SZ4`): only 7,488 of the 65,536 four-input functions (11.4%) have
+  size 8 or less; the median function needs 12 gates; 30% need 10 or fewer. Worlds compose at a mean size of 6-7 (#352-#368). So
+  arrival must slow because what is left is hard, long before the space runs out.
+- **Measured per 10,000-tick chunk:** functions new to the universe's whole history (the dependent variable), functions ever paid,
+  mean formula size, exp(H), alive, and imitator activity (op 225 copies, desynchronised creatures).
+- **Prediction, written before any chunk ran:** new functions per 10,000 ticks fall below 10% of their peak chunk by 60,000 on at
+  least 2 of 3 seeds; at least one seed crashes or stalls (task income near zero for a chunk); functions ever paid end at 15-35%
+  of the space.
