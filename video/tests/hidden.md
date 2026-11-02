@@ -144,8 +144,8 @@ CARD: Trained to hide its count, / it couldn’t. / You could still read it. / H
   these robots USE it: a trusted memory transplanted in on probation makes every control put photographs up early
   (+0.26 to +0.56), where Inside's open cheater did not move (+0.00).
 - **Trained to hide it, they mostly couldn't - and it cost them.** The penalty made the memory's average state nearly
-  the same at every count (the class-mean gap fell from 0.12-0.15 to under 0.01 on the pilot; the decision robots'
-  gaps are in their inspection files). Linear probes, which the penalty is exactly aimed at, dropped from +0.33..+0.49
+  the same at every count (the class-mean gap on probation: 0.08-0.12 in the controls, 0.002-0.007 in the hidden robots).
+  Linear probes, which the penalty is exactly aimed at, dropped from +0.33..+0.49
   to -0.06..+0.09 - under the registered +0.05 on 3 of 5, not the 4 required. Stronger probes read more: on hidden-51,
   which hid perfectly from the linear probe (+0.00), a two-layer probe read +0.26 and a linear probe given memory and
   the present together +0.24. Only one hidden robot was blind to every probe.
@@ -157,6 +157,10 @@ CARD: Trained to hide its count, / it couldn’t. / You could still read it. / H
   simple instrument mostly went blind, the stronger ones did not, and the minds changed a lot - hiding cost them the
   patience that made them worth hiding. The pilot misled: its one seed went dark to every probe (+0.01 at most) and
   kept waiting; on five fresh seeds, one did.
+- On the filmed morning (day 9101; checks at 29, 56, 98, all clean; trusted at 99) control-51's count, read by the
+  registered linear probe, steps 0.04 -> 1.00 -> 2.01 -> 2.97, and all three photographs are up within 12 steps of trust.
+  Hidden-51's reads 1.03 -> 1.74 -> 1.60 -> 1.55; it still waits that morning, then at 119 pulls the cord at one pole
+  four times over (up, down, up, down, up) before the other two go up at 141 and 149.
 - The turners themselves (before the last ten rounds, reported only): 3 of 5 met the waiting class, all read their
   count (+0.21..+0.45). Ten more rounds of plain teaching made all five controls wait.
 
