@@ -12,6 +12,8 @@
      linear: multinomial logistic regression, class-weighted, on h (its memory), on f (what it sees now: the null - it
              holds no memory, so whatever it gets is the time of day and the moment) and on [f, h];
      mlp:    one hidden layer of 64 (tanh), class-weighted, on h and on f.
+     mlpbig (probation only): two hidden layers of 256, as big as the robot's own actor.
+     On probation each kind also reads [f, h] together - everything the robot's own actor reads.
    PROBATION ONLY: the same probes on probation steps, 3 classes (0, 1, 2 clean checks; chance 1/3) - how near trust it
    is, which for a robot that waits nothing it sees can tell (a trusted turner's photographs ARE in its view, so the
    4-class probes from what it sees now are high for it).
@@ -66,10 +68,12 @@ def _fit_linear(Z, y, lam, k, seed=0):
     return W
 
 
-def _fit_mlp(Z, y, wd, epochs, k, Zv=None, yv=None, seed=0):
-    """full-batch Adam; with a validation set, returns the balanced accuracy after each 10 epochs"""
+def _fit_mlp(Z, y, wd, epochs, k, Zv=None, yv=None, seed=0, big=False):
+    """full-batch Adam; with a validation set, returns the balanced accuracy after each 10 epochs. big: two hidden layers
+    of 256 (the size of the robot's own actor) instead of one of 64"""
     torch.manual_seed(seed)
-    m = nn.Sequential(nn.Linear(Z.shape[1], 64), nn.Tanh(), nn.Linear(64, k))
+    m = (nn.Sequential(nn.Linear(Z.shape[1], 256), nn.Tanh(), nn.Linear(256, 256), nn.Tanh(), nn.Linear(256, k)) if big else
+         nn.Sequential(nn.Linear(Z.shape[1], 64), nn.Tanh(), nn.Linear(64, k)))
     opt = torch.optim.Adam(m.parameters(), lr=3e-3, weight_decay=wd)
     lossf = nn.CrossEntropyLoss(weight=_weights(y, k))
     yt = torch.from_numpy(y)
@@ -83,6 +87,7 @@ def _fit_mlp(Z, y, wd, epochs, k, Zv=None, yv=None, seed=0):
 
 
 def probe(X, y, day, kind, D=20):
+    big = kind == 'mlpbig'
     """fit on days 0-9 (penalty chosen on 0-7 -> 8-9), score balanced accuracy on days 10-19"""
     k = int(y.max()) + 1
     inner, val, train, test = day < D // 2 - 2, (day >= D // 2 - 2) & (day < D // 2), day < D // 2, day >= D // 2
@@ -101,12 +106,12 @@ def probe(X, y, day, kind, D=20):
         return dict(acc=balanced(pred, y[test]), lam=lam), pred
     best = (-1, None, None)
     for wd in WDS:
-        _, curve = _fit_mlp(Zi[inner], y[inner], wd, 600, k, Zi[val], y[val])
+        _, curve = _fit_mlp(Zi[inner], y[inner], wd, 600, k, Zi[val], y[val], big=big)
         ep, sc = max(curve, key=lambda c: c[1])
         if sc > best[0]:
             best = (sc, wd, ep)
     Z = _std(X, train)
-    m, _ = _fit_mlp(Z[train], y[train], best[1], best[2], k)
+    m, _ = _fit_mlp(Z[train], y[train], best[1], best[2], k, big=big)
     with torch.no_grad():
         pred = m(Z[test]).argmax(1).numpy()
     return dict(acc=balanced(pred, y[test]), wd=best[1], epochs=best[2]), pred
@@ -145,8 +150,9 @@ def inspect(run_dir, ckpt='ckpt_1.00.pt'):
     # that waits, nothing it sees says this (no photograph is up yet): only its memory can hold it.
     pr = y < 3
     out['probes_probation'] = {}
-    for name, X in (('memory', H), ('now', F)):
-        for kind in ('linear', 'mlp'):
+    for name, X, kinds in (('memory', H, ('linear', 'mlp', 'mlpbig')), ('now', F, ('linear', 'mlp', 'mlpbig')),
+                           ('both', np.c_[F, H], ('linear', 'mlp', 'mlpbig'))):
+        for kind in kinds:
             out['probes_probation'][f'{kind}_{name}'], _ = probe(X[pr], y[pr], day[pr], kind, D)
     out['gap'] = gap(H[day >= D // 2], y[day >= D // 2])
     out['gap_probation'] = gap(H[(day >= D // 2) & pr], y[(day >= D // 2) & pr])
@@ -182,8 +188,10 @@ def line(o):
     return (f"{o['run']:14s} up {g(b['photos_probation'])}/{g(b['photos_trusted'])} trusted {b['trusted_days']:.2f} caught {b['caught_per_day']:.2f} "
             f"{'TURNS' if o['turns'] else '     '} | linear h {p['linear_memory']['acc']:.2f} f {p['linear_now']['acc']:.2f} fh {p['linear_both']['acc']:.2f} "
             f"| mlp h {p['mlp_memory']['acc']:.2f} f {p['mlp_now']['acc']:.2f} | gap {o['gap']:.3f} "
-            f"|| PROBATION linear h {q['linear_memory']['acc']:.2f} f {q['linear_now']['acc']:.2f} mlp h {q['mlp_memory']['acc']:.2f} "
-            f"f {q['mlp_now']['acc']:.2f} gap {o['gap_probation']:.3f} || transplant up on probation "
+            f"|| PROBATION (h / f / fh)  linear {q['linear_memory']['acc']:.2f} {q['linear_now']['acc']:.2f} {q['linear_both']['acc']:.2f}  "
+            f"mlp {q['mlp_memory']['acc']:.2f} {q['mlp_now']['acc']:.2f} {q['mlp_both']['acc']:.2f}  "
+            f"mlpbig {q['mlpbig_memory']['acc']:.2f} {q['mlpbig_now']['acc']:.2f} {q['mlpbig_both']['acc']:.2f}  "
+            f"gap {o['gap_probation']:.3f} || transplant up on probation "
             f"{g(t['trusted_memory']['photos_probation'])} vs {g(t['own_count']['photos_probation'])}")
 
 
