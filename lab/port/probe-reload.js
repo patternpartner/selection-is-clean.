@@ -17,7 +17,8 @@
 // encodePopulation/decodePopulation in place, with all world state kept. Paired with the same RESEED k, an arm differs from
 // its NULL only by the reset (#369).
 // copies: op 225 lateral copies in the window (the engine's __on225 hook); desync: living creatures whose running program is not their
-// genome's (#369). Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
+// genome's (#369); laws, lawKept, lawRevert: the engine's cumulative law proposals and verdicts, lawTrial: the law on probation (#371).
+// Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis);
 require(path.join(ROOT,'harness-env.js'))(globalThis);
@@ -58,7 +59,7 @@ m._compile(code+`
     let tot=0, H=0, ms=0, nf=0, fresh=0; const inc=[]; for(let T=0;T<TASK_NF;T++){ const d=tE[T]-prev[T]; prev[T]=tE[T]; if(d>0){ inc.push([T,d]); tot+=d; if(!ever[T]){ ever[T]=1; fresh++; } } }
     for(const [T,d] of inc){ const q=d/tot; H-=q*Math.log(q); ms+=q*TASK_SZ4[T]; nf++; }
     const progs=new Set(); let alive=0, rd=0, desync=0; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; if(pGenome[i]&&pProg[i]!==pGenome[i].vmProgram)desync++; const p=pProg[i]||[]; let k=''; let r=0; for(const x of p){ k+=x[0]+','+(x[1]|0)+','+(x[2]|0)+','+(x[3]|0)+';'; if(x[0]===TASK_OP0+3)r=1; } rd+=r; progs.add(k); }
-    out(JSON.stringify({tick:t, alive, meanAlive:aN?Math.round(aSum/aN):alive, taskInc:+(tEv.income-li).toFixed(2), sunInc:+(tEv.sun-ls).toFixed(2), paid:tEv.paid-lp, fnPaid:nf, newToHistory:fresh, everPaid:ever.reduce((a,b)=>a+b,0), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), progs:progs.size, readCarried:rd, copies:copies-lastCopies, desync}));
+    out(JSON.stringify({tick:t, alive, meanAlive:aN?Math.round(aSum/aN):alive, taskInc:+(tEv.income-li).toFixed(2), sunInc:+(tEv.sun-ls).toFixed(2), paid:tEv.paid-lp, fnPaid:nf, newToHistory:fresh, everPaid:ever.reduce((a,b)=>a+b,0), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), progs:progs.size, readCarried:rd, copies:copies-lastCopies, desync, laws:__liveness['cosmos.law']|0, lawKept:__liveness['cosmos.lawKept']|0, lawRevert:__liveness['cosmos.lawRevert']|0, lawTrial:__lawTrial&&__lawTrial.idx!==undefined?LAW_DECLARED[__lawTrial.idx].name:null}));
     li=tEv.income; ls=tEv.sun; lp=tEv.paid; aSum=0; aN=0; lastCopies=copies; } };`, m.filename);
 if(!globalThis.TASKS_ON) console.error('warning: TASKS is off - set TASKS=1');
 const saveAt=(process.env.SAVEAT||'').split(',').filter(Boolean).map(Number), saveDir=process.env.SAVEDIR||'.';
