@@ -29139,4 +29139,16 @@ look in, not measurements.
 - So part of AIM looks like food and part like selection. **One caution on reading "selection" here:** the founder's aim is on
   amplitude, and weight is heritable. A world that out-computes FLAT could be one where lineages evolved bigger stipends, which is
   selection on how much food a creature claims, not on what it wants. The census below is there to tell those apart.
+- **The aim census** (`lab/port/probe-aims.js`, draws nothing; seed 10401's default world, `out-live-design/aims-10401.txt`):
+
+  | Tick | Alive | Aims per creature | Who holds which aim (net pay per aim per tick) |
+  |---|---|---|---|
+  | 500 | 542 | 1.96 | the founder's pair: amplitude (543, +0.17) and memory slot 0 (489, -0.03; nothing writes it, so it only costs its tax) |
+  | 1,500 | 678 | 1.97 | the same pair, plus **age** (97, +0.28), the best payer: it rises every tick and its span is 20,000, so it is near any target |
+  | 3,000 | 1,744 | 2.70 | amplitude on everyone (+0.16); age 354 (+0.17), resource 104 (+0.12), frequency 11 (+0.16); memory slots 7 and 6 (515 and 48, moving 69-86% of ticks, +0.05 to +0.07); slots 0 and 3 still (1,414 between them, the tax only) |
+
+  Weights barely moved (0.17-0.36). **What spread are the senses that pay whatever the creature does** (age, amplitude, resource),
+  and a memory slot some programs write. Against a death threshold of 0.04, the amplitude aim alone is a stipend four times that
+  size, every tick. So if Question 2 comes back SELECTED, the census says the likeliest thing being selected is a better stipend.
+  That is a different claim from "purposes the lineages chose" (#218h), and it is the one a write-up of that verdict has to make.
 - Pre-registered as `lab/port/PREREG-aim.md` (committed e2b5041 before any decision run), seeds 11001-11003.
