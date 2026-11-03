@@ -29109,6 +29109,12 @@ look in, not measurements.
   - speciation: 23 alive;
   - the niche economy: 60 alive;
   - the novelty pair (`OPCODE_NOVELTY` + `NOVELTY_ARCHIVE`): 828 alive, 380 functions (the default: 678, 412).
+  - **CORRECTION, made the same day:** the cosmos, decide and atoms lines above test nothing, or nearly nothing. `COSMOS`,
+    `COSMOS_LAW`, `DECIDE`, `DECIDE_REAL` and 13 of the 23 atom flags are resolved as `(globalThis.__X??1)|0)!==0`, so they
+    were ON in the stack-less world too. "Byte-identical" for cosmos and decide is that, not a sign they are inert, and the
+    atoms arm moved only its default-off flags. **#258b's trap again, in the arm I built to avoid it:** the LIVE block is not
+    the only place a LIVE flag gets its value. The drop-one arms below set each flag to 0 explicitly and are not affected,
+    and the novelty finding stands, because `OPCODE_NOVELTY` and `NOVELTY_ARCHIVE` are read as `|0)===1`.
 - **Inside the pair it is AIM.** The archive alone dies, opcode novelty with `AIM=0` dies, and opcode novelty alone lives (344, 129).
   AIM (#218c) is not a LIVE flag (its reader defaults ON), but it runs only INSIDE the opcode-novelty branch of
   `applyNicheEconomy`. Switching off `OPCODE_NOVELTY` switches AIM off too: in the default world, `AIM=0` and `OPCODE_NOVELTY=0` cut
@@ -29129,7 +29135,8 @@ look in, not measurements.
   | speciation | 732, crashing to 106 alive from 3,000 |
   | cosmos | 2,586, AHEAD |
 
-  One stream each: only the byte-identities are facts. Group selection sits inside cluster budding, behind a persistence-and-size
+  One stream each: only the byte-identities are facts. Cosmos off on 10402 as well: 1,650 against 1,578 at 4,000, and 832
+  against 218 at 2,000. Group selection sits inside cluster budding, behind a persistence-and-size
   gate this world did not reach (PORT-PLAN's cull note, #253). It is unexecuted, not shown dead, so the template cannot rule on it.
   Cosmos ahead is one stream in a chaotic world. It is worth a pre-registered test (PORT-PLAN names it), not a claim.
 - **`AIM=0` in the default world, 4,000 ticks:** 138 and 105 functions, against 1,834 and 1,578.
