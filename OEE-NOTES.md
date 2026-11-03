@@ -28990,3 +28990,9 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
     - at the 60,000 chunk itself: NOT met (10403 rose back to 17%).
 
     Written down so the ambiguity is not resolved after the fact in whichever direction reads better.
+- **#370 chunk 6 (ticks 60,000-70,000).**
+  - **10403**, which never crashed until chunk 5, is now in the dead state: 0 new functions, size 0.30, task income 2, 269 alive.
+  - **10401** is fading after its revival: 1,862 new (23% of peak), at 32.0% of the space.
+  - **10402**: still dead, 0.
+  - **At 70,000, two of three worlds are dead and the third is past its peak.** Each world got one or two lives, and between them
+    the dead state lasted tens of thousands of ticks.

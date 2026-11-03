@@ -5,6 +5,7 @@
    40000 ticks  new  5840 (100% of peak)  ever 6337 (9.7%)  size 5.44  exp(H) 771  alive 1301 (min 137)  task inc 31227  copies 112  desync max 10  [restored 103, seen 497]
    50000 ticks  new  8130 (100% of peak)  ever 14467 (22.1%)  size 6.63  exp(H) 1897  alive 1646 (min 1543)  task inc 61254  copies 210  desync max 37  [restored 1557, seen 6337]
    60000 ticks  new  4633 (57% of peak)  ever 19100 (29.1%)  size 6.78  exp(H) 2057  alive 1705 (min 1605)  task inc 72072  copies 1  desync max 0  [restored 1747, seen 14467]
+   70000 ticks  new  1862 (23% of peak)  ever 20962 (32.0%)  size 6.13  exp(H) 1632  alive 1704 (min 1573)  task inc 67065  copies 30  desync max 3  [restored 1757, seen 19100]
 == 10402
    10000 ticks  new   506 (100% of peak)  ever 506 (0.8%)  size 2.58  exp(H) 46  alive 258 (min 98)  task inc 968  copies 0  desync max 0
    20000 ticks  new    38 (8% of peak)  ever 544 (0.8%)  size 1.52  exp(H) 14  alive 126 (min 78)  task inc 265  copies 0  desync max 0  [restored 154, seen 506]
@@ -12,6 +13,7 @@
    40000 ticks  new     0 (0% of peak)  ever 544 (0.8%)  size 0.24  exp(H) 1  alive 132 (min 98)  task inc 8  copies 0  desync max 0  [restored 111, seen 544]
    50000 ticks  new     1 (0% of peak)  ever 545 (0.8%)  size 1.17  exp(H) 6  alive 103 (min 79)  task inc 125  copies 0  desync max 0  [restored 126, seen 544]
    60000 ticks  new     0 (0% of peak)  ever 545 (0.8%)  size 0.51  exp(H) 2  alive 116 (min 88)  task inc 19  copies 1  desync max 1  [restored 92, seen 545]
+   70000 ticks  new     0 (0% of peak)  ever 545 (0.8%)  size 0.37  exp(H) 2  alive 126 (min 92)  task inc 17  copies 8  desync max 1  [restored 119, seen 545]
 == 10403
    10000 ticks  new  2641 (100% of peak)  ever 2641 (4.0%)  size 5.20  exp(H) 288  alive 1102 (min 289)  task inc 10043  copies 4  desync max 0
    20000 ticks  new  1262 (48% of peak)  ever 3903 (6.0%)  size 5.74  exp(H) 271  alive 1610 (min 1466)  task inc 9392  copies 216020  desync max 29  [restored 1717, seen 2641]
@@ -19,3 +21,4 @@
    40000 ticks  new   873 (33% of peak)  ever 6194 (9.5%)  size 4.93  exp(H) 374  alive 1541 (min 1424)  task inc 11804  copies 36  desync max 3  [restored 1414, seen 5321]
    50000 ticks  new   229 (9% of peak)  ever 6423 (9.8%)  size 3.78  exp(H) 168  alive 609 (min 326)  task inc 5154  copies 11  desync max 0  [restored 1751, seen 6194]
    60000 ticks  new   439 (17% of peak)  ever 6862 (10.5%)  size 2.41  exp(H) 151  alive 478 (min 150)  task inc 3472  copies 4  desync max 1  [restored 1054, seen 6423]
+   70000 ticks  new     0 (0% of peak)  ever 6862 (10.5%)  size 0.30  exp(H) 1  alive 269 (min 169)  task inc 2  copies 0  desync max 0  [restored 184, seen 6862]
