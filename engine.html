@@ -10702,6 +10702,7 @@ const REPL_PREY=(__tk('__REPL_PREY',1)|0)!==0;
 // fifth of each take is lost - below the 0.25 a birth costs, until the world aged out (#365's mechanism). Default 0: today's predation,
 // byte-identical. Decided by PREREG-refuge.md.
 const REPL_REFUGE=(__tk('__REPL_REFUGE',0)|0)!==0;
+const TASK_SHUFFLE=(__tk('__TASK_SHUFFLE',0)|0)!==0;   // #376: see taskShuffleTo. A control, default 0.
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
                           :[[TASK_OP0,0,0,0],[TASK_OP0,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]];
@@ -10764,8 +10765,12 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   if(tJ[D]!==0){ tEv.dirty++; return; }
   const T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; }
   if(tPE[i]===e)return; tPE[i]=e;   // one payment per epoch
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const x=pE[i]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[i]=SUN_STORE; } else pE[i]=x;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
+// #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
+// that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between
+// computing a function and being fed for it is cut. Off (default) this is never called and draws nothing.
+function taskShuffleTo(i){ for(let t=0;t<32;t++){ const r=(Math.random()*N)|0; if(palive[r])return r; } return i; }
 function taskDrawOp(){ return Math.random()<TASK_DRAWP?TASK_OP0+((Math.random()*5)|0):Math.floor(Math.random()*OPCODE_DRAW); }   // only called under TASKS
 // the threshold-free readouts (#345): effective number of functions over the whole income vector, and every function with income >= 10 per mille of the total
 function taskStats(){ let tot=0; for(let T=0;T<TASK_NF;T++)tot+=tE[T]; let H=0, ms=0; const full=[];
