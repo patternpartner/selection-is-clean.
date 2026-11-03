@@ -1,0 +1,4 @@
+{"boot":true,"tick":0,"alive":329,"loaded":false,"germLen":19}
+{"tick":500,"alive":311,"meanAlive":392,"taskInc":63.7,"sunInc":130.44,"paid":3928,"fnPaid":57,"newToHistory":57,"everPaid":57,"expH":36.34,"meanSz":2.2,"progs":165,"readCarried":309,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1000,"alive":193,"meanAlive":226,"taskInc":63.28,"sunInc":60.53,"paid":1707,"fnPaid":77,"newToHistory":34,"everPaid":91,"expH":52.45,"meanSz":2.459,"progs":126,"readCarried":191,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1500,"alive":149,"meanAlive":178,"taskInc":57.1,"sunInc":51.05,"paid":853,"fnPaid":81,"newToHistory":32,"everPaid":123,"expH":64.76,"meanSz":3.025,"progs":117,"readCarried":145,"copies":0,"desync":0,"laws":1,"lawKept":0,"lawRevert":0,"lawTrial":"FOUND_NEED"}

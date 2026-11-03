@@ -1,0 +1,4 @@
+{"boot":true,"tick":0,"alive":329,"loaded":false,"germLen":19}
+{"tick":500,"alive":17,"meanAlive":16,"taskInc":6.75,"sunInc":60.38,"paid":266,"fnPaid":7,"newToHistory":7,"everPaid":7,"expH":4.14,"meanSz":1.119,"progs":5,"readCarried":17,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1000,"alive":11,"meanAlive":12,"taskInc":5.57,"sunInc":31.38,"paid":209,"fnPaid":4,"newToHistory":1,"everPaid":8,"expH":2.83,"meanSz":1.086,"progs":8,"readCarried":11,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1500,"alive":21,"meanAlive":18,"taskInc":7.04,"sunInc":40.93,"paid":255,"fnPaid":8,"newToHistory":2,"everPaid":10,"expH":4.89,"meanSz":1.132,"progs":11,"readCarried":21,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}

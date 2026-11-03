@@ -1,0 +1,4 @@
+{"boot":true,"tick":0,"alive":329,"loaded":false,"germLen":19}
+{"tick":500,"alive":11,"meanAlive":14,"taskInc":6.94,"sunInc":57.55,"paid":236,"fnPaid":7,"newToHistory":7,"everPaid":7,"expH":4.68,"meanSz":1.138,"progs":3,"readCarried":11,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1000,"alive":11,"meanAlive":14,"taskInc":5.16,"sunInc":34.31,"paid":235,"fnPaid":5,"newToHistory":1,"everPaid":8,"expH":2.6,"meanSz":1.062,"progs":4,"readCarried":11,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1500,"alive":17,"meanAlive":13,"taskInc":5.76,"sunInc":30.71,"paid":244,"fnPaid":6,"newToHistory":1,"everPaid":9,"expH":3.18,"meanSz":1.133,"progs":2,"readCarried":17,"copies":0,"desync":0,"laws":1,"lawKept":0,"lawRevert":0,"lawTrial":"LEVEL_FOREST_REG"}

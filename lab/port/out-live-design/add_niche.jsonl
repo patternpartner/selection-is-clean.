@@ -1,0 +1,4 @@
+{"boot":true,"tick":0,"alive":329,"loaded":false,"germLen":19}
+{"tick":500,"alive":85,"meanAlive":72,"taskInc":15.38,"sunInc":109.76,"paid":725,"fnPaid":27,"newToHistory":27,"everPaid":27,"expH":16.79,"meanSz":1.826,"progs":41,"readCarried":85,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":1000,"alive":83,"meanAlive":92,"taskInc":22.67,"sunInc":70.05,"paid":834,"fnPaid":24,"newToHistory":9,"everPaid":36,"expH":16.73,"meanSz":1.741,"progs":52,"readCarried":83,"copies":0,"desync":0,"laws":1,"lawKept":0,"lawRevert":0,"lawTrial":"LEVEL_FOREST_REG"}
+{"tick":1500,"alive":60,"meanAlive":73,"taskInc":18.25,"sunInc":49.73,"paid":643,"fnPaid":24,"newToHistory":7,"everPaid":43,"expH":17.11,"meanSz":1.719,"progs":43,"readCarried":58,"copies":0,"desync":0,"laws":1,"lawKept":0,"lawRevert":0,"lawTrial":"LEVEL_FOREST_REG"}
