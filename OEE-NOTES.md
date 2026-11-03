@@ -27407,3 +27407,1656 @@ Diagnostics on #334's three LIVE worlds (`lab/probe-others.js`): each world's 1,
 - **The plateau fits complement closure:** reachable = the functions programs compute alone plus their complements, roughly twice the control's count (63-64 ever active against 39-43). Late on about 25 functions are active per world; the three LIVE seeds share 17 of them, but no function of size 7+ is active late on all three (Jaccard 0.55-0.75 LIVE, 0.71-0.85 CONTROL).
 - **A readout that failed, recorded:** the probe's composition DEPTH kept the smallest depth ever seen for each function, and every function is sometimes paid without a read, so every depth read 0. The read share and the read function g carry the finding instead.
 - **What would test deeper composition:** refuse payment for the complement of the word just read (as #334 already refuses the word itself), so NOT-of-a-neighbour pays nothing and only a real combination of g with the inputs (NAND(g,x) and up) can climb; and grade hardness by circuit size (gates shared) beside formula size, so negation is not counted as depth.
+
+### #336 — PRE-REGISTERED: STRICT composition — complements of reads refused too, hardness graded by CIRCUIT size.
+
+The user's choice after #335. **Core changes** (`lab/oee-core-tasks.js`, both off = the #334 file exactly, seed 5, 20,000 ticks): `REFUSE_NOT=1` refuses payment for an output equal to, or the complement of, any of the organism's last four reads this epoch (closing NOT w, and #334's read-A-read-B-output-A loophole); `DEPTH=1` tracks a DATA-FLOW composition depth through the registers and tallies payments by depth (bookkeeping only: same trajectory as without it). **Circuit size:** `CSZ` in `lab/core-tasks.js`, the exact minimum NAND circuit size (gates shared) of all 256 three-input functions by iterative deepening (all within 9 gates except 0x16 = 10). Formula size charges NOT(f) as 2*size(f)+1. **#334 re-graded by circuit size:** LIVE hardest 7/7/7 against CONTROL 4/6/4 — the effect is smaller than formula size said, and still there. **Sanity run** (#334's seed-7001 LIVE save, 20,000 ticks, REFUSE_NOT switched on): 5.7 million complements refused; hardest falls from formula 10 / circuit 7 to formula 7 / circuit 6. Depth 2+ payments are common but mostly on trivial functions (NOT x1), so the depth readout is an upper bound on composition, reported only. Chunked resume checked exact with both options on. Pre-registration `lab/PREREG-strict.md`: seeds 7101-7103, 1,200,000 ticks; rule 3 by circuit size (STRICT hardest above CONTROL's and at least 6, on 2 of 3 seeds). Prediction: BREAKS THE WALL, THEN PLATEAUS, by one or two gates. Results follow.
+
+**#336 RESULT — NOT SUPPORTED by the rule as written (rule 3 failed on transients); descriptively, STRICT sustains functions about 2-3 circuit gates harder than CONTROL, window after window, and still plateaus.** 6 worlds (seeds 7101-7103), 1,200,000 ticks each, all counted (read hits 84-86% in STRICT). Analysis `lab/analyse-strict.js`.
+
+| seed | hardest EVER active, circuit (formula), STRICT / CONTROL | hardest per window, circuit, typical STRICT / CONTROL | ever active STRICT / CONTROL |
+|---|---|---|---|
+| 7101 | 7 (10) / 7 (10) | 6 (range 5-7) / 3-4 | 54 / 34 |
+| 7102 | 7 (10) / 7 (10) | 6 (range 5-7) / 3-4 | 62 / 46 |
+| 7103 | 7 (10) / 7 (10) | 6 (range 5-7) / 3-4 | 59 / 35 |
+
+- **Rule 3 failed:** it compares the hardest function EVER active, and every CONTROL world had one window at circuit 7 (formula 10) - window 20 on 7101, window 1 on 7102, window 5 on 7103, the latter two inside the opening burst - so STRICT's 7 was never strictly above. Rules 1 and 2 fail too (new arrivals stop). **Verdict as written: NOT SUPPORTED.** Not re-ruled.
+- **What the windows show (reported only):** STRICT's hardest active function is circuit 6 in most windows (5-7); CONTROL's is 3-4 apart from those single windows. Ever-active 54-62 against 34-46. With copies AND complements of reads unpaid (about 300 million copies and 210-230 million complements refused per STRICT world), reading neighbours still sustains functions 2-3 gates harder. That looks like composition that survives the negation loophole, and it plateaus like everything else in this line.
+- **The rule's flaw, for the next pre-registration:** "hardest ever" is set by one window, and the opening burst of a TASKS world throws transients. #334 used the same rule and happened to have none in its CONTROL. A rule that rules on SUSTAINED hardness (e.g. the median of the per-window hardest over the second half, or the hardest active in at least 10 windows) would have read these runs the way the windows do; that has to be decided before seeing data, so it belongs to a new experiment on fresh seeds.
+- **My prediction** (BREAKS THE WALL, THEN PLATEAUS, by one or two gates) was wrong by the rule and roughly right about the windows.
+- Data-flow depth 2+ payments are again mostly trivial functions (f3, dd, cf, bb: circuit 2), as the sanity run warned: depth stays an upper bound.
+
+### #337 — PRE-REGISTERED (`lab/PREREG-strict2.md`, committed c214f9f before any decision run): STRICT on fresh seeds, ruled on SUSTAINED hardness. **CONFIRMED, 3 of 3 seeds.**
+
+**Setup.**
+- Asked for by the user before moving to four inputs. #336's design is unchanged: STRICT = OTHERS=1, REFUSE_NOT=1, DEPTH=1; CONTROL = OTHERS=2, DEPTH=1.
+- Fresh seeds 7201-7203, 1,200,000 ticks each.
+- **New rule A (ruling):** the median over windows 21-40 of each window's hardest active function, by exact NAND circuit size. STRICT must be at least 5 and at least CONTROL + 2, on at least 2 of 3 seeds.
+- **New rule B (ruling):** STRICT has more functions ever active than CONTROL, on at least 2 of 3 seeds.
+- The thresholds were designed on #336's seeds, which do not decide. Run with `SEEDS=7201,7202,7203 node lab/analyse-strict.js lab/out-strict2`.
+
+**Correction recorded in the pre-registration.** It was suggested that every three-input function needs at most 7 NAND gates. In this basis that is false:
+- XOR3 needs 8, XNOR3 9, and 0x16 10;
+- 28 functions need 8 or more.
+
+So the 7-against-7 tie in #336 was not a ceiling of the function space.
+
+**Step 1.** All three seeds counted. STRICT read hits ran 82-84% over the second half.
+
+**Results.**
+
+| seed | sustained circuit (median, windows 21-40), STRICT / CONTROL | first-half median | ever active, STRICT / CONTROL | hardest ever, circuit, STRICT / CONTROL |
+|---|---|---|---|---|
+| 7201 | **6 / 4** | 5 / 3.5 | **59 / 45** | 6 / 7 |
+| 7202 | **6 / 4** | 5 / 3 | **57 / 43** | 7 / 5 |
+| 7203 | **6 / 3.5** | 6 / 4 | **55 / 36** | 7 / 6 |
+
+- **Rule A held on 3/3 and rule B on 3/3: CONFIRMED.** This matches my prediction.
+- The numbers sit almost on #336's: sustained 6 against 3-4, and ever active about 1.3-1.5 times CONTROL's.
+- **#336's old rules on these seeds (reported only):** rule 3 (hardest ever) now holds 2/3. On 7201 CONTROL again had a transient at circuit 7, in windows 23-24, while STRICT topped out at 6. Rules 1-2 (new functions late, no deceleration) fail again.
+- **The plateau stands.** STRICT makes the world sustain functions about two gates harder, not an open-ended stream of new ones.
+- **The sustained 6 is not at the roof.** Nothing held 8-10 (XOR3, XNOR3, 0x16) in any window of either arm.
+- Data-flow depth 2+ payments are again mostly trivial functions (cf, f3, f: circuit 1-2). Depth stays an upper bound and is not evidence of deep composition.
+
+**Next, per the user's plan:** Step 2 is four inputs (16-bit truth tables), graded exactly.
+
+### #338 — PRE-REGISTERED (`lab/PREREG-four.md`, committed b911738 before any decision run): FOUR INPUTS. **NOT REPLICATED: STRICT does not sustain harder functions at four inputs, and the plateau stands in both arms.**
+
+Step 2 of the user's plan after #337.
+
+**What was built.**
+- **Grading tables.** `lab/nand4.c` gives exact NAND formula sizes for all 65,536 four-input functions (levels 0-26). It also gives exact NAND circuit sizes up to 9 gates, by exhaustive canonical search over 14.8e9 circuits: 29,687 functions have an exact size and 35,849 read "10+". The same program reproduces #336's three-input tables exactly.
+- **Core.** `lab/oee-core-tasks.js` takes `NIN:4`; with it unset the core is byte-identical to #337's.
+
+**What the pilot found, on practice seed 99, before the rule was written.** Two lotteries.
+1. **Constant words.** With 32 shuffled positions, constant words were paid as one-row functions such as NOR4 and AND4.
+   - Fix: each 16-bit half holds the whole truth table.
+2. **An arithmetic counter.** A SUB/ADD/LOADK loop whose word 0x82000 has one bit per half was paid for one-row functions of 7-10 gates, about one draw in 16.
+   - Fix: only CLEAN words pay. A clean word is made by INPUT, a clean neighbour's word, NAND and copies.
+   - Both arms then started, and the 450,000-tick pilot showed STRICT 5 against CONTROL 3-4.
+
+**Run.** Seeds 7301-7303, 1,200,000 ticks each. All 3 seeds counted. STRICT read hits ran 43-89%, and every world started: STRICT at windows 0, 4 and 2, CONTROL at windows 0, 10 and 23.
+
+**Results.**
+
+| seed | sustained circuit (median windows 21-40), STRICT / CONTROL | formula | ever active | windows with new active fn, last 10 | ever-active growth Q2 -> Q4, STRICT / CONTROL |
+|---|---|---|---|---|---|
+| 7301 | 3 / 3.5 | 5 / 5.5 | 60 / 60 | 1 / 2 | 3 -> 1 / 9 -> 2 |
+| 7302 | 3 / 3 | 5 / 5 | 68 / 65 | 2 / 1 | 14 -> 5 / 48 -> 1 |
+| 7303 | 3.5 / 3 | 4 / 5 | 48 / 48 | 3 / 6 | 0 -> 4 / 0 -> 11 |
+
+- **Rule outcomes:** A held on 0/3 seeds, B on 1/3, C on 0/3, D on 1/3. **NOT REPLICATED.** My prediction (HARDER, NOT BROADER) was wrong in the optimistic direction again.
+- **What STRICT did hold.** STRICT reached AND4 (0x8000, circuit 6) and NAND4 (0x7fff, circuit 5), and held them for runs of windows on 7302 and 7303. It always fell back to circuit 3-4, the same band as CONTROL. CONTROL's hardest was 3-4 throughout.
+- **Breadth is the same.** Ever-active counts were 48-68 in both arms.
+- **The plateau is there in both arms.** Most new functions arrive in the first 300,000 ticks after a world starts, and the last 10 windows hold 1-6 windows with anything new. 65,530 functions are available; about 60 were ever used.
+- **The gain readout** (the user's suggestion; it grades the output itself, CSZ(paid) - CSZ(read)). Of the payments made right after a read of a word that was a function:
+  - +1 gate: 42-74%;
+  - 0: 15-20%;
+  - -1: 15-16%;
+  - +2: 3-21%;
+  - +3 or more: under 1%.
+- **What the gain readout shows.** The reader nearly always adds a single gate to what it read, NAND(read, input). Since that new function is published in turn, composition could in principle stack; it does not stack past one or two layers in the population.
+
+**What this does not separate.** The four-input world differs from #337's in two ways besides the input count: the half-per-truth-table draw, and the clean-word rule. So "STRICT's sustained 6 does not survive four inputs" and "STRICT's sustained 6 does not survive the clean-word rule" are not yet told apart.
+
+The cheap test is #337's three-input STRICT with the clean-word rule. That would need the rule enabled at NIN=3, which is a new option, so it is a new experiment. A positive result there would point at the input count; a null would mean #337's effect leaned on words the clean rule now refuses.
+
+### #339 — PRE-REGISTERED (`lab/PREREG-clean3.md`, committed 3cca4c5 before any decision run): does #337 survive CLEAN words? **YES - SURVIVES, 3 of 3 seeds.** #338's four-input null is not the clean-word rule.
+
+**The rule.** CLEAN=1 refuses any output with a bit that depends on junk:
+- junk means a word made by anything but NAND and copies, or an earlier epoch's inputs;
+- it is tracked bit-exactly through the registers, with NAND's controlling value: a clean 0 forces the output bit.
+
+Two earlier versions were wrong and are recorded in the pre-registration:
+- **one flag per register** made accumulators R1=NAND(read,R1) unclean forever;
+- **the first bit-exact version's input mask** dropped the dependence of a bit forced by two clean zeros.
+
+**The run.** Three inputs, #337's world and rule unchanged, both arms CLEAN=1, fresh seeds 7401-7403, 1,200,000 ticks. Run it with `SEEDS=7401,7402,7403 node lab/analyse-strict.js lab/out-clean3`.
+
+| seed | sustained circuit (median windows 21-40), STRICT / CONTROL | first-half median | ever active |
+|---|---|---|---|
+| 7401 | **6 / 3.5** | 5 / 3 | **55 / 42** |
+| 7402 | **6 / 4** | 6 / 3 | **51 / 40** |
+| 7403 | **6 / 3.5** | 6 / 3 | **55 / 36** |
+
+- **Rule A held on 3/3 and rule B on 3/3. SURVIVES CLEAN WORDS**, as predicted.
+- **The numbers match #337 (6 against 3.5-4).** STRICT's per-window line is if anything steadier: it sits at 5-7 from window 2-3 on.
+- **So #337's lift is real boolean composition, and #338's drop at four inputs comes from the four-input world itself:** the input count, or the half-per-truth-table draw. That is the open question now.
+- **#336's old rules on these seeds:** rule 3 holds; rules 1-2 (late novelty) fail again. The plateau stands.
+
+**Where the paid income comes from.** `lab/probe-twowire.js` counts the distinct reads from the current epoch that feed each paid output (k), by data flow. It also splits by whether the register carried junk at the epoch's start (a stale start). Shares of all income, at the saves at 1,200,000 ticks:
+
+| world | clean, fresh start, k=0/1/2/3+ | clean, stale start, k=0/1/2/3+ | unclean (any) |
+|---|---|---|---|
+| #337 7201 | .13/.30/.01/.03 | .13/.01/.005/.056 | 34% |
+| #337 7202 | .04/.55/.02/.03 | .01/0/.001/.015 | 34% |
+| #337 7203 | .10/.11/.01/.01 | .07/.11/.001/.008 | 60% |
+| #339 7401 | .05/.91/.04/.00 | .00/0/0/.001 | refused |
+| #339 7402 | .06/.73/.01/.01 | .08/.11/.001/.007 | refused |
+| #339 7403 | .26/.42/.03/.04 | .20/.00/.001/.043 | refused |
+
+- **The user's k=2 bleach prediction holds in all six worlds.** It says a register that starts the epoch stale and folds two reads into a fully clean word must produce NOT of the last read, which is refused. Stale-start clean income at k=2 is 0.0-0.5% of all income, below k=3+ (0.1-5.6%) on every world. Fresh-start k=2 is paid, 0.4-4.3%.
+- **A correction to that prediction.** Stale-start clean income also appears at k=0 and k=1 (up to 20%). The bleach can be an INPUT word, not only a read: a NAND with an input's zeros washes junk just as a read's zeros do.
+- **Under CLEAN, STRICT's income is mostly single-read.** One read feeding an output carries 42-91%; 2+ reads carry 2-12%. So the sustained 6 gates is mostly NAND-logic on top of ONE published word, which can itself be 4-5 gates. That fits the user's u^3 = u argument, under which single-wire composition stops 1-2 layers above the word read.
+- **Gating two distinct reads exists but is small.** The instruction set allows it (READ, MOV k, TURN, READ, NAND k), and so does the accumulator R1=NAND(read,R1).
+
+### #340 — PRE-REGISTERED (`lab/PREREG-four-clean.md`, committed cadf780 before any decision run): four inputs with the BIT-EXACT clean rule. **COMPOSITION REPLICATES, PLATEAU STANDS. #338's null was the crude per-register rule, not four inputs.**
+
+**What changed from #338.** Only the clean rule. #338's per-register flag counted every register's starting zero as junk and could not wash junk out through NAND's controlling 0. #339's bit-exact masks replace it.
+
+**Run.** Seeds 7501-7503, 1,200,000 ticks; all 3 counted. Run it with `SEEDS=7501,7502,7503 node lab/analyse-four.js lab/out-four-clean`.
+
+| seed | sustained circuit (median windows 21-40), STRICT / CONTROL | formula | ever active | windows with new fn, last 10 | ever-active growth Q2 -> Q4, STRICT |
+|---|---|---|---|---|---|
+| 7501 | **6 / 3** | 7 / 5 | **60 / 53** | 4 / 2 | 14 -> 18 |
+| 7502 | **6 / 3** | 7 / 5 | **64 / 45** | 3 / 0 | 13 -> 7 |
+| 7503 | **6 / 3** | 6 / 5 | **63 / 48** | 3 / 2 | 13 -> 3 |
+
+**Rule outcomes.**
+- **A held on 3/3 and B on 3/3.** C failed (0/3 seeds reach 5 of the last 10 windows, though STRICT beats CONTROL summed). D held on 2/3: 7501 grew faster late than mid-run, and 7502 grew by more than half.
+- **This is the first time any arm passed no-deceleration in this line of work.** It held with only 3-6 new functions in the last quarter, so it is weak.
+
+**What the worlds held.**
+- **STRICT** sat at circuit 6 for most of the second half, with peaks at 7, 8 and 9.
+  - The 6-gate functions: 0xf2ff, 0x8000 (AND4), 0xfcfc, 0xfafa.
+  - The 8- and 9-gate peaks fell on windows 23-27 of 7503 and window 10 of 7502.
+- **CONTROL** sat at 3, the same as #338's control. Its hardest function was a 3-gate one most of the time.
+
+**The gain readout** (CSZ(paid) - CSZ(read), payments right after a read of a function):
+- +1: 35-40%;
+- -1: 38-43% (a reader paid for a function simpler than the word read);
+- +2: 16-21%;
+- +3: 1%.
+
+#338's readout, under the crude rule, had +2 at 3-21% and +3 under 1%.
+
+**So the chain is closed.**
+1. #337's lift survives clean words at three inputs (#339).
+2. It replicates at four inputs once the rule is the right one (#340).
+3. #338's NOT REPLICATED was produced by an instrument: the clean rule's first version, not the world.
+4. **What stands at both input counts:** reading neighbours' outputs makes a world sustain functions about 2-3 gates harder than the same world without, with more functions ever active. New functions still stop arriving.
+5. The four-input space did not remove the plateau. It did make the no-deceleration rule pass on 2/3 seeds, the nearest this line has come.
+
+### #341 — PRE-REGISTERED (`lab/PREREG-tree.md`, committed a433ed3 before any decision run): cheap two-neighbour reads (READ_DIR). **NOT USED: the cheaper route was not taken.**
+
+**The arms.** Four inputs, bit-exact clean rule, both arms reading.
+- **TREE:** READ_OTHER's operand picks the neighbour (heading + operand mod 8), so READ d1, MOV r, READ d2, NAND r gates two neighbours with no TURN.
+- **STRICT:** #340's STRICT, on new seeds.
+
+Seeds 7601-7603, 1,200,000 ticks; all 3 counted (read hits 83-89% in both arms). Run it with `node lab/analyse-tree.js lab/out-tree`, after `lab/probe-twowire.js` on each last save writes `<w>.twowire.json`.
+
+**The manipulation check.** Clean income fed by 2+ distinct reads from this epoch, as a share of all income at the last save:
+
+| seed | TREE | STRICT |
+|---|---|---|
+| 7601 | 0.090 | 0.124 |
+| 7602 | 0.018 | 0.109 |
+| 7603 | 0.124 | 0.161 |
+
+M fails: TREE is LOWER on all three. My prediction (TREE HARDER) was wrong.
+
+**What else was measured (no ruling follows from it, since M failed).**
+
+| seed | sustained circuit, TREE / STRICT | formula | ever active | windows with new fn, last 10 |
+|---|---|---|---|---|
+| 7601 | 6 / 6 | 8 / 7 | 60 / 74 | 3 / 7 |
+| 7602 | 6 / 6 | 8 / 7 | 46 / 68 | 2 / 2 |
+| 7603 | 6 / 6 | 8 / 6 | 61 / 51 | 5 / 2 |
+
+- **No gain in sustained circuit size.** STRICT is narrower than TREE on only one seed.
+- **TREE's income is MORE single-read:** one read feeds 35-94% of fresh-start clean income, against 54-77% in STRICT.
+- **STRICT's sustained circuit sat at exactly 6 again on all 3 seeds,** which makes 9 of 9 seeds across #339, #340 and #341.
+
+**What this says.** Lowering the cost of a second read did not raise its use. The bottleneck for two-wire composition is not the TURN.
+
+Two candidate explanations, neither tested:
+1. **Supply.** A gate of two neighbours' words pays only if both neighbours published a word this epoch and the result is new to the reader. With READ_DIR a mutation scatters reads across 8 directions, and most of those neighbours are kin publishing the same word. So w1 = w2 often, and NAND(w,w) = NOT w is refused.
+2. **Who reads whom.** READ_DIR also changes which neighbour a single read sees (the confound named in the pre-registration). TREE's lower breadth on 2 of 3 seeds may come from that, not from two-wire gating.
+
+The first is checkable in the existing saves: how often, when an organism reads twice in one epoch, the two words are equal.
+
+### #342 — EXPLORATORY (not pre-registered): is the second read a duplicate? **No. The supply hypothesis from #341 is rejected.**
+
+**Method.** `lab/probe-dupread.js` ran on #341's six last saves (WARM 2000, TICKS 5000). It draws nothing. It measures two things, as the user designed them:
+- **EXECUTED:** for organism-epochs with 2+ nonzero reads, whether all reads returned the same word, and the equality of consecutive read pairs.
+- **SUPPLY:** every 5th epoch, for each living organism with 2+ publishing neighbours, the share of neighbour pairs holding the same word. It also reports the same for USABLE words only: clean, and a function of this epoch's inputs.
+
+| world | org-epochs with 2+ reads | all reads duplicate | consecutive reads equal | neighbour pairs equal | neighbour words usable | usable pairs equal | orgs with no two distinct usable words |
+|---|---|---|---|---|---|---|---|
+| TREE 7601 | 355,264 | 0.8% | 10% | 9% | 72% | 11% | 2% |
+| TREE 7602 | 355,659 | 0.5% | 9% | 9% | 72% | 12% | 2% |
+| TREE 7603 | 300,843 | 0.4% | 8% | 7% | 36% | 15% | 8% |
+| STRICT 7601 | 327,322 | 0.5% | 19% | 9% | 54% | 13% | 5% |
+| STRICT 7602 | 364,453 | 0.6% | 21% | 7% | 61% | 8% | 3% |
+| STRICT 7603 | 338,746 | 0.7% | 19% | 9% | 67% | 12% | 3% |
+
+**What it shows.**
+- **Neighbourhoods are not monochrome.** Only 7-9% of neighbour pairs publish the same word, 8-15% among usable words. 92-98% of organisms have at least two distinct usable words around them.
+- **Reading twice is common, and the reads mostly differ.** Hundreds of thousands of organism-epochs read 2+ nonzero words per 5,000 ticks. Under 1% of those see only one word, and consecutive reads are equal 8-21% of the time.
+- READ_DIR roughly halves the consecutive-duplicate rate (8-10% against 19-21%), as expected from spreading reads over 8 directions.
+- **So two distinct usable words are available, and are being read, everywhere.** What is rare is a PAID output that depends on two of them: 2-16% of income (#341).
+
+**Where the bottleneck is now.** Downstream of the reads, in the programs. A READ overwrites R0, so reading twice without a MOV in between keeps only the last word. And a life is paid for one function (TASK_MAX 1), which is likely spent on the first single-read result. Neither explanation is tested.
+
+**Next measurement (not run).** For outputs right after 2+ reads, how often the output depends on only the last read word: data flow through MOV/GET.
+
+The user's selection argument (a two-neighbour gate misfires into an unpaid NOT w inside a kin patch) is right as algebra. But the patches it needs, with w1 = w2 for most neighbours, are not present in these worlds.
+
+### #343 — EXPLORATORY (not pre-registered): where a second read is lost. **Both leaks are large.** Most organisms that read twice have already spent their one life payment, and most outputs after two distinct reads depend on only one of them.
+
+**Method.** `lab/probe-leak.js` ran on #341's six last saves (WARM 2000, TICKS 5000). It draws nothing. Data flow of read words through the registers is as in `lab/probe-twowire.js`. The two measures were designed by the user:
+- **PRE-EMPTION:** of organism-epochs that reach a 2nd distinct nonzero read, the share whose life payment (TASK_MAX 1) was already spent at that moment, and the share already spent before the epoch's first read.
+- **OVERWRITE:** OUTPUTs made after 2+ distinct reads this epoch, by how many of this epoch's read words feed the output register.
+
+| world | org-epochs reaching a 2nd distinct read | slot spent at the 2nd read | slot spent before the 1st read | outputs after 2+ reads: fed by 0 / 1 / 2+ reads | paid ones: 0 / 1 / 2+ |
+|---|---|---|---|---|---|
+| TREE 7601 | 450,751 | 76% | 66% | .17 / .78 / .05 | .05 / .87 / .09 |
+| TREE 7602 | 447,343 | 79% | 69% | .23 / .76 / .01 | .02 / .96 / .02 |
+| TREE 7603 | 369,091 | 71% | 66% | .15 / .78 / .07 | .04 / .89 / .07 |
+| STRICT 7601 | 405,627 | 70% | 67% | .19 / .76 / .05 | .08 / .84 / .09 |
+| STRICT 7602 | 446,302 | 68% | 66% | .14 / .83 / .03 | .02 / .95 / .04 |
+| STRICT 7603 | 413,634 | 76% | 68% | .22 / .73 / .05 | .02 / .77 / .21 |
+
+**What it shows.**
+- **Pre-emption.** 68-79% of second distinct reads happen in an organism whose one payment is already spent, almost all of it in an EARLIER epoch of the same life (66-69%).
+  - A life of about 400 ticks spans about 8 epochs and is paid once, usually early and usually for a single-read function. So most of a life's reading can never be rewarded.
+  - The cap is deliberate (#290): unlimited, one short loop collected all 251 three-input functions. Removing it is not free.
+- **Overwrite.** After two distinct reads, 73-83% of outputs depend on exactly one read word, 14-23% on none, and 1-7% on two or more. The paid ones are similar: 77-96% single-read, 2-21% on 2+.
+  - Programs read repeatedly but rarely keep the first word, because READ writes R0.
+- **Neither leak dominates.** Fixing either alone leaves the other: an organism that could combine two reads would still mostly be past its payment, and an organism with its slot free mostly computes on one read.
+- READ_DIR did not change either number: TREE and STRICT read the same here. That fits #341's NOT USED.
+
+**Candidate changes, untested, each needing its own pre-registration.**
+- **A per-epoch payment slot instead of a per-life one.** The world's inputs change every epoch, so a function recomputed on new inputs is real computation again.
+  - It turns TASK_MAX into a rate limit, not a lifetime one.
+  - It keeps #290's protection, one function per epoch, not all 65,530 at once.
+- **READ writing to a chosen register**, for example operand bits 3-4, with READ_DIR keeping bits 0-2. Then READ d1 to R1, READ d2 to R0, NAND 1 needs no MOV, and the first word survives.
+
+### #344 — PRE-REGISTERED (`lab/PREREG-epay.md`, committed e3be913 before any decision run; addendum 65199e4 also before any result): one payment per EPOCH. **NO CHANGE by the rule.** The fix took effect, two-read income did not rise, and the 1%-based hardness rule read EPAY as LOWER.
+
+**Run.** Four inputs, bit-exact clean rule, both arms reading.
+- **EPAY:** TASK_EPAY=1, against **STRICT**, which is #340's.
+- Seeds 7701-7703, 1,200,000 ticks; all 3 counted.
+- Some chunks hit the 30-minute window at 6 in parallel; `MAXNEW` was added and runs went 4 at a time. Resume is exact, so the trajectories are unaffected.
+- Run the analysis with `node lab/analyse-epay.js lab/out-epay`, after `probe-leak` and `probe-twowire` on each last save.
+
+| seed | 2nd distinct reads with the slot already spent, EPAY / STRICT | clean income fed by 2+ reads | sustained circuit (median windows 21-40, functions with 1% or more of income) | ever active |
+|---|---|---|---|---|
+| 7701 | **19% / 69%** | 0.014 / 0.153 | 4 / 6 | 48 / 74 |
+| 7702 | **28% / 80%** | 0.080 / 0.044 | 3.5 / 4.5 | 42 / 50 |
+| 7703 | **14% / 73%** | 0.064 / 0.080 | 4 / 5 | 69 / 62 |
+
+**Rule outcomes.**
+- M held on 3/3, TWO-READ on 1/3, A on 0/3 (EPAY lower on all three), B on 1/3, C on 0/3, D on 1/3.
+- **Verdict: NO CHANGE.** My prediction (MORE TWO-READ, NOT HARDER) was wrong on two-read income.
+- **STRICT arm:** its sustained circuit was 6 / 4.5 / 5. That is the first time STRICT sat below 6, so 13 of 15 STRICT seeds across #337-#344 now sit at 6.
+
+**Why two-read income did not rise.** `probe-leak` on the EPAY saves:
+- paid outputs after a second distinct read rose 3.5-4x;
+- but 93-98% of them depend on ONE read word.
+
+The R0 overwrite, not the slot, now carries the loss. That is what the user predicted before the run.
+
+**The ruling hardness measure is the biased one, and the bias was found after this pre-registration was committed** (the #340 yardstick check). It counts only functions with at least 1% of income. Under EPAY 70-81% of income sits below 1%, against 56-68% under STRICT. The rule is NOT re-ruled.
+
+**Threshold-free readouts** (`probe-hops`, last saves, 5,000 ticks; reported only):
+
+| world | effective functions | climb 0 / 1 / 2 / 3+ | income below 1% (mean circuit) | mean circuit at 1% or more | climb-2+ income paid in the first tenth of the epoch | pool fill at 1% or more, first / last epoch tick |
+|---|---|---|---|---|---|---|
+| EPAY 7701 | 231 | .16 / .29 / .31 / .25 | 81% (4.74) | 3.00 | 27% | .88 / .87 |
+| EPAY 7702 | 271 | .17 / .40 / .28 / .15 | 73% (4.04) | 2.42 | 10% | .80 / .86 |
+| EPAY 7703 | 227 | .16 / .30 / .31 / .24 | 70% (5.04) | 2.91 | 14% | .88 / .86 |
+| STRICT 7701 | 250 | .32 / .38 / .20 / .10 | 68% (4.03) | 2.89 | 3% | .73 / .66 |
+| STRICT 7702 | 158 | .28 / .36 / .21 / .15 | 56% (3.58) | 2.56 | 1% | .74 / .69 |
+| STRICT 7703 | 250 | .23 / .45 / .23 / .10 | 67% (4.04) | 3.13 | 2% | .83 / .79 |
+
+- **By the threshold-free measures, EPAY looks deeper, not shallower.**
+  - Income two or more STRICT climbs deep is 43-55%, against 30-36%. (Climbing depth is the user's lower bound: a read counts only if the step strictly adds circuit gates, so no cycle can inflate it.)
+  - The tail's mean circuit is 4.04-5.04, against 3.58-4.04.
+  - Effective functions are about equal.
+- **These readouts DISAGREE in sign with the pre-registered rule.** They were not pre-registered as ruling, so they settle nothing. They are the reason the next pre-registration rules on threshold-free measures.
+- **The user's synchronised-slot stampede is confirmed** (#344's provisional readout: 37-64% of depth-0/1 income paid in the epoch's first 5 ticks).
+- **Flooding:** deep-chain income (climb 2+) also comes early under EPAY: 10-27% in the first tenth, against 1-3%. That fits early words feeding downstream readers, but it does not separate flooding from the plain fact that every slot reopens at the boundary.
+- **Crowding is NOT supported.** The pools of the 1%-or-more functions are FULLER under EPAY (0.80-0.88) than under STRICT (0.66-0.83), and all pools sit at 0.66-0.97 of cap. Pools are not what limits income in either arm.
+
+**Qualifications, as agreed with the user.**
+- A climb chain need not be distinct organisms: A, B, then A' is legitimate composition by a two-organism partnership.
+- The fall of income with each climb is a measured shape, not a proven cause.
+- Most of data-flow depth 3+ is not strictly climbing. That covers ping-pong as well as lateral and downward composition.
+
+### #345 — PRE-REGISTERED (`lab/PREREG-reg.md`, committed 78e71db before any decision run), ruled on THRESHOLD-FREE measures: register-targeted READ. **NOT USED.** Selection took the new register for SINGLE reads and two-read output fell.
+
+**What was added.**
+- **Core.** READ_REG (READ_OTHER writes the register named by operand bits 3-4) and LOGFULL. LOGFULL is bookkeeping: every sample carries exp(H) over all 65,536 functions' income, and every function with income of 10 or more. It leaves the trajectory identical. With both unset, earlier worlds are byte-identical.
+- **Probes** follow the destination register.
+
+**Run.** REG = EPAY + READ_DIR + READ_REG, against CONTROL = EPAY + READ_DIR. Seeds 7801-7803, 1,200,000 ticks; all 3 counted. Run it with `node lab/analyse-reg.js lab/out-reg`, after the three probes on each last save.
+
+| seed | paid outputs after 2+ reads fed by 2+ reads, REG / CONTROL | clean income fed by 2+ reads | mean circuit (all logged income) | income at climb 2+ | exp(H), full vector | functions with income >= 100 | legacy sustained circuit (1%) | legacy ever active (1%) |
+|---|---|---|---|---|---|---|---|---|
+| 7801 | 0.011 / 0.060 | 0.020 / 0.110 | 3.98 / 3.92 | .51 / .54 | 267 / 255 | 373 / 347 | 6 / 6 | 41 / 53 |
+| 7802 | 0.023 / 0.030 | 0.039 / 0.051 | 3.85 / 3.94 | .56 / .52 | 260 / 246 | 367 / 317 | 6 / 4 | 47 / 48 |
+| 7803 | 0.025 / 0.076 | 0.040 / 0.134 | 3.98 / 4.21 | .51 / .52 | 265 / 249 | 351 / 304 | 3 / 4 | 43 / 49 |
+
+**Rule outcomes.**
+- M held on 0/3: REG is LOWER on all three. **Verdict: NOT USED.**
+- No other rule holds either. H1 differences are -0.23 to +0.06 gates, H2 -0.03 to +0.03, and exp(H) +5% to +6%.
+- My prediction (PARTLY HARDER) was wrong.
+- REG has 7-15% more functions with income of 100 or more, on 3/3 seeds. Reported only.
+
+**Why: the census of READ destinations in the living programs at the last save** (operand bits 3-4: share writing R0 / R1 / R2 / R3):
+
+| world | R0 | R1 | R2 | R3 |
+|---|---|---|---|---|
+| REG 7801 | .09 | .06 | .17 | **.68** |
+| REG 7802 | .03 | .03 | .09 | **.85** |
+| REG 7803 | .01 | .12 | .23 | **.64** |
+| CONTROL (the bits do nothing) | .23-.55 | .12-.45 | .12-.40 | .13-.25 |
+
+- **READ_REG was taken up heavily, but for single reads.** Reads moved to R3, presumably READ into R3 and then NAND with R3. That gates one read against R0 (the organism's own input logic) without a MOV and without overwriting R0.
+- **The two-read programs the control evolved (READ, MOV, READ, NAND) lost ground to that simpler single-read route.** So the cheaper path to ONE read beat the new path to TWO.
+- My explanation written during the run ("reads now land away from R0 and break programs, so selection pushes them back to R0") was wrong in direction: selection pushed reads AWAY from R0.
+
+**Gain readouts (`probe-hops`, last saves; the user's design), matched on each save.**
+- **The +3-and-up tail is the two-wire signature.** Gating two read words gives a share of outputs 3 or more gates above the harder wire: 11-26% of two-wire income, against 0-7% for single reads, on all six worlds.
+- **Graded against the SUM of the two wires,** the mode is +1 to +2: most paid two-wire outputs are not compressed below building both wires. Many of those wires are 1-2 gates, though.
+- **Single reads peak at +2 gates in both arms,** so that mode comes from the grading under EPAY, not from READ_REG.
+- **The tail does not grow because two-wire income stays at 2-13% of all income,** and REG makes it smaller.
+
+**What #337-#345 now say.**
+- Reading neighbours lifts what a world holds by 2-3 gates (#337, #339, #340).
+- The paths to two-wire composition were opened one at a time: the TURN (#341), the per-life slot (#344) and the R0 overwrite (#345). Each removal was taken up, or worked mechanically, without making two-wire composition a larger part of the economy.
+- The threshold-free breadth (exp(H) about 245-270) and hardness (mean circuit about 3.9-4.2) of these per-epoch worlds sit in a narrow band across arms. That fits the user's wall B: per-function pools are not depleted (0.66-0.97 of cap), so a harder function is not much better paid than an easy one, and an easy route keeps winning.
+- The direct test of wall B is to keep the #345 mechanics and change only the pool economics.
+
+### #346 — PRE-REGISTERED (`lab/PREREG-scarce.md`, committed dc0fb49 before any decision run): wall B, scarcity of the easy pools. **COMPOSES HARDER, AND BROADER (TWO-READ ROSE)** on every rule. In the second half breadth CONTRACTS: scarcity moved the fence outward, it did not make a ratchet.
+
+**The change.** No new engine code: TASK_RATE (pool regrowth per tick) is lowered from 0.2 to 0.02, on #345's REG world (EPAY + READ_DIR + READ_REG, four inputs, bit-exact clean rule).
+
+**Run.** Seeds 7901-7903, 1,200,000 ticks; all 3 counted. Run it with `node lab/analyse-scarce.js lab/out-scarce` after the three probes on each last save.
+- The first from-scratch pilot (seed 99) earned nothing in 150,000 ticks. The pilot that set the rate continued #345's 7801 save instead.
+- The batch now launches the least-advanced worlds first. Until this run, MAXNEW starved the last seed until the others had finished.
+
+| seed | easy-pool fill, SCARCE / CONTROL | mean circuit | income at climb 2+ | exp(H), full vector | clean income fed by 2+ reads | functions with income >= 100 | legacy ever active (1%) |
+|---|---|---|---|---|---|---|---|
+| 7901 | 0.00 / 0.89 | **4.81 / 3.78** | **.55 / .49** | **904 / 262** | **0.595 / 0.053** | 589 / 371 | 5 / 45 |
+| 7902 | 0.12 / 0.90 | **4.71 / 3.82** | **.55 / .48** | **546 / 261** | 0.068 / 0.044 | 497 / 360 | 6 / 52 |
+| 7903 | 0.14 / 0.91 | **4.67 / 3.90** | **.59 / .48** | **604 / 279** | 0.159 / 0.041 | 489 / 356 | 5 / 43 |
+
+**Rule outcomes.**
+- M held on 3/3, H1 on 3/3 (+0.77 to +1.03 gates against a 0.3 margin), H2 on 3/3 (+0.06 to +0.12 against 0.05), BR on 3/3 (exp(H) x2.1 to x3.4) and TWO-READ on 3/3.
+- My prediction, PARTLY HARDER (circuit), AND BROADER, was wrong in the favourable direction: climbing depth moved too.
+
+**Who carries it.**
+- **Two-wire composition is the larger share where it grew, and it goes through READ_REG.** Two-wire income is 50% (7901), 6% (7902) and 14% (7903) of all income, against 3-5% in the controls. The direct READ_REG route carries 92-99% of it in SCARCE, against 81-95% in the controls.
+- **On 7902 two-wire stayed small,** and hardness and breadth rose anyway. Single-read composition, spread over many more pools, carried it there.
+- **The 1% meter is near blind:** 5-6 functions ever active, where exp(H) reads 546-904.
+
+**Second half (the user's fence-or-ratchet question; reported, not pre-registered as ruling).** LOGFULL exp(H), and the mean circuit over logged income, by windows 21-30 against 31-40, with the slope over windows 21-40:
+
+| world | exp(H), windows 21-30 to 31-40 | slope per window | mean circuit |
+|---|---|---|---|
+| SCARCE 7901 | 980 to 821 | -10.6 | 4.83 to 4.78 |
+| SCARCE 7902 | 720 to 507 | -19.5 | 4.74 to 4.66 |
+| SCARCE 7903 | 798 to 536 | -25.3 | 4.72 to 4.59 |
+| CONTROL 7901 | 266 to 262 | -0.4 | 3.87 to 3.70 |
+| CONTROL 7902 | 261 to 258 | 0.0 | 3.85 to 3.79 |
+| CONTROL 7903 | 295 to 264 | -2.7 | 3.81 to 3.98 |
+
+- **The user's prediction holds, more strongly than they put it.** Scarcity carries the world out to a much wider, harder state. Breadth then FALLS through the second half on 3/3 seeds, by 16-33%, while the mean circuit holds or drifts down slightly. The control is flat.
+- **The fence moved out, and the world is settling back from it.** No sign of a ratchet by 1,200,000 ticks.
+
+**What this cannot say.**
+- Scarcity also lowers total income: 265,000-308,000 per sample, against 330,000-368,000. "The easy pools deplete" is not yet separated from "less energy overall". The named follow-up is a third arm at regrowth 0.2 with a smaller TASK_CAP, so that total income matches.
+- Both arms had READ_REG. Scarcity x READ_REG (a 2x2) is the test of the interaction the route attribution suggests.
+- **The contraction is a measured shape,** not a cause. Whether it continues, and what drives it, is a question for a longer horizon or for trophic drain: pool[w_read] taxed by alpha x pay / m on each paid composition over m clean read words, with the tax destroyed. That was specified with the user before this run.
+
+### #347 — PRE-REGISTERED (`lab/PREREG-lean.md`, committed c4217e3 before the run): the total-income-matched LEAN arm. **DEPLETION, NOT ENERGY.** #346's gain came from the crowded easy pools draining, not from less energy.
+
+**The arm.** LEAN = #346's CONTROL world (TASK_RATE 0.2, fast refill) with every pool cap cut, TASK_CAP 20 to 14.
+- Calibrated by continuing CONTROL 7901's save for 40,000 ticks at caps 20, 16 and 14, which gave income 357k, 310k and 298k.
+- It ran as a third arm on #346's seeds 7901-7903, an exception to the unseen-seed rule that was stated in the pre-registration.
+- Run it with `node lab/analyse-lean.js lab/out-scarce`.
+
+| seed | second-half income, SCARCE / CONTROL / LEAN | easy-pool fill | mean circuit | exp(H) | climb 2+ | clean income fed by 2+ reads |
+|---|---|---|---|---|---|---|
+| 7901 | 316k / 363k / 309k | 0.00 / 0.89 / 0.86 | 4.81 / 3.78 / 3.97 | 904 / 262 / 288 | .55 / .49 / .47 | .60 / .05 / .05 |
+| 7902 | 283k / 357k / 312k | 0.12 / 0.90 / 0.89 | 4.71 / 3.82 / 3.90 | 546 / 261 / 250 | .55 / .48 / .49 | .07 / .04 / .04 |
+| 7903 | 282k / 335k / 318k | 0.14 / 0.91 / 0.83 | 4.67 / 3.90 / 3.89 | 604 / 279 / 243 | .59 / .48 / .45 | .16 / .04 / .05 |
+
+**Rule outcomes.**
+- MATCH held on 3/3 and FULL on 3/3.
+- DEPLETION held: SCARCE beats LEAN by +0.71 to +0.84 gates and x2.1 to x3.1 exp(H), on all three seeds.
+- ENERGY failed: LEAN is within 0.2 gates and 13% exp(H) of CONTROL.
+- **Verdict: DEPLETION, NOT ENERGY**, as predicted.
+- LEAN's second half is flat (exp(H) 286 to 310, 249 to 252, 247 to 243), like CONTROL's.
+
+**A correction to #346's "contraction", found while piloting #348.**
+- A 60,000-tick continuation of SCARCE 7901's save with NO change ran at exp(H) 915-1,471, while #346 reported "821" for its last ten windows.
+- SCARCE's per-sample exp(H) swings widely: 585-1,601 in its last 60,000 ticks alone, and it was on an upswing (640 to 1,383) when the save was made.
+- So a 16-33% fall between two ten-window means, in the same direction on all three seeds, is suggestive but weak evidence of a fence. **#348 rules on the slope across all 20 second-half windows, against a no-drain arm, not on two means.**
+- The drain pilots (alpha 0.25 and 0.5, 60,000 ticks from the same save) were indistinguishable from that no-change baseline. Pilots this short cannot measure trend effects in these worlds.
+
+### #348 — PRE-REGISTERED (`lab/PREREG-troph.md`, committed 5726496 before any run): trophic pool-drain on the scarce world. **RATCHET by the rule (HARDER, BROADER).** Breadth keeps rising through the second half where SCARCE's stalls or falls, and late novelty is far higher. The margins are thin on two of the three trend rules.
+
+**The arms.** DRAIN = #346's SCARCE world + TASK_TROPH 0.5: each paid output takes 0.5 x pay, split over the clean read functions that fed it, out of their pools, and the tax is destroyed. SCARCE = the same world without it. Seeds 8001-8003, 1,200,000 ticks; all 3 counted. Run it with `node lab/analyse-troph.js lab/out-troph`.
+
+| seed | tax / task income | exp(H) slope per window (windows 21-40), DRAIN / SCARCE | exp(H) windows 21-30 to 31-40 | late novelty (functions first reaching 100 in windows 31-40) | mean circuit | median exp(H) | climb 2+ | income |
+|---|---|---|---|---|---|---|---|---|
+| 8001 | 0.29 | **+15.6** / +13.1 | 1378 to 1511 / 701 to 863 | **637** / 564 | **5.18** / 4.72 | **1446** / 760 | .57 / .56 | 336k / 297k |
+| 8002 | 0.29 | +3.0 / -25.8 | 1417 to 1411 / 818 to 568 | **379** / 40 | **5.19** / 4.74 | **1411** / 599 | .61 / .57 | 335k / 292k |
+| 8003 | 0.31 | **+23.7** / -2.8 | 1011 to 1316 / 552 to 466 | **599** / 16 | **5.10** / 4.56 | **1166** / 470 | .58 / .52 | 315k / 259k |
+
+**Rule outcomes.**
+- M held on 3/3.
+- UP held on 2/3 (8001, 8003; 8002 is flat at +3.0).
+- ABOVE held on 2/3 (8002 and 8003 by +29 and +27; on 8001 SCARCE also rose, and DRAIN beat it by only +2.5).
+- LATE NOVELTY held on 3/3: x1.1, x9.5 and x37.
+- **Verdict: RATCHET**, with level tags HARDER (+0.45 to +0.55 gates, on 3/3) and BROADER (x1.9 to x2.5, on 3/3).
+- My prediction (SLOWER FENCE) was wrong in the favourable direction.
+
+**How to read it.**
+- **The strongest part is late novelty.** In the last quarter of the run, the drained worlds keep adding hundreds of functions that had never before reached 100 income per sample. On two seeds the undrained scarce worlds add almost none (40, 16).
+- **That is the nearest this line has come to "novelty keeps arriving".** The trend rules passed on 2 of 3 seeds each, with a different seed failing each one, so they are thin.
+- **The horizon is one run of 1,200,000 ticks.** "Still rising at 1.2M" is not "rises forever" (#66: every diversity verdict is a verdict about a horizon).
+- **DRAIN earned MORE task income than SCARCE** (315k-336k against 259k-297k), despite 29-31% of it being destroyed as tax. #347 showed LESS energy alone does nothing (LEAN), but not that MORE energy does nothing. A matched-income check of the drain is the named follow-up.
+- **The pilots could not see any of this.** 60,000 ticks from a saved world was indistinguishable from no drain. This effect is slow, and only the full runs show it.
+
+**What #337-#348 add up to, for the port.** Each of these matters, in this order:
+1. computation that pays (reading neighbours, #337-#340);
+2. easy food that runs short (#346, #347: depletion, not energy);
+3. a tax that makes heavily-read functions pay for being read (#348).
+
+Mechanical fixes alone (#341, #344, #345) changed little until the economy made composition pay.
+
+### #350 — PRE-REGISTERED (`lab/port/PREREG-tasks.md`, committed ed1211a before any decision run; addendum 8f23191 before any valid one): COMPUTATION PAYS IN THE ENGINE. **A CONFIRMED, B CONFIRMED, 2 of 3 seeds each, the 2 being the seeds where composition took off.** #333 is turned round: under TASKS a world that computes nothing lives at 0.28-0.72 of one that does.
+
+**What was built (engine.html, knob `TASKS=1`, default OFF; implies REPL).** The lab's recipe (#334-#348, `lab/PORT-PLAN.md` items 1-6), in the replicator world, with sunlight cut to a floor of 25%.
+- **Inputs:** four world-wide 32-bit input words, redrawn every 50 ticks.
+- **A word file per particle,** separate from the float registers, which are clamped to ±8 and cannot hold a word.
+- **Five ops taken from the top of the bound range** (422-426: INPUT, NAND, COPY, READ, OUTPUT). They run on the particle's own solo run only. Off, those slots are bound slots as before.
+- **The bit-exact clean rule.**
+- **Payment:** one payment per epoch, from 65,536 per-function pools. Each pool's cap is 0.4 × the function's exact NAND formula size (the table is embedded in the file), regrowing 0.02 of the gap per tick. Copies and complements of reads are refused.
+- **The trophic drain** at 0.5.
+- **The draw:** 25% of opcode draws at the seven program-mutation sites are logic ops. The count of seven is asserted; the first patch counted eight, and the eighth was the helper itself.
+- **The founder computes NAND of two inputs,** then asks to reproduce.
+- **Off, byte-identical:** checked on plain REPL and the default world, seed 3, against the pre-change engine.
+- **Probe:** `lab/port/probe-tasks.js`.
+
+**Result.** Seeds 9101-9103, 10,000 ticks. Mean alive over ticks 7,000-10,000. Out: `lab/port/out-tasks/`; analysis `lab/port/analyse-tasks.js`.
+
+| seed | TASKS | ANC (founder pinned) | ROCK (`[4,2,4,1]` pinned) | REPL (reference) | ROCK/TASKS | ANC/TASKS | exp(H) | mean formula size | task/sun income, late |
+|---|---|---|---|---|---|---|---|---|---|
+| 9101 | 460 | 148 | 131 | 1,426 | **0.28** | **0.32** | 71 | 2.37 | 2.42 |
+| 9102 | 172 | 154 | 124 | 794 | 0.72 | 0.90 | 7 | 1.00 | 0.42 |
+| 9103 | 247 | 89 | 118 | 392 | **0.48** | **0.36** | 256 | 4.07 | 1.64 |
+
+- **A (ROCK under half of TASKS):** 2 of 3, CONFIRMED.
+- **B (ANC under half of TASKS):** 2 of 3, CONFIRMED.
+- **Predictions:** A was right. For B I predicted a failure on at least one seed, and there was exactly one.
+
+**How to read it.**
+- **The two seeds that pass are the two where composition took off.** On 9101 and 9103, READ spread to nearly every program and the paid functions grew beyond the founder's NAND (mean formula size 2.4 and 4.1; 109 and 167 functions with at least 0.1% of income). On 9102, READ is carried by 14% of programs at the horizon, but every paid function is still formula size 1. My pre-registered "ignited" flag (READ above 10%) calls 9102 ignited; by what it computes, it has not.
+- **So the pass is a statement about horizon.** Seed 1 took off before tick 1,000 in a pilot; seed 2 had not by 3,000. A seed that has not taken off is the founder's world plus drift, and on it computing does not out-live the rock by much (0.72).
+- **9103's ROCK margin is thin** (0.48 against a 0.5 line).
+- **TASKS worlds hold FEWER living than REPL** (172-460 against 392-1,426). That follows from the quarter-strength sun. It is not a cost the rule weighed.
+- **This is the first world in this engine where who lives depends on what the program computes.** #333's question now has the other answer, at this rung (survival), on two seeds of three.
+- **Not yet shown:** that the computed functions keep diversifying, which is what the artwork needs. #349 asks that question in the lab.
+- **Known leak:** pinned arms run one unpinned founder output at tick 1 (316 payments of 0.05 energy in total, against about 55 from sunlight). It is too small to matter, and it is recorded here.
+
+**Next (#351):** the template's question, whether TASKS should become the default world.
+- Compare it against REPL and the default world with null bands, on the engine's own measures (centredEntropyRatio, spread_late, establishment, alive).
+- Use a horizon long enough for every seed to take off, or report how many have.
+- Then re-run retire-or-prove of the big layers inside it (PORT-PLAN.md, "Order").
+
+### #349 — PRE-REGISTERED (`lab/PREREG-horizon.md`, committed 899dc57; addendum on the batch-script bug before any windows 41-80 result was read): #348's six worlds run on, unchanged, to 2,400,000 ticks. **FADES by the rule.** The drain's lead in novelty was a head start, not a ratchet: by the last quarter the undrained worlds were finding new functions faster than the drained ones.
+
+Analysis: `NW=80 node lab/analyse-troph.js lab/out-troph`. Its VERDICT line is #348's rule, which the script now says. The ruling below is this file's rule, applied by hand to the numbers it prints. Late = windows 71-80, second half = windows 41-80.
+
+| seed | DRAIN / SCARCE late novelty (first reaching 100 in w71-80) | DRAIN / SCARCE exp(H) slope, w41-80 | exp(H) w61-70 to w71-80, DRAIN / SCARCE | mean circuit | median exp(H) | functions ever reaching 100, DRAIN / SCARCE |
+|---|---|---|---|---|---|---|
+| 8001 | 133 / 157 | -1.2 / +6.5 | 1552 to 1456 / 849 to 875 | 5.24 / 4.80 | 1548 / 809 | 4,675 (7.1%) / 2,781 (4.2%) |
+| 8002 | 119 / 189 | +3.5 / +6.6 | 1452 to 1282 / 624 to 764 | 5.12 / 4.75 | 1285 / 603 | 4,279 (6.5%) / 2,499 (3.8%) |
+| 8003 | 193 / 437 | -2.3 / +9.0 | 1048 to 1251 / 625 to 789 | 5.13 / 4.69 | 1227 / 593 | 4,043 (6.2%) / 1,900 (2.9%) |
+
+**Rule outcomes.** All 3 seeds counted.
+- **PERSISTS failed.** DRAIN's late novelty was at least 100 on 3/3 seeds, but higher than SCARCE's on 0/3.
+- **NOT FALLING failed.** DRAIN's slope was at least 0 on 1/3.
+- **Verdict: FADES.** The pre-registered consequence: "the recipe moves the fence and the world then settles; the next build is a growing function space."
+- **My prediction was NOVELTY PERSISTS, BREADTH FALLS. Wrong on the first half.**
+
+**First arrivals (functions whose per-sample income first reaches 100), per block of 10 windows (300,000 ticks), blocks 1-8:**
+- DRAIN: 914 982 1082 637 371 318 238 133 / 1592 1247 471 379 144 102 225 119 / 1062 1073 460 599 344 208 104 193.
+- SCARCE: 4 911 461 564 126 380 178 157 / 892 704 540 40 27 38 69 189 / 793 289 131 16 40 88 106 437.
+
+**How to read it.**
+- **Arrival never stops in either arm.** Every block of every world adds new functions. This is the same shape as #346-#348, extended: a fast discovery phase, then a long tail of 100-400 per 300,000 ticks.
+- **The drain front-loads discovery.** DRAIN found 2,500-3,300 functions in the first three blocks, against SCARCE's 1,400-2,100. From block 5 on, DRAIN's arrivals fall steadily, while SCARCE's rise again on 2 seeds (8002: 27 to 189; 8003: 16 to 437).
+- **#348's "late novelty x9.5 and x37" was measured at the bottom of SCARCE's dip (block 4).** By block 8 it has reversed. #348's table stays as written; this is its correction.
+- **What the drain does keep is LEVELS.** It holds +0.4 gates of mean circuit and about 2x breadth, on 3/3 seeds. Over the whole run it reached 1.5-2.1x as many functions.
+- **The space is not full:** 3-7% of 65,536 functions have ever earned 100 in one sample. So "fades" is not "ran out of room"; the world settles well short of the space's edge. My stated rule was that a fixed space must fill, so the reason is not the space's size. It is what an economy of this shape rewards at steady state: the active set (1,600-2,900 functions in the last block) turns over slowly, and arrivals become a trickle.
+- **One horizon, longer.** Both arms are still adding functions at 2.4M.
+
+**What follows.**
+- The drain stays in the port: it is HARDER and BROADER at every horizon measured, and #350 uses it.
+- "A growing function space" is the pre-registered next build. But the space is not what ran out, so the first question is whether a space that grows changes a world that is using 3-7% of the space it has. Before building it, the engine's own long run (TASKS, #351 onward) gets the same per-block arrival readout: the engine adds sources of change the lean core does not have (laws, atoms, the mind, a continuous world), and those may be what keeps arrivals up.
+
+### #351 — PRE-REGISTERED (`lab/port/PREREG-default.md`, committed c77910c before any decision run): should TASKS be the default world? **BETTER (trait spread UP on 2 of 3 seeds, nothing WORSE on 2 of 3). Shipped: TASKS is the artwork's default world in the browser.**
+
+Seeds 9201-9203, 20,000 ticks, `harness-oee.js`. Out: `lab/port/out-default/`. Analysis `lab/port/analyse-default.js`; its full output is in `lab/port/default-result.txt`. All 3 seeds counted.
+
+| measure | 9201 | 9202 | 9203 | tally |
+|---|---|---|---|---|
+| centredEntropyRatio | none | none | none | 0 |
+| spread_late | none (TASKS 0.30-0.68 across a band of 0.22-0.55) | **UP** (1.38-1.82 against 0.21-1.11) | **UP** (1.17-1.43 against 0.21-1.10) | UP 2/3 |
+| estFrac | none | none | none | 0 |
+| lineages standing late | none (TASKS 88-1,321 across a band of 151-339) | **DOWN** (89-190 against 204-331) | none (160-1,438 against 270-320) | DOWN 1/3 |
+| program diversity late | none | none | none | 0 |
+| TASKS-only crash | **yes** (T2 extinct by 20,000) | no (a DEFAULT run, D3, went extinct) | no | 1/3 |
+
+**Verdict: BETTER.**
+- The prediction was SPLIT, with lineages DOWN on 2 of 3. Lineages went down on only one seed, so the prediction was wrong.
+- Claimed only at the rung measured: TASKS worlds spread wider in trait space at 20,000 ticks. That is not "more open-ended".
+
+**What the rule did not weigh, recorded so the verdict is not read past it.**
+- **TASKS is VOLATILE.** On one seed its three replicates ended at 1,015, 1,504 and 0 living, and late lineages ran from 88 to 1,438. Booms to the 1,800 cap and crashes as the pools are grazed out are its ordinary dynamics (the pilot: 1,209 at tick 3,000, then 30 by 4,000). The default world's band is narrow, at about 360 alive, so most TASKS runs fall either side of it, and that is why few measures "moved".
+- **One TASKS world went extinct.** So did one default world. At 1/3 against 1/3 (counting the default's own), extinction is not specific to TASKS, but a field of eight TASKS universes will see it.
+- **Runs at the 1,800 cap are slow:** one replicate took 70 minutes against the default's 7. In the browser that shows as a universe slowing down while it booms.
+- **REPL (the reference, one run a seed) looked like TASKS on spread and kinds,** and had fewer lineages (155-203). TASKS did not cure REPL's lineage loss on 9202, and beat it on the others.
+
+**What was shipped.**
+- `TASKS_ON` is true in a browser unless the universe's hash (or the field's) says `#notasks`. Under node it is OFF unless `TASKS=1`, so every rig measures the world it always measured. This is the mind's convention (#296).
+- `index.html` passes `notasks` down to every universe on the same token as `nomind`. Node trajectories are byte-identical to before (checked on the default world and REPL, seed 3).
+- **Saved worlds** (rule 6): a saved universe reloaded in a browser now runs under REPL's birth rules with TASKS. Parentless founders get the TASKS ancestor (`REPL_ANCESTOR`, built at load). A saved germline program carries no logic ops, so whatever descends from it lives on the 25% sunlight floor until mutation draws them (25% of draws). NOT CHECKED: which programs a reloaded universe's first particles actually run.
+- **Reversible:** `#notasks`, or revert the `__TASKS_DEFAULT` line.
+
+**#350-#351 acceptance.**
+- `substrate-test`: 264/0 at TICKS=40, TICKS=900, the default and FOUND=0. These ran on #350's engine; #351 changes nothing under node.
+- `smoke.sh`: 66 ok / 0 failing, on #351's engine with nothing else running. Its browser rigs now run TASKS worlds.
+- **In a real page** (playwright, `engine.html` opened by itself): TASKS_ON true, 808 alive and 3,073 payments by tick 190. With `#notasks`, TASKS_ON and REPL_ON are false.
+
+### #352a — A BUG #351 SHIPPED, FOUND AND FIXED: a saved universe reloaded under TASKS could neither compute nor breed.
+
+#351's notes marked it NOT CHECKED, so I checked it in a real browser: `lab/port/reload-test.js` lets a `#notasks` universe evolve, saves it, and reloads the same origin with TASKS on.
+- **What a save holds:** the germline genome only, not the particles. On reload every founder is spawned from the saved germline program.
+- **Why the rescue missed them:** a germline from the old default world carries neither the logic ops nor REPL's reproduction instruction `[4,2,4,1]`. The founder rescue (`REPL_ANCESTOR&&parentA<0`) never fires at boot, because init() passes no parent and `undefined<0` is false.
+- **Measured:** 0 payments and 0 REPL births by tick 2,264, with 47 alive, kept up only by reseeds. A fresh TASKS universe had 11,971 payments and 1,738 births. Every saved universe in the field would have come back like that.
+- **The fix:** `REPL_HEAD` and `replEnsureHead()`. init() puts the head a fresh REPL/TASKS germline starts with back in front of a LOADED germline that does not already start with it (`repl.headRestored` in the liveness census).
+- **After the fix,** in the same test: by tick 2,241, 5,489 payments, 387 births, 81 alive; fresh TASKS by 1,836: 9,196, 897, 79. Its lower birth count comes from the saved genome's own parameters. It is no longer a dead world.
+- **No change for the rigs:** node trajectories are byte-identical, because no rig loads a saved genome. substrate-test is 264/0 at TICKS=40.
+- **What the old code got wrong, stated structurally:** the rescue was written against "a founder has parentA < 0". The boot path's founders have parentA undefined. That is the same family as CLAUDE.md's fallback trap: a check that declines to fire on a missing value.
+- **#352a acceptance.** `smoke.sh`: 65 ok / 1 failing, run alongside three long probe-arrivals jobs. The failure was `mind-test`'s "every universe past 1,000 ticks has seen parents" row: it needs at least 3 universes past 1,000 ticks, and u1 reached 955. Run alone straight after, `mind-test` gave all 10 ok. That is the contention case CLAUDE.md describes, established by re-running rather than assumed.
+
+### #352 — EXPLORATORY (not pre-registered): do new functions keep arriving in the ENGINE under TASKS? **On the two seeds where composition took off, yes, at rates the lab never showed, and the space is filling. On the third it never took off in 100,000 ticks.**
+
+`lab/port/probe-arrivals.js`, seeds 9301-9303 (never run), TASKS defaults, up to 100,000 ticks or 105 minutes of wall clock. Out: `lab/port/out-arrivals/`.
+- **Arrival:** a function ARRIVES the first time it earns at least 0.25 (one birth's cost) in a 500-tick window.
+- **This threshold is not the lab's** (100 income per 1,000-tick sample, in the lab's energy units), so counts compare across seeds here, not with #349.
+
+| seed | horizon | took off? | functions arrived (of 65,536) | arrivals per 5,000-tick block | late exp(H) / mean formula size | alive |
+|---|---|---|---|---|---|---|
+| 9301 | 100,000 (ticks) | **no** | 188 (0.3%) | 147, then 0-6 from tick 25,000 on | 36 / 2.2 | 160-260 |
+| 9302 | 48,801 (wall) | at once | 17,721 (27%) | 4,008 2,363 1,662 1,054 1,331 1,512 1,722 1,957 1,425 (last part-block 687) | 2,600-3,500 / 6.5-6.8 | about 1,600-1,720 (the cap) |
+| 9303 | 73,011 (wall) | by tick about 30,000 | 23,968 (37%) | 31 242 131 130 174, then 780 3,837 4,316 3,240 3,092 1,662 1,777 2,614 1,252 (part-block 690) | 2,800-4,400 / 6.3-6.8 | about 1,600 (the cap) |
+
+**How to read it (one seed each way; a horizon set by wall clock, not chosen).**
+- **Where composition took off, arrivals did not fade within the horizon.** On 9302 they fell from 4,008 to 1,054 and then ROSE for four blocks to 1,957; breadth (exp(H)) doubled from 1,722 to 3,513 over ticks 20,000-40,000. That is the shape #349 looked for and did not find in the lab. On 9303 they ran at 1,250-4,316 per block for 40,000 ticks.
+- **But the space is now what is finite.** 27-37% of all 65,536 functions arrived within 50,000-73,000 ticks. At these rates the rest would be gone within about 100,000 more ticks, and after that arrival must fall by construction. In the engine the limit #349 ruled out for the lab ("the space fills") is the near one. So the growing function space, the build #349's rule named, is the right next build here.
+- **Take-off is bimodal and late.** 9301 sat at about 180 functions and formula size 2 for 100,000 ticks, with computing income below sunlight. #350 found the same split (2 of 3 seeds by 10,000 ticks). A universe in the field can stay in the founder's world indefinitely, and that is the dull artwork.
+- **Ignited worlds sit at the 1,800-particle cap,** so their breadth is partly the cap's (more particles, more functions computed). A world at the cap also runs about 10x slower per tick.
+- **Not shown:** that the new functions are SELECTED rather than drifting into pools. Each arrival earned a birth's worth of energy, so they pay, which is the rung above "exists", but not the rung of "who reproduces is sorted by it".
+
+**Next, in the order it argues for:**
+1. **Take-off.** Why does 9301 never start? Is it the founder lineage's luck with READ, or a stable trap in which READ never pays at low density?
+2. **A growing function space,** so arrival is not bounded by 65,536. For example, more input words over time, or functions of the epoch's history. Pre-register it on a long horizon, ignited seeds counted.
+- **#352, take-off diagnosed from #350's outputs (no new runs): it is SUPPLY of READ, not density.**
+  - **9101 and 9103 took off:** READ was carried early, 67 and 42 programs at tick 1,000, and spread.
+  - **9102 never took off:** READ carriers were 0-4 through tick 5,000, at the same population (about 150) as 9101.
+  - **Hit rates do not decide it:** 56-80% on 9101, 15-26% on 9103, and both took off.
+  - **Why it is a lottery:** a birth redraws an opcode rarely, and READ is 5% of draws (a quarter of draws go to the five logic ops), so whether READ enters a lineage that spreads is chance.
+- **The next build, designed but not built.**
+  - **The idea:** put READ in the founder's program, so take-off is decided by selection, not by that lottery.
+  - **The snag the design must get past:** one payment per epoch goes to the FIRST valid output. A founder that outputs NAND(a,b) first will always take that easy payment before any read-based output. A founder that reads first earns nothing when it is isolated.
+  - **So it is a pre-registered A/B, not a tweak:** the founder variants against today's founder; ruled on the fraction of unseen seeds that take off by 10,000 ticks (paid mean formula size at least 2 in the last third) and on arrivals.
+
+### #353 — PRE-REGISTERED (`lab/port/PREREG-founder.md`, committed 20bffa0 before any decision run): a founder that reads (`TASK_FOUNDER`: READ keeps its word on a miss, plus a one-output founder that composes when its read hits). **A NOT CONFIRMED (took off on 7 of 10 seeds, the floor was 8). Not shipped; the knob stays 0.** B CONFIRMED (10/10), guard clear.
+
+Seeds 9401-9410, 10,000 ticks, `probe-arrivals.js`. Out: `lab/port/out-founder/`; result `lab/port/founder-result.txt`.
+- **"Arrived":** functions that ever earned at least 0.25 in one 500-tick window.
+- **"Took off":** at least 500 arrived by tick 10,000.
+
+| seed | arrived OLD / NEW / PIN | took off OLD / NEW | late alive OLD / NEW |
+|---|---|---|---|
+| 9401 | 530 / 860 / 44 | yes / yes | 151 / 396 |
+| 9402 | 116 / 2,844 / 103 | no / yes | 561 / 1,516 (OLD crashed) |
+| 9403 | 12 / 470 / 40 | no / no | 414 / 309 |
+| 9404 | 175 / 198 / 45 | no / no | 485 / 1,708 |
+| 9405 | 55 / 883 / 54 | no / yes | 1,544 / 1,180 |
+| 9406 | 8 / 1,475 / 60 | no / yes | 182 / 1,400 |
+| 9407 | 828 / 1,318 / 59 | yes / yes | 1,179 / 930 |
+| 9408 | 1,050 / 2,410 / 46 | yes / yes | 669 / 345 |
+| 9409 | 8 / 217 / 55 | no / no | 177 / 143 |
+| 9410 | 106 / 1,225 / 59 | no / yes | 268 / 602 |
+
+**Rule outcomes.**
+- **A:** NEW took off on 7/10 and OLD on 3/10. A needed at least 8 and a margin of at least 3. The margin held (+4); the floor missed by one seed. NOT CONFIRMED.
+- **Guard:** NEW 0 crashes, OLD 1. Clear.
+- **B:** NEW arrived more than PIN on 10/10. CONFIRMED.
+- **Prediction:** A was predicted at 10/10. Wrong.
+
+**Read past the rule (descriptive, not ruled on).**
+- **NEW arrived more than OLD on 10 of 10 seeds,** by 1.1x to 184x. The median was 1,272 against 111.
+- **The package moves take-off a long way, but not to "reliable".** 9403 and 9409 stalled at 470 and 217. 9404 reached 198, with 1,708 alive: a big population computing few functions. So reading from birth is not enough on every seed.
+- **The founder-closure bound held as a test of its own model.** The exact closure of what a pinned founder can compute is 150 functions, of formula size up to 6 (computed, `w -> NAND(X_i, w)` from every input pair). Every PIN run stayed at 40-103. Every NEW run passed 150 (198-2,844). So on every seed, evolving worlds computed functions a pinned founder's read-chains cannot reach at any population.
+- **The rule was written to ship only on reliability, and it did what it was written to do.** Shipping a 7/10 package because it "looks better" is the move CLAUDE.md's template exists to stop (`#238`/`#241`).
+
+**What follows (as pre-registered):** the knob stays 0. The next try is supply: the READ draw rate, or the package with a higher draw. It is pre-registered again, on unseen seeds; 9401-9410 can design it but not decide it.
+
+### #353b — EXPLORATORY: what the living programs look like on #353's stalled and taken-off seeds (NEW arm, re-run with a read-only census)
+
+`probe-arrivals.js CENSUS=1`. It draws nothing, and every re-run reproduced its #353 count exactly. Out: `lab/port/out-census/`.
+
+| seed | took off | arrived | alive | READ carried | exact founder task ops | distinct task-op sequences | distinct (op, sector/src, dst) | INPUT / COPY / READ counts | mean length / cap |
+|---|---|---|---|---|---|---|---|---|---|
+| 9403 | no | 470 | 310 | 100% | 0 | 25 | 16 | 389 / 23 / 316 | 14.9 / 15.2 |
+| 9404 | no | 198 | 1,751 | 94% | 0 | 89 | 40 | 4,836 / 18 / 1,641 | 15.9 / 16.0 |
+| 9409 | no | 217 | 138 | 96% | 0 | 18 | 13 | 155 / 130 / 133 | 15.8 / 16.2 |
+| 9405 | yes | 883 | 884 | 95% | 0 | 101 | 58 | 80 / 43 / 879 | 16.1 / 16.6 |
+| 9406 | yes | 1,475 | 1,384 | 100% | 0 | 100 | 47 | 1,215 / 1,678 / 1,400 | 15.9 / 16.0 |
+| 9410 | yes | 1,225 | 1,190 | 86% | 0 | 75 | 38 | 1,164 / 1,184 / 1,148 | 16.7 / 17.1 |
+
+**The two causes relayed from Argon, checked.**
+- **"The stalled lineages lost READ": rejected.** READ is carried by 94-100% of the stalled seeds' programs, and always within the instructions that run.
+- **"Operand/opcode mutation (rate squared, about 0.09-0.4% per instruction per birth) is too slow to move": not supported as the separator.**
+  - Every population, stalled or not, has rewritten the founder's task ops: 0 programs carry them exactly, with 18-101 distinct sequences.
+  - Operand variety is lower on 2 of the 3 stalled seeds (16 and 13 combinations, against 38-58). But 9404 stalled with 40, and 9410 took off with 38.
+- **Confirmed, a third throttle:** programs sit at the cap (mean length within 0.4 of mean vmMaxInstructions on every seed). `inheritProg` only inserts while `p.length < cap`, so new instructions arrive only by redrawing old ones.
+
+**A pattern, not a cause (six seeds).** Two of the stalled seeds lost COPY almost entirely (23 and 18) and keep INPUT-heavy programs (9404: 2.8 INPUTs per program). The commonest one there, INPUT INPUT READ NAND OUTPUT INPUT, has no fallback COPY: on a miss, word 1 keeps whatever it last held. The taken-off 9405 dropped INPUT almost entirely (80 among 884 particles) and composes by reading.
+
+**What this changes:** the next try is still supply, as #353 pre-registered. But "raise the READ draw" is the wrong lever (READ is not missing). The candidates are the program-mutation throttles: insertion shut by the cap, and rate-squared redraws.
+
+### #354 — PRE-REGISTERED (`lab/port/PREREG-mut.md`, committed 893ab9c before any decision run): the reading founder plus un-nested rewiring (`TASK_FOUNDER=1 TASK_MUT=1`). **A CONFIRMED: took off on 9 of 10 unseen seeds, against 4 of 10 for today's default. Shipped: both knobs are now ON wherever TASKS runs.**
+
+Seeds 9501-9510, 10,000 ticks. Out: `lab/port/out-mut/`; result `lab/port/mut-result.txt`.
+- **"Arrived":** functions that ever earned at least 0.25 in one 500-tick window.
+- **"Took off":** at least 500 arrived by tick 10,000.
+
+| seed | arrived OLD / NEW / MUT | took off OLD / NEW / MUT |
+|---|---|---|
+| 9501 | 8 / 4,518 / 3,477 | no / yes / yes |
+| 9502 | 121 / 465 / 1,742 | no / no / yes |
+| 9503 | 62 / 203 / 11,234 | no / no / yes |
+| 9504 | 14 / 249 / 1,528 | no / no / yes |
+| 9505 | 586 / 322 / 971 | yes / no / yes |
+| 9506 | 1,897 / 996 / 1,266 | yes / yes / yes |
+| 9507 | 741 / 198 / 3,642 | yes / no / yes |
+| 9508 | 8 / 2,698 / 2,616 | no / yes / yes |
+| 9509 | 1,188 / 761 / 288 | yes / yes / no |
+| 9510 | 461 / 273 / 10,044 | no / no / yes |
+
+**Rule outcomes.**
+- **A:** MUT took off on 9/10 and OLD on 4/10, so the floor (at least 8) and the margin (at least 3) both held. CONFIRMED.
+- **Guard:** no crash in any arm. Clear.
+- **Attribution:** NEW took off on 4/10, against 7/10 on #353's seeds. So the reading founder alone is not reliable, and on these seeds the un-nested rewiring carried the result.
+- **Prediction:** about 9/10 against OLD's 3-4/10. Right.
+
+**How to read it.**
+- MUT was not uniformly higher. It fell below NEW on 9501, 9508 and 9509, and 9509 did not take off (288).
+- Each MUT run is a re-roll of its seed (TASK_MUT draws), so the comparison is of rates across seeds, not of paired worlds.
+- **The claim, at its rung:** under TASK_MUT, a TASKS world reaches the composing regime by 10,000 ticks on 9 of 10 seeds instead of 4. It does not say these worlds keep finding new functions for longer; that is #352's question, to be re-run on the new default.
+
+**What was shipped.**
+- `TASK_FOUNDER` and `TASK_MUT` now default to 1 wherever TASKS runs: the browser's default world, and any `TASKS=1` rig. `TASK_FOUNDER=0` and `TASK_MUT=0` restore #350's world, and were checked byte-identical to it (seed 9101).
+- Node's default and REPL worlds are untouched (byte-identical, seed 3).
+- **Saved universes:** they get the new six-instruction head on reload through `replEnsureHead`. TASK_MUT is a birth rule and needs nothing saved.
+- **#354, what supplies the route (added after a review asked whether take-off depends on "a narrow, externally supplied route").** It does, partly. Reliable take-off now rests on a six-instruction founder written by hand (Argon's design, built here) that reads neighbours from birth.
+  - #353's pinned arm bounds how much that founder supplies: its read-chains reach at most 150 functions at any population, and every evolving run passed that.
+  - But the RELIABILITY came from supplying the route, not from evolution finding it. In short: evolution builds well past the starting point, and the starting point was hand-made.
+  - Check after shipping: the new default on seed 9501 reproduced the MUT arm's run exactly (3,477 arrived by 10,000).
+- **#354 acceptance.**
+  - `smoke.sh`: 66 ok / 0 failing, on #354's defaults, with nothing else running. The comment-only fix to the TASKS block (89f48e0) landed mid-run, so the later rigs read that version; behaviour is identical.
+  - `substrate-test`: 264/0 at TICKS=40.
+  - Live in a real page.
+
+### #355 — PRE-REGISTERED (`lab/port/PREREG-route.md`, committed 79c8448 before any decision run): does faster rewiring find the reading route WITHOUT the hand-written founder? **SUPPLIED ROUTE.** Without the founder, TASK_MUT took off on 1 of 10 seeds; the old world on 3 of 10; the shipped default on 10 of 10.
+
+Seeds 9601-9610, 10,000 ticks. Out: `lab/port/out-route/`; result `lab/port/route-result.txt`. Nothing in the engine changed.
+
+| seed | arrived MUTONLY / DEFAULT / OLD | take-off tick MUTONLY / DEFAULT / OLD |
+|---|---|---|
+| 9601 | 55 / 1,449 / 8 | - / 5,000 / - |
+| 9602 | 223 / 1,152 / 248 | - / 3,000 / - |
+| 9603 | 258 / 4,729 / 12,403 | - / 3,000 / 3,000 |
+| 9604 | 215 / 1,590 / 1,676 | - / 2,000 / 7,000 |
+| 9605 | 10 / 1,774 / 122 | - / 7,000 / - |
+| 9606 | 14 / 3,228 / 68 | - / 2,000 / - |
+| 9607 | 146 / 1,649 / 87 | - / 3,000 / - |
+| 9608 | 133 / 1,092 / 59 | - / 6,000 / - |
+| 9609 | 106 / 1,393 / 435 | - / 2,000 / - |
+| 9610 | 725 / 7,869 / 514 | 6,000 / 2,000 / 10,000 |
+
+**Rule:** m = 1 and o = 3, so m is at most o + 1: SUPPLIED ROUTE. No crash in any arm.
+
+**My prediction was PARTIAL (m about 6). Wrong:** faster rewiring alone found the reading route on one seed in ten.
+
+**How to read it** (the prereg's "Reading the verdict", written before the runs).
+- The founder supplies a CAPABILITY under this test, not a head start: MUTONLY rarely gets there at all by 10,000, and its one take-off came later than the default's on the same seed (6,000 against 2,000).
+- MUTONLY took off on fewer seeds than OLD (1 against 3). That is not distinguishable at 10 unpaired seeds, so it is not a finding that rewiring hurts on its own.
+- **With #353-#354, an interaction is a well-supported reading, not yet a measured one:**
+  - the founder alone took off on 7/10 (#353's seeds) and 4/10 (#354's);
+  - founder + rewiring on 9/10 and 10/10;
+  - rewiring alone on 1/10;
+  - neither on 3-4/10.
+
+  The founder supplies the route, and the rewiring makes building on it reliable. These cells come from three seed sets, and the founder-alone cell itself varied 7 against 4 between two of them. So the founder-alone arm is now being run on 9601-9610, to finish the 2x2 on one set (#355b, a measurement).
+- **What this means for the artwork, said plainly:** reliable take-off rests on a hand-written route. Evolution builds far past it (#353: every evolving run past the founder's 150-function reach), but under these conditions it does not find the route by itself in 10,000 ticks.
+
+### #355b — MEASUREMENT (no rule, no engine change): the 2x2 finished on ONE seed set. **The founder and the rewiring interact super-additively.**
+
+The FOUNDERONLY arm (`TASK_FOUNDER=1 TASK_MUT=0`) was run on 9601-9610 beside #355's three arms. Out: `lab/port/out-route/*_FOUNDERONLY.*`.
+
+| took off by 10,000 (at least 500 arrived), of 10 | no rewiring | TASK_MUT |
+|---|---|---|
+| #350's founder | 3 | 1 |
+| reading founder | 6 | **10** |
+
+| seed | arrived OLD / FOUNDERONLY / MUTONLY / DEFAULT (with take-off tick) |
+|---|---|
+| 9601 | 8 / 323 / 55 / 1,449 at 5,000 |
+| 9602 | 248 / 599 at 9,000 / 223 / 1,152 at 3,000 |
+| 9603 | 12,403 at 3,000 / 204 / 258 / 4,729 at 3,000 |
+| 9604 | 1,676 at 7,000 / 995 at 4,000 / 215 / 1,590 at 2,000 |
+| 9605 | 122 / 2,400 at 3,000 / 10 / 1,774 at 7,000 |
+| 9606 | 68 / 506 at 10,000 / 14 / 3,228 at 2,000 |
+| 9607 | 87 / 518 at 10,000 / 146 / 1,649 at 3,000 |
+| 9608 | 59 / 177 / 133 / 1,092 at 6,000 |
+| 9609 | 435 / 417 / 106 / 1,393 at 2,000 |
+| 9610 | 514 at 10,000 / 513 at 6,000 / 725 at 6,000 / 7,869 at 2,000 |
+
+**How to read it.**
+- **The cells are rates across unpaired re-rolls.** Every arm draws differently from the first birth, so a single seed's row compares two different worlds.
+- **The effects:**
+  - the founder alone adds +3 take-offs;
+  - the rewiring alone changes the count by -2 (not distinguishable from 0);
+  - adding those predicts about 4 of 10 together, and together they made **10 of 10**.
+- **The founder alone is often marginal.** Three of its six take-offs only just crossed the line (506 and 518 at 10,000; 513 at 6,000).
+- **The founder alone varies by seed set:** 6/10 here, 7/10 on #353's seeds, 4/10 on #354's.
+- **What it means:** the reading founder supplies a route; the faster rewiring is useless without one and makes building on it reliable and fast. This turns #355's "well-supported reading" into a measurement, at 10 seeds and one horizon.
+
+### #357 — ART: THE READS ARE DRAWN. Rendering only; the simulation is byte-identical.
+
+The user asked whether the visuals match the system, and whether the system should decide what it looks like ("it's not my artwork, it's yours"). They did not match. Under TASKS, what decides who lives is what each creature computes, and most of that is built from neighbours' published words (#353-#356). None of that was on screen: a creature computing a depth-9 composite looked like one computing NAND of two inputs. The visible difference from the old world was a side effect of the economy (booms to the cap, crashes, REPL births).
+- **Now:** every creature whose READ hit this epoch draws a thin thread to where the neighbour it read stood. The thread is coloured by the function that flowed along it (a hash of its truth table), and grey if the word was not clean.
+- **What it shows:** a world computing alone shows dots; a world composing shows a web, in as many colours as it has functions in play. A stalled world and a world that has taken off now look different for the reason they ARE different.
+- **How it is built:** T_READ writes the neighbour's position, the epoch and the function into four arrays (`tRx`, `tRy`, `tRE`, `tRT`), which only `render()` reads. They move in `compact` and reset at birth.
+- **Checked byte-identical:** the shipped default (seed 9501) and #350's world (seed 9101).
+- **Seen in a real page:** at 60 s a faint web among about 600 bodies; at 180 s the same world had crashed to 137 alive and showed only a few threads. Thread opacity was raised once after that, for legibility.
+- **Unchanged:** colour of bodies (traits) and their form (the world's draw program, kept or undone by attention, #314).
+- `smoke.sh` is owed before `main` moves: #356's six long runs are using the CPU.
+
+### #356 — PRE-REGISTERED (`lab/port/PREREG-deps.md`, committed b42d888; addendum 00fe860 on the engine hang): do discoveries become foundations? **STALLED by the rule. But what happened is not slowing discovery: on 2 of 3 seeds the world COLLAPSED into a state that computes nothing and never recovers.**
+
+Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned), up to 200,000 ticks. Out: `lab/port/out-deps/`; result `lab/port/deps-result.txt`.
+- **DEPTH** of a function: 0 if its first payment used no read, else 1 + the deepest read function that fed it.
+
+| seed | H | mean depth of functions first paid in the 2nd quarter, then the last | PIN max depth (repertoire) | DEFAULT repertoire |
+|---|---|---|---|---|
+| 9701 | 200,000 | 4.26 (7,528 functions), then none (0 functions) | 6 (85) | 10,975 |
+| 9702 | 144,827 (wall) | 3.87 (60), then 2.65 (139) | 6 (252) | 3,274 |
+| 9703 | 200,000 | none, then none | 7 (187) | 1,487 |
+
+**The rule:** STALL on 9701 and 9702, neither on 9703 (no functions in either quarter). So STALLED.
+
+**My prediction was ACCUMULATING. Wrong, and for a reason the rule did not anticipate.**
+
+**Block by block** (alive / functions first paid / their mean depth / task income, per 5,000 ticks):
+- **9701:** booms (1,700 alive, 2,728 first paid at depth 3.5 by tick 5,000), crashes to about 150 by 20,000, booms again at 75,000-80,000 (3,926 and 3,496 first paid, depth 4.0-4.5, task income up to 21,639), then crashes to 34 alive. From tick 85,000 to 200,000 it stays at 34-35 alive with task income of 0-1 per block.
+- **9703:** booms (1,523 alive), crashes at 25,000-30,000, then holds 46-50 alive with ZERO task income and zero new functions for 170,000 ticks.
+- **9702:** never collapses. It holds 750-1,460 alive, but from tick 20,000 on it pays 0-33 new functions per block, at lower depth late (2.65) than mid-run (3.87). Discovery trickles.
+
+**What this means.**
+- **The rule's quarters measured the collapse,** not the stacking question it was written for. While the worlds were alive and booming, depth was high: 9701's 75,000-80,000 boom first-paid 7,400 functions at mean depth 4.0-4.5, against PIN's maximum of 6.
+- **The new finding is an ABSORBING DEAD STATE.** A crashed TASKS world settles at 35-50 alive, on the sunlight floor, computing nothing paid, for over 100,000 ticks. At the end the pools are FULL (none empty), so food is not what is missing.
+- **The emergency reseed never fires:** it only acts under RESEED_FLOOR, and the world sits above it.
+- **Why no mutant that computes takes over a world of full pools is the open question.** A census of 9703's survivors is running.
+- **For the artwork this is a dead tile:** a universe that has crashed stays dark-and-still indefinitely.
+
+### #359 — BUG FIX: the REPL founder rescue (#284) never fired for a reseed. Fixed after boot. A crashed world now comes back if it empties out; one that settles just above the reseed floor still does not.
+
+**Why #356's dead worlds stayed dead.** A census of 9703 at tick 40,000 (`probe-arrivals CENSUS=1`):
+- 293 living programs carried NAND 869, READ 582 and COPY 580 times, but INPUT only 10 and OUTPUT only 9.
+- The dominant program (188 of 293) is NAND READ NAND READ COPY COPY NAND: it reads, and nobody publishes.
+- Recovering needs an INPUT and an OUTPUT together, two specific mutations in a small population living on sunlight.
+- The population also kept crashing to 0 and being reseeded (minimum alive 0, maximum about 300). That should have rescued it, because #284 made a parentless founder under REPL start from the ancestor program.
+
+**The bug.** Every reseed call (`replenish`, the extinction rebirth, `init`) passes no parent, and the rescue tested `parentA<0`, which is false for undefined. So the rescue never fired. Every reseed copied the drifted germline, which `selfLearnFromBest` had re-adopted from the best (non-computing) survivor, so it had lost INPUT and OUTPUT too. This is the same class of miss as #352a's reload bug, and as CLAUDE.md's fallback trap: a check that declines to fire on a missing value.
+
+**The fix.** The rescue also fires when the parent is undefined AFTER tick 0. Boot founders are left as they were, so every run is byte-identical up to its first post-boot reseed (checked on the shipped default to tick 800). The default world has no REPL_ANCESTOR and is untouched (checked byte-identical).
+
+**Tested on the two seeds that died** (design seeds, `lab/port/out-rescue/`):
+- **9703: recovered.** It crashed at 25,000-35,000 as before, then came back from 40,000. From 55,000 to 75,000 it first-paid 2,300-5,250 functions per 5,000 ticks on task income of 37,000-42,000, above anything before its crash. Without the fix it sat at zero for 170,000 ticks.
+- **9701: still dead.** It crashed at 85,000 as before and held 34-35 alive to 130,000, with task income of about 30 per block. It never empties, so no reseed happens and the rescue never gets a chance. Its survivors breed on sunlight above RESEED_FLOOR and have lost the ability to compute.
+
+**So there are two dead states:** one that empties out (now rescued), and one that persists just above the floor (not). The second is the next question. In the browser field a universe also receives migrants from its neighbours, which may already lift it; a node run is isolated. No further mechanism is added before that is checked.
+
+- **#359, the dead world 9701 diagnosed further (corrects the entry above: its survivors sit BELOW RESEED_FLOOR (90), not above it).**
+  - **Census at tick 95,000** (`lab/port/out-rescue/9701-census.jsonl`, rescue fix in):
+    - 35 alive, with a mean age of **74,152 ticks** (REPL's median life is about 400) and only 1 under 100 ticks old;
+    - none running the predation op (155), so it is not a predator trap;
+    - READ carried by 17, and the logic ops rare.
+  - **Why they are immortal:** senescence is skipped for a lineage in founder grace (`specInGrace`), and grace holds while a lineage has fewer than `__SPEC.minsize` (12) living members, with no time limit. `COLO_SURV` (the starvation pin) is off, so they can still starve, but on full sunlight stores (sun income about 1,700 per 5,000 ticks for 35 bodies) they do not.
+  - **What the cull test shows** (a fresh TASKS world on seed 9701, all but 35 killed at tick 1,000): it regrows to about 1,600 within 2,000 ticks from births, after only 19 parentless founders. So reseeding works and a healthy remnant recovers.
+  - **What that leaves:** in the dead state, at most 1 creature at a time is young while founders arrive on about 1 tick in 4, which says the founders DIE within a few ticks. The rescue restores the ancestor's PROGRAM, but a founder takes every other gene from the drifted germline (upkeep, death threshold, lifespan).
+  - **Hypothesis, NOT checked:** the germline's parameters have drifted somewhere lethal to a newborn, while the immortal survivors carry older, viable genomes. Next: replay 9701 to its dead state and compare the germline with the survivors.
+  - **Two mechanisms meet in this trap:** founder grace without a time limit for small lineages, and a germline that drifts to whatever survives.
+
+### #357b / #358 / #359 — ACCEPTANCE, and what the bisect found
+- **What broke, and how it was found:**
+  - After #357 (the read threads), `smoke.sh` failed on `mind-test`, and it failed run alone too. The failing rows were a grown universe past tick 1,000 with no births, and too few universes past 1,000.
+  - Bisected with worktrees: 08dc9f2 3/3 pass, b42d888 (the hook) 2/2 pass, 47ebd9e (the threads) 1 pass 1 fail, 00fe860 (the hang fix) 2/2 fail.
+  - The current engine with the threads switched off passed 3/3.
+  - **The cause:** one canvas stroke per thread, up to 1,800 a frame, slowed every universe in a field enough to fail the test's throughput rows.
+- **My first explanation was wrong.** I called it the germline-drift dead state showing up in grown universes, and that was a hypothesis; the bisect found a cost, not a behaviour. Recorded because the next person will reach for the same story.
+- **The fix (#357b):** one path per colour (24 hue buckets and grey). The picture is the same, with hue rounded to 15 degrees.
+- **Acceptance:** `mind-test` 3/3 on the fix; `smoke.sh` 66 ok / 0 failing; substrate-test 264/0 at TICKS=40. The simulation is byte-identical through all of it.
+- **#359b, what kills the founders (replay of 9701 to tick 90,000, then 2,000 ticks followed; `lab/port/probe-founders.js`, out `lab/port/out-rescue/9701-founders.jsonl`).**
+  - **The founders:** 465 parentless founders arrived; **median lifespan 1 tick**, maximum 1.
+  - **At their last tick alive their SUN stores were healthy** (pE about 0.53, pAdq 1), but their `amp` was **NaN**. The death path sets a NaN amp to 0, below deathThreshold, so they die of "physics" on their second tick.
+  - **The germline-drift hypothesis above is REFUTED.** The germline's life-and-death parameters are ordinary and close to the living mean: deathThreshold 0.038 against 0.039, lifespanBias 1.07 against 1.01.
+  - **New hypothesis, being checked:** the immortal survivors' phases have grown without limit (#358's hang came from exactly that). `Math.cos(phase[i]-phase[j])` with infinite phases is NaN, which reaches a newborn's amp on its first interaction. The breakage would also be why the survivors persist.
+- **#359b, second replay (`9701-founders2.jsonl`): the phase hypothesis is REFUTED too.**
+  - The 35 survivors' phases are finite and ordinary (140-1,480).
+  - The founders end their first tick with `amp` = **Infinity**, not NaN. Infinity minus Infinity then gives NaN, which is reset to 0, and the founder dies on tick 2.
+  - The survivors' own amp is non-finite too: JSON prints it as null, which is either NaN or Infinity. Infinity never falls below a death threshold, which may be what makes them immortal.
+  - **So something in the dead world holds an infinite value** and passes it to everything that touches it on its first tick. A third replay scans every shared array for non-finite values. Two hypotheses in a row were wrong; this one is not guessed.
+
+### #360 — THE DEAD WORLD'S CAUSE, FOUND BY SCANNING RATHER THAN GUESSING: the resource field overflowed to Infinity. Fixed.
+- **Third replay of 9701 to tick 90,000** (`9701-founders3.jsonl`), scanning every shared array for non-finite values:
+  - `field` (the main resource lattice) was **Infinity in all 1,600 cells**;
+  - `localRes` was Infinity in 29 creatures and `amp` in 39;
+  - every other field, store and pool was finite.
+- **The mechanism.** The decay stage of `updateField` multiplies each cell by `FIELD_DECAY + memBonus`.
+  - FIELD_DECAY is a gene clamped only to [0.5, 1.0] (as a law it goes up to 0.999), and memBonus adds up to 0.015 (fieldMemory saturates at 5, times 0.003).
+  - So once decay has evolved above about 0.985, every well-remembered cell multiplies by MORE THAN 1 each tick. Diffusion spreads it, and the field grows exponentially (at 1.014, about 50,000 ticks to overflow).
+  - The deposit stage clamps cells to [0, 100]; the decay stage had no clamp, and its guard caught NaN only.
+  - Every creature on an infinite cell takes `amp += field*0.0008*affinity` = Infinity. Newborns die a tick later, when Infinity minus Infinity gives NaN, which is reset to 0. The ones already infinite never fall below a death threshold: those are the "immortals" of #359.
+- **Two hypotheses on the way were wrong, and both are recorded above:** germline drift, then infinite phases. The scan found it in one run.
+- **The fix:** the factor is capped at 0.999 (the law's own ceiling), and any non-finite cell is reset to 0. Under defaults (0.982 plus at most 0.015) the cap never binds: byte-identical on the shipped default, the default world and REPL.
+- **Pending:** 9701 replayed with the fix past its old death at tick 85,000.
+- **The default world can drift there too.** FIELD_DECAY is a gene everywhere, so this may explain the default-world extinction seen in #351 (9202 D3). That is not checked.
+- **#360, 9701 replayed with the cap** (`lab/port/out-rescue/9701-fieldcap.jsonl`, alive / first paid / task income per 5,000 ticks):
+  - It is identical to the uncapped run up to tick 40,000. It diverges there (the cap first binds), so decay had evolved high by then.
+  - It never overflows and never collapses to immortals. It holds **120-190 alive from tick 20,000 to 140,000**, with task income of 3-133 per block and 0-3 new functions per block.
+  - The uncapped run had a second boom at 75,000-80,000, which the capped run does not; that boom may have been fed by the runaway field. Not checked.
+- **So two different dead states remain, separated:**
+  1. the **infinite field** (fixed);
+  2. a **stalled world after a crash**, which lives on sunlight and computes almost nothing, the post-crash form of #352's never-took-off seeds. In it the computing lineages are gone, and the survivors are not the reading founder that #353-#354 made take-off reliable with. This one is still open.
+- **#360 acceptance:**
+  - `smoke.sh` 65 ok / 1 failing: `slot-test`'s throughput row "most of the field got far enough to save" (2/9 saved).
+  - `slot-test` alone on the same engine: **4 of 5 pass**, the one failure being that same row. The engine before #360 (71ddb59): 2 of 2.
+  - The cap cannot bind in a short browser run: it needs a world whose decay has evolved above about 0.984 with saturated field memory. So this is the timing sensitivity CLAUDE.md describes, established by re-running rather than assumed.
+  - substrate-test 264/0 at TICKS=40.
+- **#360b, census of the stalled 9701 (with the cap) at tick 100,000** (`lab/port/out-rescue/9701-stall-census.jsonl`):
+  - 115 alive, 22 of them under 100 ticks old, with a mean age of **24,629 ticks**.
+  - **83 of 115 run the predation op (155)**; there have been 1.6 million prey events.
+  - INPUT 33 times across 115 programs; READ in 27 programs; task income 12-28 per 10,000 ticks against sun income of about 1,000.
+  - **So the stalled world is a stable PREDATOR ecology** living on sunlight and on each other, which has stopped computing (it lost INPUT). It is not a dead world. But its residents barely age: the unlimited small-lineage grace again.
+  - **Measuring next:** what share of a HEALTHY TASKS world is in grace, before any fix to grace is designed.
+- **#360b, grace in a HEALTHY TASKS world** (design seed 9101, tick 15,000): 1,654 alive, mean age 320, **182 in grace (11%)**, only 15 older than 2,000 ticks. So the unlimited small-lineage relief barely matters in a thriving world, and becomes immortality only in small, stalled ones.
+
+### #361 — two candidate fixes for the post-crash stall, as knobs (default OFF; byte-identical off on the shipped default and the default world)
+- **`GRACE_MAX`** (ticks): the small-lineage relief from senescence ends once a lineage is that old. The young-lineage relief (`__SPEC.grace`, 2,000 ticks) is unchanged.
+- **`TASK_TRICKLE=k`**: under TASKS, one parentless founder every k ticks. It arrives with the reading ancestor via #359's rescue (liveness: `task.trickle`).
+- **Design runs** on 9701 (GRACE_MAX=20000; TASK_TRICKLE=200; to 120,000) pick the candidate. A pre-registered test on unseen seeds decides it.
+
+### #362 — the trickle test, execution (the verdict will follow in its own entry)
+- Pre-registered in `lab/port/PREREG-trickle.md`. **Addendum 2** records a flaw in the first execution: the 115-minute wall cap stopped healthy
+  worlds (about 1,500 alive, about 160 minutes to reach tick 40,000) and let stalled ones (about 150 alive, 17 minutes) finish. An INCOMPLETE run is
+  not counted, so the cap was selecting stalled worlds into the count. The cap is now 900 minutes; the rules are unchanged.
+- **Seen before the change, and stated against the candidate:** 9802 TRICKLE is STALLED by the rule (0 new functions and task income of 67 in the last
+  block, against a peak of 5,893). The trickle did not save that world.
+
+### #363 — sound: a readout of the TASKS layer (off until tapped; the world never reads it)
+- **Where:** a `🔇 sound` button in `universe.html`'s controls, so in a field it exists only in the universe that is open. The field's
+  `controls(false)` turns it off. Each bar it asks the worker for a `score` (a new bridge call in `sim.worker.js`). The score READS the TASKS arrays
+  (`tPE`, `tLast`, `tLastE`, `tLastK`, `tRE`, `tRT`, `px`, `TASK_SZ4`): no draw, no write. So `engine.html` is untouched, and a universe that is listened
+  to runs exactly as one that is not.
+- **What it plays:**
+  - One bar per epoch. The bar is as long as an epoch takes, clamped to 1.6-4 s.
+  - The 8 functions with the most paid creatures are the voices. Each voice plays the 32-bit word a paid creature published, as a 32-step rhythm.
+  - Pitch climbs a pentatonic scale with NAND formula size.
+  - Loudness is absolute: full at 48 payers.
+  - Pan is mean position.
+  - A voice that mostly READ a neighbour is a soft sine. One that computed alone is a short triangle pluck.
+  - Under the voices, the 3 functions most heard (READ hits) are held tones.
+  - Nobody paid, nothing alive, or no TASKS means silence. An epoch already played is not repeated.
+- **Why these choices:** every voice in a bar is a function of the same four input words, so the rhythms are related by logic, not by
+  a composer. An AND voice can only sound where both of its inputs do.
+- **Measured (one young world in a browser, one seed):** 8 voices and about 160 notes a bar. Payments fell from 740 to 138 over 45 seconds, and the
+  level fell about 3 dB with them. The first version kept loudness relative to the loudest voice, and a compressor at its defaults evened it out
+  further: the level stayed flat while payments fell 7-fold, so the readout hid the very thing it was reading. Both are fixed (absolute loudness;
+  the compressor is a limiter only). A clip is in `lab/sound/young-world-363.mp3`.
+- **What it is not:** the world's own voice. Nothing about the sound is selected; it is a translation chosen by me, like the renderer. CLAUDE.md asks
+  every session that adds a mechanism to remove or prove one. This is not a mechanism, because the world never reads it, but that is a claim, and it
+  is checked: the score call draws nothing. An evolvable voice, selected by whether anyone listens (#314's attention), is the follow-up. It
+  will be pre-registered, and it is not this.
+- `sound-test.js` (in `smoke.sh`): starts off; once tapped, a TASKS world plays bars with voices; the bar sits inside its clamp; `controls(false)` stops
+  it; `#notasks` says so and plays nothing. 7/0.
+
+### #364 — listening selects the voice (the mute button is the verdict)
+- **The voice is a gene now:** `genome.voice`, ten integers. They are four scale intervals, the base note, a rotation of the 32 steps, the
+  wave of a creature that computed alone and of one that read, the note length, and how many most-read functions are held. #363's readout is
+  the default, `VOICE_DEFAULT`. It is absent from the genome, and from every save, until someone has listened.
+- **The trial, #314's shape:** while the sound is on, the world moves one gene one step and plays the variant for `VOICE_TRIAL` = 600
+  listened ticks.
+  - Heard to the end of the trial: kept ('k'), and it becomes the voice the next variant must survive.
+  - The mute button pressed mid-trial: undone ('u'), back to the last voice kept.
+  - Leaving (the field closes the universe, or the page goes) is not a verdict: the unjudged variant is put back and nothing is written.
+  - Every verdict goes in `genome.voiceHist`: the last 64, saved with the universe.
+- **No one listening, nothing happens.** Proposals draw from their own stream (`__mindRng`), never `Math.random`. Measured byte-identical
+  against the engine before it: seed 3, 1,500 ticks, TASKS on and off.
+- **By this file's own definition this is decoration.** It changes nothing about who has offspring. The world does not choose its voice: the
+  listener does, as with the form under #314. That is the artwork's surface responding to its audience, not evolution, and it is not
+  claimed as more.
+- **A mute is ambiguous.** It may mean "not that" or "enough for now", and the history records only that it happened. A listener who always
+  mutes after about 20 seconds would undo every variant and freeze the voice.
+- **(Withdrawn in #364c.) What was removed to pay for it** (CLAUDE.md: a session that adds a mechanism must remove, merge or prove one): `GRACE_MAX`. See #361,
+  #362 and the next entry.
+- `listen-test.js` (in `smoke.sh`), 8/0:
+  - unheard: nothing in the save;
+  - a 60-second listen kept a variant;
+  - a mute undid exactly the variant playing and restored the kept voice;
+  - leaving mid-trial wrote nothing and put the variant back.
+
+### #364b — GRACE_MAX removed (#361's knob, default off, never shipped)
+- **Why:** its one design run (9701, `GRACE_MAX=20000`) crashed at about 30,000. It regrew to about 1,550 alive and found **0 new functions in
+  60,000 ticks**. It never earned a decision run; the trickle went forward instead.
+- **What it was aimed at is still open:** the unlimited small-lineage relief in `specInGrace`, under which a stalled world's residents live
+  about 25,000 ticks (#360b). Removing a knob that did not fix it is not fixing it.
+- **Byte-identical on the default** (the knob was 0): seed 3, 1,500 ticks, TASKS on, against the engine before #364. It is gone from
+  `harness-env.js`'s KNOBS too.
+- **The design-run record stays:** `lab/port/out-rescue/`, and #361 and PREREG-trickle.md.
+
+### #364c — #364 withdrawn (the listener-selected voice is reverted; #363's readout and #364b's removal stand)
+- **Asked plainly ("the voice as decoration is kind of pointless isn't it?"), the answer is yes.**
+  - It changed nothing about who has offspring, so it could not serve the claim this artwork makes.
+  - It did not give Selection a way to express itself either: the world proposed and the listener chose. That is the listener sculpting.
+  - It was built because #363 had promised it as the next step. Then it was paid for with a deletion to satisfy the add-one-remove-one rule,
+    which is the accretion this file warns about, with the bookkeeping done.
+- **What stays, and why:**
+  - #363's readout makes the world's computation audible: the rhythm IS the published words and the pitch IS formula size, so the world's
+    sound changes when what it computes changes, and a stalled world goes quiet. It is a window, like the renderer.
+  - #364b (GRACE_MAX removed) stands on its own evidence.
+- **A voice that would not be decoration** puts sound inside the world: creatures that can hear the bar and are paid for using it, so the
+  music feeds back on who survives. That is a mechanism, and would go through the retire-or-prove template like any other. Not started.
+- The #364 entry above is left as written, so the wrong turn stays visible.
+
+### #365 — what crashes a booming TASKS world: a PREDATOR OUTBREAK (one crash, one seed: a lead, not a finding)
+- **Probe:** `lab/port/probe-crash.js` (draws nothing); output in `lab/port/out-crash/9802T.jsonl`. It replays 9802 TRICKLE, #362's early
+  crash, to tick 10,000, one row per 250 ticks.
+- **What it is NOT:**
+  - The pools are full throughout (poolFill 0.999-1.000): no starvation of income at the source.
+  - Field and amp are finite throughout: not #360's overflow.
+- **What it IS:**
+
+  | tick | alive | carrying predation (155) | prey events per 250 ticks | mean store | carrying INPUT | task income |
+  |---|---|---|---|---|---|---|
+  | 2,250 | 1,794 | 86 | 10,683 | 0.15 | 1,743 | 566 |
+  | 3,500 | 1,504 | 663 | 213,742 | 0.049 | 1,359 | 325 |
+  | 5,000 | 286 | 167 | 13,822 | 0.054 | 121 | 33 |
+  | 7,000 | 124 | 86 | 3,041 | 0.09 | 57 | 5 |
+
+- **The mechanism, read from the op** (case 155 under REPL, #273):
+  - Each execution takes up to 20% of a neighbour's store, and runs on every pair interaction, so many times a tick.
+  - It stops only when the prey's store falls to 0.05. The world's mean store sits at 0.045-0.054 from tick 3,500: the predators hold
+    everyone at the floor, where nobody can afford to breed.
+  - The computing lineages die, predators carrying no INPUT are what is left, and the world stops computing. That is #360b's stalled
+    world (83 of 115 predators), seen forming.
+- **Why there is no defence:** #277/#277b's arms race (`REPL_ARMS`) never engaged, so prey have no counter. TASKS made predation the
+  cheap way to an income that computing has to earn once an epoch.
+- **Seen in #362:** 9801 TRICKLE (1,700 to 2 alive between 35,000 and 40,000) and 9803 OLD (852 to 131) crashed too. Whether by the same
+  route is NOT checked; that needs replays of about 2.5 hours each, after #362's batch.
+- **Next, in order:**
+  1. Replay those two crashes with this probe.
+  2. If predation drives them too, a knob to switch predation off under TASKS (default on, byte-identical).
+  3. A design run on 9802 TRICKLE.
+  4. A pre-registered retire-or-prove of predation under TASKS on unseen seeds. CLAUDE.md favours removal when a mechanism does harm;
+     the food web it built (#275) is what is on the other side of the scale.
+
+### #362 — VERDICT: NOT CONFIRMED (the founder trickle does not ship; TASK_TRICKLE stays 0)
+- 6 of 6 seeds counted, all reaching tick 40,000 after addendum 2 (`lab/port/trickle-result.txt`).
+- STALLED: OLD 1 (9806), TRICKLE 1 (9802). The rule needed TRICKLE to stall on at least 2 fewer seeds than OLD.
+- Crashes: OLD 1 (9806), TRICKLE 2 (9801, 9804). The guard fails as well.
+- **The prediction (OLD stalls on 2-3 of 6) was wrong in the direction that matters.** The stall the trickle was designed against came
+  from one design seed (9701, at 85,000 ticks). On unseen seeds at 40,000 it happened once in six. The template's "unseen seeds decide"
+  is what caught it.
+- **Not in the rule, reported as seen:**
+  - TRICKLE worlds found more functions on 4 of 6 seeds (cumulative arrivals 17,440 against 8,089; 23,262 against 11,623; 12,910 against
+    3,976; 6,698 against 3,747), and fewer on 2 (2,631 against 7,808; 8,584 against 16,840).
+  - That is a novelty question this test did not ask, and it is confounded: the trickle is a steady supply of the hand-written reading
+    founder. If it is worth asking, it needs its own pre-registration, on the dependent variable and against null replicates.
+- **What the test did find** is #365: the crashes are where the dead worlds come from, and the one examined was a predator outbreak.
+
+### #362-#365 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
+- `smoke.sh` on a quiet machine: 66 ok, 1 failing, `mind-test`. Its two rows ask for at least 3 universes past 1,000 ticks and found 2
+  (throughput). Run alone straight after: **10/10**. `sound-test` ok inside the suite.
+
+### #367 — a harvest now carries each universe's history, kept across reloads
+- **Why** (the user, who runs the field over days because a phone kills the tab overnight): a harvest was a snapshot (genome, ticks,
+  population now). It could not say whether a universe had crashed, when, or what led there.
+- **What:** every 15 seconds the shell asks the worker for one row (`sim.worker.js` `histRow`, read-only, nothing drawn) and keeps it when
+  the universe has run 250 ticks since the last one, in `hist_<slot>` beside the genome. Each row holds:
+  - ticks, wall-clock minute, alive, births, prey events, task and sun income, payments;
+  - functions ever paid this session, functions paid for the first time since the last row, and exp(H) of income since the last row;
+  - how many carry predation (155), and how many carry INPUT;
+  - mean age;
+  - deathThreshold, lifespanBias and metabolicCost: germline and living mean.
+- **Reloads:** a boot writes `['boot', minute, ticks]`. That marks where this session's counters restart and where the pools refill (the
+  reload windfall).
+- **Thinning:** at 300 rows the older half is thinned to every other row, so a run of days keeps its whole span at falling resolution.
+  The field's harvest carries each universe's rows; its reset and load clear them.
+- **Why the genes:** #366b's 9801 TRICKLE crash killed 98% of a well-fed world in 500 ticks with few predators. A runaway death or
+  lifespan gene is the first suspect, and a field run over days can test it across many universes.
+  - Already visible at tick 832 of a browser world: the living mean metabolicCost is 0.000051, against the germline's 0.00002.
+- `engine.html` untouched. `history-test.js` (in `smoke.sh`), 6/0:
+  - rows gather;
+  - a reload keeps them and marks itself;
+  - an 11-universe field's harvest carries every history.
+
+### #366c — 9801 TRICKLE's die-off, at 50-tick resolution (`lab/port/out-crash/9801T-diag.jsonl`)
+- **The whole population died between ticks 34,050 and 34,100: 1,664 alive, then 0.** The world reseeded and died again: 308, 546, then 3,
+  then 0; later 109, then 2. Each wipe took under 50 ticks.
+- **Every candidate that moves slowly is ruled out:**
+  - No error was thrown.
+  - The germline's death-relevant genes are unchanged across the wipe, and the living means are normal right up to it.
+  - Mean store was 0.97 and there were 47 predators.
+  - The field and amp were finite, the pools full, and sun income already 0 (it had been since about tick 15,000).
+  - The engine's counters ran at about half their 50-tick rate in the window: a normal world for about 25 ticks, then nobody.
+- **So this is a world-level killer, not evolution.** The engine already counts deaths by cause (escape: a position non-finite or far
+  outside the world; physics: amp below the death threshold; age). Lead hypothesis, given speed and full stores: ESCAPE, with motion
+  blowing up.
+- Replay with those counters, non-finite positions and velocities, and the fastest speed, every 10 ticks from 33,950:
+  `lab/port/out-crash/9801T-cause.jsonl` (running).
+
+### #366d — the 9801 wipe is ESCAPE: the whole population flung out of the world in under 10 ticks (`9801T-cause.jsonl`)
+- **Between ticks 34,070 and 34,080, deathsByEscape rose by 1,567: everyone.** Positions stayed finite (escapeNonFinite 0): they were flung
+  far, not turned into NaN. deathsByPhysics and deathsByAge stayed normal.
+- **The fastest living speed:**
+  - normally 22-26;
+  - fell to 3.5 at 34,030, then grew by a constant 1.128 every 10 ticks (3.51, 3.96, 4.45, 5.02): about 1.2% a tick, compounding;
+  - 101 at 34,070, and everyone gone by 34,080.
+- **The multiplier:** velocity is multiplied every tick by `velocityDamping`, the particle's own or the germline's. The gene is mutated
+  through `maybe(…, 0.98, 0.9999, 0.003)`, and **#148's STANDING decision** is that `maybe` ignores its bounds on purpose (*"If that value
+  produces crashes elsewhere, that's a finding, not a failure to guard"*). So this is not called a bug here, and it is not clamped on sight.
+- **Already measured** (seed 3, tick 200): 22 living particles carry damping at or above 1, with a maximum of 1.050. Individuals cross 1 almost
+  at once, and selection removes them a particle at a time through escape: 5,369 escape deaths in 9801 before the wipe.
+- **The open question, which decides whether #148 covers it:** did the GERMLINE cross 1? Founders are drawn from the germline, so a germline
+  above 1 would doom every founder. That fits the repeated wipes of fresh reseeds, and is a value selection never gets to reject.
+  - Also unexplained: `genome.velocityDamping` is pulled toward a cluster's `metabolicBias` (the cluster-upstream block), a different
+    quantity. No note covers that line.
+- Replay recording damping every 2 ticks through the wipe (germline, and living min, mean and max, and the count at or above 1):
+  `lab/port/out-crash/9801T-damp.jsonl` (running).
+
+### #366 — VERDICT: NOT CONFIRMED (predation stays on under TASKS; REPL_PREY stays 1) — and the guard would have stopped it anyway
+- 8 of 8 seeds counted: predation ran in every PREY arm (0.5 to 25 million prey events), and in no NOPREY arm (`lab/port/prey-result.txt`).
+- **Collapses: PREY 2 (9901 at 10,000, recovered to 1,330; 9907 at 15,000, ending at 133), NOPREY 0.** The rule needed a difference of 3.
+- **The guard, on the 6 seeds where neither collapsed:** NOPREY found over 25% fewer new functions in the last 10,000 ticks on 4 of 6
+  (1,396/508, 2,569/1,010, 4,421/970, 2,972/285), more on one (83/3,181) and about the same on one. So even a confirmed collapse result
+  would have been SPLIT.
+- **My prediction was wrong.** I expected PREY to collapse on 3-5 of 8. It collapsed on 2. #362's 6 of 12 does not recur here, and
+  predation is a minority route to death, not the main one.
+- **Whole-run function totals (not in the rule):** PREY ahead on 4 seeds (10,410/9,436; 11,390/7,071; 8,212/5,562; 19,943/8,654), NOPREY on 4
+  (5,673/6,638; 7,127/7,482; 1,144/20,549; 1,446/3,135). In the two largest gaps NOPREY won, and in both the PREY world never got going
+  or collapsed early (9905 peaked at 500; 9907). Where both worlds lived, predation tends to find more, late.
+- **What it means:** predation is double-edged and the test cannot separate the edges:
+  - it can stop a world taking off, or crash it;
+  - where both worlds live, it is associated with more late novelty.
+  Removing it is not the answer. If anything is designed next, it is predation that cannot hold a whole world at the 0.05 floor. Not
+  started, and not before the other route to death (#366d) is understood.
+- `REPL_PREY` stays as a knob, default 1. CLAUDE.md asks that a mechanism that ran with no effect be deleted, but this one changed the world on
+  every seed, so the knob is kept for the follow-up.
+
+### #366e — it is NOT velocityDamping (`9801T-damp.jsonl`, every 2 ticks)
+- **The germline's damping was 0.9955 throughout.** The living mean was 0.963, and only 3-6 particles were at or above 1, as on every other
+  row of the run. #366d's lead hypothesis is wrong, and #148's unclamped `maybe` is not implicated.
+- **The speed record:**
+  - At tick 34,024 the fastest speed DROPS from 27 to 3.3 within one 2-tick sample: a discrete event.
+  - It then grows a steady 1.2% a tick for 45 ticks, while damping is below 1 for all but a handful.
+  - Then it explodes: 5.5, 101, 657, 2,450, 5,390, every 2 ticks. Everyone is gone by 34,078.
+- **That shape is a collapse** (something drawing the world together until forces between particles blow up), triggered by a change at
+  34,024. Next: a replay every tick from 34,015 with spread and centroid, every germline field that changed, and every counter that fired
+  (`9801T-law.jsonl`).
+
+### #366f — the 9801 wipe, every tick (`9801T-law.jsonl`): a UNIFORM force on the whole world, growing geometrically
+- **#366e's "event at 34,024" was a false lead.** The fastest speed belongs to ONE runaway particle at a time (damping 1.0124, so 1.2% a tick,
+  matching), and at 34,024 that particle left the world. Mean speed, spread and centroid are calm throughout.
+- **At tick 34,069 the whole world starts moving together:**
+  - mean speed 0.135, then 4.6, 37, 121, 293, 610, 1,160, 1,970, 3,010;
+  - the centroid slides from (657, 510) to (−1,508, −1,526) in 8 ticks;
+  - the spread changes far less, so the particles move as a block;
+  - everyone has escaped by 34,078.
+- **No germline field changed** between 34,060 and 34,078, and no unusual counter fired on 34,069. `channel.update` fired at 34,067, two ticks
+  before; a channel rule with gain above 1 is a candidate, not a finding. The root-field gradient is ruled out: it is capped at 5, so at most 0.0022 a tick.
+- **Next:** `lab/port/probe-force.js` wraps every engine function that writes velocity and records, per tick from 34,066 to 34,074, how much each
+  changed the world's summed velocity. The remainder is what `loop()` does inline (`9801T-force.jsonl`, running).
+
+### #367b — THE WIPE IS THE GHOST: a per-particle decay turned a 0.03% gene drift into 75% a tick. Fixed by a cap at 1 (`9801T-force.jsonl`)
+- **The force ledger names it.** From the tick ending 34,070, `updateParticles` alone moves the summed velocity by (−5,729, −5,638), then
+  (−40,000, −39,380), (−103,300, −101,700), (−204,000, −200,800). Every other velocity-writing function, and loop()'s inline remainder, is
+  two to four orders smaller. Nearly diagonal: toward (−9,000, −9,000), the headless cursor's untouched default (`mx` starts at −9e3).
+- **The mechanism** (inside `updateParticles`, the observer block):
+  - While the observer is present, a ghost follows the smoothed cursor at strength 1.
+  - In absence, `ghostStrength*=genome.ghostDecay`, and the line sits inside the per-particle loop, so each tick multiplies by
+    ghostDecay^N.
+  - At the default 0.997 and N=1,700 that is 0.006: the ghost vanishes in one tick.
+  - `ghostDecay` is a gene, mutated through `maybe()` and free to cross 1 (#148). In 9801 TRICKLE it went from 0.99960 to **1.00033 at
+    tick 34,019** (#366f's per-tick germline diff), and 1.00033^1,700 ≈ 1.75: the ghost grew 75% a tick.
+  - Its radius (150 × strength) reached particles 13,000 units away, the pull (distance × 0.00003 × strength) grew with it, and the whole
+    world was flung out of bounds in 9 ticks.
+- **Why a fix and not a #148 "finding":** the gene drifting past 1 is #148's to allow, and it still can. The exponent N is not anyone's
+  choice: it is the decay being applied once per particle, which no gene and no selection decided. And the strength means "fraction of full
+  presence": the present branch sets exactly 1.
+- **The fix:** `ghostStrength=Math.min(1, ghostStrength*genome.ghostDecay)`. With ghostDecay at or below 1 the cap cannot bind: byte-identical,
+  seed 3, 1,500 ticks, TASKS on and off. The gene is untouched.
+- **Not changed, stated:** the decay is still applied once per particle, so the ghost still vanishes within a tick of absence. A per-tick decay
+  is presumably what was meant, and would make the ghost linger about 1,500 ticks. That would change every world, and is not done here.
+- **In the browser too:** the ghost sits at the real cursor, usually inside or near the world, so a ghostDecay above 1 pulls the world into
+  the cursor point as well.
+- **Checking it:** 9801 TRICKLE, 9804 OLD and 9806 OLD (all three collapsed in #362) re-run with the fix to 40,000, against their #362
+  rows (`lab/port/out-ghost/`, running). They should match until the cap first binds; those whose killer this was should survive.
+- **#367b re-runs, first two of three** (`lab/port/out-ghost/`, against #362's rows):
+  - **9806 OLD: the ghost was its killer.** Identical to #362 through 20,000. #362 then hit **minAlive 0** in every block from 25,000 (alive
+    383, 186, 101, 217); with the cap it never does (1,169 alive, min 677 at 25,000). But it still declines afterwards (374, 192, 208) with
+    2 new functions per block: a second problem in the same world, not examined.
+  - **9804 OLD: not the ghost.** Byte-identical to #362 all the way to 40,000, so the cap never bound. Its collapse at 10,000-20,000 has
+    another cause.
+  - 9801 TRICKLE: identical to 30,000 so far, still running.
+- **So the dead worlds have at least three routes:** the field overflow (#360, fixed), the ghost (#367b, fixed), and predator outbreaks
+  (#365, left in on #366's evidence). Plus the unexplained crash in 9804 OLD.
+- **9801 TRICKLE with the cap:** identical to #362 through 30,000; then **1,634 and 1,670 alive (min 1,508 and 1,593)** where #362 had 1,312
+  (min 28) and 110 (min 2), with 567 and 421 new functions per block where #362 had 500 and 0. The world #366f traced survives the fix.
+
+### #366-#367b acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
+- `smoke.sh` on a quiet machine: **68 ok, 0 failing** (`sound-test` and `history-test` included).
+- On `main` with this: the ghost cap (#367b), the harvest history (#367), REPL_PREY (#366, default 1), and the probes and records of #362-#367b.
+
+### #368 — THE POPULATION CROSSES A RELOAD. A save was the germline and nothing else, so every reload rebuilt the whole population from one program. Measured, built, PRE-REGISTERED (`lab/port/PREREG-pop.md`, committed 92f619c before any decision run).
+- **Why look here.** The artwork lives in a browser field that the user runs for days on a phone, and the phone reloads often:
+  a note from the #130 era measured reloads more often than every 5,000 ticks. #352a recorded what a save holds, the germline
+  genome only. Every creature carries its own genome (`cloneGenome` plus `mutateChildGenome`, which walks every heritable
+  scalar at every birth, rate about 0.06 with a step of about 12%), its program, its place, its age and its store. All of that was
+  dropped at every reload, and the population was respawned from ONE program. `init()`'s own comment had named the problem
+  long ago ("no live particle state is saved/restored") and patched only the tendencies, through `stableMotifs`.
+- **Measured first** (`lab/port/probe-reload.js`, design seeds 10001-10003, never run before; out `lab/port/out-reload/`). A
+  TASKS world was run on and saved its germline at tick 4,000, exactly as the browser stores it. A fresh engine was then booted
+  from that genome, the way a reload does. "New to history" means functions paid that the universe had never been paid for,
+  counting its pre-save history.
+
+  | seed | mean formula size, first 1,000 ticks: run on / reloaded | functions paid per window | exp(H) | new to history: run on / reloaded |
+  |---|---|---|---|---|
+  | 10001 | 6.56 / 3.66 | 706 / 308 | 549 / 208 | **1,537 / 187** over 4,000 ticks |
+  | 10002 | 5.98 / 6.10 | 1,572 / 488 | 1,024 / 294 | **3,310 / 571** over 4,000 ticks |
+  | 10003 | 5.60 / 4.28 | 374 / 235 | 217 / 161 | **1,147 / 1,340** over 4,000 ticks (493 / 184 over the first 2,000) |
+
+  - **10001 never took off again in the window.** It sat at about 250 alive with formula size 3.3, where the world it came
+    from held 600-1,300.
+  - **10002 rebuilt circuit size within 1,000 ticks but not breadth.** At the end of the window it paid for 637 functions
+    against 1,781, at the same population (1,545 against 1,598).
+  - **10003 re-took off by about 1,500 ticks and then OUT-EXPLORED the world it came from:** 1,340 new functions against
+    1,147 over the 4,000 ticks. A reload arrives with full pools (the reload windfall) and a fresh take-off, and on this seed
+    that paid.
+  - So a reload sends a TASKS world back toward its take-off phase. For the next 1,000-2,000 ticks it mostly re-finds
+    functions it had already been paid for. Whether it then catches up varies by seed: never (10001), not in breadth (10002),
+    or past the original (10003). One reload per seed, one horizon. This designed the rule below; it does not decide it, and
+    10003 is why V is a real test rather than a formality.
+  - **Correction, recorded rather than edited:** PREREG-pop.md's motivation quotes 10001 as "1,410 run on". That was 3,500
+    ticks of the run (to 7,500); over the same 4,000 ticks it is 1,537. The rule does not use the number.
+- **What was built** (CODEMAP, "#368").
+  - **The engine.** `encodePopulation` writes every living creature: all numeric genes exactly, every structured gene that is
+    plain data (programs, objective weights, aims, grammar weights...), position, amp, age, store, caste, mode, memory,
+    plasmids and lineage group. Genes carrying code or compiled state come from the germline (`POP_GENE_DENY`).
+  - **The fingerprint.** It is a hash of the exact genome string saved alongside. `popRestore` in `init()` restores only beside
+    that genome. A reset, a harvest load, an extinction's re-save or a save over budget can never pair a population with a
+    stranger.
+  - **When it is encoded.** Only when the worker bridge sets `__popHook`. Under node and on a standalone page nothing is
+    encoded and nothing drawn: byte-identical on seed 3, 1,500 ticks, TASKS on and off (a digest over positions, amps,
+    program lengths and the random stream).
+  - **Where it is kept.** The shell gzips it into IndexedDB under the universe's slot and reads it back before the worker
+    boots, with a 4-second timeout. The field's reset and harvest load clear it. A harvest does not carry populations.
+- **In a real browser** (`pop-test.js`, in `smoke.sh`): 9/9.
+  - The first autosave (tick 1,800) stored 1,624 creatures with 1,484 distinct programs: 6.7 MB raw, 1.5 MB gzipped.
+  - A reload restored all 1,624.
+  - A snapshot rewritten with another fingerprint was refused, and the boot spawned 329 founders as before.
+  - `#reset` restored nothing.
+- **Costs, stated.** About 1 KB per creature in IndexedDB, so a full field of ten universes holds about 15 MB. Encoding a
+  1,700-creature world takes 180-290 ms under node, every 900 ticks, on the universe's own thread; on a phone, expect a
+  visible hitch at each autosave.
+- **Not carried, by design:** velocities, the lineage registry's history (each saved lineage comes back as one founder
+  lineage, so kin stay kin), and world state: fields, pools (a reload still refills them, the reload windfall), clusters and
+  the word files.
+- **VERDICT (PREREG-pop.md, seeds 10101-10103, never run before; out `lab/port/out-pop/`, result `lab/port/pop-result.txt`): SHIP.**
+  3 of 3 seeds counted (functions ever paid by the save: 1,209, 862 and 569, against a floor of 500; every POP replicate
+  restored its population: 1,502, 1,407 and 487 creatures). F held on 3 of 3, V was BETTER on 2 of 3 and WORSE on 0, and the
+  guard held on 3 of 3.
+
+  | seed | d from the NULL band: NULL / POP / GERM | V (new to history, 4,000 ticks): NULL / POP / GERM | V |
+  |---|---|---|---|
+  | 10101 | 0.01-0.14 / **0.06-0.08** / 6.1-6.9 | 473, 548, 485 / 447, 542, 469 / 2,812, 87, 438 | neither |
+  | 10102 | 0.07-0.12 / **0.53-0.87** / 6.4-6.8 | 344, 202, 291 / 209, 532, 240 / 133, 0, 44 | **BETTER** |
+  | 10103 | 0.28-1.18 / **0.25-0.68** / 4.5-5.3 | 2,889, 5,126, 5,313 / 5,685, 3,889, 3,576 / 1,784, 1,899, 2,798 | **BETTER** |
+
+  - **My prediction was SHIP, with F on 3 of 3 and V BETTER on 2 or 3. Right.** The risk I named (a restored population plus
+    refilled pools booming and crashing) did not happen: every POP replicate held 1,400-1,600 alive at the end.
+- **How to read it.**
+  - **A population reload is close to a perfect reload, at this resolution.** On 10102 and 10103 POP's novelty sits inside
+    the NULL band or above it. On 10101 it straddles the band's low end (447-542 against 473-548): two replicates are just below.
+    Its distance from the band is about the band's own spread on 10101 and 10103. On 10102 POP's distance (0.53-0.87) is larger
+    than the NULLs' (0.07-0.12): it pays for about 30% fewer functions per window in its first 1,000 ticks (267-320 against
+    396-431), at the same circuit size. Something it does not carry costs it a little breadth at first; the refilled pools are
+    the obvious candidate. Not checked.
+  - **A germline reload is a gamble, and not a bad one on average.** In 9 replicates, it collapsed twice (243 and 168 alive
+    at the end, 87 and 0 new functions) and exploded once (10101 k1: 2,812 new functions, five times the NULL band). That
+    explosion is the same thing design seed 10003 showed: a world stuck in a steady regime, rebuilt from its germline with full
+    pools, can take off into far more novelty than it was finding. The rule did not need it (10101 was "neither"), but it is
+    the most interesting thing in the data.
+  - **So what ships is fidelity, not a novelty engine.** After #368 the artwork's universes do what they did, across a reload,
+    and whether they find new functions depends on the world and not on when the phone closed the tab. The bursts a reload
+    could trigger are gone with the collapses. If restart-bursts are wanted, they are a mechanism the WORLD should own (a
+    founder event the world itself triggers, which selection could keep or drop), and that is its own pre-registration. Not
+    started.
+- **Saved worlds (rule 6).** A universe saved before #368 has no snapshot, and its first boot is exactly as before. From its
+  first autosave on, its reloads bring its creatures back.
+- **The history now says which reloads brought their population back.** A `boot` row in `hist_<slot>` (#367) carries a fourth
+  field: creatures restored, 0 when founders were spawned off the germline. So a harvest from a field run over days shows it.
+  `pop-test` checks it: 10/10 in a real browser.
+
+### #368 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40 (on 92f619c's engine; the final engine
+  differs from it only in two comment lines, and `smoke.sh` ran its substrate-test on the final one).
+- `smoke.sh` on a quiet machine: **69 ok, 0 failing** (`pop-test` new, and the field rigs that boot through the shell's
+  deferred `init`: collective, pool, pace, layers, slot, mind, history, grown, persistence).
+  Browser rigs need `NODE_PATH=/opt/node-tools/node_modules CHROME_PATH=/opt/pw-browsers/chromium` in this container.
+- Node byte-identical with no snapshot: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the population crossing a reload (engine, worker bridge, shell, field reset/load), the history boot row's
+  restored count, `pop-test`, and the probe, batch and results of #368.
+
+### #369 — WHAT A RESTORED POPULATION STILL LOSES, and the universe's lifetime record of functions
+- **The question.** #368's population reloads were close to a perfect reload on 10101 and 10103, but on 10102 they paid about
+  30% fewer functions in the first 1,000 ticks. The engine's own TASKS comment had long named the refilled pools ("a windfall
+  in which easy functions pay in full again ... Open") as the real gap a reload leaves. Checked rather than assumed.
+- **Method** (`lab/port/probe-reload.js` `PERTURB=`, `lab/port/reset-batch.sh`, out `lab/port/out-reset/`). Seed 10102 is run to
+  tick 4,000. ONE piece of state is reset in-process the way a reload resets it, and the run is reseeded with the same k as
+  #368's NULL1, so each arm is a paired comparison that differs from the null only by the reset.
+- **World state is not it.** Payments and functions paid in the first 500 ticks after 4,000:
+
+  | arm | payments | functions paid |
+  |---|---|---|
+  | NULL band (#368, k=1-3) | 8,992-9,130 | 366-391 |
+  | pools refilled to their caps | 8,278 | 366 |
+  | sunlight field refilled to its boot level | 8,766 | 343 |
+  | word files and publish records emptied | 9,916 | 396 |
+  | all three | 9,853 | 389 |
+  | population reloads (#368 POP1-3) | 4,842-7,141 | 253-314 |
+  | **the creatures put through encode/decode in place, world untouched (k=1-3)** | **5,106-6,690** | **245-275** |
+
+  - The refilled pools are NOT the gap on this seed. Neither is the sunlight windfall (sun income triples for 500 ticks and
+    payments barely move), nor the empty word files. Not even all three at once.
+  - **The creatures are.** Round-tripping them through the snapshot in place, with every piece of world state kept,
+    reproduces the population reload's deficit exactly. So the snapshot drops something about creatures that their
+    computing depends on.
+  - So the pools stay out of the snapshot: adding them would cost bytes for no measured effect. The engine comment's "the
+    POOLS are the real gap" is recorded as checked and not borne out on 10102.
+- **Bisecting the creatures.** The round trip with groups put back (lineage ids; phase and frequency; velocity; the whole original genome
+  object; 35 per-creature arrays from echoes to word files; the current mode) still paid 4,932-5,176. Removing the 1,407 founder
+  lineages decode mints left the run byte-identical. So I diffed every top-level binding of the engine (937 of them) before and after
+  a round trip, comparing per-creature arrays over the living in order (`lab/port/probe-statediff.js`; the desync counts are `lab/port/probe-desync.js`). The list held `pProg`, the program
+  each creature RUNS, even with every genome object put back.
+- **The cause: op 225 (`PROG_LATERAL_COPY`).** In the pairwise VM it does `pProg[i]=cloneProg(pProg[j])`: the creature starts running a
+  partner's program and its genome keeps the old one. The engine's own comment (#80) knew the two could desynchronise and measured it
+  rare ("335 of 335 live particles aliased at 1200 ticks"). **Under TASKS on 10102 it is 12 of 506 living creatures at tick 500, 38
+  of 546 at 1,000, 236 of 1,066 at 1,500, and 837 of 1,455 (58%) at 2,000, every one differing in its logic ops.** The snapshot
+  saved the genome's program, so a restored creature came back running the program it had stopped running.
+- **The fix (snapshot only; the world is unchanged).** `encodePopulation` saves the running program whenever it differs from the
+  genome's (a deduplicated table, `run`) and the current mode; `decodePopulation` restores both. Checked on 10102:
+  - in place, k=1-3: 9,581-9,903 payments and 376-400 functions paid, against the band's 8,992-9,130 and 366-391;
+  - as a real reload (save at 4,000 in one process, three population reloads in others): 9,547-9,661 and 384-402. #368's fidelity
+    distance is now **0.04-0.19**, where #368's population reloads were 0.53-0.87; the band's own spread is 0.07-0.12, and germline
+    reloads are 6.4-6.8. The save is 7.8 MB raw against 7.6 MB before.
+  - The trajectory to the save is unchanged: 862 functions ever paid at 4,000, as in #368.
+- **The lifetime record (the instrument).** `tSeen`, a mark at the engine's single payment site (`tN[T]++` occurs once), set the first
+  time a function is ever paid in this universe. It rides the snapshot as a 65,536-bit set (about 11 KB) and is restored with it. The
+  history row's "functions ever paid" and "paid for the first time since the last row" (#367) now count over the universe's life,
+  so a harvest reports functions new to the universe, not re-findings after a reload. Round trip exact (100 saved, 100 restored);
+  `pop-test` checks it in a real browser: 1,097 before a reload, 1,178 in the first row after it. Node byte-identical, seed 3,
+  TASKS on and off.
+- **What the bisect raised, which is bigger than the reload.** Births clone the parent's GENOME (`addParticle`), so a creature
+  running a copied program passes on the program it ran BEFORE the copy. Under TASKS the running program earns the income that
+  pays for births. So for most of the world, what selection pays for and what offspring inherit are two different programs. #322
+  closed this under REPL, where copies were rare ("whether a lateral copy should be inherited is not worth a retire-or-prove").
+  The PORT-PLAN warns that verdicts from before TASKS were measured where computing could not be selected. So it is re-asked under
+  TASKS, pre-registered (`lab/port/PREREG-herit.md`, #369b): `LATERAL_HERIT=1` makes op 225's copy the genome's program too.
+  Unset it is byte-identical; set it leaves 0 desynchronised creatures at every check on 10102.
+
+### #369b — VERDICT: INCONCLUSIVE (PREREG-herit.md: at most 1 of 3 seeds can count). `LATERAL_HERIT` stays 0.
+- **Executed first failed.** A seed counts only if EVERY ON replicate makes at least 100 op 225 copies by tick 10,000. The k=1
+  replicates, all run to 10,000 (`lab/port/out-herit/`):
+
+  | seed | copies OFF1 / ON1 | most desynchronised at once, OFF1 | functions ever paid OFF1 / ON1 | V late OFF1 / ON1 |
+  |---|---|---|---|---|
+  | 10201 | 55 / **564** | 7 | 5,207 / 5,439 | 3,131 / 3,363 |
+  | 10202 | 17 / 3 | 1 | 749 / 749 | 148 / 148 |
+  | 10203 | 18 / 1 | 2 | 2,253 / 1,388 | 1,923 / 1,174 |
+
+  10202 and 10203 cannot count whatever k=2 and k=3 show, so at most one seed can, against a floor of three. The other twelve
+  replicates were not launched: they could not change the count. The V columns are one replicate a seed and rule on nothing.
+- **What it found instead: the imitator lineage is not the common case.** Design seed 10102 had 58% of its living desynchronised
+  by tick 2,000. On these three seeds the most at any row was 7. The extension the rule names (unseen seeds 10204 onward) would
+  need seeds that grow an imitator lineage, and three of three did not. So before spending six 10,000-tick runs a seed on it,
+  a prevalence screen runs: one uninterrupted world per fresh seed (10301-10308, `lab/port/screen-batch.sh`, out
+  `lab/port/out-screen/`), counting copies and desynchronised creatures. These seeds are looked at for prevalence and decide nothing.
+- **What 10102 showed is still worth saying, at its rung (one seed, one horizon).** Only 2-12 creatures carried op 225 in their
+  RUNNING program at a time while 837 were desynchronised. The copiers' GENOMES carry op 225, and each newborn copies a
+  neighbour's program on its first contact and runs that. So 58% of that world was an imitator lineage: it inherited the instinct
+  to copy, not anything it computed. `LATERAL_HERIT=1` would end that strategy in a generation, because the first copy overwrites
+  the instinct. That is a reason to want the decision run, not to skip it.
+- **The prevalence screen** (`lab/port/out-screen/`, 8 fresh seeds, today's world, 6,000 ticks, one run each): copies and the most
+  creatures desynchronised at once were 9/3, 0/0, 25/5, 5/2, **258/117** (10305, about 7% of 1,669 alive), 19/2, 5/1 and 19/5.
+  With the decision seeds (at most 7 at 10,000) and design seed 10102 (837 of 1,455 at 2,000), **2 worlds of 12 looked at grew an
+  imitator presence above 1% of the living**, one of them a majority.
+- **So:** `LATERAL_HERIT` stays 0 and is not deleted, because the template does not rule on an inconclusive result. The follow-up
+  is named: a FROM-STATE test, ON against OFF with null replicates, reseeded from a save taken after an imitator lineage is
+  established. 10102 at 2,000 and 10305 at 6,000 are the candidates, and the screen chose them only on the executed condition
+  (desync), never on an outcome. A blind seed extension at about 1 in 6 is not worth its cost. Not started.
+- **Removed, a false claim:** the engine's TASKS comment said a save "holds the germline only" (false since #368) and that "the POOLS
+  are the real gap" (refuted on 10102 above). It now says what crosses a reload and what #369 found.
+
+### #369 / #369b acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- `smoke.sh` on a quiet machine: 68 ok, 1 failing, `mind-test`: its "every universe past 1,000 ticks" row found 2 such universes
+  and needs 3 (u1 1701/361, collective 1371/279, both seen and writing). Run alone straight after, twice: **10/10 and 10/10**, with
+  3 universes past 1,000 each time. That is the throughput row #352a and #362 recorded, established by re-running. The population
+  encode (#368) adds about 200-300 ms per universe every 900 ticks; #368's own suite passed this row with it in place.
+- `pop-test` 11/11 inside the suite (its lifetime-count check included).
+- Node byte-identical with no snapshot and LATERAL_HERIT unset: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the snapshot carries running programs, current mode and the lifetime function record; the history counts
+  over a universe's life; `LATERAL_HERIT` (default 0, open); the probes, batches and results of #369 and #369b.
+
+### #370 — EXPLORATORY (a measurement, no rule): does novelty keep arriving in the artwork's default world over 100,000 ticks?
+- **Why now.** #352 asked it on three seeds before #354's founder and rewiring, before the crash fixes (#360, #367b) and before a
+  population could cross a reload. A single 100,000-tick world takes hours at the population cap and cannot outlive this box's job
+  limit. Since #368/#369 a reload is as close to a perfect reload as perfect reloads are to each other, and it carries the lifetime
+  record of functions paid. So a long run can be CHAINED: `lab/port/chain-batch.sh`, 10,000 ticks per process, each booting from
+  the last one's save under its own random stream. Seeds 10401-10403 (never run), `TASKS=1`, everything else default. Out
+  `lab/port/out-chain/`.
+- **What the space looks like** (exact NAND formula sizes, `TASK_SZ4`): only 7,488 of the 65,536 four-input functions (11.4%) have
+  size 8 or less; the median function needs 12 gates; 30% need 10 or fewer. Worlds compose at a mean size of 6-7 (#352-#368). So
+  arrival must slow because what is left is hard, long before the space runs out.
+- **Measured per 10,000-tick chunk:** functions new to the universe's whole history (the dependent variable), functions ever paid,
+  mean formula size, exp(H), alive, and imitator activity (op 225 copies, desynchronised creatures).
+- **Prediction, written before any chunk ran:** new functions per 10,000 ticks fall below 10% of their peak chunk by 60,000 on at
+  least 2 of 3 seeds; at least one seed crashes or stalls (task income near zero for a chunk); functions ever paid end at 15-35%
+  of the space.
+- **#370, the first two chunks (each seed runs chunk c on random stream s*10+c):**
+
+  | seed | ticks 0-10,000: new functions / mean size / alive (min) | ticks 10,000-20,000: new / size / alive (min) |
+  |---|---|---|
+  | 10401 | 495 / 2.66 / 375 (51) | **0** / 1.04 / 109 (83) |
+  | 10402 | 506 / 2.58 / 258 (98) | **38** / 1.52 / 126 (78) |
+  | 10403 | 2,641 / 5.20 / 1,102 (289) | 343 in the first half (running) / 5.74 / 1,640 |
+
+  Two of three fresh seeds took off by tick 1,000 (size 4.8-5.1), crashed, and then sat in #360b's stalled state, finding nothing
+  new. So in the artwork's default world the crashes are what ends novelty here, long before the space runs out. Prediction:
+  "at least one seed crashes or stalls". Two did, by 10,000.
+- **What crashed 10401 (chunk 0, stream 104010), found by recording every law's value** (`lab/port/probe-laws.js`, draws nothing;
+  `lab/port/out-crash2/`). It was not predation (0 prey events, 0 predators) and not starvation: the mean store ROSE from 0.24 to
+  0.80 through the collapse.
+  - First, births were REFUSED: about 8,000 requests per 100 ticks, 97% `birth.unprovisioned`.
+  - From tick 1,300 births STOPPED: the population, half of it one lineage, died of age, 604 to 46 by 1,800.
+  - The cause is a LAW TRIAL: `BIRTH_ENERGY_COST` 0.25 -> 1.48 at tick 1,200. `attemptLawMutation` steps a law by
+    (rand-0.5) x (hi-lo) x 0.35, which is up to 1.4 for this law's range of 0.01-8. REPL had set it to 0.25 (#278), so one upward
+    proposal multiplied the price of a birth by up to 6.6. Probation is 4,000 ticks, about ten replicator lifetimes. The verdict
+    reverted it at **5,200**: births jumped to 1,088 per 100 ticks that window, and the population was 1,039 by 5,400.
+  - The same stream with `LAWMUT=0` grew to 1,734 by 2,750, with no collapse (its draws differ from tick 1, so this is
+    consistent, not paired proof).
+  - 10402's crash (stream 104020) is NOT shown to be a law's: `REACH_RENT` 0.5 -> 0.70 at 800 preceded a decline from 748 to 98, but
+    the verdict kept it.
+  - The question the PORT-PLAN names is now asked of the laws: retire-or-prove under TASKS, pre-registered as #371
+    (`lab/port/PREREG-laws.md`, committed 0f78601 before any decision run). The chain waits on it.
+
+### #371 — VERDICT: no change. The law process stays on under TASKS (INCONCLUSIVE as the script computed it, KEEP with the counter corrected; both readings leave the default where it is). My prediction was WRONG.
+`lab/port/PREREG-laws.md` (committed 0f78601 before any decision run), seeds 10501-10503, LAWS x3 against NOLAW (`LAWMUT=0`) x3,
+12,000 ticks. Out `lab/port/out-laws/`, result `lab/port/laws-result.txt`.
+- **A counter that measured two mechanisms.** The probe's `laws` column read the liveness name `cosmos.law`, which fires at TWO
+  sites: the law process's proposals and COSMOS_LAW's rewrites, where a merged daughter universe's winning scenario rewrites five
+  germline physics genes (engine.html, in the scenario bank). So 10501's NOLAW k=3 read "5 proposals" with no law ever on
+  probation (its `lawTrial` was empty throughout). Seen after the numbers, and so reported both ways:
+  - **as the script computed it:** 10501 does not count, 2 of 3 do, both "differ": INCONCLUSIVE;
+  - **with law proposals counted as the rule names them** (trials the law process started, from `lawTrial`): 10501 counts and is
+    BETTER (no LAWS replicate collapsed, two NOLAW replicates did), 10502 and 10503 differ: 3 of 3 counted, KEEP.
+  - Either way the default does not move, so the verdict does not depend on the correction. This is the repo's name trap: one
+    liveness name, two mechanisms. A rig that needs one of them must count it at its own site.
+
+  | seed | V (new functions, 12,000 ticks) LAWS / NOLAW | collapsed LAWS / NOLAW | trials per LAWS replicate |
+  |---|---|---|---|
+  | 10501 | 4,446, 2,386, 8,340 / 3,077, 2,466, 1,356 | 0 / 2 | 2, 3, 3 |
+  | 10502 | 2,008, 3,316, 2,956 / 1,821, 8,494, 2,675 | 3 / 2 | 2, 3, 2 |
+  | 10503 | 1,075, 2,103, 1,850 / 7,511, 2,315, 1,068 | 1 / 0 | 3, 3, 3 |
+
+- **My prediction was WORSE on 2 of 3, through collapses. Wrong:**
+  - collapses were 4 of 9 replicates in each arm;
+  - total new functions were 28,480 with laws against 30,783 without;
+  - the 104010 law kill (#370) is real, but it is one route among several, not the common one.
+- **What this leaves, and it is the bigger fact:** in the artwork's default world, 8 of 18 twelve-thousand-tick worlds fell to under
+  a quarter of their peak, whether or not laws ran. In #370 the crashed seeds then found 0 and 38 new functions in their next 10,000
+  ticks. Crashes, not laws and not the size of the space, are what limits novelty here at this horizon. The next step is a census of
+  what those collapses ARE, collapse by collapse, with the probes that already exist (draw-free), before any mechanism is touched.
+
+### #372 — CRASH CENSUS: what the collapses of the default TASKS world ARE. Predator outbreaks are the commonest single route, not the only one.
+Each #371 collapse replayed exactly (`lab/port/census-batch.sh`: same seed, reseed and `LAWMUT`; the replay matched the original run
+at every shared tick: 7/7, 13/13, 15/15, 16/16, 17/17, 18/18, 18/18, 22/22) with the probe's draw-free `DIAG` mode: births asked for and
+refused, prey events, predation carriers, mean store, age and provision, the largest lineage. Out `lab/port/out-census2/`,
+`lab/port/analyse-census.js`.
+
+| collapse | what the windows before it show | route |
+|---|---|---|
+| 10503 LAWS k1 | prey 626 -> 7,007 per 250 ticks, carriers 16 -> 109, mean store 0.149 -> 0.086, births 740 -> 85 | predator outbreak |
+| 10501 NOLAW k3 | computing dies first (task income 264 -> 3, size 5.2 -> 2.0, one lineage 78%), then prey 0 -> 29,366, store 0.051 | computing decay, then outbreak |
+| 10502 LAWS k2 | prey 0 -> 216,468, carriers 1 -> 748, store 0.044 | predator outbreak |
+| 10502 NOLAW k3 | prey 94,262 -> 159,029, carriers 193 -> 545, store 0.45 -> 0.049 | predator outbreak |
+| 10501 NOLAW k2 | 993 -> 436 with modest predation (2,300); then an outbreak at 7,250 (prey 169,302, carriers 1,303) | mixed, then outbreak |
+| 10502 LAWS k3 | a slide from 506 to 225 under moderate predation (1,400-2,500) | mixed |
+| 10502 LAWS k1 | **1,798 -> 498 in one 250-tick window**, no predation, mean age 1,007 (median life ~400), one lineage 75% | aged monoculture die-off |
+| 10502 NOLAW k1 | slow slide from 631 to 240, no predation, stores ~0.1 (a birth costs 0.25) | energy-limited decline |
+| #370 104010 | `BIRTH_ENERGY_COST` trial 0.25 -> 1.48 | law trial |
+| #370 104020 | 748 -> 98 during a `REACH_RENT` trial the verdict kept | not shown |
+
+- **Predator outbreaks: 4 clear of 10, plus one later in a fifth.** In each, the mean store of the WHOLE population falls to about
+  0.05, the floor op 155 (#273) stops at, even when 45% of the living carry op 155. So predators are not full either: everyone drains
+  everyone, a fifth of every take is lost in transfer, and the world is held below the 0.25 a birth costs until it ages out. That is
+  #365's mechanism, now seen in four worlds, two of them with no laws at all.
+- **The rest are different routes**: an aged monoculture dying at once, a slow energy-limited slide, a law trial. No single fix
+  covers them, and none is claimed.
+- **What follows:** #366 named the design and did not build it, "predation that cannot hold a whole world at the 0.05 floor". The
+  textbook stabiliser is a PREY REFUGE. A take may not bring the prey below the price of a birth, so predation still moves energy
+  but cannot sterilise the world. That is pre-registered next (#373), against the commonest route only.
+- **#370 chunk 2 (ticks 20,000-30,000), and what a dead world is.**
+  - 10401 found 2 new functions and 10402 found 0, at 106 and 126 alive. **A crashed world in this engine did not come back in
+    20,000 ticks.**
+  - 10403, the seed that never crashed, found 2,641, 1,262 and 1,418 new functions in its three chunks: steady at about half its
+    first chunk, and paid for 8.1% of the space by 30,000.
+  - 10401's tick-30,000 save, run 1,000 ticks with `DIAG`: **every living creature carries op 155** (220 of 227, 140 of 145, 131 of
+    132). They prey on each other 5,000-17,000 times per 250 ticks and hold every store at 0.08-0.12, below the 0.25 a birth costs.
+    So the dead state is predation saturated, #360b's "stable predator ecology" seen whole. Predation does not only START the
+    commonest crash; it is what KEEPS a crashed world from recovering. That is the condition #373's refuge bounds.
+- **#369b's screen, finished** (10309-10314, six more fresh seeds): copies 5, 5, 0, 8, 0, 44; the most desynchronised at once 1, 1,
+  0, 2, 0, 4. With the first eight, **1 of 14 fresh seeds** (10305) grew an imitator presence above 1% of the living by 6,000
+  ticks. The from-state follow-up stays named and unstarted; it has two candidate worlds (10102, 10305) and needs a third.
+- **A second law kill, in the other direction (#373's 10601 REFUGE k1, a decision run; reported, not ruled on).** At tick 10,500
+  `BIRTH_ENERGY_COST` went from 0.25 DOWN to **0.01**.
+  - Births rose to about 10,000 per 500 ticks, but a child is endowed with half the price (`SUN_ENDOW`), so it started with 0.005
+    and starved.
+  - The world filled with dying newborns: alive went from 1,638 to 533, 254 and 153 in 1,500 ticks, and the mean store from 0.69
+    to 0.12.
+  - The refuge could not help, because it tracks the price of a birth and the price went to 0.01 with it.
+
+  So under REPL/TASKS a trial on this one law is lethal in BOTH directions: up (104010, births stop) and down (here, births flood).
+  The step is the cause: ±1.4 on a law REPL set to 0.25. #371 ruled on the law PROCESS, which is not measurably harmful as a whole;
+  this is one ROW of it. Fixing it means proposal steps relative to a law's value (or a REPL range for this row). That changes every
+  world's law proposals, so it is a separate, pre-registered change. Not started.
+
+### #373 — VERDICT: INCONCLUSIVE (0 of 4 seeds counted). `REPL_REFUGE` stays 0. The executed-first floor was the wrong design for this route.
+`lab/port/PREREG-refuge.md` (committed 48e9877 before any decision run). Seeds 10601-10603 plus the named extension 10604; DEFAULT x3
+against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/refuge-result.txt`.
+- **Why nothing counted.** The floor was "every replicate of both arms had at least 1,000 prey events". It failed:
+  - on 10603 at k=1 in both arms (301, 140), so that seed's k=2 runs were stopped and its k=3 not run (`10603_NOTCOUNTED`);
+  - on REFUGE replicates of 10601 (21) and 10604 (58), where the refuge itself keeps predators from taking off;
+  - **and on DEFAULT replicates too:** 10602 k2 had 793 and 10604 k2 and k3 had 927 and 330.
+
+  So a predator outbreak is a PER-WORLD event, not a property of a seed. Here every outbreak (3.0-4.0 million prey events) fell on
+  k=1, and the same seeds' other worlds barely grew predators. A floor that needs every replicate of a seed to show the route
+  cannot fit a route that happens to some worlds and not others. Counting on the DEFAULT arm alone would have failed as well.
+  Recorded as the lesson, not patched after the numbers (CLAUDE.md: a rule changed after seeing them is a new experiment).
+- **Exploratory, not ruled on:**
+  - In the three outbreak worlds (DEFAULT k=1), the lowest mean store was 0.049-0.053 without the refuge and 0.123-0.137 with it.
+    New functions in those pairs were 4,607 / 8,852, 2,938 / 2,547 and 4,655 / 5,380 (DEFAULT / REFUGE).
+  - Over all nine pairs of the three seeds that ran fully: 44,972 new functions without the refuge, 56,040 with it (+25%).
+  - Collapses did not fall: 1 without, 2 with. One is the BIRTH_ENERGY_COST 0.25 -> 0.01 trial (10601 REFUGE k1, above). The
+    other (10601 k2) collapsed at 5,000 in BOTH arms with almost no predation, so another route, shared by the paired draws.
+  - My prediction (BETTER on 2 of 3, through collapses) is not testable as registered; the collapse half of it looks wrong.
+- **What a fair test needs:** many paired worlds rather than seed-level floors (a pair = one seed and one reseed k under each arm),
+  ruled on the pairs whose DEFAULT world had an outbreak. And a sharper endpoint than collapse at 12,000: #370's dead worlds
+  (every creature a predator, never recovering) are where the refuge's effect should be largest. Not pre-registered yet.
+
+### #374 — EXPLORATORY: can a dead world come back? Yes, sometimes, and neither the refuge nor a germline reload reliably makes it. (Two design worlds, three streams per arm, 5,000 ticks; `lab/port/out-revive/`.)
+- **Correction to #370's wording.** "A crashed world in this engine did not come back in 20,000 ticks" was true. My summary to the
+  user ("a crashed world doesn't come back") was not: it is CLAUDE.md's "never is not a thing a run can show you". 10401 sat at about
+  100 alive, computing at size 1-2, through ticks 10,000-30,000. Continued from its tick-30,000 save under three new random streams
+  (a population reload, as since #368), it **revived in all three**. Its size had crept up to 2.4 late in that chunk.
+
+  | dead world (tick-30,000 save) | population reload | population reload + `REPL_REFUGE=1` | germline-only reload (pre-#368) |
+  |---|---|---|---|
+  | 10401 | revives 3/3: 1,269-1,591 alive by 5,000, new 1,646 / 979 / 3,026 | revives 3/3 **at once** (about 1,650 by tick 1,000), new 2,109 / 3,444 / 2,048 | stays dead: new 82 / 4 / 0 |
+  | 10402 | dead 3/3: about 110 alive, new 0 / 0 / 0 | population triples (243-365), still computes nothing: new 0 / 4 / 0 | one stream revives (new 1,193, size 5.1), two weakly (118, 83) |
+
+- **How to read it:**
+  - The refuge speeds the recovery of a world that can still compute (10401). It cannot restore computing that is gone: 10402's
+    residents run size 0-1 programs, and the refuge only lets more of them live.
+  - A germline-only reload rescued 10402 once in three but killed 10401's recovery in three of three. So whether #368 traps a dead
+    universe depends on the world. Two worlds are no basis for a reload policy in either direction, and none is made.
+  - The revived worlds end with almost every creature carrying op 155 again (1,229-1,699 of about 1,500) yet computing at size
+    5.5-6.3. A world of predators is not dead in itself; what kills is stores held under the price of a birth.
+- **#370 chunk 3 (ticks 30,000-40,000): a dead world came back, in the chain itself.** `lab/port/chain-result.txt`.
+  - **10401**, dead from about tick 2,000 to 30,000 (about 100 alive at size 1-2), found **5,840 new functions** in this chunk. That
+    is more than any chunk of any seed so far and twelve times its whole first life (495). It reached 9.7% of the space, with 1,301
+    alive at size 5.4. #374's side runs had predicted it (3 of 3 streams revived from the same save).
+  - **10402** is still dead at 40,000: 0 new functions, size 0.24, 132 alive.
+  - **10403**, never crashed, found 873 (33% of its peak chunk), its slowest chunk yet: 9.5% of the space at 40,000.
+  - **So far, against the prediction written before any chunk ran:**
+    - "Below 10% of peak by 60,000 on 2 of 3 seeds": the one crashed-and-dead seed is at 0%. The surviving seed is at 33% at
+      40,000, still in range. The revived seed reset its own peak.
+    - "At least one crash or stall": three of three, two crashes and the survivor's slowing.
+    - "15-35% of the space": 0.8%, 9.7% and 9.5% at 40,000, so the low end is in doubt.
+  - **What it says, at this horizon and on three seeds:** novelty in the default world is not a smooth decline. It comes in lives:
+    a world takes off, crashes, can lie dead for tens of thousands of ticks, and can come back into a burst bigger than its first
+    life. That matches #368's germline reload that exploded on 10101. A world coming out of a stuck state can find far more than it
+    was finding. Recorded as a pattern on three seeds, not a law.
+
+### #370-#374 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- `smoke.sh` on a quiet machine: **69 ok, 0 failing**.
+- Node byte-identical with `REPL_REFUGE` and `LATERAL_HERIT` unset: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the chained long run (#370) and its first 40,000 ticks; the law retire-or-prove under TASKS (#371, no
+  change); the crash census (#372); `REPL_REFUGE` (#373, default 0, INCONCLUSIVE); the dead-world revival runs (#374); the probes
+  (`probe-reload.js` DIAG, `probe-laws.js`), batches and results.
+- **#370 chunk 4 (ticks 40,000-50,000).**
+  - **10401** keeps going after its revival: **8,130 new functions**, more than chunk 3's 5,840. It is now at **22.1% of the
+    space**, with size 6.63 and exp(H) 1,897, the highest of the run on both.
+  - **10402** is still dead: 1 new function.
+  - **10403** found 229 (9% of its peak chunk). Its population fell from about 1,540 to 609 (min 326) and its size from 4.93 to
+    3.78: the first sign of a crash in the one seed that had not crashed.
+  - Against the prediction: 10403 and 10402 are now both under 10% of peak. That is 2 of 3 by 50,000, so that clause is met
+    early, through the dead seed and the fading survivor. The revived seed is the exception the prediction did not imagine.
+- **#370 chunk 5 (ticks 50,000-60,000).**
+  - **10401**: 4,633 new functions (57% of its peak chunk), 29.1% of the space, size 6.78 and exp(H) 2,057, the run's highest on both.
+  - **10402**: 0, still dead (116 alive, size 0.5).
+  - **10403**: 439 new (17% of peak), but the world is down to 478 alive (min 150) at size 2.41. Its first crash, the one chunk 4
+    showed coming.
+  - **The prediction's first clause ("below 10% of peak by 60,000 on at least 2 of 3 seeds") was ambiguous as I wrote it**, and
+    reads both ways here:
+    - at some chunk up to 60,000: MET (10402 from chunk 1 on, 10403 at 9% in chunk 4);
+    - at the 60,000 chunk itself: NOT met (10403 rose back to 17%).
+
+    Written down so the ambiguity is not resolved after the fact in whichever direction reads better.
+- **#370 chunk 6 (ticks 60,000-70,000).**
+  - **10403**, which never crashed until chunk 5, is now in the dead state: 0 new functions, size 0.30, task income 2, 269 alive.
+  - **10401** is fading after its revival: 1,862 new (23% of peak), at 32.0% of the space.
+  - **10402**: still dead, 0.
+  - **At 70,000, two of three worlds are dead and the third is past its peak.** Each world got one or two lives, and between them
+    the dead state lasted tens of thousands of ticks.
+- **#370 chunk 7 (ticks 70,000-80,000).** 10401: 892 new (11% of peak), at 33.3% of the space, size 5.49, still 1,708 alive: a
+  healthy population finding less each chunk (8,130 -> 4,633 -> 1,862 -> 892). 10402 and 10403: 0 each, still dead.
+- **#370 chunk 8 (ticks 80,000-90,000): a second world comes back.**
+  - **10403**, dead through chunks 6-7 (about 20,000 ticks), found 537 new functions. It is computing again at size 3.90, with 692
+    alive (min 173) and task income 12,164 (2 in chunk 6, 35 in chunk 7).
+  - **10401** held level: 1,046 new (13% of peak; 892 the chunk before), at 34.9% of the space.
+  - **10402** is still dead, about 88,000 ticks now.
+  - **The pattern holds on two of three seeds:** a crash, a dead stretch of 20,000-28,000 ticks, then a revival.
+- **#370 chunk 9 (ticks 90,000-100,000), and the run as a whole.**
+  - **10403**'s revival is complete: 1,891 new (72% of its first-life peak), size **7.28** (the run's highest), 1,633 alive.
+  - **10401** rose again: 1,650 new (892 and 1,046 before), at **37.5%** of the space.
+  - **10402** never came back: dead from about tick 2,000 to 100,000.
+
+  | seed | new functions per 10,000 ticks, chunks 0-9 | of the space at 100,000 |
+  |---|---|---|
+  | 10401 | 495, 0, 2, 5,840, 8,130, 4,633, 1,862, 892, 1,046, 1,650 | 37.5% |
+  | 10402 | 506, 38, 0, 0, 1, 0, 0, 0, 0, 0 | 0.8% |
+  | 10403 | 2,641, 1,262, 1,418, 873, 229, 439, 0, 0, 537, 1,891 | 14.2% |
+
+- **Scored against the prediction committed before chunk 0 (db2c8b8):**
+  - *"Below 10% of peak by 60,000 on at least 2 of 3"*: met only on the reading "at some chunk up to 60,000". It failed as a claim
+    about decline. Two of the three worlds that fell came back above it, one to 72% of its peak and one past its old peak.
+  - *"At least one crash or stall"*: met, and understated. All three crashed: 10401 and 10402 by tick 2,000, 10403 around
+    50,000-65,000.
+  - *"Ever paid ends at 15-35% of the space"*: wrong in form. The three ended at 37.5%, 14.2% and 0.8%; the spread between worlds
+    is the story, not where they sit.
+- **What the run says, at 100,000 ticks on three seeds of the default TASKS world, one universe at a time with no field:**
+  - **Novelty arrives in lives.** Every world crashed. Dead stretches lasted 20,000 and 28,000 ticks before a revival, or the rest
+    of the run.
+  - **Revivals were not partial recoveries.** Both reached the highest circuit sizes of their runs (6.78 and 7.28) and found more
+    than the world's first life had.
+  - **At 100,000 neither living world is fading:** both are rising (1,650 and 1,891 per 10,000). The most productive world has been
+    paid for 37.5% of the four-input space. At its late rate it would need hundreds of thousands of ticks more to run short, and
+    the functions left are the hard ones (11% of the space has formula size 8 or less; the median needs 12 gates).
+  - **The binding limits, in order:** time spent dead (10402: 98% of the run), then crashes, then the space itself, which no
+    world approached.
+  - **Not shown:** that these new functions are SELECTED rather than paid for as they drift past. The rung measured is "paid,
+    and new to this universe". The browser field adds migrants between universes, which may shorten the dead stretches; a node
+    run cannot show that.
+
+### #375 — VERDICT: INCONCLUSIVE. No dead state to test: 0 of 10 fresh worlds met the pre-registered rule by 12,000 ticks. `REPL_REFUGE` stays 0.
+`lab/port/PREREG-revive.md` (committed 606f46b before any world was generated). Seeds 10801-10810, today's default world, saves at
+4,000, 8,000 and 12,000. Out `lab/port/out-gen/`; `lab/port/select-dead.js`'s full output is below. The continuations
+(`revive-batch.sh`, `analyse-revive.js`) were never run: there was nothing to continue.
+- **The rule** (fixed before generation): over the two windows ending at a save, mean size under 1.5, task income under 1% of the
+  run's largest window, and mean alive under 400.
+- **Closest misses:**
+  - 10801 at 4,000: 84 alive, size 1.56, income 36.6 against a bar of 1.1;
+  - 10809 at 8,000: 169 alive, size 1.49, income 58.0 against a bar of 1.2;
+  - 10810 at 8,000: 160 alive after a crash, but size 2.92.
+
+  10801 and 10809 never took off: they are #352's low-active world, not #370's dead one. 10810 crashed but kept computing. The
+  other seven were healthy at every save (464 to 1,728 alive, size 3.99 to 6.59).
+- **Not loosened after the numbers.** The rule's remedy, extending with seeds 10811 onward, was not run: at 0 in 10 it could take
+  dozens of seeds.
+- **What the zero says, and it corrects #370's reading.**
+  - #370 found the deep dead state (size about 1, income near zero, every creature a predator) in 2 of 3 worlds within 2,000
+    ticks, and drew "time spent dead is the largest limit".
+  - On 13 fresh worlds (#370's 3 plus these 10) that state appeared within 12,000 ticks in **2 of 13**.
+  - Collapses are common (8 of 18 in #371), but most collapsed worlds keep computing and many recover.
+  - So "time dead is the largest limit" holds for #370's three worlds; across the default world it is a minority fate early on.
+    Whether it grows with the horizon (10403 died only at 60,000-65,000) is the open question.
+- **If continued:** dead states must be grown on a longer horizon: chained runs on fresh seeds, saving every 10,000 and picking
+  by the same rule. That is #370's machinery at about 30 minutes per 10,000 ticks per world. Not started.

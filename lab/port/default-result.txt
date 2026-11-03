@@ -1,0 +1,39 @@
+
+9201  default ok 4/4 (crashed 0)  TASKS ran 3/3 (crashed 1)
+  cer    default 0.320,0.180,0.380,1.350 (mean 0.557)  TASKS 0.660,0.530,0.230 (mean 0.473)  REPL 0.960  -> none
+  spread default 0.247,0.224,0.287,0.551 (mean 0.327)  TASKS 0.683,0.625,0.301 (mean 0.537)  REPL 1.252  -> none
+  est    default 0.004,0.005,0.000,0.014 (mean 0.006)  TASKS 0.010,0.006,0.004 (mean 0.007)  REPL 0.004  -> none
+  lin    default 308.857,315.714,338.714,151.143 (mean 278.607)  TASKS 558.857,1320.714,87.714 (mean 655.762)  REPL 202.714  -> none
+  prog   default 4.356,4.557,4.376,5.916 (mean 4.801)  TASKS 5.133,7.342,0.572 (mean 4.349)  REPL 4.970  -> none
+  [alive]  default 364.000,377.000,374.000,365.000  TASKS 835.000,1620.000,88.000  REPL 327.000
+  [N]      default 332.000,359.000,355.000,334.000  TASKS 1015.000,1504.000,0.000  REPL 291.000
+  [er]     default 0.470,0.590,0.470,0.870  TASKS 0.720,0.620,0.290  REPL 0.910
+  [kinds]  default 5.600,6.100,7.400,13.000  TASKS 31.900,28.700,4.600  REPL 37.700
+  [births] default 5948.000,6251.000,5527.000,7859.000  TASKS 166171.000,101520.000,42004.000  REPL 18934.000
+
+9202  default ok 3/4 (crashed 1)  TASKS ran 3/3 (crashed 0)
+  cer    default 0.150,1.240,0.290 (mean 0.560)  TASKS 1.180,1.240,1.090 (mean 1.170)  REPL 1.090  -> none
+  spread default 0.207,1.113,0.274 (mean 0.531)  TASKS 1.677,1.815,1.381 (mean 1.624)  REPL 1.404  -> UP
+  est    default 0.003,0.001,0.006 (mean 0.003)  TASKS 0.001,0.009,0.011 (mean 0.007)  REPL 0.011  -> none
+  lin    default 330.857,302.571,203.714 (mean 279.048)  TASKS 145.429,190.286,89.000 (mean 141.571)  REPL 154.571  -> DOWN
+  prog   default 4.841,4.832,4.548 (mean 4.740)  TASKS 5.543,4.146,3.965 (mean 4.551)  REPL 3.786  -> none
+  [alive]  default 379.000,353.000,255.000,322.000  TASKS 211.000,349.000,151.000  REPL 252.000
+  [N]      default 363.000,322.000,218.000,0.000  TASKS 193.000,401.000,161.000  REPL 199.000
+  [er]     default 0.360,0.820,0.720,0.600  TASKS 1.130,0.990,1.010  REPL 0.990
+  [kinds]  default 3.600,11.700,8.000,6.900  TASKS 51.900,47.600,32.100  REPL 34.400
+  [births] default 6146.000,6134.000,5793.000,5184.000  TASKS 6342.000,12433.000,6328.000  REPL 8323.000
+
+9203  default ok 4/4 (crashed 0)  TASKS ran 3/3 (crashed 0)
+  cer    default 1.580,2.190,0.210,0.410 (mean 1.097)  TASKS 1.190,0.970,1.100 (mean 1.087)  REPL 1.100  -> none
+  spread default 0.687,1.099,0.211,0.236 (mean 0.558)  TASKS 1.414,1.171,1.432 (mean 1.339)  REPL 1.544  -> UP
+  est    default 0.002,0.008,0.002,0.003 (mean 0.004)  TASKS 0.003,0.017,0.008 (mean 0.010)  REPL 0.007  -> none
+  lin    default 305.857,309.429,320.286,270.143 (mean 301.429)  TASKS 1437.714,159.857,587.429 (mean 728.333)  REPL 201.571  -> none
+  prog   default 4.690,4.394,4.982,3.737 (mean 4.451)  TASKS 6.471,4.214,5.572 (mean 5.419)  REPL 5.584  -> none
+  [alive]  default 361.000,447.000,375.000,364.000  TASKS 1703.000,335.000,953.000  REPL 331.000
+  [N]      default 336.000,396.000,350.000,334.000  TASKS 1675.000,93.000,100.000  REPL 263.000
+  [er]     default 0.760,0.930,0.370,0.470  TASKS 1.150,0.930,0.980  REPL 1.100
+  [kinds]  default 13.300,15.400,4.900,9.100  TASKS 61.300,36.100,46.400  REPL 53.400
+  [births] default 6091.000,6494.000,8058.000,5625.000  TASKS 35037.000,7969.000,30551.000  REPL 14740.000
+
+counted 3/3, need 2  {"cer":{"UP":0,"DOWN":0},"spread":{"UP":2,"DOWN":0},"est":{"UP":0,"DOWN":0},"lin":{"UP":0,"DOWN":1},"prog":{"UP":0,"DOWN":0}}  TASKS-only crash seeds 1
+VERDICT: BETTER

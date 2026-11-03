@@ -1,0 +1,41 @@
+// #365 - what makes a booming TASKS world crash? (#362: 9801 TRICKLE fell from 1,700 alive to 2 between 35,000 and 40,000; 9802 TRICKLE
+// from about 1,750 to 143 between 5,000 and 10,000.) Every ROW ticks one line: alive, births, prey events, task and sun income,
+// payments, how full the pools are, mean store and age, the share in grace, the largest lineage's share, how many programs carry
+// INPUT / READ / OUTPUT and predation (155), and any non-finite field cell or amp. Reads counters and arrays; draws nothing.
+//   SEED=9802 TASKS=1 TASK_TRICKLE=200 TICKS=10000 ROW=250 node lab/port/probe-crash.js > out.jsonl
+// #366b: FROM=t rows only every 5,000 before tick t; DIAG=1 adds, per row after FROM, the 25 liveness counters that moved most and the
+// death-relevant genes (germline and living mean). Every row (#366c) carries the engine's own cause-of-death counters (deathsByPhysics and
+// deathsByAge reset at its instrumentation window; deathsByEscape and escapeNonFinite never do), non-finite positions and velocities
+// among the living, the fastest living speed, and the world's W and H; and (#366d) velocityDamping: germline, and the living min, mean, max
+// and count at or above 1. (#366e) Mean distance from the centroid (spread), the centroid, mean speed; with GDIFF=1, every top-level
+// germline field that changed since the last row (old, new; objects by length and prefix) and every liveness counter that fired since the last row.
+const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
+require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis); require(path.join(ROOT,'harness-env.js'))(globalThis);
+const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
+const Module=require('module'); const m=new Module('/tmp/crash-sim.js'); m.filename='/tmp/crash-sim.js'; m.paths=Module._nodeModulePaths('/tmp');
+m._compile(code+`
+;globalThis.__C=function(ticks,ROW,out){ const FROM=+(process.env.FROM||0), DIAG=!!process.env.DIAG, PAR=['deathThreshold','lifespanBias','metabolicCost','entropyBaseline','entropyK','vmMaxInstructions','mutationRate','creationCost','simCost']; let lvPrev=null; const lv=()=>(typeof __liveness!=='undefined')?__liveness:{}; let lb=0, lp=0, li=0, ls=0, lpd=0, errs=0, capSum=0;
+  for(let T=0;T<TASK_NF;T++)capSum+=tCap[T];
+  for(let t=1;t<=ticks;t++){ globalThis.__detMs+=5; try{loop();}catch(e){ if(errs++<3)console.error(String(e&&e.stack||e).slice(0,300)); }
+    if(t<FROM?(t%5000):(t%ROW)) continue;
+    let alive=0, eSum=0, ageSum=0, grace=0, inp=0, rd=0, outp=0, pred=0, badAmp=0; const lin=new Map();
+    for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; eSum+=pE[i]; ageSum+=page[i]; if(!Number.isFinite(amp[i]))badAmp++;
+      if(typeof specInGrace==='function'&&specInGrace(pLin[i]))grace++; lin.set(pLin[i],(lin.get(pLin[i])||0)+1);
+      const p=pProg[i]||[]; let a=0,b=0,c=0,d=0; for(const x of p){ const o=x[0]; if(o===TASK_OP0)a=1; else if(o===TASK_OP0+3)b=1; else if(o===TASK_OP0+4)c=1; else if(o===155)d=1; } inp+=a; rd+=b; outp+=c; pred+=d; }
+    let big=0; for(const v of lin.values()) if(v>big)big=v; let res=0; for(let T=0;T<TASK_NF;T++)res+=tRes[T];
+    let badField=0, fmax=0; for(let k=0;k<field.length;k++){ const f=field[k]; if(!Number.isFinite(f))badField++; else if(f>fmax)fmax=f; }
+    const L=lv(), b=L['repl.birth']|0, pr=L['repl.prey']|0;
+    let dmin=9, dmax=-9, dsum=0, dn=0, dover=0, dnull=0; for(let i=0;i<N;i++){ if(!palive[i])continue; const g=pGenome[i]; if(!g){ dnull++; continue; } const d=+g.velocityDamping; if(!Number.isFinite(d))continue; dn++; dsum+=d; if(d<dmin)dmin=d; if(d>dmax)dmax=d; if(d>=1)dover++; }
+    const damp={germ:+(+genome.velocityDamping).toPrecision(6), min:dn?+dmin.toPrecision(6):null, mean:dn?+(dsum/dn).toPrecision(6):null, max:dn?+dmax.toPrecision(6):null, atOrOver1:dover, noGenome:dnull};
+    let nfPos=0, nfVel=0, maxV=0; for(let i=0;i<N;i++){ if(!palive[i])continue; if(!Number.isFinite(px[i])||!Number.isFinite(py[i]))nfPos++; const v=Math.abs(vx[i])+Math.abs(vy[i]); if(!Number.isFinite(v))nfVel++; else if(v>maxV)maxV=v; }
+    let cx=0, cy=0, vs=0; for(let i=0;i<N;i++){ if(!palive[i])continue; cx+=px[i]; cy+=py[i]; vs+=Math.hypot(vx[i],vy[i]); } let spread=0; if(alive){ cx/=alive; cy/=alive; vs/=alive; for(let i=0;i<N;i++){ if(palive[i])spread+=Math.hypot(px[i]-cx,py[i]-cy); } spread/=alive; }
+    let gchg=null; if(process.env.GDIFF&&t>=FROM){ const now={}; for(const k in genome){ const v=genome[k]; if(typeof v==='number')now[k]=v; else if(v&&typeof v==='object'){ try{ now[k]=JSON.stringify(v).length+':'+JSON.stringify(v).slice(0,80); }catch(e){} } } gchg=[]; if(globalThis.__gprev) for(const k in now){ if(now[k]!==globalThis.__gprev[k])gchg.push([k,globalThis.__gprev[k],now[k]]); } globalThis.__gprev=now; }
+    let rare=null; if(process.env.GDIFF&&t>=FROM){ const cur=Object.assign({},L); rare=[]; if(globalThis.__lvp) for(const k in cur){ const d=(cur[k]|0)-(globalThis.__lvp[k]|0); if(d>0)rare.push([k,d]); } globalThis.__lvp=cur; }
+    out(JSON.stringify({tick:t, spread:+spread.toFixed(1), cx:+cx.toFixed(0), cy:+cy.toFixed(0), meanV:+vs.toPrecision(3), gchg, rare, deathsPhys:deathsByPhysics, deathsAge:deathsByAge, deathsEsc:deathsByEscape, escNonFinite:escapeNonFinite, nfPos, nfVel, maxV:+maxV.toPrecision(3), damp, W, H, alive, births:b-lb, prey:pr-lp, taskInc:+(tEv.income-li).toFixed(1), sunInc:+(tEv.sun-ls).toFixed(1), paid:tEv.paid-lpd,
+      poolFill:+(res/capSum).toFixed(3), meanE:alive?+(eSum/alive).toFixed(3):0, meanAge:alive?Math.round(ageSum/alive):0, grace:alive?+(grace/alive).toFixed(2):0,
+      lineages:lin.size, bigLin:alive?+(big/alive).toFixed(2):0, input:inp, read:rd, output:outp, pred155:pred, fieldMax:+fmax.toFixed(2), badField, badAmp}));
+    if(DIAG&&t>=FROM){ const cur=Object.assign({},L), d=[]; if(lvPrev) for(const k in cur){ const x=(cur[k]|0)-(lvPrev[k]|0); if(x)d.push([k,x]); } lvPrev=cur;
+      d.sort((a,b2)=>b2[1]-a[1]); const g={}, m={}; for(const k of PAR){ g[k]=+(+genome[k]).toPrecision(4); let sm=0,n=0; for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&Number.isFinite(+pGenome[i][k])){ sm+=+pGenome[i][k]; n++; } } m[k]=n?+(sm/n).toPrecision(4):null; }
+      out(JSON.stringify({diag:true, tick:t, top:d.slice(0,25), germ:g, living:m})); }
+    lb=b; lp=pr; li=tEv.income; ls=tEv.sun; lpd=tEv.paid; } };`, m.filename);
+globalThis.__C(parseInt(process.env.TICKS||'10000',10), parseInt(process.env.ROW||'250',10), s=>console.log(s));

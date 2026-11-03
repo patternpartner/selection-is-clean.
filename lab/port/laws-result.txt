@@ -1,0 +1,24 @@
+10501: NOT COUNTED -> BETTER  worse {"V":false,"S":false,"E":false,"C":false}  better {"V":false,"S":false,"E":false,"C":true}
+   LAWS  k1 V 4446 S 5.84 E 556 C no aliveLate 1604 laws 2/1k/0r CHANNEL_TAP_RENT@2000,CHANXFER_COST@8500
+         k2 V 2386 S 5.68 E 329 C no aliveLate 1138 laws 3/1k/1r LEVEL_BRIDGE_MIN@1000,PROBE_RENT@5000,WORLD_ENERGY_MAX@9500
+         k3 V 8340 S 6.23 E 1158 C no aliveLate 1498 laws 3/2k/0r LEVEL_TOWER_REG@1000,STARVE_DRAIN@5000,FOUND_COST@9500
+   NOLAW k1 V 3077 S 5.83 E 451 C no aliveLate 1576 laws 0/0k/0r 
+         k2 V 2466 S 3.65 E 103 C at 9500 aliveLate 306 laws 0/0k/0r 
+         k3 V 1356 S 1.64 E 12.09 C at 6500 aliveLate 153 laws 5/0k/0r 
+10502: COUNTED -> differs  worse {"V":false,"S":false,"E":false,"C":false}  better {"V":false,"S":false,"E":false,"C":false}
+   LAWS  k1 V 2008 S 5.74 E 217 C at 6000 aliveLate 1166 laws 2/2k/0r CHANNEL_RENT@1500,LAW_RATE@6000
+         k2 V 3316 S 4.66 E 331 C at 5000 aliveLate 1467 laws 3/2k/0r SENESCENCE_SCALE@1500,LAW_VIABLE@5500,PROBE_RENT@10500
+         k3 V 2956 S 4.69 E 126 C at 7000 aliveLate 237 laws 2/1k/1r FIELD_DIFFUSE@3000,FOUND_COST@7500
+   NOLAW k1 V 1821 S 5.66 E 172 C at 7500 aliveLate 742 laws 0/0k/0r 
+         k2 V 8494 S 6.61 E 1215 C no aliveLate 1638 laws 0/0k/0r 
+         k3 V 2675 S 5.24 E 136 C at 7500 aliveLate 535 laws 0/0k/0r 
+10503: COUNTED -> differs  worse {"V":false,"S":false,"E":false,"C":false}  better {"V":false,"S":false,"E":false,"C":false}
+   LAWS  k1 V 1075 S 4.22 E 52.34 C at 2000 aliveLate 159 laws 3/1k/1r WORLD_ENERGY_REGEN@1000,FOUND_NEED@5000
+         k2 V 2103 S 5.73 E 261 C no aliveLate 1329 laws 3/2k/0r FOUND_COST@1500,LEVEL_TOWER_REG@6500,LEVEL_FOREST_REG@11000
+         k3 V 1850 S 6.58 E 326 C no aliveLate 1339 laws 3/2k/0r LEVEL_FOREST_REG@1000,PROVISION_YIELD@5500,ATTENTION_GAIN@11500
+   NOLAW k1 V 7511 S 6.30 E 1037 C no aliveLate 1324 laws 0/0k/0r 
+         k2 V 2315 S 5.54 E 288 C no aliveLate 993 laws 0/0k/0r 
+         k3 V 1068 S 5.40 E 264 C no aliveLate 1386 laws 0/0k/0r 
+
+counted 2 of 3; {"WORSE":0,"BETTER":0,"SPLIT":0,"differs":2,"identical":0}
+VERDICT: INCONCLUSIVE (fewer than 3 counted seeds)

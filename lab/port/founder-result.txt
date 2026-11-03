@@ -1,0 +1,13 @@
+seed | arrived OLD NEW PIN | took off OLD NEW | crash OLD NEW | ticks reached OLD NEW PIN | late alive OLD NEW
+9401 | 530 860 44 | yes yes | - - | 10000 10000 10000 | 151 396
+9402 | 116 2844 103 | no yes | CRASH - | 10000 10000 10000 | 561 1516
+9403 | 12 470 40 | no no | - - | 10000 10000 10000 | 414 309
+9404 | 175 198 45 | no no | - - | 10000 10000 10000 | 485 1708
+9405 | 55 883 54 | no yes | - - | 10000 10000 10000 | 1544 1180
+9406 | 8 1475 60 | no yes | - - | 10000 10000 10000 | 182 1400
+9407 | 828 1318 59 | yes yes | - - | 10000 10000 10000 | 1179 930
+9408 | 1050 2410 46 | yes yes | - - | 10000 10000 10000 | 669 345
+9409 | 8 217 55 | no no | - - | 10000 10000 10000 | 177 143
+9410 | 106 1225 59 | no yes | - - | 10000 10000 10000 | 268 602
+took off: NEW 7/10, OLD 3/10 -> A NOT CONFIRMED | crashes NEW 0 OLD 1 -> guard clear | B: NEW > PIN on 10/10 -> CONFIRMED
+SHIP: no

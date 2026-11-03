@@ -1,0 +1,19 @@
+9901 PREY {"complete":true,"collapse":true,"at":10000,"peak":1330,"prey":3301358,"lateArr":2414,"lateInc":17031,"endAlive":1330}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1702,"prey":0,"lateArr":351,"lateInc":6964,"endAlive":1678}
+9902 PREY {"complete":true,"collapse":false,"at":null,"peak":1479,"prey":8279553,"lateArr":1396,"lateInc":18847,"endAlive":1479}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1696,"prey":0,"lateArr":508,"lateInc":11399,"endAlive":1644}
+9903 PREY {"complete":true,"collapse":false,"at":null,"peak":1656,"prey":1547074,"lateArr":1850,"lateInc":13907,"endAlive":1506}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1667,"prey":0,"lateArr":1466,"lateInc":17812,"endAlive":1664}
+9904 PREY {"complete":true,"collapse":false,"at":null,"peak":1698,"prey":22313052,"lateArr":2569,"lateInc":54607,"endAlive":1698}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1586,"prey":0,"lateArr":1010,"lateInc":14937,"endAlive":1586}
+9905 PREY {"complete":true,"collapse":false,"at":null,"peak":500,"prey":622571,"lateArr":83,"lateInc":885,"endAlive":212}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1712,"prey":0,"lateArr":3181,"lateInc":67822,"endAlive":1712}
+9906 PREY {"complete":true,"collapse":false,"at":null,"peak":1677,"prey":6770029,"lateArr":4421,"lateInc":29757,"endAlive":1604}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1690,"prey":0,"lateArr":970,"lateInc":13958,"endAlive":1690}
+9907 PREY {"complete":true,"collapse":true,"at":15000,"peak":1146,"prey":546000,"lateArr":0,"lateInc":153,"endAlive":133}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1672,"prey":0,"lateArr":949,"lateInc":8737,"endAlive":473}
+9908 PREY {"complete":true,"collapse":false,"at":null,"peak":1654,"prey":24995078,"lateArr":2972,"lateInc":60871,"endAlive":1654}
+     NOPREY {"complete":true,"collapse":false,"at":null,"peak":1697,"prey":0,"lateArr":285,"lateInc":6647,"endAlive":1692}
+neither collapsed on 6: late arrivals PREY/NOPREY 9902 1396/508, 9903 1850/1466, 9904 2569/1010, 9905 83/3181, 9906 4421/970, 9908 2972/285 | NOPREY worse by >25% on 4
+counted 8/8 | collapsed PREY 2, NOPREY 0
+VERDICT: NOT CONFIRMED

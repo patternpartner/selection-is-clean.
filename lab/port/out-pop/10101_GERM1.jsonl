@@ -1,0 +1,9 @@
+{"boot":true,"tick":0,"alive":329,"loaded":true,"germLen":23}
+{"tick":500,"alive":580,"meanAlive":791,"taskInc":46.14,"sunInc":132.64,"paid":8091,"fnPaid":32,"newToHistory":0,"everPaid":1209,"expH":24.16,"meanSz":1.399,"progs":320,"readCarried":580}
+{"tick":1000,"alive":405,"meanAlive":467,"taskInc":43.81,"sunInc":61.87,"paid":4396,"fnPaid":37,"newToHistory":0,"everPaid":1209,"expH":26.09,"meanSz":1.435,"progs":242,"readCarried":405}
+{"tick":1500,"alive":350,"meanAlive":359,"taskInc":86.78,"sunInc":50.79,"paid":3182,"fnPaid":115,"newToHistory":18,"everPaid":1227,"expH":82.26,"meanSz":2.856,"progs":229,"readCarried":350}
+{"tick":2000,"alive":607,"meanAlive":438,"taskInc":323.44,"sunInc":37.86,"paid":3152,"fnPaid":374,"newToHistory":103,"everPaid":1330,"expH":290.87,"meanSz":4.528,"progs":344,"readCarried":607}
+{"tick":2500,"alive":1642,"meanAlive":1198,"taskInc":1574.23,"sunInc":42.8,"paid":8690,"fnPaid":1360,"newToHistory":723,"everPaid":2053,"expH":962.98,"meanSz":6.192,"progs":821,"readCarried":1641}
+{"tick":3000,"alive":1664,"meanAlive":1705,"taskInc":2107.68,"sunInc":58.63,"paid":12318,"fnPaid":1663,"newToHistory":752,"everPaid":2805,"expH":1110.31,"meanSz":6.396,"progs":960,"readCarried":1664}
+{"tick":3500,"alive":1679,"meanAlive":1715,"taskInc":2403.29,"sunInc":64.08,"paid":13545,"fnPaid":1845,"newToHistory":707,"everPaid":3512,"expH":1252.5,"meanSz":6.45,"progs":899,"readCarried":1679}
+{"tick":4000,"alive":1678,"meanAlive":1726,"taskInc":2188.47,"sunInc":50.12,"paid":12204,"fnPaid":1735,"newToHistory":509,"everPaid":4021,"expH":1153.9,"meanSz":6.417,"progs":878,"readCarried":1677}

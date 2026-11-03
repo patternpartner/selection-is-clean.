@@ -1,0 +1,25 @@
+10601: NOT COUNTED -> differs  better {"V":false,"S":false,"E":false,"C":false}  worse {"V":false,"S":false,"E":false,"C":false}
+   DEFAULT k1 V 4607 S 5.31 E 602 C no aliveLate 1082 prey 3476035 (max/250 363241) storeMin 0.049
+           k2 V 2747 S 4.80 E 296 C at 5000 aliveLate 963 prey 3201 (max/250 602) storeMin 0.099
+           k3 V 1143 S 5.58 E 232 C no aliveLate 1646 prey 7802 (max/250 1931) storeMin 0.136
+   REFUGE  k1 V 8852 S 6.67 E 1179 C at 12000 aliveLate 1287 prey 2027 (max/250 611) storeMin 0.123
+           k2 V 1708 S 4.48 E 69.22 C at 5000 aliveLate 249 prey 21 (max/250 13) storeMin 0.099
+           k3 V 2430 S 5.45 E 363 C no aliveLate 1319 prey 660379 (max/250 117274) storeMin 0.136
+10602: NOT COUNTED -> differs  better {"V":false,"S":false,"E":false,"C":false}  worse {"V":false,"S":false,"E":false,"C":false}
+   DEFAULT k1 V 2938 S 5.47 E 435 C no aliveLate 1591 prey 3010792 (max/250 377308) storeMin 0.053
+           k2 V 6252 S 5.65 E 630 C no aliveLate 1406 prey 793 (max/250 218) storeMin 0.165
+           k3 V 6144 S 6.57 E 900 C no aliveLate 1632 prey 1333 (max/250 871) storeMin 0.141
+   REFUGE  k1 V 2547 S 5.15 E 365 C no aliveLate 1582 prey 992697 (max/250 146599) storeMin 0.137
+           k2 V 7285 S 5.93 E 1036 C no aliveLate 1468 prey 31 (max/250 27) storeMin 0.158
+           k3 V 12054 S 6.76 E 1989 C no aliveLate 1694 prey 13328 (max/250 3646) storeMin 0.141
+10603: INCOMPLETE (10603_DEFAULT2, 10603_REFUGE2, 10603_DEFAULT3, 10603_REFUGE3)
+10604: NOT COUNTED -> differs  better {"V":false,"S":false,"E":false,"C":false}  worse {"V":false,"S":false,"E":false,"C":false}
+   DEFAULT k1 V 4655 S 5.67 E 587 C no aliveLate 1372 prey 3962216 (max/250 707682) storeMin 0.051
+           k2 V 13708 S 6.78 E 2182 C no aliveLate 1632 prey 927 (max/250 770) storeMin 0.135
+           k3 V 2778 S 4.81 E 227 C no aliveLate 845 prey 330 (max/250 244) storeMin 0.117
+   REFUGE  k1 V 5380 S 5.60 E 866 C no aliveLate 1674 prey 1735488 (max/250 180710) storeMin 0.135
+           k2 V 12644 S 6.54 E 1807 C no aliveLate 1610 prey 2389 (max/250 890) storeMin 0.135
+           k3 V 3140 S 4.98 E 331 C no aliveLate 1128 prey 58 (max/250 56) storeMin 0.117
+
+counted 0 of 4; {"WORSE":0,"BETTER":0,"SPLIT":0,"differs":0,"identical":0}
+VERDICT: INCONCLUSIVE (fewer than 3 counted seeds)

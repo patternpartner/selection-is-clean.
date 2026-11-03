@@ -1,0 +1,32 @@
+10801 T 4000  size 1.56  task income 36.6 (1% of peak 1.1)  alive 84
+10801 T 8000  size 2.81  task income 177.5 (1% of peak 1.4)  alive 457
+10801 T 12000  size 1.67  task income 14.1 (1% of peak 1.4)  alive 279
+10802 T 4000  size 5.39  task income 1729.0 (1% of peak 10.3)  alive 1601
+10802 T 8000  size 5.05  task income 620.6 (1% of peak 10.3)  alive 1612
+10802 T 12000  size 4.97  task income 795.0 (1% of peak 10.3)  alive 1625
+10803 T 4000  size 5.51  task income 761.4 (1% of peak 4.2)  alive 841
+10803 T 8000  size 5.68  task income 736.5 (1% of peak 5.5)  alive 791
+10803 T 12000  size 5.88  task income 2426.0 (1% of peak 13.0)  alive 1500
+10804 T 4000  size 6.08  task income 4151.8 (1% of peak 27.5)  alive 1605
+10804 T 8000  size 6.59  task income 5298.7 (1% of peak 28.7)  alive 1470
+10804 T 12000  size 6.10  task income 4167.9 (1% of peak 28.7)  alive 1543
+10805 T 4000  size 3.99  task income 573.3 (1% of peak 3.2)  alive 677
+10805 T 8000  size 5.08  task income 455.5 (1% of peak 6.1)  alive 418
+10805 T 12000  size 4.24  task income 148.6 (1% of peak 6.1)  alive 492
+10806 T 4000  size 4.16  task income 838.0 (1% of peak 10.2)  alive 1166
+10806 T 8000  size 4.90  task income 1243.8 (1% of peak 10.2)  alive 1642
+10806 T 12000  size 5.30  task income 1266.0 (1% of peak 10.2)  alive 1642
+10807 T 4000  size 5.68  task income 1497.1 (1% of peak 12.8)  alive 1728
+10807 T 8000  size 6.42  task income 3407.8 (1% of peak 26.7)  alive 1120
+10807 T 12000  size 6.54  task income 4851.5 (1% of peak 27.1)  alive 1666
+10808 T 4000  size 5.40  task income 1863.6 (1% of peak 10.7)  alive 1003
+10808 T 8000  size 5.97  task income 2571.4 (1% of peak 17.2)  alive 1418
+10808 T 12000  size 5.83  task income 2640.8 (1% of peak 18.0)  alive 1558
+10809 T 4000  size 1.95  task income 72.9 (1% of peak 1.2)  alive 137
+10809 T 8000  size 1.49  task income 58.0 (1% of peak 1.2)  alive 169
+10809 T 12000  size 3.68  task income 265.2 (1% of peak 4.6)  alive 1020
+10810 T 4000  size 5.53  task income 512.1 (1% of peak 3.7)  alive 1389
+10810 T 8000  size 2.92  task income 33.3 (1% of peak 3.7)  alive 160
+10810 T 12000  size 5.15  task income 217.4 (1% of peak 3.7)  alive 366
+
+DEAD STATES: none

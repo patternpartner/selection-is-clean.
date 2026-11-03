@@ -124,6 +124,10 @@ const BRIDGE =
     'o.peers=(typeof peerLastSeen!=="undefined")?Object.keys(peerLastSeen).length:-1;' +
     'o.ticks=genome.totalTicks|0;' +
   '}catch(e){o.err=String(e&&e.message);}return o;};' +
+  // #368 - THE POPULATION'S ROUTE OUT. The engine encodes its living population beside each autosaved genome only when
+  // __popHook is set, and only this bridge sets it: under node and on a standalone page nothing is encoded. The snapshot is
+  // megabytes, so it does not go through the localStorage shim; the shell keeps it in IndexedDB under this universe's slot.
+  'try{__popHook=function(s){if(__inst.halted)return;try{__inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
   '__inst.api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
   // #164: set this universe's PACE live, without touching its hash. The hash route would work — the
   // engine re-reads pace on hashchange — but the hash is the CREATURE's (#cleanart, #turbo, and
@@ -132,6 +136,43 @@ const BRIDGE =
   // scope and the bridge runs in that scope, so this assigns the real one.
   '__inst.api.setPace=function(ms){try{var v=+ms;if(!isFinite(v))return false;PACE=Math.max(0,Math.min(5000,v|0));return true;}catch(e){return false;}};' +
   '__inst.api.feedPacket=function(p){try{handleNetworkMessage(p);return true;}catch(e){return false;}};' +
+  // #367 - ONE ROW OF THIS UNIVERSE'S HISTORY, for the shell to keep across reloads and the field to harvest. A harvest was a
+  // snapshot (genome, ticks, population now) and could not say whether or when a world crashed. Read off counters and arrays,
+  // nothing drawn or written. Cumulative counts are this session's (they restart at a reload; the shell marks reloads).
+  // [ticks, minutes since 1970, alive, births, prey events, task income, sun income, payments, functions ever paid, functions
+  //  paid for the first time since the last row (#369: both over the universe's life), exp(H) of income since the last row,
+  //  carrying predation (155), carrying INPUT, mean age, deathThreshold germline / living mean, lifespanBias germline / living, metabolicCost germline / living]
+  '__inst.api.histRow=function(){try{var L=(typeof __liveness!=="undefined")?__liveness:{},on=(typeof TASKS_ON!=="undefined"&&TASKS_ON);' +
+    'var al=0,pr=0,inp=0,ag=0,dt=0,lb=0,mc=0,ng=0;for(var i=0;i<N;i++){if(!palive[i])continue;al++;ag+=page[i];var p=pProg[i];' +
+      'if(p)for(var q=0;q<p.length;q++){var o=p[q][0];if(o===155){pr++;break;}}' +
+      'if(on&&p)for(var q2=0;q2<p.length;q2++){if(p[q2][0]===TASK_OP0){inp++;break;}}' +
+      'var g=pGenome[i];if(g){dt+=+g.deathThreshold||0;lb+=+g.lifespanBias||0;mc+=+g.metabolicCost||0;ng++;}}' +
+    // #369: fields 8 and 9 count over the UNIVERSE'S life (tSeen, carried by the population snapshot across reloads): functions it has
+    // ever been paid for, and how many of those are new since the last row. Before #369 both were this session's, so a reload restarted
+    // them and every function re-found after it read as new. A boot whose population was refused starts the count again, as before.
+    'var fns=0,nf=0,H=0,tot=0;if(on){if(!__inst.hN)__inst.hN=new Uint32Array(TASK_NF),__inst.hE=new Float64Array(TASK_NF);' +
+      'for(var T=0;T<TASK_NF;T++){if(tN[T]>0){fns++;if(__inst.hN[T]===0)nf++;}tot+=tE[T]-__inst.hE[T];}' +
+      'if(typeof tSeenN!=="undefined"){if(__inst.hSeen===undefined)__inst.hSeen=tSeenBoot;fns=tSeenN;nf=tSeenN-__inst.hSeen;__inst.hSeen=tSeenN;}' +
+      'if(tot>0)for(var T2=0;T2<TASK_NF;T2++){var x=tE[T2]-__inst.hE[T2];if(x>0){var qq=x/tot;H-=qq*Math.log(qq);}}' +
+      '__inst.hN.set(tN);__inst.hE.set(tE);}' +
+    'var r=function(v,d){return +(+v).toFixed(d);};var m=function(v){return ng?+(v/ng).toPrecision(4):null;};' +
+    'return [genome.totalTicks|0,Math.round(Date.now()/60000),al,L["repl.birth"]|0,L["repl.prey"]|0,on?r(tEv.income,0):0,on?r(tEv.sun,0):0,on?tEv.paid:0,' +
+      'fns,nf,r(Math.exp(H),1),pr,inp,al?Math.round(ag/al):0,+(+genome.deathThreshold).toPrecision(4),m(dt),+(+genome.lifespanBias).toPrecision(4),m(lb),+(+genome.metabolicCost).toPrecision(4),m(mc)];' +
+  '}catch(e){return null;}};' +
+  // #363 - THE SCORE the shell plays when its sound is on: who was paid this epoch or the last, for which function, with which
+  // published word (its 32 bits are the bar's 32 steps), where, and which functions were heard (a READ hit) - read off the TASKS
+  // arrays, nothing drawn, nothing written, so a universe that is listened to runs the same as one that is not. Bounded: the 8
+  // functions with the most payers and the 3 most read. TASKS off answers off.
+  '__inst.api.score=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON)return {off:true,tick:tick};' +
+    'var e=tEpoch,f={},r={},paid=0,alive=0;' +
+    'for(var i=0;i<N;i++){if(!palive[i])continue;alive++;' +
+      'if(tRE[i]>=e-1&&tRT[i]>=0)r[tRT[i]]=(r[tRT[i]]|0)+1;' +
+      'var pe=tPE[i];if((pe!==e&&pe!==e-1)||tLastE[i]!==pe)continue;var K=tLastK[i];if(K<0)continue;paid++;' +
+      'var o=f[K];if(!o)o=f[K]={n:0,w:tLast[i]>>>0,x:0,rd:0,cur:0};o.n++;o.x+=px[i];if(tRE[i]===pe)o.rd++;if(pe===e)o.cur++;}' +
+    'var v=Object.keys(f).map(function(k){var o=f[k];return [+k,o.n,o.w,+(o.x/o.n/W).toFixed(3),TASK_SZ4[+k],+(o.rd/o.n).toFixed(2)];})' +
+      '.sort(function(a,b){return b[1]-a[1];}).slice(0,8);' +
+    'var h=Object.keys(r).map(function(k){return [+k,r[k],TASK_SZ4[+k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,3);' +
+    'return {tick:tick,epoch:e,alive:alive,paid:paid,v:v,h:h};}catch(err){return null;}};' +
   // A few numbers off the sim's own counters. The field is nine worlds behind worker
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to
   // believe the relay's own bookkeeping, which counts sends, not arrivals. netStats and
@@ -151,6 +192,8 @@ const BRIDGE =
     // #167: report the universe's OWN pace and darkness, so the field can assert what it asked for
     // rather than infer it from a tick rate. A rate is noisy; a flag is not.
     'pace:(typeof PACE!=="undefined"?PACE|0:0),dark:(typeof DARK!=="undefined"?!!DARK:false),' +
+    // #368: whether this boot restored a saved population, how many, or why not (null: there was no snapshot to try).
+    'pop:(typeof __popBoot!=="undefined")?__popBoot:null,' +
     'migrantAccepted:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),' +
     'atoms:(genome.userAtoms||[]).length,' +
     // #157: the field needs to see a universe that is silently failing. The HUD is hidden in a
@@ -316,6 +359,7 @@ Universe.prototype.boot = async function (d) {
   // pre-load the saved genome so the sim's synchronous boot read finds it
   if (d.genome) this.lsStore['selection_genome'] = d.genome;
   if (d.mind) this.lsStore['selection_mind'] = d.mind;   // #296: this universe's saved mind, read by the engine when its mind is born
+  if (d.pop) this.lsStore['selection_pop'] = d.pop;     // #368: this universe's saved population, read once by the engine's init()
   const env = this.buildEnv(d.hash, d.dpr);
   try {
     const src = await engineSource(d.src);
@@ -323,6 +367,7 @@ Universe.prototype.boot = async function (d) {
     const fn = new Function(...ENGINE_PARAMS, src + BRIDGE);
     fn(env.window, env.document, env.localStorage, env.location, env.history,
        env.raf, env.caf, env.addEventListener, env.removeEventListener, this);
+    delete this.lsStore['selection_pop'];   // #368: boot has read it (init runs inside fn); megabytes need not sit in the shim
     this.post({ type: 'ready' });
   } catch (err) {
     this.post({ type: 'error', message: 'sim load failed: ' + (err && err.message), stack: err && err.stack ? String(err.stack).slice(0, 800) : '' });
@@ -447,6 +492,20 @@ Universe.prototype.handle = function (d) {
     let c = null;
     try { c = api() && api().census ? api().census() : null; } catch (e) { c = { err:String(e&&e.message) }; }
     this.post({ type: 'census-result', rid: d.rid, census: c });
+    return;
+  }
+
+  // #363: the score for the shell's sound - read-only, request/reply like stat
+  if (d.type === 'score') {
+    let score = null; try { score = api() && api().score ? api().score() : null; } catch (_) {}
+    this.post({ type: 'score', rid: d.rid, score });
+    return;
+  }
+
+  // #367: one row of history - read-only, request/reply like stat
+  if (d.type === 'hist') {
+    let row = null; try { row = api() && api().histRow ? api().histRow() : null; } catch (_) {}
+    this.post({ type: 'hist', rid: d.rid, row });
     return;
   }
 

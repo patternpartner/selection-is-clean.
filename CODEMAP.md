@@ -3035,3 +3035,28 @@ every row but the four LAW_* meta rows (inert with the process off). **`harness-
 verdict: law process on, the world's proposals off (LAW_RATE 0), one trial installed at AT exactly as
 `attemptLawMutation` installs it; `PROBATION=` sets that trial's length. Both read the row list at runtime.
 **`microcosm-scale.js`** (#264) runs the bacterial microcosm's ten regimes at four scales in one command.
+
+---
+
+**#363 — sound** (`universe.html` `sound`, `sim.worker.js` `api.score`): a readout of the TASKS layer, off until tapped, only in the open universe. The worker's `score()` reads `tPE`/`tLast*`/`tR*` and draws nothing; the shell plays one bar per epoch, a voice per paid function (its published word as the rhythm, pitch by formula size). Test: `sound-test.js`.
+
+**#350 — TASKS, computation that pays** (knob `TASKS=1`, implies REPL). The block sits just after `sunStep` in the SUN/REPL
+layer:
+- **The block:** `TASKS_ON`, the knobs `TASK_CAPM`/`TASK_RATEM`/`TASK_TROPHP`/`TASK_SUNP`/`TASK_DRAWP` (integer units, for `applyKnobs`), the embedded formula-size table `TASK_SZ4`, the word file (`tW` `tJ` `tDm` `tK`), what each particle last published (`tLast*`), the pools (`tCap` `tRes`) and their income (`tE` `tN`).
+- **The functions:** `taskTick` (the epoch and regrowth, called in `loop()` just before `executeSoloVM`), `taskOp` (the five ops), `taskFn`, `taskNeighbour`, `taskBirth` (both `addParticle` chokepoints), `taskMove` (in `compact`), `taskDrawOp` (the seven program-mutation draws) and `taskStats`.
+- **The opcodes:** `TASK_OP0 = CORE_OPCODES+MAX_BOUND_OPCODES-5` = 422. vmStep tests for these five ops BEFORE the bound-opcode block, so under TASKS they never reach an atom; off, the test is false and the slots are bound slots.
+- **Not saved with a universe yet:** a reload starts with empty word files and full pools.
+
+**#368 — the population crosses a reload** (`engine.html` just after `loadGenome`; `sim.worker.js` bridge; `universe.html` boot). Before it, a save was the germline genome and nothing else, so a reload spawned every creature from one program.
+- **Engine:** `encodePopulation(fp)` writes every living creature (position, amp, age, store, caste, mode, memory, plasmids, epigenetic bits, resistance, provision, lineage group, every numeric gene exactly, every structured gene that passes `popPlain`), deduplicating structured genes into per-key tables. `POP_GENE_DENY` (rend, channels, probes, uaOps, userAtoms, userEffects, opStacks: code or compiled state) always comes from the germline. `decodePopulation(s)` replaces the founders, one founder lineage per saved lineage. `popRestore()` runs in `init()` after `replEnsureHead`; when it restores anything, `init()` returns before spawning founders.
+- **The fingerprint:** `popHash` of the exact genome string saved with the snapshot, checked against `__popGenomeStr` (set by `loadGenome` to the string it decoded). A reset, a harvest load, an extinction's re-save or a failed budget can never pair a population with another genome. `__popBoot` reports `{restored, why, bytes}` (in the worker's `stat().pop`).
+- **When it is written:** `archiveGenome` calls `popPersist(g)` after the genome's own `setItem`, every 900 ticks. Only when `__popHook` is set, which only the worker bridge does. Under node and on a standalone page nothing is encoded and nothing is drawn (byte-identical, seed 3).
+- **Where it is kept:** the shell gzips it (`CompressionStream`) into IndexedDB `selection_pop` / store `pop` / key `pop_<slot>` (`pop_genome` standalone), and reads it before posting `init` (4 s timeout). The worker puts it in the shim as `selection_pop` for `init()` and deletes it after boot. The field's reset and harvest load delete the database. A harvest does not carry populations.
+- **Size:** about 4 KB a creature raw, 1 KB gzipped; 1,624 creatures were 6.7 MB raw and 1.5 MB stored. Encoding takes about 180-290 ms per 1,700 creatures under node.
+- **Probe and tests:** `lab/port/probe-reload.js` (save, germline reload, population reload, `RESEED_AT` null continuations); `pop-test.js` (browser, in `smoke.sh`).
+
+**#369 — what a creature runs, and the universe's lifetime record.**
+- **`pProg[i]` is not always `pGenome[i].vmProgram`.** Op 225 (`PROG_LATERAL_COPY`, the one real `case 225`; line 17651's is a profiler stub) replaces the running program with a partner's and leaves the genome alone. Under TASKS 58% of the living are desynchronised by tick 2,000 (seed 10102, `lab/port/probe-desync.js`). Births clone the GENOME (`addParticle`), so a copy is not inherited unless `LATERAL_HERIT=1` (knob, default 0; #369b decides it), which writes the copy into the genome too. Anything that reads "a creature's program" must say which one it means: the VM runs `pProg`, inheritance and `encodeGenome` read `vmProgram`.
+- **The snapshot** (`encodePopulation`) now carries the running program when it differs (table `run`, row field 16) and the current mode (field 17), and `world.seen`.
+- **`tSeen` / `tSeenN` / `tSeenBoot`** (beside `tE`/`tN`): every function this universe has ever been paid for, marked at the single payment site (`tN[T]++`). Restored by `decodePopulation`; `histRow`'s fields 8 and 9 read it, so they count over the universe's life.
+- **`lab/port/probe-statediff.js`**: every top-level binding of the engine before and after a population round trip; what it lists is what the snapshot does not carry. **`lab/port/probe-reload.js PERTURB=`**: resets one piece of world state in-process (pools, sun, words) or round-trips the creatures (`repop`, `keep_*`), paired with the null by its reseed.

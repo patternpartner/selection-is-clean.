@@ -88,6 +88,10 @@ mechanism; no session's job was to ask whether the base worked. So:
   (`#229`: a saved list of mechanisms that NEVER fired was read as the ones that had).
 - **The field is the experiment.** Harvests from long real runs are the best evidence this project has; they
   can be loaded back and restarted from the field's `load` / `new` buttons (`#230`).
+- **Since `#368` a reload brings the POPULATION back, not just the germline** (IndexedDB beside each autosave, fingerprinted to
+  the genome). Before it, every reload respawned every creature from one program, so any reading of a pre-`#368` field run
+  is a reading of a world restarted at each tab kill. A harvest still carries genomes only, so a loaded harvest starts from
+  founders. A history `boot` row's fourth field says how many creatures that boot restored.
 
 ### The retire-or-prove template — every KEEP / DELETE rule takes this shape
 
@@ -129,8 +133,12 @@ that cannot happen again. Pre-register it with the numbers filled in.
 4. **Unseen seeds decide.** Seeds already looked at can design the rule; they do not decide it.
 5. **Committed before the first decision run.** Changing the rule after seeing numbers is a new
    experiment, and is written up as one.
-6. **Saved worlds belong to the user.** A change that alters saved universes on reload (a clamp, a reseed)
-   says so in the pre-registration and goes to the user before it ships.
+6. **Saved worlds do not block progress (the user, 25 Oct 2026).** A change that alters saved universes on reload (a clamp,
+   a reseed) says so in the pre-registration and ships. It does NOT wait for the user: they have said there is no sacred
+   saved universe, that a save colliding with an advance "becomes a blocker", and that sessions have full licence to change
+   the engine. They also do not take part in decisions - replies in a session may come from another AI they relay, so a
+   reply is not the user's sign-off. Decide, explain, keep it reversible, and test it with the rigs. The plan for bringing
+   the lab's results into the engine is `lab/PORT-PLAN.md`.
 
 ## Branching
 
