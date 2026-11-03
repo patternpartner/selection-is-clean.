@@ -3060,3 +3060,20 @@ layer:
 - **The snapshot** (`encodePopulation`) now carries the running program when it differs (table `run`, row field 16) and the current mode (field 17), and `world.seen`.
 - **`tSeen` / `tSeenN` / `tSeenBoot`** (beside `tE`/`tN`): every function this universe has ever been paid for, marked at the single payment site (`tN[T]++`). Restored by `decodePopulation`; `histRow`'s fields 8 and 9 read it, so they count over the universe's life.
 - **`lab/port/probe-statediff.js`**: every top-level binding of the engine before and after a population round trip; what it lists is what the snapshot does not carry. **`lab/port/probe-reload.js PERTURB=`**: resets one piece of world state in-process (pools, sun, words) or round-trips the creatures (`repop`, `keep_*`), paired with the null by its reseed.
+
+**#377 — what keeps a computing-world creature alive, and the switches that test it.**
+- **Two currencies.** Births are paid from the store `pE` (`BIRTH_ENERGY_COST`), which task payments fill. Death is on amplitude:
+  `amp[i] < deathThreshold` in the death pass, plus REPL's starvation rule (`pAdq < 0.5` sets amp to -1e6).
+- **AIM** (`#218c`) pays amplitude in `applyNicheEconomy`, INSIDE the `if(NOV)` branch, so it runs only when `OPCODE_NOVELTY`
+  is on. `aimsOf(g)` reads a genome's portfolio, `AIM_SENSES` lists the six senses (amplitude, resource, age, collapse,
+  frequency, phase), and memory slots follow. Mutation happens in the clone route (`aim.drift`, `aim.reaim`, `aim.tol`,
+  `aim.grow`, `aim.shrink`).
+- **Switches:**
+  - `LIVE_STACK=0` skips the LIVE table's fill. Flags read as `??1` stay on.
+  - `AIM_FLAT=1` swaps each creature's aim payment for the population mean, using `aimFlatD`. Each creature's own payment is
+    applied first, so every sense reads as in the default.
+  - `COSMOS=0 COSMOS_LAW=0` are now in `harness-env.js` KNOBS.
+- **Probes:**
+  - `lab/port/probe-reload.js GLOBALS=__A=1,...` sets engine globals before boot.
+  - `DIAG=1` reports aim pulls, mean amplitude, aims per creature and cosmos launches.
+  - `lab/port/probe-aims.js` takes the aim census.

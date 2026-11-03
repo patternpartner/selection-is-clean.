@@ -75,6 +75,12 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   living creature instead of the one that computed. Same pools, totals and draws per payment. Shuffled worlds found 57-138 new
   functions in 12,000 ticks against 845-8,766 paid: selected, 3 of 3. Any new claim about where novelty comes from at this rung
   should be checked against that control, not only against a null band of the same world.
+  **The computing world has TWO currencies, and only one of them is computing (`#377`).** Computing pays the store `pE`, which
+  pays for births (that is what `#376` showed is selected). A creature DIES on amplitude, and amplitude is fed mostly by AIM's
+  aim pull: the founder's aim is on amplitude itself and pays about 0.17 a tick, against a death threshold of 0.04. Aims drift to
+  the senses that pay whatever a creature does (age, amplitude, resource). `AIM=0` cuts novelty about tenfold; `AIM_FLAT=1` (everyone
+  gets the mean aim payment) loses nothing measurable. So AIM works as FOOD here, not as selection on purposes (2 seeds counted of
+  3, not ruled). Without the LIVE stack at all (`LIVE_STACK=0`) the computing world dies by tick 500.
 
 ## Every session removes or proves something — not only adds
 
@@ -172,6 +178,10 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   like one.**
 - `./smoke.sh` — boots every rig briefly. `slot-test`, `layers-test` and `collective-test` drive a
   real browser and are the only things that catch anything about the field's layout or its controls.
+  **`browser-test` and `collective-test` print SKIP and exit 0 when they cannot load playwright, and `smoke.sh` counts that as
+  ok.** `#377`: after a container image update (chromium-1194 became 1243, and `playwright-core` left `NODE_PATH`), ten browser
+  rigs failed and these two "passed" without running. All twelve now fall back to `require('playwright')` and to the
+  `/opt/pw-browsers/chromium` symlink. If a smoke pass shows those two as ok, grep their output for SKIP before believing it.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.
 - **The rig takes minutes and long runs get reaped.** `substrate-test` runs several minutes per
   budget and `smoke.sh` longer; in the hosted sessions this project is developed in, shell jobs
@@ -287,6 +297,12 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
     default to OFF. Read, I called both off and credited a result to a branch that never ran. The LIVE table sets both
     globals to 1 before either is computed. **The reader of a global is not where its value is set** — for any switch,
     check the LIVE table. Caught only because the deletion was checked byte-identical against the measured arm.
+  - `#377`, the other way round — **a switch named for one mechanism can carry another, and a LIVE flag can be ON without the
+    LIVE table.** AIM's pull runs only inside the `OPCODE_NOVELTY` branch of `applyNicheEconomy`, so `OPCODE_NOVELTY=0` also
+    switches AIM off; that is what kills the computing world, not the opcode bonus. And 17 LIVE flags (`COSMOS`, `DECIDE`, most
+    atom flags) are resolved as `__X??1`, so skipping the LIVE block leaves them on. My add-back arms for cosmos and decide
+    tested nothing for that reason. Before reading an ablation, list what the switch's branch contains and how every
+    reader of the flag defaults.
   **When the question is "is this ever written / cleared / read", grep the name to find the
   candidates and then read the enclosing function.** Better: ask the structural question instead —
   which blocks do X and not Y — because that returns the sites directly and does not depend on what
