@@ -28853,3 +28853,32 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
   a quarter of their peak, whether or not laws ran. In #370 the crashed seeds then found 0 and 38 new functions in their next 10,000
   ticks. Crashes, not laws and not the size of the space, are what limits novelty here at this horizon. The next step is a census of
   what those collapses ARE, collapse by collapse, with the probes that already exist (draw-free), before any mechanism is touched.
+
+### #372 — CRASH CENSUS: what the collapses of the default TASKS world ARE. Predator outbreaks are the commonest single route, not the only one.
+Each #371 collapse replayed exactly (`lab/port/census-batch.sh`: same seed, reseed and `LAWMUT`; the replay matched the original run
+at every shared tick: 7/7, 13/13, 15/15, 16/16, 17/17, 18/18, 18/18, 22/22) with the probe's draw-free `DIAG` mode: births asked for and
+refused, prey events, predation carriers, mean store, age and provision, the largest lineage. Out `lab/port/out-census2/`,
+`lab/port/analyse-census.js`.
+
+| collapse | what the windows before it show | route |
+|---|---|---|
+| 10503 LAWS k1 | prey 626 -> 7,007 per 250 ticks, carriers 16 -> 109, mean store 0.149 -> 0.086, births 740 -> 85 | predator outbreak |
+| 10501 NOLAW k3 | computing dies first (task income 264 -> 3, size 5.2 -> 2.0, one lineage 78%), then prey 0 -> 29,366, store 0.051 | computing decay, then outbreak |
+| 10502 LAWS k2 | prey 0 -> 216,468, carriers 1 -> 748, store 0.044 | predator outbreak |
+| 10502 NOLAW k3 | prey 94,262 -> 159,029, carriers 193 -> 545, store 0.45 -> 0.049 | predator outbreak |
+| 10501 NOLAW k2 | 993 -> 436 with modest predation (2,300); then an outbreak at 7,250 (prey 169,302, carriers 1,303) | mixed, then outbreak |
+| 10502 LAWS k3 | a slide from 506 to 225 under moderate predation (1,400-2,500) | mixed |
+| 10502 LAWS k1 | **1,798 -> 498 in one 250-tick window**, no predation, mean age 1,007 (median life ~400), one lineage 75% | aged monoculture die-off |
+| 10502 NOLAW k1 | slow slide from 631 to 240, no predation, stores ~0.1 (a birth costs 0.25) | energy-limited decline |
+| #370 104010 | `BIRTH_ENERGY_COST` trial 0.25 -> 1.48 | law trial |
+| #370 104020 | 748 -> 98 during a `REACH_RENT` trial the verdict kept | not shown |
+
+- **Predator outbreaks: 4 clear of 10, plus one later in a fifth.** In each, the mean store of the WHOLE population falls to about
+  0.05, the floor op 155 (#273) stops at, even when 45% of the living carry op 155. So predators are not full either: everyone drains
+  everyone, a fifth of every take is lost in transfer, and the world is held below the 0.25 a birth costs until it ages out. That is
+  #365's mechanism, now seen in four worlds, two of them with no laws at all.
+- **The rest are different routes**: an aged monoculture dying at once, a slow energy-limited slide, a law trial. No single fix
+  covers them, and none is claimed.
+- **What follows:** #366 named the design and did not build it, "predation that cannot hold a whole world at the 0.05 floor". The
+  textbook stabiliser is a PREY REFUGE. A take may not bring the prey below the price of a birth, so predation still moves energy
+  but cannot sterilise the world. That is pre-registered next (#373), against the commonest route only.
