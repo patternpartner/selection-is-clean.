@@ -28996,3 +28996,5 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
   - **10402**: still dead, 0.
   - **At 70,000, two of three worlds are dead and the third is past its peak.** Each world got one or two lives, and between them
     the dead state lasted tens of thousands of ticks.
+- **#370 chunk 7 (ticks 70,000-80,000).** 10401: 892 new (11% of peak), at 33.3% of the space, size 5.49, still 1,708 alive: a
+  healthy population finding less each chunk (8,130 -> 4,633 -> 1,862 -> 892). 10402 and 10403: 0 each, still dead.
