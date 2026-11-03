@@ -29004,3 +29004,34 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
   - **10401** held level: 1,046 new (13% of peak; 892 the chunk before), at 34.9% of the space.
   - **10402** is still dead, about 88,000 ticks now.
   - **The pattern holds on two of three seeds:** a crash, a dead stretch of 20,000-28,000 ticks, then a revival.
+- **#370 chunk 9 (ticks 90,000-100,000), and the run as a whole.**
+  - **10403**'s revival is complete: 1,891 new (72% of its first-life peak), size **7.28** (the run's highest), 1,633 alive.
+  - **10401** rose again: 1,650 new (892 and 1,046 before), at **37.5%** of the space.
+  - **10402** never came back: dead from about tick 2,000 to 100,000.
+
+  | seed | new functions per 10,000 ticks, chunks 0-9 | of the space at 100,000 |
+  |---|---|---|
+  | 10401 | 495, 0, 2, 5,840, 8,130, 4,633, 1,862, 892, 1,046, 1,650 | 37.5% |
+  | 10402 | 506, 38, 0, 0, 1, 0, 0, 0, 0, 0 | 0.8% |
+  | 10403 | 2,641, 1,262, 1,418, 873, 229, 439, 0, 0, 537, 1,891 | 14.2% |
+
+- **Scored against the prediction committed before chunk 0 (db2c8b8):**
+  - *"Below 10% of peak by 60,000 on at least 2 of 3"*: met only on the reading "at some chunk up to 60,000". It failed as a claim
+    about decline. Two of the three worlds that fell came back above it, one to 72% of its peak and one past its old peak.
+  - *"At least one crash or stall"*: met, and understated. All three crashed: 10401 and 10402 by tick 2,000, 10403 around
+    50,000-65,000.
+  - *"Ever paid ends at 15-35% of the space"*: wrong in form. The three ended at 37.5%, 14.2% and 0.8%; the spread between worlds
+    is the story, not where they sit.
+- **What the run says, at 100,000 ticks on three seeds of the default TASKS world, one universe at a time with no field:**
+  - **Novelty arrives in lives.** Every world crashed. Dead stretches lasted 20,000 and 28,000 ticks before a revival, or the rest
+    of the run.
+  - **Revivals were not partial recoveries.** Both reached the highest circuit sizes of their runs (6.78 and 7.28) and found more
+    than the world's first life had.
+  - **At 100,000 neither living world is fading:** both are rising (1,650 and 1,891 per 10,000). The most productive world has been
+    paid for 37.5% of the four-input space. At its late rate it would need hundreds of thousands of ticks more to run short, and
+    the functions left are the hard ones (11% of the space has formula size 8 or less; the median needs 12 gates).
+  - **The binding limits, in order:** time spent dead (10402: 98% of the run), then crashes, then the space itself, which no
+    world approached.
+  - **Not shown:** that these new functions are SELECTED rather than paid for as they drift past. The rung measured is "paid,
+    and new to this universe". The browser field adds migrants between universes, which may shorten the dead stretches; a node
+    run cannot show that.
