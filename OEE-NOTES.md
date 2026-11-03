@@ -29060,3 +29060,30 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
     Whether it grows with the horizon (10403 died only at 60,000-65,000) is the open question.
 - **If continued:** dead states must be grown on a longer horizon: chained runs on fresh seeds, saving every 10,000 and picking
   by the same rule. That is #370's machinery at about 30 minutes per 10,000 ticks per world. Not started.
+
+### #376 — VERDICT: SELECTED, 3 of 3. The TASKS world's new functions arrive because the creature that computes is the one fed. Cut that link and they do not arrive: 6 to 43 times fewer.
+`lab/port/PREREG-shuffle.md` (committed ddf963d before any decision run). Seeds 10901-10903, PAID x3 (today's world) against
+SHUFFLE x3 (`TASK_SHUFFLE=1`: every payment's energy goes to a uniformly random living creature; the pools, the drain, one payment
+per epoch and the totals are unchanged), 12,000 ticks. Out `lab/port/out-shuffle/`, result `lab/port/shuffle-result.txt`. All 3
+seeds counted: every PAID world was paid for at least 845 functions, and every SHUFFLE world made 14,542-23,711 payments.
+
+| seed | V, new functions over 12,000 ticks: PAID / SHUFFLE | lowest PAID V / highest SHUFFLE V | late mean size: PAID / SHUFFLE |
+|---|---|---|---|
+| 10901 | 8,766, 4,477, 6,729 / 97, 79, 104 | **43x** | 4.30-6.34 / 1.11-1.31 |
+| 10902 | 1,687, 5,757, 2,409 / 57, 69, 112 | **15x** | 4.11-5.36 / 0.91-1.57 |
+| 10903 | 845, 5,366, 5,094 / 71, 138, 63 | **6x** | 2.81-5.83 / 1.08-1.74 |
+
+- **My prediction was SELECTED on 3 of 3. Right.** The risk I named, that shuffled pay still feeds the world and a fast-mutating
+  world drifts into novelty anyway, did not happen. The shuffled worlds never took off: 57-138 functions in 12,000 ticks, at size
+  about 1, with 139-732 alive.
+- **What this establishes, at its rung.** Every novelty result since #350 stood on "paid, and new to the universe", and every
+  write-up had to add #352's line: "not shown that the new functions are SELECTED rather than drifting". Now it is shown. In this
+  world, at 12,000 ticks, the arrival of new functions depends on the computer being the one fed. Mutation, full pools and the
+  same total income without that link produce almost nothing. That is the claim the artwork's name makes, measured against a
+  control, on three unseen seeds.
+- **What it does not establish:**
+  - which functions selection favours (it shows that selection is needed, not what it selects);
+  - anything beyond 12,000 ticks (#370's long run is the horizon evidence, without this control);
+  - anything about the other layers of the engine, which this control does not touch.
+- `TASK_SHUFFLE` stays as a permanent control (default 0, byte-identical), as the pre-registration said: the artwork's central
+  claim depends on the question it answers.

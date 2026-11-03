@@ -1,0 +1,24 @@
+10901: COUNTED -> SELECTED  (lowest PAID V 4477, highest SHUFFLE V 104)
+   PAID    k1 V 8766 ever 8766 paid 305629 S 6.34 E 1451 aliveLate 1586
+           k2 V 4477 ever 4477 paid 282753 S 4.30 E 406 aliveLate 1615
+           k3 V 6729 ever 6729 paid 295061 S 6.17 E 1161 aliveLate 1648
+   SHUFFLE k1 V 97 ever 97 paid 19792 S 1.13 E 10.39 aliveLate 160
+           k2 V 79 ever 79 paid 18821 S 1.11 E 7.80 aliveLate 732
+           k3 V 104 ever 104 paid 18981 S 1.31 E 10.78 aliveLate 141
+10902: COUNTED -> SELECTED  (lowest PAID V 1687, highest SHUFFLE V 112)
+   PAID    k1 V 1687 ever 1687 paid 60263 S 4.11 E 234 aliveLate 582
+           k2 V 5757 ever 5757 paid 134614 S 5.36 E 782 aliveLate 905
+           k3 V 2409 ever 2409 paid 147017 S 4.67 E 294 aliveLate 1490
+   SHUFFLE k1 V 57 ever 57 paid 14542 S 0.91 E 4.66 aliveLate 268
+           k2 V 69 ever 69 paid 15072 S 1.08 E 5.83 aliveLate 139
+           k3 V 112 ever 112 paid 21299 S 1.57 E 14.22 aliveLate 139
+10903: COUNTED -> SELECTED  (lowest PAID V 845, highest SHUFFLE V 138)
+   PAID    k1 V 845 ever 845 paid 24305 S 2.81 E 17.14 aliveLate 185
+           k2 V 5366 ever 5366 paid 241370 S 5.82 E 838 aliveLate 1533
+           k3 V 5094 ever 5094 paid 141017 S 5.83 E 600 aliveLate 1254
+   SHUFFLE k1 V 71 ever 71 paid 16522 S 1.27 E 6.61 aliveLate 142
+           k2 V 138 ever 138 paid 23711 S 1.74 E 17.31 aliveLate 469
+           k3 V 63 ever 63 paid 17413 S 1.08 E 9.53 aliveLate 361
+
+counted 3 of 3; {"SELECTED":3,"DRIFT":0,"UNCLEAR":0}
+VERDICT: SELECTED: new functions arrive because the computer is fed
