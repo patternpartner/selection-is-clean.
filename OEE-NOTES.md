@@ -28953,12 +28953,12 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
     is more than any chunk of any seed so far and twelve times its whole first life (495). It reached 9.7% of the space, with 1,301
     alive at size 5.4. #374's side runs had predicted it (3 of 3 streams revived from the same save).
   - **10402** is still dead at 40,000: 0 new functions, size 0.24, 132 alive.
-  - **10403**, never crashed, found 1,107 (24% of its peak chunk), its slowest chunk yet: 9.1% of the space at 40,000.
+  - **10403**, never crashed, found 873 (33% of its peak chunk), its slowest chunk yet: 9.5% of the space at 40,000.
   - **So far, against the prediction written before any chunk ran:**
-    - "Below 10% of peak by 60,000 on 2 of 3 seeds": the one crashed-and-dead seed is at 0%. The surviving seed is at 24% at
+    - "Below 10% of peak by 60,000 on 2 of 3 seeds": the one crashed-and-dead seed is at 0%. The surviving seed is at 33% at
       40,000, still in range. The revived seed reset its own peak.
     - "At least one crash or stall": three of three, two crashes and the survivor's slowing.
-    - "15-35% of the space": 0.8%, 9.7% and 9.1% at 40,000, so the low end is in doubt.
+    - "15-35% of the space": 0.8%, 9.7% and 9.5% at 40,000, so the low end is in doubt.
   - **What it says, at this horizon and on three seeds:** novelty in the default world is not a smooth decline. It comes in lives:
     a world takes off, crashes, can lie dead for tens of thousands of ticks, and can come back into a burst bigger than its first
     life. That matches #368's germline reload that exploded on 10101. A world coming out of a stuck state can find far more than it
