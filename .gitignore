@@ -61,3 +61,4 @@ lab/port/out-chain/*.pop
 lab/port/out-chain/*.pid
 lab/port/out-laws/*.pid
 lab/port/out-census2/*.pid
+lab/port/out-refuge/*.pid
