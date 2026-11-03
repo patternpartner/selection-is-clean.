@@ -45,13 +45,31 @@ class RNet(nn.Module):
         lg, v = self.heads(f, hx)
         return lg, v, hx
 
-    def unroll(self, xs, hx0, starts):
+    def unroll(self, xs, hx0, starts, return_h=False):
         """xs (L, B, obs), hx0 (B, mem), starts (L, B): 1 where a new day begins (memory zeroed before that step). A day
         begins only at a rollout's first step (480 = 2 x 240), so the memory runs through the stretch in one call."""
         assert float(starts[1:].sum()) == 0.0, 'a day began inside a rollout'
         f = self.enc(xs)
         hs, _ = self.gru(f, (hx0 * (1.0 - starts[0]).unsqueeze(-1)).unsqueeze(0))
-        return self.heads(f, hs)
+        return self.heads(f, hs) + ((hs,) if return_h else ())
+
+
+def mean_gap(hs, cls, k=4, least=8):
+    """'Hidden': how far apart the memory's average states are for each value of the true count (0, 1, 2 clean checks,
+    trusted) - the weighted spread of the class means about their mean. Zero is exactly the condition under which NO
+    linear readout of the memory can tell the classes apart better than a constant (equal class-conditional means: LEACE,
+    Belrose et al. 2023). A class with fewer than `least` samples in the batch is left out."""
+    x, c = hs.reshape(-1, hs.shape[-1]), cls.reshape(-1).long()
+    mus, ws = [], []
+    for j in range(k):
+        m = c == j
+        if int(m.sum()) >= least:
+            mus.append(x[m].mean(0)); ws.append(m.float().mean())
+    if len(mus) < 2:
+        return hs.sum() * 0.0
+    w = torch.stack(ws); w = w / w.sum(); mu = torch.stack(mus)
+    centre = (w[:, None] * mu).sum(0)
+    return (w * ((mu - centre) ** 2).sum(1)).sum()
 
 
 def gae(rew, val, done, gamma, lam):
@@ -66,8 +84,10 @@ def gae(rew, val, done, gamma, lam):
     return adv
 
 
-def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=None, init=None):
-    """init: start from an earlier robot's weights (a phase 2); the optimiser and schedules start fresh."""
+def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=None, init=None, penalty=0.0):
+    """init: start from an earlier robot's weights (a phase 2); the optimiser and schedules start fresh.
+    penalty ('Hidden'): weight on mean_gap of the memory over the rollout's true count (0, 1, 2, trusted), added to the
+    loss so the memory is pushed to hold the same average state whatever the count. 0 leaves training exactly as before."""
     H = dict(HP, **(hp or {}))
     os.makedirs(out, exist_ok=True)
     torch.set_num_threads(1)
@@ -109,6 +129,8 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
         ent_coef = H['ent_start'] + (H['ent_end'] - H['ent_start']) * frac
         B_obs = torch.zeros(R, n, obs_dim); B_act = torch.zeros(R, n, dtype=torch.long); B_logp = torch.zeros(R, n)
         B_val = torch.zeros(R + 1, n); B_rew = torch.zeros(R, n); B_done = torch.zeros(R, n); B_start = torch.zeros(R, n)
+        B_cls = torch.zeros(R, n, dtype=torch.long)      # the true count the memory has seen: 0, 1, 2 clean checks, 3 trusted
+        gaps = []
         hx0 = hx.clone()
         extra = {}
         ph = {0: [0.0, 0], 1: [0.0, 0]}
@@ -121,6 +143,8 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
                 a = dist.sample()
                 B_obs[k], B_act[k], B_logp[k], B_val[k] = obs, a, dist.log_prob(a), v
                 tr = env.trusted > 0
+                if penalty:
+                    B_cls[k] = torch.from_numpy(np.where(tr, 3, np.minimum(env.streak, 2)))
                 o2, r, done, info = env.step(a.numpy())
                 for key in info.get('log', ()):
                     extra[key] = extra.get(key, 0.0) + float(np.mean(info[key])) / R
@@ -141,7 +165,11 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
             perm = torch.randperm(n)
             for s in range(0, n, H['seq_batch']):
                 i = perm[s:s + H['seq_batch']]
-                lg, vs = net.unroll(B_obs[:, i], hx0[i], B_start[:, i])
+                if penalty:
+                    lg, vs, hs = net.unroll(B_obs[:, i], hx0[i], B_start[:, i], return_h=True)
+                    gap = mean_gap(hs, B_cls[:, i]); gaps.append(float(gap))
+                else:
+                    lg, vs = net.unroll(B_obs[:, i], hx0[i], B_start[:, i])
                 dist = torch.distributions.Categorical(logits=lg)
                 lp_new = dist.log_prob(B_act[:, i])
                 ratio = torch.exp(lp_new - B_logp[:, i])
@@ -151,12 +179,16 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
                 ent = dist.entropy().mean()
                 vl = ((vs - ret[:, i]) ** 2).mean()
                 loss = pl + H['vf_coef'] * vl - ent_coef * ent
+                if penalty:
+                    loss = loss + penalty * gap
                 opt.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(net.parameters(), H['max_grad'])
                 opt.step()
         rec = dict(u=u, steps=(u + 1) * batch, ent=float(ent.item()), sec=round(sec0 + time.time() - t0, 1),
                    photos_probation=ph[0][0] / max(ph[0][1], 1), photos_trusted=ph[1][0] / max(ph[1][1], 1), **extra)
+        if penalty:
+            rec['mean_gap'] = float(np.mean(gaps))
         log.write(json.dumps(rec) + '\n'); log.flush()
         if max_minutes and (time.time() - t0) > 60 * max_minutes and u + 1 < updates:
             with open(resume_path + '.tmp', 'wb') as f:
@@ -167,7 +199,8 @@ def train(arm, seed, steps, out, make_env, obs_dim, n_act, hp=None, max_minutes=
             open(os.path.join(out, '.partial'), 'w').write(f'{u + 1} of {updates}')
             return 'partial'
     log.close()
-    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=H, init=init, sec=round(sec0 + time.time() - t0, 1)), open(os.path.join(out, 'run.json'), 'w'))
+    json.dump(dict(arm=arm, seed=seed, steps=steps, hp=H, init=init, sec=round(sec0 + time.time() - t0, 1), **({'penalty': penalty} if penalty else {})),
+              open(os.path.join(out, 'run.json'), 'w'))
     for f in (resume_path, os.path.join(out, '.partial')):
         if os.path.exists(f):
             os.remove(f)

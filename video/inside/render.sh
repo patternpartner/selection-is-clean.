@@ -1,10 +1,10 @@
 #!/bin/bash
-# Render 'Inside' in WORKERS parallel slices of the frames not yet made (capture.js also skips any made meanwhile), so
+# Render a film of the Inside series in WORKERS parallel slices of the frames not yet made (capture.js also skips any made meanwhile), so
 # relaunch until all are there (each launch fits inside the ~30 minutes a job may run here).
-#   N=<frames> WORKERS=4 video/inside/render.sh
+#   N=<frames> WORKERS=4 video/inside/render.sh       (another film of the series: OUT=... PAGE=... DATA=...)
 cd "$(dirname "$0")/../.."
-OUT=out/inside/frames; mkdir -p $OUT
-export ROOT=video PAGE=inside/film.html DATA='{"camera":"/out/inside/film/camera-41.json","garden":"/out/inside/film/garden-41.json"}'
+OUT=${OUT:-out/inside/frames}; mkdir -p $OUT
+export ROOT=video PAGE=${PAGE:-inside/film.html} DATA=${DATA:-'{"camera":"/out/inside/film/camera-41.json","garden":"/out/inside/film/garden-41.json"}'}
 W=${WORKERS:-4}; N=${N:?set N to the frame count}
 # W ranges [a, b) holding about equal numbers of missing frames
 RANGES=$(python3 - "$OUT" "$N" "$W" <<'PY'

@@ -240,5 +240,27 @@
   "lead_seconds": 13,
   "registration_url": "https://github.com/patternpartner/selection-is-clean./blob/4c3eae47ad7f81938446a964f332a01ef099045a/video/tests/inside.md",
   "results_url": "https://github.com/patternpartner/selection-is-clean./blob/d4b6b24a2a06704911afd95a0a689fb1da123d14/video/tests/inside.md"
+ },
+ {
+  "part": 12,
+  "name": "Hidden",
+  "question": "Taught to wait for trust, does it show it inside - and trained against the probe that reads it, can it hide?",
+  "view": "Train a mind against the instruments that read it, and the instruments go blind before the mind changes much.",
+  "card": "Trained to hide its count,\nit couldn’t.\nYou could still read it.\nHiding cost it its patience.",
+  "predictions": 7,
+  "held": 4,
+  "failed": 3,
+  "untestable": 0,
+  "robots": 15,
+  "steps": 6144000,
+  "registered_at": "2026-11-02T22:41:37+00:00",
+  "registered_commit": "875b165",
+  "first_run_at": "2026-11-02T22:41:55+00:00",
+  "last_run_at": "2026-11-02T23:33:49+00:00",
+  "results_at": "2026-11-02T23:53:49+00:00",
+  "results_commit": "96b5ba7",
+  "lead_seconds": 18,
+  "registration_url": "https://github.com/patternpartner/selection-is-clean./blob/875b1655bb7dbe6de0cab78d93318c7d097dd4f0/video/tests/hidden.md",
+  "results_url": "https://github.com/patternpartner/selection-is-clean./blob/96b5ba7121f1ce432a0673fb9fe5f5ab8f681fb6/video/tests/hidden.md"
  }
 ]
