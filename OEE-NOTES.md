@@ -28891,3 +28891,18 @@ refused, prey events, predation carriers, mean store, age and provision, the lar
     132). They prey on each other 5,000-17,000 times per 250 ticks and hold every store at 0.08-0.12, below the 0.25 a birth costs.
     So the dead state is predation saturated, #360b's "stable predator ecology" seen whole. Predation does not only START the
     commonest crash; it is what KEEPS a crashed world from recovering. That is the condition #373's refuge bounds.
+- **#369b's screen, finished** (10309-10314, six more fresh seeds): copies 5, 5, 0, 8, 0, 44; the most desynchronised at once 1, 1,
+  0, 2, 0, 4. With the first eight, **1 of 14 fresh seeds** (10305) grew an imitator presence above 1% of the living by 6,000
+  ticks. The from-state follow-up stays named and unstarted; it has two candidate worlds (10102, 10305) and needs a third.
+- **A second law kill, in the other direction (#373's 10601 REFUGE k1, a decision run; reported, not ruled on).** At tick 10,500
+  `BIRTH_ENERGY_COST` went from 0.25 DOWN to **0.01**.
+  - Births rose to about 10,000 per 500 ticks, but a child is endowed with half the price (`SUN_ENDOW`), so it started with 0.005
+    and starved.
+  - The world filled with dying newborns: alive went from 1,638 to 533, 254 and 153 in 1,500 ticks, and the mean store from 0.69
+    to 0.12.
+  - The refuge could not help, because it tracks the price of a birth and the price went to 0.01 with it.
+
+  So under REPL/TASKS a trial on this one law is lethal in BOTH directions: up (104010, births stop) and down (here, births flood).
+  The step is the cause: ±1.4 on a law REPL set to 0.25. #371 ruled on the law PROCESS, which is not measurably harmful as a whole;
+  this is one ROW of it. Fixing it means proposal steps relative to a law's value (or a REPL range for this row). That changes every
+  world's law proposals, so it is a separate, pre-registered change. Not started.
