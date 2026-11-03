@@ -1,0 +1,38 @@
+11001:  Q1 COUNTED -> BETTER  better {"V":false,"S":true,"E":false,"C":false}  worse {"V":false,"S":false,"E":false,"C":false}
+        Q2 COUNTED -> FOOD SUFFICES
+   DEF   k1 V 3074 S 5.03 E 384 C no aliveLate 1533 pulls 46515689 amp 1.09 aims 2.77
+         k2 V 2410 S 5.75 E 287 C no aliveLate 1658 pulls 29289261 amp 0.56 aims 2.28
+         k3 V 2009 S 5.13 E 172 C at 11000 aliveLate 1081 pulls 41836918 amp 1.09 aims 3.26
+   NOAIM k1 V 224 S 2.22 E 42.05 C no aliveLate 160 pulls 0 amp 0.86 aims 2.00
+         k2 V 2672 S 4.51 E 451 C no aliveLate 1552 pulls 0 amp 1.05 aims 2.00
+         k3 V 516 S 3.07 E 106 C no aliveLate 521 pulls 0 amp 0.72 aims 2.00
+   FLAT  k1 V 4176 S 5.35 E 554 C no aliveLate 1655 pulls 34596260 amp 1.06 aims 1.92
+         k2 V 622 S 0.42 E 1.24 C at 4500 aliveLate 122 pulls 6485721 amp 1.17 aims 2.42
+         k3 V 2336 S 5.25 E 302 C no aliveLate 1652 pulls 23663552 amp 0.85 aims 1.17
+11002:  Q1 COUNTED -> differs  better {"V":false,"S":false,"E":false,"C":false}  worse {"V":false,"S":false,"E":false,"C":false}
+        Q2 NOT COUNTED -> FOOD SUFFICES
+   DEF   k1 V 380 S 2.30 E 37.72 C at 6000 aliveLate 338 pulls 16013103 amp 1.06 aims 2.69
+         k2 V 4487 S 5.68 E 332 C no aliveLate 1622 pulls 40350576 amp 1.10 aims 2.17
+         k3 V 6000 S 5.96 E 873 C no aliveLate 1579 pulls 51181173 amp 0.86 aims 3.59
+   NOAIM k1 V 227 S 1.70 E 27.19 C no aliveLate 97.58 pulls 0 amp 0.93 aims 2.00
+         k2 V 284 S 2.39 E 59.39 C no aliveLate 686 pulls 0 amp 0.60 aims 2.00
+         k3 V 589 S 3.34 E 125 C no aliveLate 294 pulls 0 amp 0.78 aims 2.00
+   FLAT  k1 V 1327 S 2.68 E 145 C at 4500 aliveLate 349 pulls 9989547 amp 0.95 aims 2.10
+         k2 V 1117 S 3.90 E 213 C no aliveLate 1010 pulls 22442093 amp 0.82 aims 2.33
+         k3 V 2568 S 4.87 E 423 C no aliveLate 1664 pulls 28473588 amp 1.11 aims 2.11
+11003:  Q1 COUNTED -> SPLIT  better {"V":true,"S":true,"E":false,"C":false}  worse {"V":false,"S":false,"E":false,"C":true}
+        Q2 COUNTED -> FOOD SUFFICES
+   DEF   k1 V 3850 S 5.37 E 396 C at 4500 aliveLate 788 pulls 34222304 amp 1.03 aims 4.67
+         k2 V 2387 S 2.68 E 56.76 C at 5500 aliveLate 143 pulls 8463465 amp 1.09 aims 1.83
+         k3 V 1594 S 5.25 E 188 C at 9500 aliveLate 454 pulls 20865650 amp 1.08 aims 4.78
+   NOAIM k1 V 145 S 1.94 E 31.31 C no aliveLate 147 pulls 0 amp 0.86 aims 2.00
+         k2 V 226 S 2.37 E 50.71 C no aliveLate 201 pulls 0 amp 0.90 aims 2.00
+         k3 V 240 S 2.39 E 52.89 C no aliveLate 162 pulls 0 amp 0.90 aims 2.00
+   FLAT  k1 V 3299 S 5.98 E 491 C no aliveLate 1492 pulls 29679594 amp 1.05 aims 2.82
+         k2 V 312 S 0.79 E 3.16 C no aliveLate 1006 pulls 24980742 amp 0.50 aims 2.32
+         k3 V 11360 S 6.79 E 1969 C no aliveLate 1374 pulls 22220853 amp 1.07 aims 2.06
+
+Q1 counted 3 of 3; {"WORSE":0,"BETTER":1,"SPLIT":1,"differs":1}
+Q1 VERDICT: KEEP: no change
+Q2 counted 2 of 3; {"SELECTED":0,"FOOD SUFFICES":2,"UNCLEAR":0}
+Q2 VERDICT: INCONCLUSIVE (fewer than 3 counted seeds)

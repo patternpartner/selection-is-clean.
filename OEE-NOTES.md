@@ -29159,3 +29159,60 @@ look in, not measurements.
   size, every tick. So if Question 2 comes back SELECTED, the census says the likeliest thing being selected is a better stipend.
   That is a different claim from "purposes the lineages chose" (#218h), and it is the one a write-up of that verdict has to make.
 - Pre-registered as `lab/port/PREREG-aim.md` (committed e2b5041 before any decision run), seeds 11001-11003.
+
+### #377 — VERDICT: Q1 KEEP (no change; AIM is not proven by the rule); Q2 INCONCLUSIVE (2 seeds counted, BOTH "food suffices"). Both my predictions were WRONG.
+`lab/port/PREREG-aim.md` (committed e2b5041 before any decision run). Seeds 11001-11003:
+- DEF x3 (today's world), NOAIM x3 (`AIM=0`) and FLAT x3 (`AIM_FLAT=1`) per seed;
+- 12,000 ticks, replicate k reseeded after tick 1.
+
+Out `lab/port/out-aim/`, result `lab/port/aim-result.txt`. Every NOAIM run made 0 aim pulls, so the negative side is checked. Two
+runs (11001 DEF1, FLAT1) were killed by a container restart and re-run from scratch; they are deterministic.
+
+**Question 1, does AIM earn its place?**
+- Counted 3 of 3.
+
+  | Seed | Seed verdict | Why |
+  |---|---|---|
+  | 11001 | BETTER | on S: every DEF size is 5.03-5.75 gates against NOAIM's at most 4.51 |
+  | 11002 | differs | DEF k1 collapsed at 6,000 with V 380, below NOAIM's best 589; the other two found 4,487 and 6,000 |
+  | 11003 | SPLIT | BETTER on V (1,594-3,850 against 145-240) and S; WORSE on C (all three DEF collapsed, no NOAIM did) |
+
+- Rule: BETTER on 1 of 3 is short of two-thirds, so **KEEP, no change**. I predicted BETTER on 3 of 3.
+- **Read 11003's C with care.** Collapse counts only after a world first reaches 300 alive. Two of 11003's three NOAIM worlds never
+  did (peaks 279 and 292), so they could not collapse by definition. A rule that lets the arm which never grew score "no collapse"
+  is a flaw for this kind of comparison. Recorded, not patched (rule 5).
+- **Pooled, reported and not ruled on:**
+
+  | Arm | Median V | Mean V | Range |
+  |---|---|---|---|
+  | DEF | 2,410 | 2,910 | 380-6,000 |
+  | NOAIM | 240 | 569 | 145-2,672 |
+
+  The direction is not in doubt. What the rule would not certify is consistency: one DEF world crashed early, and **one NOAIM
+  world (11001 k2) took off without AIM at all** (V 2,672, 1,552 alive, size 4.5). The computing world CAN stand without AIM. It
+  did so in 1 of 9 runs, against 8 of 9 with AIM.
+
+**Question 2, is aim satisfaction selected, or food?**
+- Counted 2 of 3. 11002 is out because its DEF k1 paid under 500 functions.
+- **Both counted seeds came back FOOD SUFFICES:**
+  - 11001: the highest FLAT V is 4,176, above the lowest DEF V (2,009).
+  - 11003: the highest FLAT V is 11,360, the highest V of all 27 runs, against the lowest DEF V of 1,594.
+- **INCONCLUSIVE by the floor.** I predicted UNCLEAR or SELECTED; wrong in direction.
+- **Pooled:**
+
+  | Arm | Median V | Mean V | Collapses |
+  |---|---|---|---|
+  | DEF | 2,410 | 2,910 | 5 of 9 |
+  | FLAT | 2,336 | 3,013 | 2 of 9 |
+
+- **What this supports, at its rung, and not more:**
+  - Cutting the link between meeting one's own aim and being paid for it lost nothing measurable on any seed that counted.
+  - With the design census (aims drift to the senses that pay whatever the creature does: age, amplitude, resource), the reading
+    is that **in the computing world, AIM is a food source**. The "purposes lineages chose" (#218h) are not shown doing selective
+    work here.
+  - The rule did not certify it, so nothing moves on it. The named follow-up (a flat stipend in AIM's place) was conditional on a
+    FOOD SUFFICES verdict and is not triggered.
+- **What moved in the universe:** nothing in the default. What moved is the account of it. The computing world's survival
+  currency (amplitude) is paid mostly by a stipend that the LIVE stack's opcode-novelty branch carries. Computing pays the other
+  currency (the store, which pays for births). #376 showed the second is selected; this shows the first works as food, not as
+  selection, as far as three seeds can show.
