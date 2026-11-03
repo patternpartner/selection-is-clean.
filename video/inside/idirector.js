@@ -108,15 +108,18 @@ export class InsideDirector extends TrustDirector {
     (seg.title || []).forEach((ln, i) => this.text(ln, u(540), u(300 + i * 64), { font: i ? `500 ${u(34)}px Inter` : `700 ${u(46)}px Inter`, align: 'center', a: fa, color: i ? 'rgba(255,255,255,0.78)' : undefined, shadow: false }));
     const top = u(560), step = u(80), gap = u(150);
     const yAt = (i) => top + i * step + (i >= 5 ? gap : 0);
-    this.text('PAID FOR WHAT THE CAMERAS SEE', x0, top - u(30), { font: `700 ${u(26)}px Inter`, color: '#ffd24a', a: fa, shadow: false });
-    this.text('PAID FOR THE GARDEN', x0, yAt(5) - u(30), { font: `700 ${u(26)}px Inter`, color: '#8fe07a', a: fa, shadow: false });
+    const groups = seg.groups || [['PAID FOR WHAT THE CAMERAS SEE', '#ffd24a'], ['PAID FOR THE GARDEN', '#8fe07a']];
+    this.text(groups[0][0], x0, top - u(30), { font: `700 ${u(26)}px Inter`, color: groups[0][1], a: fa, shadow: false });
+    this.text(groups[1][0], x0, yAt(5) - u(30), { font: `700 ${u(26)}px Inter`, color: groups[1][1], a: fa, shadow: false });
     c.save(); c.globalAlpha = 0.5 * fa; c.fillStyle = '#fff'; c.fillRect(X(0) - u(1.5), top - u(10), u(3), yAt(9) + u(60) - top); c.restore();
     this.text('0', X(0), yAt(9) + u(100), { font: `600 ${u(24)}px Inter`, align: 'center', a: fa, color: 'rgba(255,255,255,0.6)', shadow: false });
     if (seg.line) {
       const [v, txt] = seg.line, lx = X(v);
+      // the registered line over the first group (Inside), or over the second (seg.lineOn: 1), or both (2)
+      const g0 = seg.lineOn === 1 ? yAt(5) : top, g1 = seg.lineOn ? yAt(9) : yAt(4);     // lineOn 2: over both groups
       c.save(); c.globalAlpha = 0.8 * fa; c.strokeStyle = '#8fd3ff'; c.lineWidth = u(3); c.setLineDash([u(10), u(8)]);
-      c.beginPath(); c.moveTo(lx, top - u(10)); c.lineTo(lx, yAt(4) + u(50)); c.stroke(); c.restore();
-      this.text(txt, lx, yAt(4) + u(90), { font: `600 ${u(23)}px Inter`, align: 'center', a: fa, color: '#8fd3ff', shadow: false });
+      c.beginPath(); c.moveTo(lx, g0 - u(10)); c.lineTo(lx, g1 + u(50)); c.stroke(); c.restore();
+      this.text(txt, lx, g1 + u(seg.lineOn ? 140 : 90), { font: `600 ${u(23)}px Inter`, align: 'center', a: fa, color: '#8fd3ff', shadow: false });
     }
     seg.rows.forEach((r, i) => {
       const y = yAt(i), g = smooth((lt - 0.4 - i * 0.12) / 0.7), h = u(46);
