@@ -28929,3 +28929,22 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
 - **What a fair test needs:** many paired worlds rather than seed-level floors (a pair = one seed and one reseed k under each arm),
   ruled on the pairs whose DEFAULT world had an outbreak. And a sharper endpoint than collapse at 12,000: #370's dead worlds
   (every creature a predator, never recovering) are where the refuge's effect should be largest. Not pre-registered yet.
+
+### #374 — EXPLORATORY: can a dead world come back? Yes, sometimes, and neither the refuge nor a germline reload reliably makes it. (Two design worlds, three streams per arm, 5,000 ticks; `lab/port/out-revive/`.)
+- **Correction to #370's wording.** "A crashed world in this engine did not come back in 20,000 ticks" was true. My summary to the
+  user ("a crashed world doesn't come back") was not: it is CLAUDE.md's "never is not a thing a run can show you". 10401 sat at about
+  100 alive, computing at size 1-2, through ticks 10,000-30,000. Continued from its tick-30,000 save under three new random streams
+  (a population reload, as since #368), it **revived in all three**. Its size had crept up to 2.4 late in that chunk.
+
+  | dead world (tick-30,000 save) | population reload | population reload + `REPL_REFUGE=1` | germline-only reload (pre-#368) |
+  |---|---|---|---|
+  | 10401 | revives 3/3: 1,269-1,591 alive by 5,000, new 1,646 / 979 / 3,026 | revives 3/3 **at once** (about 1,650 by tick 1,000), new 2,109 / 3,444 / 2,048 | stays dead: new 82 / 4 / 0 |
+  | 10402 | dead 3/3: about 110 alive, new 0 / 0 / 0 | population triples (243-365), still computes nothing: new 0 / 4 / 0 | one stream revives (new 1,193, size 5.1), two weakly (118, 83) |
+
+- **How to read it:**
+  - The refuge speeds the recovery of a world that can still compute (10401). It cannot restore computing that is gone: 10402's
+    residents run size 0-1 programs, and the refuge only lets more of them live.
+  - A germline-only reload rescued 10402 once in three but killed 10401's recovery in three of three. So whether #368 traps a dead
+    universe depends on the world. Two worlds are no basis for a reload policy in either direction, and none is made.
+  - The revived worlds end with almost every creature carrying op 155 again (1,229-1,699 of about 1,500) yet computing at size
+    5.5-6.3. A world of predators is not dead in itself; what kills is stores held under the price of a birth.
