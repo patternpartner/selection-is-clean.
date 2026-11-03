@@ -20,7 +20,7 @@
 // genome's (#369); laws, lawKept, lawRevert: the engine's cumulative law proposals and verdicts, lawTrial: the law on probation (#371).
 // DIAG=1 (#372) adds a {diag:tick} line per window: births asked for and how they were refused, prey and scavenge events, escape
 // deaths, predation carriers, mean store, age and provision, the largest lineage's share, the two birth prices; #377 adds aim pulls
-// (pull), mean amplitude (meanAmp) and aims held per creature (aims).
+// (pull), mean amplitude (meanAmp) and aims held per creature (aims); #378 adds cosmos child launches (launch).
 // GLOBALS=__A=1,__B=0 (#377) sets those engine globals before boot; with LIVE_STACK=0 it adds LIVE flags back one group at a time.
 // Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
@@ -36,7 +36,7 @@ m._compile(code+`
   if(process.env.POPLOAD) out(JSON.stringify({popBoot:(typeof __popBoot!=='undefined')?__popBoot:'engine has no #368', seenRestored:(typeof tSeenN!=='undefined')?tSeenN:null}));
   for(let T=0;T<TASK_NF;T++)prev[T]=tE[T];
   let copies=0, lastCopies=0; __on225=function(i,f){ if(f)copies++; };
-  const DIAG=!!process.env.DIAG, DK=['repl.birth','birth.refused','birth.unprovisioned','birth.rationed','repl.prey','repl.scavenge','aim.pull'], dPrev={}; let escPrev=deathsByEscape;   /* #372 */   /* #369b: op 225's copies, from the engine's own hook; draws nothing */
+  const DIAG=!!process.env.DIAG, DK=['repl.birth','birth.refused','birth.unprovisioned','birth.rationed','repl.prey','repl.scavenge','aim.pull','cosmos.launch'], dPrev={}; let escPrev=deathsByEscape;   /* #372 */   /* #369b: op 225's copies, from the engine's own hook; draws nothing */
   if(process.env.SEEN){ for(const T of JSON.parse(fs.readFileSync(process.env.SEEN,'utf8')))ever[T]=1; }   /* the functions this universe paid before its save */
   { let a=0; for(let i=0;i<N;i++) if(palive[i])a++; out(JSON.stringify({boot:true, tick:0, alive:a, loaded:!!process.env.LOAD, germLen:(genome.vmProgram||[]).length})); }
   const RAT=+(process.env.RESEED_AT||0), RK=+(process.env.RESEED||0), PERT=process.env.PERTURB||'', SUN0=SUN_ON?sunField.slice():null;   /* the light field as this boot left it: full, which is what a reload hands back */

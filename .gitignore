@@ -75,3 +75,5 @@ lab/port/out-aim/*.pid
 lab/port/out-aim/*.part
 lab/port/out-live-design/*.pid
 lab/port/out-live-design/*.part
+lab/port/out-cosmos/*.pid
+lab/port/out-cosmos/*.part
