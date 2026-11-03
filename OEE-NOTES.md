@@ -28979,3 +28979,14 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
     3.78: the first sign of a crash in the one seed that had not crashed.
   - Against the prediction: 10403 and 10402 are now both under 10% of peak. That is 2 of 3 by 50,000, so that clause is met
     early, through the dead seed and the fading survivor. The revived seed is the exception the prediction did not imagine.
+- **#370 chunk 5 (ticks 50,000-60,000).**
+  - **10401**: 4,633 new functions (57% of its peak chunk), 29.1% of the space, size 6.78 and exp(H) 2,057, the run's highest on both.
+  - **10402**: 0, still dead (116 alive, size 0.5).
+  - **10403**: 439 new (17% of peak), but the world is down to 478 alive (min 150) at size 2.41. Its first crash, the one chunk 4
+    showed coming.
+  - **The prediction's first clause ("below 10% of peak by 60,000 on at least 2 of 3 seeds") was ambiguous as I wrote it**, and
+    reads both ways here:
+    - at some chunk up to 60,000: MET (10402 from chunk 1 on, 10403 at 9% in chunk 4);
+    - at the 60,000 chunk itself: NOT met (10403 rose back to 17%).
+
+    Written down so the ambiguity is not resolved after the fact in whichever direction reads better.
