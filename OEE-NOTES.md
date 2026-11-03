@@ -29035,3 +29035,28 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
   - **Not shown:** that these new functions are SELECTED rather than paid for as they drift past. The rung measured is "paid,
     and new to this universe". The browser field adds migrants between universes, which may shorten the dead stretches; a node
     run cannot show that.
+
+### #375 — VERDICT: INCONCLUSIVE. No dead state to test: 0 of 10 fresh worlds met the pre-registered rule by 12,000 ticks. `REPL_REFUGE` stays 0.
+`lab/port/PREREG-revive.md` (committed 606f46b before any world was generated). Seeds 10801-10810, today's default world, saves at
+4,000, 8,000 and 12,000. Out `lab/port/out-gen/`; `lab/port/select-dead.js`'s full output is below. The continuations
+(`revive-batch.sh`, `analyse-revive.js`) were never run: there was nothing to continue.
+- **The rule** (fixed before generation): over the two windows ending at a save, mean size under 1.5, task income under 1% of the
+  run's largest window, and mean alive under 400.
+- **Closest misses:**
+  - 10801 at 4,000: 84 alive, size 1.56, income 36.6 against a bar of 1.1;
+  - 10809 at 8,000: 169 alive, size 1.49, income 58.0 against a bar of 1.2;
+  - 10810 at 8,000: 160 alive after a crash, but size 2.92.
+
+  10801 and 10809 never took off: they are #352's low-active world, not #370's dead one. 10810 crashed but kept computing. The
+  other seven were healthy at every save (464 to 1,728 alive, size 3.99 to 6.59).
+- **Not loosened after the numbers.** The rule's remedy, extending with seeds 10811 onward, was not run: at 0 in 10 it could take
+  dozens of seeds.
+- **What the zero says, and it corrects #370's reading.**
+  - #370 found the deep dead state (size about 1, income near zero, every creature a predator) in 2 of 3 worlds within 2,000
+    ticks, and drew "time spent dead is the largest limit".
+  - On 13 fresh worlds (#370's 3 plus these 10) that state appeared within 12,000 ticks in **2 of 13**.
+  - Collapses are common (8 of 18 in #371), but most collapsed worlds keep computing and many recover.
+  - So "time dead is the largest limit" holds for #370's three worlds; across the default world it is a minority fate early on.
+    Whether it grows with the horizon (10403 died only at 60,000-65,000) is the open question.
+- **If continued:** dead states must be grown on a longer horizon: chained runs on fresh seeds, saving every 10,000 and picking
+  by the same rule. That is #370's machinery at about 30 minutes per 10,000 ticks per world. Not started.
