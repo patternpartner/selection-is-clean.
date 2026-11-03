@@ -28882,3 +28882,12 @@ refused, prey events, predation carriers, mean store, age and provision, the lar
 - **What follows:** #366 named the design and did not build it, "predation that cannot hold a whole world at the 0.05 floor". The
   textbook stabiliser is a PREY REFUGE. A take may not bring the prey below the price of a birth, so predation still moves energy
   but cannot sterilise the world. That is pre-registered next (#373), against the commonest route only.
+- **#370 chunk 2 (ticks 20,000-30,000), and what a dead world is.**
+  - 10401 found 2 new functions and 10402 found 0, at 106 and 126 alive. **A crashed world in this engine did not come back in
+    20,000 ticks.**
+  - 10403, the seed that never crashed, found 2,641, 1,262 and 1,418 new functions in its three chunks: steady at about half its
+    first chunk, and paid for 8.1% of the space by 30,000.
+  - 10401's tick-30,000 save, run 1,000 ticks with `DIAG`: **every living creature carries op 155** (220 of 227, 140 of 145, 131 of
+    132). They prey on each other 5,000-17,000 times per 250 ticks and hold every store at 0.08-0.12, below the 0.25 a birth costs.
+    So the dead state is predation saturated, #360b's "stable predator ecology" seen whole. Predation does not only START the
+    commonest crash; it is what KEEPS a crashed world from recovering. That is the condition #373's refuge bounds.
