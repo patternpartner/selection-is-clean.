@@ -64,3 +64,8 @@ lab/port/out-census2/*.pid
 lab/port/out-refuge/*.pid
 lab/port/out-chain/*.part
 lab/port/out-chain/*_[0-9]*0000.*
+lab/port/out-gen/*.pop
+lab/port/out-gen/*.pid
+lab/port/out-gen/*.part
+lab/port/out-revive2/*.pid
+lab/port/out-revive2/*.part
