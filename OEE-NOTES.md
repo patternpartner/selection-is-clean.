@@ -29216,3 +29216,22 @@ runs (11001 DEF1, FLAT1) were killed by a container restart and re-run from scra
   currency (amplitude) is paid mostly by a stipend that the LIVE stack's opcode-novelty branch carries. Computing pays the other
   currency (the store, which pays for births). #376 showed the second is selected; this shows the first works as food, not as
   selection, as far as three seeds can show.
+
+### #377 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- Node byte-identical with `LIVE_STACK` and `AIM_FLAT` unset: seed 3, 1,500 ticks, TASKS on and off (`b07a4474`, `84eaf3b7`).
+- **`smoke.sh`, first pass: 59 ok, 10 failing, and two of the 59 were not real.**
+  - The container image had moved under the suite: chromium-1194 became 1243, and `playwright-core` was no longer on `NODE_PATH`.
+    Ten browser rigs failed on that alone.
+  - `browser-test` and `collective-test` printed SKIP and exited 0, which `smoke.sh` scores as ok. A pass that never ran.
+  - All twelve rigs now fall back to `require('playwright')` and to the `/opt/pw-browsers/chromium` symlink (patched sites
+    asserted: 12 requires, 10 paths).
+  - Without any environment help, `pool-test` came back 28/0, and `browser-test` and `collective-test` RAN. `collective-test`
+    went red on `returnPathIsATrickle` straight after `browser-test`, and green alone at `←16 →1`. That is CLAUDE.md's
+    documented fragility; I did not retune it.
+- **`smoke.sh`, second pass on the final tree, quiet machine: 69 ok, 0 failing.**
+- On `main` with this:
+  - the knobs `LIVE_STACK`, `AIM_FLAT`, `COSMOS`/`COSMOS_LAW` (KNOBS), probe `GLOBALS=` and its diagnostics;
+  - the design entry and the verdict for #377;
+  - the #378 pre-registration (committed before any of its runs);
+  - the browser-rig fix.
