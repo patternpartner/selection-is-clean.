@@ -28906,3 +28906,26 @@ refused, prey events, predation carriers, mean store, age and provision, the lar
   The step is the cause: ±1.4 on a law REPL set to 0.25. #371 ruled on the law PROCESS, which is not measurably harmful as a whole;
   this is one ROW of it. Fixing it means proposal steps relative to a law's value (or a REPL range for this row). That changes every
   world's law proposals, so it is a separate, pre-registered change. Not started.
+
+### #373 — VERDICT: INCONCLUSIVE (0 of 4 seeds counted). `REPL_REFUGE` stays 0. The executed-first floor was the wrong design for this route.
+`lab/port/PREREG-refuge.md` (committed 48e9877 before any decision run). Seeds 10601-10603 plus the named extension 10604; DEFAULT x3
+against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/refuge-result.txt`.
+- **Why nothing counted.** The floor was "every replicate of both arms had at least 1,000 prey events". It failed:
+  - on 10603 at k=1 in both arms (301, 140), so that seed's k=2 runs were stopped and its k=3 not run (`10603_NOTCOUNTED`);
+  - on REFUGE replicates of 10601 (21) and 10604 (58), where the refuge itself keeps predators from taking off;
+  - **and on DEFAULT replicates too:** 10602 k2 had 793 and 10604 k2 and k3 had 927 and 330.
+
+  So a predator outbreak is a PER-WORLD event, not a property of a seed. Here every outbreak (3.0-4.0 million prey events) fell on
+  k=1, and the same seeds' other worlds barely grew predators. A floor that needs every replicate of a seed to show the route
+  cannot fit a route that happens to some worlds and not others. Counting on the DEFAULT arm alone would have failed as well.
+  Recorded as the lesson, not patched after the numbers (CLAUDE.md: a rule changed after seeing them is a new experiment).
+- **Exploratory, not ruled on:**
+  - In the three outbreak worlds (DEFAULT k=1), the lowest mean store was 0.049-0.053 without the refuge and 0.123-0.137 with it.
+    New functions in those pairs were 4,607 / 8,852, 2,938 / 2,547 and 4,655 / 5,380 (DEFAULT / REFUGE).
+  - Over all nine pairs of the three seeds that ran fully: 44,972 new functions without the refuge, 56,040 with it (+25%).
+  - Collapses did not fall: 1 without, 2 with. One is the BIRTH_ENERGY_COST 0.25 -> 0.01 trial (10601 REFUGE k1, above). The
+    other (10601 k2) collapsed at 5,000 in BOTH arms with almost no predation, so another route, shared by the paired draws.
+  - My prediction (BETTER on 2 of 3, through collapses) is not testable as registered; the collapse half of it looks wrong.
+- **What a fair test needs:** many paired worlds rather than seed-level floors (a pair = one seed and one reseed k under each arm),
+  ruled on the pairs whose DEFAULT world had an outbreak. And a sharper endpoint than collapse at 12,000: #370's dead worlds
+  (every creature a predator, never recovering) are where the refuge's effect should be largest. Not pre-registered yet.
