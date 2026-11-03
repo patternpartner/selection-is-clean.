@@ -29094,3 +29094,49 @@ seeds counted: every PAID world was paid for at least 845 functions, and every S
 - Node byte-identical with `TASK_SHUFFLE`, `REPL_REFUGE` and `LATERAL_HERIT` unset: seed 3, 1,500 ticks, TASKS on and off.
 - On `main` with this: the selection control `TASK_SHUFFLE` and its verdict (#376, SELECTED 3/3); the dead-world test (#375,
   INCONCLUSIVE, no dead state); the long run's chunks 4-9 (#370); the probes, batches and results.
+
+### #377 — DESIGN (seeds 10401, 10402; design only, nothing decided here): without the LIVE stack the computing world DIES, and what holds it up is AIM
+`lab/PORT-PLAN.md` step 2: re-run retire-or-prove on the big layers in the computing world. The cheapest first cut was the whole
+LIVE block, which fills about 45 old OEE flags to ON by default. `LIVE_STACK=0` (new knob, byte-identical unset: seed 3, 1,500
+ticks, TASKS on and off) skips that fill, exactly as deleting the block would. Readers that default ON (`??1`: REACH, ATOM_CREDIT,
+AIM ...) stay on either way. Outputs `lab/port/out-live-design/`, scripts beside them. One stream per arm: these are directions to
+look in, not measurements.
+- **The stack-less computing world dies.** 329 founders become 13-15 by tick 500 and stay there on both seeds. 11-13 functions were
+  ever paid by 4,000, against 1,834 and 1,578 in the default world.
+- **Add back one group at a time** (`LIVE_STACK=0 GLOBALS=...`, seed 10401, 1,500 ticks):
+  - cosmos, decide, draw and group selection: byte-identical to the stack-less world;
+  - atoms (23 flags): 21 alive;
+  - speciation: 23 alive;
+  - the niche economy: 60 alive;
+  - the novelty pair (`OPCODE_NOVELTY` + `NOVELTY_ARCHIVE`): 828 alive, 380 functions (the default: 678, 412).
+- **Inside the pair it is AIM.** The archive alone dies, opcode novelty with `AIM=0` dies, and opcode novelty alone lives (344, 129).
+  AIM (#218c) is not a LIVE flag (its reader defaults ON), but it runs only INSIDE the opcode-novelty branch of
+  `applyNicheEconomy`. Switching off `OPCODE_NOVELTY` switches AIM off too: in the default world, `AIM=0` and `OPCODE_NOVELTY=0` cut
+  tick 500 to 309 and 311 alive. **A switch named for one mechanism carries another**, which is #258b's lesson from the other side:
+  the reader of a flag is not the only thing its value governs.
+- **Why AIM holds the world up.** Under REPL a creature dies when its amplitude falls below `deathThreshold`. Computing pays the
+  store `pE`, which pays for births. Amplitude is fed by other things, and an aim pays it directly: `w x (2 sat/(1+tol) x moved -
+  AIM_TAX)` per aim per tick, with `w` up to 1.2. The founder's aim is `{sense 0 (amplitude itself), target 0.6, weight 0.28, tol
+  1}`. Amplitude moves every tick, so that aim pays about 0.15-0.24 a tick to nearly any living creature, whatever it does. About
+  two aims per creature, both pulled every tick (`DIAG` on seed 5: 330,000-400,000 pulls per 250 ticks).
+- **Default world, one group dropped** (seed 10401, 4,000 ticks; functions ever paid, default 1,834):
+
+  | Group dropped | Result |
+  |---|---|
+  | draw, group selection | **byte-identical through 4,000** |
+  | niche economy | 294 |
+  | decide | 1,156 |
+  | speciation | 732, crashing to 106 alive from 3,000 |
+  | cosmos | 2,586, AHEAD |
+
+  One stream each: only the byte-identities are facts. Group selection sits inside cluster budding, behind a persistence-and-size
+  gate this world did not reach (PORT-PLAN's cull note, #253). It is unexecuted, not shown dead, so the template cannot rule on it.
+  Cosmos ahead is one stream in a chaotic world. It is worth a pre-registered test (PORT-PLAN names it), not a claim.
+- **`AIM=0` in the default world, 4,000 ticks:** 138 and 105 functions, against 1,834 and 1,578.
+- **`AIM_FLAT=1`** (new, byte-identical unset): every living creature ends the tick with the population's MEAN aim payment, not
+  its own. Its own is applied first, so every sense reads exactly as in the default. At 4,000 ticks: 461 and 694, between the
+  two.
+- So part of AIM looks like food and part like selection. **One caution on reading "selection" here:** the founder's aim is on
+  amplitude, and weight is heritable. A world that out-computes FLAT could be one where lineages evolved bigger stipends, which is
+  selection on how much food a creature claims, not on what it wants. The census below is there to tell those apart.
+- Pre-registered as `lab/port/PREREG-aim.md` (committed e2b5041 before any decision run), seeds 11001-11003.
