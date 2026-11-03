@@ -28825,3 +28825,31 @@ Seeds 9701-9703: DEFAULT (`TASKS=1`, the shipped world) and PIN (founder pinned)
     the verdict kept it.
   - The question the PORT-PLAN names is now asked of the laws: retire-or-prove under TASKS, pre-registered as #371
     (`lab/port/PREREG-laws.md`, committed 0f78601 before any decision run). The chain waits on it.
+
+### #371 — VERDICT: no change. The law process stays on under TASKS (INCONCLUSIVE as the script computed it, KEEP with the counter corrected; both readings leave the default where it is). My prediction was WRONG.
+`lab/port/PREREG-laws.md` (committed 0f78601 before any decision run), seeds 10501-10503, LAWS x3 against NOLAW (`LAWMUT=0`) x3,
+12,000 ticks. Out `lab/port/out-laws/`, result `lab/port/laws-result.txt`.
+- **A counter that measured two mechanisms.** The probe's `laws` column read the liveness name `cosmos.law`, which fires at TWO
+  sites: the law process's proposals and COSMOS_LAW's rewrites, where a merged daughter universe's winning scenario rewrites five
+  germline physics genes (engine.html, in the scenario bank). So 10501's NOLAW k=3 read "5 proposals" with no law ever on
+  probation (its `lawTrial` was empty throughout). Seen after the numbers, and so reported both ways:
+  - **as the script computed it:** 10501 does not count, 2 of 3 do, both "differ": INCONCLUSIVE;
+  - **with law proposals counted as the rule names them** (trials the law process started, from `lawTrial`): 10501 counts and is
+    BETTER (no LAWS replicate collapsed, two NOLAW replicates did), 10502 and 10503 differ: 3 of 3 counted, KEEP.
+  - Either way the default does not move, so the verdict does not depend on the correction. This is the repo's name trap: one
+    liveness name, two mechanisms. A rig that needs one of them must count it at its own site.
+
+  | seed | V (new functions, 12,000 ticks) LAWS / NOLAW | collapsed LAWS / NOLAW | trials per LAWS replicate |
+  |---|---|---|---|
+  | 10501 | 4,446, 2,386, 8,340 / 3,077, 2,466, 1,356 | 0 / 2 | 2, 3, 3 |
+  | 10502 | 2,008, 3,316, 2,956 / 1,821, 8,494, 2,675 | 3 / 2 | 2, 3, 2 |
+  | 10503 | 1,075, 2,103, 1,850 / 7,511, 2,315, 1,068 | 1 / 0 | 3, 3, 3 |
+
+- **My prediction was WORSE on 2 of 3, through collapses. Wrong:**
+  - collapses were 4 of 9 replicates in each arm;
+  - total new functions were 28,480 with laws against 30,783 without;
+  - the 104010 law kill (#370) is real, but it is one route among several, not the common one.
+- **What this leaves, and it is the bigger fact:** in the artwork's default world, 8 of 18 twelve-thousand-tick worlds fell to under
+  a quarter of their peak, whether or not laws ran. In #370 the crashed seeds then found 0 and 38 new functions in their next 10,000
+  ticks. Crashes, not laws and not the size of the space, are what limits novelty here at this horizon. The next step is a census of
+  what those collapses ARE, collapse by collapse, with the probes that already exist (draw-free), before any mechanism is touched.
