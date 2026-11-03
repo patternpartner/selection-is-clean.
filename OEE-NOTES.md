@@ -28963,3 +28963,11 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
     a world takes off, crashes, can lie dead for tens of thousands of ticks, and can come back into a burst bigger than its first
     life. That matches #368's germline reload that exploded on 10101. A world coming out of a stuck state can find far more than it
     was finding. Recorded as a pattern on three seeds, not a law.
+
+### #370-#374 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- `smoke.sh` on a quiet machine: **69 ok, 0 failing**.
+- Node byte-identical with `REPL_REFUGE` and `LATERAL_HERIT` unset: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the chained long run (#370) and its first 40,000 ticks; the law retire-or-prove under TASKS (#371, no
+  change); the crash census (#372); `REPL_REFUGE` (#373, default 0, INCONCLUSIVE); the dead-world revival runs (#374); the probes
+  (`probe-reload.js` DIAG, `probe-laws.js`), batches and results.
