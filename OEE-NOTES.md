@@ -28998,3 +28998,9 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
     the dead state lasted tens of thousands of ticks.
 - **#370 chunk 7 (ticks 70,000-80,000).** 10401: 892 new (11% of peak), at 33.3% of the space, size 5.49, still 1,708 alive: a
   healthy population finding less each chunk (8,130 -> 4,633 -> 1,862 -> 892). 10402 and 10403: 0 each, still dead.
+- **#370 chunk 8 (ticks 80,000-90,000): a second world comes back.**
+  - **10403**, dead through chunks 6-7 (about 20,000 ticks), found 537 new functions. It is computing again at size 3.90, with 692
+    alive (min 173) and task income 12,164 (2 in chunk 6, 35 in chunk 7).
+  - **10401** held level: 1,046 new (13% of peak; 892 the chunk before), at 34.9% of the space.
+  - **10402** is still dead, about 88,000 ticks now.
+  - **The pattern holds on two of three seeds:** a crash, a dead stretch of 20,000-28,000 ticks, then a revival.
