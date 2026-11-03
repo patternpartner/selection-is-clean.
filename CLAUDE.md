@@ -71,6 +71,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
 - **Variance is not selection.** Drift produces variance too, and `#209` warns that every
   spread-across-universes figure this project has cited is consistent with drift until the read is
   instrumented. The census reports raw material, not sorting. Do not upgrade one to the other.
+  **At the TASKS rung there is now a control that separates them (`#376`):** `TASK_SHUFFLE=1` feeds every payment to a random
+  living creature instead of the one that computed. Same pools, totals and draws per payment. Shuffled worlds found 57-138 new
+  functions in 12,000 ticks against 845-8,766 paid: selected, 3 of 3. Any new claim about where novelty comes from at this rung
+  should be checked against that control, not only against a null band of the same world.
 
 ## Every session removes or proves something — not only adds
 
