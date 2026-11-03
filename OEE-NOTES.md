@@ -29087,3 +29087,10 @@ seeds counted: every PAID world was paid for at least 845 functions, and every S
   - anything about the other layers of the engine, which this control does not touch.
 - `TASK_SHUFFLE` stays as a permanent control (default 0, byte-identical), as the pre-registration said: the artwork's central
   claim depends on the question it answers.
+
+### #375-#376 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- `smoke.sh` on a quiet machine: **69 ok, 0 failing**.
+- Node byte-identical with `TASK_SHUFFLE`, `REPL_REFUGE` and `LATERAL_HERIT` unset: seed 3, 1,500 ticks, TASKS on and off.
+- On `main` with this: the selection control `TASK_SHUFFLE` and its verdict (#376, SELECTED 3/3); the dead-world test (#375,
+  INCONCLUSIVE, no dead state); the long run's chunks 4-9 (#370); the probes, batches and results.
