@@ -30,7 +30,7 @@
 //
 // Requires playwright-core; skips cleanly if unavailable.   SECS=45 node collective-test.js
 let chromium;
-try { ({ chromium } = require('playwright-core')); }
+try { ({ chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })()); }
 catch(e){ console.log('  SKIP  playwright-core not installed — collective check not run'); process.exit(0); }
 const fs=require('fs'), path=require('path'), http=require('http');
 const EXE=['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium']

@@ -15,11 +15,11 @@
 //   · by reading what each slot ACTUALLY HOLDS. Decode the saved genome, take its own T, and compare
 //     against that universe's tick count sampled right after boot, before it can run away from it.
 //     Then check no OTHER slot's saved value explains it better.
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 // The engine's first autosave is at tick 1800, so a universe must get there before there is anything
 // to restore. At ~20 ticks/second that is 90 seconds; the default gives headroom on a slow machine.
 const WARM = Math.max(60, +(process.env.SECS || 150));

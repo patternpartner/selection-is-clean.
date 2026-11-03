@@ -1,11 +1,11 @@
 // history-test.js - #367: each universe keeps a history across reloads, and the field's harvest carries it. A standalone universe
 // gathers rows (the worker's histRow) every 250 ticks; a reload adds a 'boot' marker and keeps the rows before it; a field's harvest
 // file has every universe's rows.   node history-test.js   (SECS=<seconds> per wait, default 60)
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 const WARM = Math.max(40, +(process.env.SECS || 60));
 let pass = 0, fail = 0;
 const ck = (n, ok, d) => { (ok ? pass++ : fail++); console.log('  ' + (ok ? 'ok  ' : 'FAIL') + '  ' + n + (d !== undefined ? ('   ' + d) : '')); };

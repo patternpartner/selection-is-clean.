@@ -2,11 +2,11 @@
 // should also save the mind at the same time. No resets"), it travels in a universe's save file, the field and an opened
 // universe both show what it is doing, and #reset clears it. Read from the universe's own stat() and the page's storage.
 //   node mind-persist-test.js      (MAXS=<seconds> to wait for the first autosave, default 420)
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 const MAXS = +(process.env.MAXS || 420);
 
 let pass = 0, fail = 0;

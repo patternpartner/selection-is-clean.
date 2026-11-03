@@ -5,11 +5,11 @@
 // ticks. PACE is the answer as a rate cap: local to the universe carrying it, no central scheduler,
 // and budget nobody claims flows to whoever wants it. This checks it does what it says and that a
 // paced universe is slowed rather than broken.
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 const SECS = Math.max(8, +(process.env.SECS || 20));
 
 let pass = 0, fail = 0;

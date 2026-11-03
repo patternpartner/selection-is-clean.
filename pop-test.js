@@ -2,11 +2,11 @@
 // beside it, every living creature (gzipped, in IndexedDB); a reload boots from those creatures rather than from founders spawned
 // off the germline. Negative sides: a snapshot whose fingerprint is not the stored genome's is refused and the boot spawns
 // founders as before; #reset restores nothing. #369: the history's lifetime function count carries across the reload.   node pop-test.js   (MAXS=<seconds> to wait for the first save, default 240)
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 const MAXS = Math.max(60, +(process.env.MAXS || 240));
 let pass = 0, fail = 0;
 const ck = (n, ok, d) => { (ok ? pass++ : fail++); console.log('  ' + (ok ? 'ok  ' : 'FAIL') + '  ' + n + (d !== undefined ? ('   ' + d) : '')); };

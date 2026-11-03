@@ -2,11 +2,11 @@
 // instead of being dropped while two new ones are grown into two new slots. Reported by the user ("it always got to 2
 // grown quickly then stayed at that"): the cap explains the two; the reload explains the rest.
 //   node grown-test.js
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 
 let pass = 0, fail = 0;
 const ck = (n, ok, d) => { (ok ? pass++ : fail++);

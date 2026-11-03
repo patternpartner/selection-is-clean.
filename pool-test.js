@@ -15,11 +15,11 @@
 // That last one is the trap in SharedWorker: it outlives the document that made it. The check is
 // the wire — every universe announces itself on the BroadcastChannel, so a zombie from a previous
 // load shows up as a peer nobody can account for.
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 
 // How long each section is given to settle. The full run wants 25s so peer discovery, the relay and
 // several hundred ticks per universe are all real; the smoke pass passes a smaller SECS, and every

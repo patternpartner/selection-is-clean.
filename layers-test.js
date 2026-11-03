@@ -9,11 +9,11 @@
 // difference is that you cannot see it. That is what most of this file checks, because an earlier
 // version got it wrong in exactly that way: the #163 clock gate made anything paced refuse its
 // neighbours, so the depths were deaf and nothing said so.
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 const SECS = Math.max(10, +(process.env.SECS || 40));
 
 let pass = 0, fail = 0;

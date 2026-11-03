@@ -2,11 +2,11 @@
 // the browser default), at the rate and mode a field asks for, and absent when the field is opened with #nomind. Read from each universe's own stat() (its mind's counters: parents seen, children
 // written, training steps), not from the hash: a token in a URL that no engine ever latched would read like a mind.
 //   node mind-test.js            (SECS=<seconds> to warm each field, default 60)
-const { chromium } = require('playwright-core');
+const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = __dirname;
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
-const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>require('fs').existsSync(p)) || '/opt/pw-browsers/chromium';
 const WARM = Math.max(20, +(process.env.SECS || 60));
 
 let pass = 0, fail = 0;

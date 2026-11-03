@@ -19,7 +19,7 @@
 // Requires playwright-core; skips cleanly (exit 0) if it is unavailable, so smoke.sh stays green on
 // a machine without it.   SECS=25 node browser-test.js
 let chromium;
-try { ({ chromium } = require('playwright-core')); }
+try { ({ chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })()); }
 catch(e){ console.log('  SKIP  playwright-core not installed — browser check not run'); process.exit(0); }
 const fs=require('fs'), path=require('path');
 const EXE=['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium']
