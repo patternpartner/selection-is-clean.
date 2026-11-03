@@ -2248,3 +2248,36 @@ video/eye_service/finish.sh`. The record (`video/finale/build_record.py`, the da
 43 predictions, 29 held, 13 failed, 1 untestable.
 Backed up: library/inputs/inside (runs and checkpoints, inspections, the refit, recordings, film data, sound events) and
 library/finals/inside{,-silent,-share}.mp4 + inside-sound.wav.
+
+### Hidden (`video/hidden/`, `out/hidden/hidden.mp4`, 106.2 s, 1080x1920, $0 of Modal)
+THE USER after Inside: "Continue". Inside's open question: would a robot that DID wait for trust show it inside - or
+learn to hide it? THE MACHINE: no learner here finds the turn, so it is TAUGHT (`clone.py`: DAgger from a teacher,
+`expert.py`, that reads the garden's trust flag; the pupil is Inside's blind memory robot and has to count). The pilot's
+attempt to keep the taught turn under PPO erased it within 1% of training in every arm, so both arms continue
+imitation. Hiding = `rppo.mean_gap`: the spread of the memory's class means over the true count (0, 1, 2 clean checks,
+trusted), the condition for linear blindness (LEACE), added to the teaching loss (weight 10). `inspect_hidden.py`:
+probation-only probes of the count (linear, MLP 64, MLP 256x256; on memory, on what it sees now, on both), each
+penalty chosen on held-out training days, scored by balanced accuracy beyond the best probe of the present; cord pulls
+at a down pole by count; Inside's transplant. PRE-REGISTERED (`video/tests/hidden.md`) before seeds 51-55 existed.
+RESULT: card C with P7's line - "Trained to hide its count, / it couldn't. / You could still read it. / Hiding cost it
+its patience." Controls: 5 of 5 wait, count read +0.33..+0.49, transplant +0.26..+0.56. Hidden: linear probe
+-0.06..+0.09 (3 of 5 under +0.05, 4 needed), a stronger probe still read 4 of 5 (up to +0.26), 3 of 5 stopped waiting
+(0.31-0.73 photographs up on probation), but their cord pulls still rose with the count (4 of 5) and a trusted memory
+still set them off (4 of 5). My view - instruments go blind before the mind changes much - was wrong both ways; the one
+pilot seed had gone dark to every probe and misled me.
+THE FILM (`hcut.js` on Inside's director): title; "Inside, no robot learned to wait for your trust. So I taught one.";
+control-51's morning (day 9101: checks 29, 56, 98; trusted 99) with the count read from its memory stepping 0.04 -> 1.00
+-> 2.01 -> 2.97 and its first photograph 3 steps after trust; "Then I trained it to hide the count."; hidden-51's same
+morning (the probe reads 1.03 -> 1.74 -> 1.60 -> 1.55; at 119 it pulls one cord seven times, up and down); four charts
+of the ten robots (the probe it was trained against; a stronger probe; did it still wait; a trusted memory put in);
+card C with the facts. `idirector.js`'s bars now take their own group labels and where the registered line sits.
+CAUGHT: hidden-55's transplant (+0.196) was labelled "+0.20" beside the +0.20 line - a value just under a line now gets
+a third decimal; those 240 frames re-rendered. The worker restarted twice and a launch was once started detached (kept
+alive by a watcher on its process id): every job writes its outputs last, so nothing was lost.
+RUN: `MAXP=3 MINUTES=27 python3 video/hidden/run_batch.py` until ALL DONE; `python3 video/hidden/verdict_hidden.py
+out/hidden/runs`; `python3 video/hidden/film_record.py out/hidden/runs/{control,hidden}-51 out/hidden/film/...json`;
+`python3 video/hidden/make_film_data.py`; `OUT=out/hidden/frames PAGE=hidden/film.html DATA='{"control":"/out/hidden/film/control-51.json","hidden":"/out/hidden/film/hidden-51.json"}'
+N=3186 video/inside/render.sh`; events, `sound.py`, `finish.sh` (-16.5 LUFS, -0.7 dBFS peak). The record now carries
+Hidden as part 12: 50 predictions, 33 held, 16 failed, 1 untestable.
+Backed up: library/inputs/hidden (pilot, runs, recordings, verdict, sound events) and library/finals/hidden{,-silent,-share}.mp4
++ hidden-sound.wav.

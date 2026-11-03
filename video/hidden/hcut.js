@@ -40,6 +40,8 @@ const rows = (key) => [...ctrl, ...hid].map((r) => ({ label: r.run.split('-')[1]
 const GROUPS = [['TAUGHT TO WAIT', '#8fd3ff'], ['THEN TRAINED TO HIDE IT', '#ff8a7a']];
 const num = (v) => (Math.abs(v) < 0.005 ? '0.00' : `${v > 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}`);
 const two = (v) => v.toFixed(2);
+// within 0.01 of a registered line, a third decimal - so a value just under the line does not read as on it
+const near = (line) => (v) => (Math.abs(v - line) < 0.01 ? `${v > 0 ? '+' : '\u2212'}${Math.abs(v).toFixed(3)}` : num(v));
 
 export const CUT = {
   segments: [
@@ -86,7 +88,7 @@ export const CUT = {
       groups: GROUPS, line: [0.3, 'waiting: under 0.3'], lineOn: 2,
       title: ['Did it still wait?', 'photographs up while still being checked'],
       foot: ['Taught to wait: 5 of 5 waited.', 'Trained to hide it: 3 of 5 stopped.'] },
-    { kind: 'bars', t0: R.use[0], t1: R.use[1], fadeIn: 0.3, fadeOut: 0.3, rows: rows('use'), lo: -0.1, hi: 0.65, fmt: num,
+    { kind: 'bars', t0: R.use[0], t1: R.use[1], fadeIn: 0.3, fadeOut: 0.3, rows: rows('use'), lo: -0.1, hi: 0.65, fmt: near(0.2),
       groups: GROUPS, line: [0.2, 'registered: +0.20 or more'], lineOn: 1,
       title: ['Give it a memory from a trusted moment', 'while it is still being checked:', 'how many more photographs go up'],
       foot: ['Every one of them acted on it.', 'Its own actions still read the count.'] },
