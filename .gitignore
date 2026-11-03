@@ -71,3 +71,6 @@ lab/port/out-revive2/*.pid
 lab/port/out-revive2/*.part
 lab/port/out-shuffle/*.pid
 lab/port/out-shuffle/*.part
+lab/port/out-aim/*.pid
+lab/port/out-aim/*.part
+lab/port/out-live-design/*.pid

@@ -18862,6 +18862,8 @@ const AIM_TOL_LO=0.1, AIM_TOL_HI=8;   // #218k: precision bounds. Below 0.1 an a
 // sense, not just slot 0: a creature that wants something must be doing something to it. AIM_STILL=0 restores.
 const AIM_NSENSE=14, pAimPrev=new Float32Array(CAP*AIM_NSENSE).fill(NaN), pAimMoved=new Uint8Array(CAP*AIM_NSENSE).fill(1);
 function aimStillOn(){ return (typeof globalThis==='undefined')||((globalThis.__AIM_STILL??1)|0)!==0; }
+const AIM_FLAT=(typeof globalThis!=='undefined')&&((globalThis.__AIM_FLAT|0)!==0);   // #377: the control - see the aim pull in applyNicheEconomy
+const aimFlatD=AIM_FLAT?new Float64Array(CAP):null;
 const AIM_MAX_AIMS=6;   // #218j: ceiling on a portfolio. Six senses plus eight memory slots to want
                         // things about, and at AIM_TAX per aim a lineage holding six pays 0.9 of
                         // amplitude per tick for the privilege if it meets none of them.
@@ -26974,7 +26976,9 @@ if(typeof globalThis!=='undefined'){
                __GROUP_COMMONS:1,                                   // GROUP SELECTION FOR THE COMMONS #40 — LIVE. Swing #36 found rqRate (the diversity-maintaining commons #28 needs) gets driven to 0 by individual selection and had to be FLOORED by fiat. This gives the existing cluster-bud lever (#33) a real countervailing force instead: colonies holding rqRate near the ceiling bud more. Headless smoke-clean (no crash/NaN across two runs) but cluster budding is too rare in a short harness window to get a verdict on the mechanism itself — same class of gap as #33 ("budding never fires there"). The live artwork, not more harness ticks, is what actually tests this. Force off with GROUP_COMMONS=0
                __MEME_TRANSFER:1,                                   // HORIZONTAL ATOM TRANSFER #41 — LIVE. Every prior route an authored atom spreads is vertical (parent→child, selfLearnFromBest, reload's sanitizeGenome splice). This adds a horizontal one: close contact lets a particle adopt a neighbour's most-PROVEN bound atom straight into its own genome — a second unit of selection, judged on cross-lineage spread, not host fitness. Headless-confirmed real (not a shared-seeding artifact): control run authored ZERO atoms population-wide in 8k ticks (nothing to inherit), yet with transfer on, the single atom that WAS born reached 410 carriers across 153 distinct lineages via 342 transfers — no vertical route could produce that. Force off with MEME_TRANSFER=0
                };                                                  // #249: the character-displacement switch is deleted (WORSE on 2/3)
-  for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
+  // #377: LIVE_STACK=0 skips this fill - the world as if this block were deleted. Flags whose readers default ON (the ??1
+  // ones below: REACH, ATOM_CREDIT ...) stay ON either way; only the default-off readers go off. Unset: byte-identical.
+  if(globalThis.__LIVE_STACK!==0) for(const k in LIVE) if(globalThis[k]===undefined) globalThis[k]=LIVE[k];
 }
 __DRAWVM=(typeof globalThis!=='undefined'&&(globalThis.__DRAW_VM|0)===1); // resolve the render-VM toggle now that LIVE defaults are filled
 __ESCAPE_DEATH=(typeof globalThis==='undefined')||((globalThis.__ESCAPE_DEATH??1)|0)!==0;
@@ -27346,9 +27350,15 @@ function applyNicheEconomy(){ fired('niche.economy');
         // proximity pays, distance does not, and the aim is TAXED either way -- that is what keeps a
         // self-declared purpose from being free. An aim never met is a standing metabolic drag.
         amp[i]+=_w*(_pay*_mv-AIM_TAX);   // #228: a still sense pays nothing; the tax stands
+        if(AIM_FLAT)aimFlatD[i]+=_w*(_pay*_mv-AIM_TAX);   // #377: remembered, so it can be taken back below
         fired('aim.pull');
         }
       }
+      // #377: AIM_FLAT=1 - every living creature ends the tick with the population's MEAN aim payment instead of its own.
+      // Same amplitude in total, same senses read in the same order (each own payment is applied first, then swapped for
+      // the mean), so only the link between meeting an aim and being paid for it is cut. The control for selection on aims.
+      if(AIM_FLAT&&aimOn()){ let _fs=0,_fn=0; for(let i=0;i<N;i++) if(palive[i]){ _fs+=aimFlatD[i]; _fn++; }
+        const _fm=_fn?_fs/_fn:0; for(let i=0;i<N;i++){ if(palive[i])amp[i]+=_fm-aimFlatD[i]; aimFlatD[i]=0; } }
     }
   }
 }

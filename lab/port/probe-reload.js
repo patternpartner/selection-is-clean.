@@ -19,13 +19,16 @@
 // copies: op 225 lateral copies in the window (the engine's __on225 hook); desync: living creatures whose running program is not their
 // genome's (#369); laws, lawKept, lawRevert: the engine's cumulative law proposals and verdicts, lawTrial: the law on probation (#371).
 // DIAG=1 (#372) adds a {diag:tick} line per window: births asked for and how they were refused, prey and scavenge events, escape
-// deaths, predation carriers, mean store, age and provision, the largest lineage's share, the two birth prices.
+// deaths, predation carriers, mean store, age and provision, the largest lineage's share, the two birth prices; #377 adds aim pulls
+// (pull), mean amplitude (meanAmp) and aims held per creature (aims).
+// GLOBALS=__A=1,__B=0 (#377) sets those engine globals before boot; with LIVE_STACK=0 it adds LIVE flags back one group at a time.
 // Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis);
 require(path.join(ROOT,'harness-env.js'))(globalThis);
 if(process.env.LOAD) globalThis.location.hash='#'+fs.readFileSync(process.env.LOAD,'utf8').trim();
 if(process.env.POPLOAD){ const pop=fs.readFileSync(process.env.POPLOAD,'utf8'); globalThis.localStorage.getItem=k=>k==='selection_pop'?pop:null; }   // the engine's own boot reads it (#368 popRestore)
+if(process.env.GLOBALS) for(const kv of process.env.GLOBALS.split(",")){ const [k,v]=kv.split("="); globalThis[k]=(v!==undefined&&v!==""&&!isNaN(+v))?+v:v; }   // #377: GLOBALS=__NAME=v,... sets engine globals before boot (bisection; use LIVE_STACK=0 with GLOBALS=__X=1 to add one back)
 const code=fs.readFileSync(process.env.INDEX||path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module'); const m=new Module('/tmp/reload-sim.js'); m.filename='/tmp/reload-sim.js'; m.paths=Module._nodeModulePaths('/tmp');
 m._compile(code+`
@@ -33,7 +36,7 @@ m._compile(code+`
   if(process.env.POPLOAD) out(JSON.stringify({popBoot:(typeof __popBoot!=='undefined')?__popBoot:'engine has no #368', seenRestored:(typeof tSeenN!=='undefined')?tSeenN:null}));
   for(let T=0;T<TASK_NF;T++)prev[T]=tE[T];
   let copies=0, lastCopies=0; __on225=function(i,f){ if(f)copies++; };
-  const DIAG=!!process.env.DIAG, DK=['repl.birth','birth.refused','birth.unprovisioned','birth.rationed','repl.prey','repl.scavenge'], dPrev={}; let escPrev=deathsByEscape;   /* #372 */   /* #369b: op 225's copies, from the engine's own hook; draws nothing */
+  const DIAG=!!process.env.DIAG, DK=['repl.birth','birth.refused','birth.unprovisioned','birth.rationed','repl.prey','repl.scavenge','aim.pull'], dPrev={}; let escPrev=deathsByEscape;   /* #372 */   /* #369b: op 225's copies, from the engine's own hook; draws nothing */
   if(process.env.SEEN){ for(const T of JSON.parse(fs.readFileSync(process.env.SEEN,'utf8')))ever[T]=1; }   /* the functions this universe paid before its save */
   { let a=0; for(let i=0;i<N;i++) if(palive[i])a++; out(JSON.stringify({boot:true, tick:0, alive:a, loaded:!!process.env.LOAD, germLen:(genome.vmProgram||[]).length})); }
   const RAT=+(process.env.RESEED_AT||0), RK=+(process.env.RESEED||0), PERT=process.env.PERTURB||'', SUN0=SUN_ON?sunField.slice():null;   /* the light field as this boot left it: full, which is what a reload hands back */
@@ -63,10 +66,10 @@ m._compile(code+`
     for(const [T,d] of inc){ const q=d/tot; H-=q*Math.log(q); ms+=q*TASK_SZ4[T]; nf++; }
     const progs=new Set(); let alive=0, rd=0, desync=0; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; if(pGenome[i]&&pProg[i]!==pGenome[i].vmProgram)desync++; const p=pProg[i]||[]; let k=''; let r=0; for(const x of p){ k+=x[0]+','+(x[1]|0)+','+(x[2]|0)+','+(x[3]|0)+';'; if(x[0]===TASK_OP0+3)r=1; } rd+=r; progs.add(k); }
     out(JSON.stringify({tick:t, alive, meanAlive:aN?Math.round(aSum/aN):alive, taskInc:+(tEv.income-li).toFixed(2), sunInc:+(tEv.sun-ls).toFixed(2), paid:tEv.paid-lp, fnPaid:nf, newToHistory:fresh, everPaid:ever.reduce((a,b)=>a+b,0), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), progs:progs.size, readCarried:rd, copies:copies-lastCopies, desync, laws:__liveness['cosmos.law']|0, lawKept:__liveness['cosmos.lawKept']|0, lawRevert:__liveness['cosmos.lawRevert']|0, lawTrial:__lawTrial&&__lawTrial.idx!==undefined?LAW_DECLARED[__lawTrial.idx].name:null}));
-    if(DIAG){ const d={}; for(const k of DK){ const v=__liveness[k]|0; d[k.split('.').pop()]=v-(dPrev[k]|0); dPrev[k]=v; } let e=0,ag=0,pv=0,pr=0; const lin=new Map();
-      for(let i=0;i<N;i++){ if(!palive[i])continue; e+=pE[i]; ag+=page[i]; pv+=pProvision[i]; lin.set(pLin[i],(lin.get(pLin[i])||0)+1); if((pProg[i]||[]).some(x=>x[0]===155))pr++; }
+    if(DIAG){ const d={}; for(const k of DK){ const v=__liveness[k]|0; d[k.split('.').pop()]=v-(dPrev[k]|0); dPrev[k]=v; } let e=0,ag=0,pv=0,pr=0,am=0,na=0; const lin=new Map();
+      for(let i=0;i<N;i++){ if(!palive[i])continue; e+=pE[i]; am+=amp[i]; { const _as=aimsOf(pGenome[i]); na+=_as?_as.length:0; } ag+=page[i]; pv+=pProvision[i]; lin.set(pLin[i],(lin.get(pLin[i])||0)+1); if((pProg[i]||[]).some(x=>x[0]===155))pr++; }
       let big=0; for(const v of lin.values()) if(v>big)big=v; const a=Math.max(1,alive);
-      out(JSON.stringify({diag:t, ...d, esc:deathsByEscape-escPrev, pred155:pr, meanE:+(e/a).toFixed(3), meanAge:Math.round(ag/a), meanProv:+(pv/a).toFixed(3), bigLin:+(big/a).toFixed(2), lineages:lin.size, BEC:+BIRTH_ENERGY_COST.toPrecision(4), PBC:+PROV_BIRTH_COST.toPrecision(4)})); escPrev=deathsByEscape; }
+      out(JSON.stringify({diag:t, ...d, esc:deathsByEscape-escPrev, pred155:pr, meanE:+(e/a).toFixed(3), meanAmp:+(am/a).toFixed(3), aims:+(na/a).toFixed(2), meanAge:Math.round(ag/a), meanProv:+(pv/a).toFixed(3), bigLin:+(big/a).toFixed(2), lineages:lin.size, BEC:+BIRTH_ENERGY_COST.toPrecision(4), PBC:+PROV_BIRTH_COST.toPrecision(4)})); escPrev=deathsByEscape; }
     li=tEv.income; ls=tEv.sun; lp=tEv.paid; aSum=0; aN=0; lastCopies=copies; } };`, m.filename);
 if(!globalThis.TASKS_ON) console.error('warning: TASKS is off - set TASKS=1');
 const saveAt=(process.env.SAVEAT||'').split(',').filter(Boolean).map(Number), saveDir=process.env.SAVEDIR||'.';
