@@ -28971,3 +28971,11 @@ against REFUGE x3; 12,000 ticks. Out `lab/port/out-refuge/`, result `lab/port/re
 - On `main` with this: the chained long run (#370) and its first 40,000 ticks; the law retire-or-prove under TASKS (#371, no
   change); the crash census (#372); `REPL_REFUGE` (#373, default 0, INCONCLUSIVE); the dead-world revival runs (#374); the probes
   (`probe-reload.js` DIAG, `probe-laws.js`), batches and results.
+- **#370 chunk 4 (ticks 40,000-50,000).**
+  - **10401** keeps going after its revival: **8,130 new functions**, more than chunk 3's 5,840. It is now at **22.1% of the
+    space**, with size 6.63 and exp(H) 1,897, the highest of the run on both.
+  - **10402** is still dead: 1 new function.
+  - **10403** found 229 (9% of its peak chunk). Its population fell from about 1,540 to 609 (min 326) and its size from 4.93 to
+    3.78: the first sign of a crash in the one seed that had not crashed.
+  - Against the prediction: 10403 and 10402 are now both under 10% of peak. That is 2 of 3 by 50,000, so that clause is met
+    early, through the dead seed and the fading survivor. The revived seed is the exception the prediction did not imagine.
