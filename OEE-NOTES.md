@@ -29235,3 +29235,51 @@ runs (11001 DEF1, FLAT1) were killed by a container restart and re-run from scra
   - the design entry and the verdict for #377;
   - the #378 pre-registration (committed before any of its runs);
   - the browser-rig fix.
+
+### #378 — VERDICT: Q1 KEEP (cosmos stays; 1 WORSE, 2 differ). Q2 INCONCLUSIVE again (2 counted: one SELECTED, one FOOD SUFFICES). My cosmos prediction was WRONG.
+`lab/port/PREREG-cosmos.md` (committed 2e9810b before any decision run). Seeds 11101-11103:
+- DEF x3 (today's world), NOCOSMOS x3 (`COSMOS=0 COSMOS_LAW=0`) and FLAT x3 (`AIM_FLAT=1`);
+- 12,000 ticks, replicate k reseeded after tick 1.
+
+Out `lab/port/out-cosmos/`, result `lab/port/cosmos-result.txt`. Every DEF world launched child worlds (12-114), and no
+NOCOSMOS world launched any.
+
+**Question 1, does cosmos earn its place?**
+- Counted 3 of 3.
+
+  | Seed | DEF V | NOCOSMOS V | Seed verdict |
+  |---|---|---|---|
+  | 11101 | 2,929-7,769 | 1,144-3,816 | differs; cosmos ahead, but the ranges overlap |
+  | 11102 | 1,236-2,605 | 2,599-2,967 | differs; within 6 functions of a WORSE call on V (2,605 against 2,599) |
+  | 11103 | 349-2,039; all three collapsed | 1,004-3,095 | WORSE on E |
+
+  On 11103, C did not fire, because one NOCOSMOS world also collapsed.
+- Rule: WORSE on 1 of 3, so **KEEP, no change.** I predicted WORSE on 2 of 3, from two design seeds that both leaned cosmos-off.
+  **One stream per design seed misled me again**, exactly as I warned in the pre-registration.
+- **Pooled, reported and not ruled on:**
+
+  | Arm | Median V | Mean V | Collapses | Mean wall-clock |
+  |---|---|---|---|---|
+  | DEF | 2,254 | 2,638 | 5 of 9 | 1,376 s |
+  | NOCOSMOS | 2,599 | 2,452 | 3 of 9 | 1,202 s |
+
+  The wall-clock figure is confounded by population size and a shared machine.
+- **Reading, at its rung:** cosmos runs, changes the world, and does no harm a three-seed rule can see. The template keeps that,
+  and it stays.
+
+**Question 2, the replication of #377's: is AIM selected, or food?**
+- Counted 2 of 3. 11103 is out because its DEF k2 paid only 349 functions.
+  - 11101: **SELECTED.** DEF 2,929-7,769 against FLAT 1,399-1,901.
+  - 11102: FOOD SUFFICES. The highest FLAT V, 2,970, is above the lowest DEF V, 1,236.
+- **INCONCLUSIVE.**
+- **Across both experiments (exploratory; neither rule may pool):** 4 seeds counted, 3 FOOD SUFFICES and 1 SELECTED.
+
+  | Arm | Mean V, #377 | Mean V, #378 |
+  |---|---|---|
+  | DEF | 2,910 | 2,638 |
+  | FLAT | 3,013 | 2,238 |
+
+  The honest summary: flattening who gets AIM's pay costs little or nothing on most seeds, and on one seed in four it cost a lot.
+  "AIM is mostly food" is the reading the evidence leans to. It is not ruled, and no default moves on it.
+- **The predictions I wrote down before these two experiments went 0 for 4.** That is the strongest argument in this file for
+  pre-registering: every one of them would have been a plausible story told after the fact.

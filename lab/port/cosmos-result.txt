@@ -1,0 +1,38 @@
+11101:  Q1 COUNTED -> differs  worse {"V":false,"S":false,"E":false,"C":false}  better {"V":false,"S":false,"E":false,"C":false}
+        Q2 COUNTED -> SELECTED
+   DEF      k1 V 7769 S 5.56 E 646 C no aliveLate 1587 launches 70 pulls 56895600 secs 4039
+            k2 V 4004 S 5.86 E 392 C at 10500 aliveLate 985 launches 75 pulls 23744026 secs 1388
+            k3 V 2929 S 4.58 E 412 C no aliveLate 1473 launches 89 pulls 48915739 secs 2477
+   NOCOSMOS k1 V 3816 S 5.03 E 636 C no aliveLate 1506 launches 0 pulls 34277902 secs 2559
+            k2 V 2546 S 4.94 E 123 C no aliveLate 1383 launches 0 pulls 43175161 secs 1101
+            k3 V 1144 S 3.62 E 199 C no aliveLate 1233 launches 0 pulls 21697875 secs 1836
+   FLAT     k1 V 1459 S 5.21 E 191 C no aliveLate 1386 launches 89 pulls 32586947 secs 728
+            k2 V 1399 S 4.89 E 192 C no aliveLate 358 launches 71 pulls 11544342 secs 169
+            k3 V 1901 S 4.22 E 96.67 C at 6500 aliveLate 369 launches 57 pulls 28991872 secs 713
+11102:  Q1 COUNTED -> differs  worse {"V":false,"S":false,"E":false,"C":false}  better {"V":false,"S":false,"E":false,"C":false}
+        Q2 COUNTED -> FOOD SUFFICES
+   DEF      k1 V 2605 S 5.26 E 320 C no aliveLate 1399 launches 57 pulls 46903262 secs 2346
+            k2 V 1236 S 2.97 E 100 C no aliveLate 1408 launches 83 pulls 22505414 secs 346
+            k3 V 2254 S 4.84 E 100 C at 4500 aliveLate 333 launches 114 pulls 15152171 secs 615
+   NOCOSMOS k1 V 2599 S 4.75 E 181 C at 5500 aliveLate 288 launches 0 pulls 16040311 secs 733
+            k2 V 2967 S 5.40 E 235 C no aliveLate 1595 launches 0 pulls 41894377 secs 1480
+            k3 V 2766 S 5.24 E 624 C at 3000 aliveLate 1392 launches 0 pulls 36675659 secs 970
+   FLAT     k1 V 2970 S 5.46 E 361 C no aliveLate 807 launches 96 pulls 24489782 secs 939
+            k2 V 202 S 1.00 E 5.91 C at 4500 aliveLate 151 launches 29 pulls 4927059 secs 180
+            k3 V 1624 S 4.93 E 261 C no aliveLate 887 launches 100 pulls 11679664 secs 548
+11103:  Q1 COUNTED -> WORSE  worse {"V":false,"S":false,"E":true,"C":false}  better {"V":false,"S":false,"E":false,"C":false}
+        Q2 NOT COUNTED -> FOOD SUFFICES
+   DEF      k1 V 2039 S 4.33 E 112 C at 5000 aliveLate 285 launches 79 pulls 14812547 secs 511
+            k2 V 349 S 0.58 E 2.76 C at 3000 aliveLate 136 launches 12 pulls 7627009 secs 177
+            k3 V 561 S 1.68 E 34.35 C at 5500 aliveLate 294 launches 47 pulls 13554774 secs 485
+   NOCOSMOS k1 V 3095 S 3.81 E 236 C no aliveLate 1658 launches 0 pulls 49420979 secs 762
+            k2 V 1004 S 3.20 E 132 C at 10500 aliveLate 325 launches 0 pulls 12925760 secs 282
+            k3 V 2131 S 5.00 E 259 C no aliveLate 1668 launches 0 pulls 66847075 secs 1096
+   FLAT     k1 V 2124 S 5.25 E 297 C at 7500 aliveLate 778 launches 70 pulls 15868811 secs 1306
+            k2 V 1042 S 4.25 E 172 C no aliveLate 854 launches 96 pulls 19558189 secs 722
+            k3 V 7425 S 6.44 E 987 C no aliveLate 981 launches 85 pulls 20151568 secs 1351
+
+Q1 counted 3 of 3; {"WORSE":1,"BETTER":0,"SPLIT":0,"differs":2}
+Q1 VERDICT: KEEP: no change
+Q2 counted 2 of 3; {"SELECTED":1,"FOOD SUFFICES":1,"UNCLEAR":0}
+Q2 VERDICT: INCONCLUSIVE (fewer than 3 counted seeds)
