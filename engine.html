@@ -10712,6 +10712,12 @@ const REFUGE_R0=0.004, REFUGE_R1=0.012, REFUGE_TAU=100; let __refRate=0, __refFl
 function refugeTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; const c=__liveness['repl.prey']|0, d=c-__refPrey0; __refPrey0=c;
   __refRate+=((n?d/n:0)-__refRate)/REFUGE_TAU; const s=Math.max(0,Math.min(1,(__refRate-REFUGE_R0)/(REFUGE_R1-REFUGE_R0)));
   __refFloor=0.05+(BIRTH_ENERGY_COST-0.05)*s; }
+// #381: STORE_DEATH=1 (REPL only) - ONE CURRENCY for life. #377 found the computing world has two: computing fills the store pE,
+// which pays for births, but a creature DIES when its amplitude falls under deathThreshold, and amplitude is fed mostly by AIM's
+// stipend. With this on, amplitude no longer kills: a creature under the threshold is held at it, as #20's founder grace does. It
+// still dies of starvation (its store cannot pay half its upkeep: REPL's rule sets amp to -1e6, which passes through), of age, and
+// by escape. Default 0: byte-identical.
+const STORE_DEATH=REPL_ON&&(__tk('__STORE_DEATH',0)|0)!==0;
 const TASK_SHUFFLE=(__tk('__TASK_SHUFFLE',0)|0)!==0;   // #376: see taskShuffleTo. A control, default 0.
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
@@ -22128,7 +22134,7 @@ function applyEntropy(){
       }
       const _ig=specInGrace(pLin[i]); // #17: a freshly-minted lineage is young/small → death-relief so it doesn't die in the cradle
       const _deathT=_ig?genome.deathThreshold*0.25:genome.deathThreshold;
-      if(amp[i]<_deathT && _ig && __COLO.surv){
+      if(amp[i]<_deathT && ((_ig && __COLO.surv) || (STORE_DEATH && amp[i]>-1e5))){   // #381: under STORE_DEATH only starvation's -1e6 gets past
         // SWING #20 knob S (survival): min-viable-size FLOOR — while a minted founder is in grace it cannot be
         // reaped on the amp threshold; it is pinned to life support at the relief line so the cohort can cross
         // the stochastic founding dip. This is the DEATH term only (orthogonal to knob C's growth term) — by
