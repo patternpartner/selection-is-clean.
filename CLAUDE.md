@@ -81,6 +81,9 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   the senses that pay whatever a creature does (age, amplitude, resource). `AIM=0` cuts novelty about tenfold; `AIM_FLAT=1` (everyone
   gets the mean aim payment) loses nothing measurable. So AIM works as FOOD here, not as selection on purposes (2 seeds counted of
   3, not ruled). Without the LIVE stack at all (`LIVE_STACK=0`) the computing world dies by tick 500.
+  **CORRECTED by `#381`: what the stipend pays for is mostly BIRTHS.** Amplitude above `AMP_SOFT` is banked as provision, and a
+  birth costs 1 provision as well as 0.25 of store (`PROV_BIRTH`, #221). That gate binds: tens of thousands of births a window
+  pass the store and are refused "unprovisioned". `STORE_DEATH=1` (amplitude no longer kills) does not rescue an AIM-less world.
   **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000
   ticks, most of them predator outbreaks that drain the stores which pay for births. Both prey refuges (`REPL_REFUGE=1` fixed, `=2`
   adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks

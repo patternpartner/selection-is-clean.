@@ -29362,3 +29362,32 @@ and once with `REPL_REFUGE=1`, 12,000 ticks, the same reseed stream. Out `lab/po
     retuned.
 - One near-miss to record: a worker restart killed an in-place write of `engine.html` and left it at 0 bytes. It was restored from
   git and re-verified by digest. Engine edits are now written to a temporary file and renamed into place.
+
+### #381 — DESIGN (seeds 10401, 10402; design only): what AIM's stipend actually pays for is BIRTHS, through provision. A CORRECTION to #377.
+`STORE_DEATH=1` (new, REPL only, byte-identical unset: seed 3, 1,500 ticks, TASKS on and off). Amplitude under `deathThreshold` no
+longer kills: the creature is held at the threshold, as #20's founder grace does. It still dies of starvation (REPL's rule sets
+amplitude to -1e6 when the store cannot pay half its upkeep, which passes through), of age, and by escape. Out
+`lab/port/out-store-design/`. One stream per arm.
+- **#377 said a creature "DIES on amplitude, and amplitude is fed mostly by AIM". That is the smaller half, and the test shows
+  it.** With `STORE_DEATH=1 AIM=0`, nothing dies of amplitude, and the world still sinks to 100-250 alive with 122 and 209
+  functions by 4,000. That is like `AIM=0` alone (138 and 105).
+- **Where the stipend goes:** amplitude above `AMP_SOFT` is banked as PROVISION (LEAP 3), and since #221 (`PROV_BIRTH`) a birth
+  costs the parent 1 provision on top of 0.25 of store.
+  - The store is checked first, in the REPL birth path; provision second, in `addParticle`.
+  - The second is the gate that binds: 47,000-98,000 births a window pass the store and are refused "unprovisioned", against
+    400-900 that happen.
+  - Without AIM, mean provision falls from about 4.2 to about 2.6.
+  - So in the computing world the free stipend rations births, alongside computing. That may also be why `AIM_FLAT` cost nothing
+    (#377, #378): equalise the stipend and the store, which computing fills, does the choosing.
+- **The one-currency world** (`PROV_BIRTH=0 STORE_DEATH=1 AIM=0`): life and births paid by the store alone.
+
+  | Seed | Default, functions by 4,000 | One-currency | `PROV_BIRTH=0` alone |
+  |---|---|---|---|
+  | 10401 | 1,834 | **3,178** | 1,543 |
+  | 10402 | 1,578 | **1,905** | 3,433, through a crash at 2,500 |
+
+  The one-currency world held about 1,700 alive from tick 500, with no collapse, no predators (op-155 carriers 0), mean amplitude
+  0.03-0.16, 0 aim pulls and 0 unprovisioned refusals.
+- **One consequence a viewer would see:** rendering scales brightness by `0.5 + amp*0.8` and saturation by `0.4 + amp*0.6`, so in
+  this world creatures would draw about 2.5 times dimmer. A display question, named for the follow-up, not part of the decision.
+- Pre-registered as `lab/port/PREREG-one.md`, seeds 11401-11420, with a `TASK_SHUFFLE` arm reported on five of them.
