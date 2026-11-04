@@ -29348,3 +29348,17 @@ and once with `REPL_REFUGE=1`, 12,000 ticks, the same reseed stream. Out `lab/po
   12,000-tick tests cannot see.
 - **So the next refuge test, if there is one, is a horizon test:** the same pairs run to 40,000 ticks or more, where #370 found
   worlds that never came back. It is not a sharper rule at 12,000. Both knobs stay as they are (0); nothing in the default moves.
+
+### #379-#380 acceptance
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40, on the final engine.
+- Node byte-identical with `REPL_REFUGE` unset: seed 3, 1,500 ticks, TASKS on and off (`b07a4474`, `84eaf3b7`). `REPL_REFUGE=1` is
+  byte-identical to the previous engine's mode 1 (`b96a89a0`).
+- **`smoke.sh`: 66 ok, 3 failing,** all three throughput rows.
+  - `pop-test` (11/11) and `mind-persist-test` (10/10) passed alone straight after.
+  - `mind-test` failed alone too, on its two "every universe past 1,000 ticks" rows, which need three universes past tick 1,000
+    inside 45 seconds. **The A/B:** the previous engine (7be56f3, a detached worktree) fails the same two rows the same way, and
+    that engine passed the whole suite 69/0 earlier the same day.
+  - So the box got slower over an 8-hour container life, not the code. Recorded beside CLAUDE.md's other throughput notes, not
+    retuned.
+- One near-miss to record: a worker restart killed an in-place write of `engine.html` and left it at 0 bytes. It was restored from
+  git and re-verified by digest. Engine edits are now written to a temporary file and renamed into place.
