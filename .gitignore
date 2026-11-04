@@ -79,3 +79,4 @@ lab/port/out-cosmos/*.pid
 lab/port/out-cosmos/*.part
 lab/port/out-refuge2/*.pid
 lab/port/out-refuge2/*.part
+lab/port/out-refuge3-design/*.part

@@ -20,7 +20,7 @@
 // genome's (#369); laws, lawKept, lawRevert: the engine's cumulative law proposals and verdicts, lawTrial: the law on probation (#371).
 // DIAG=1 (#372) adds a {diag:tick} line per window: births asked for and how they were refused, prey and scavenge events, escape
 // deaths, predation carriers, mean store, age and provision, the largest lineage's share, the two birth prices; #377 adds aim pulls
-// (pull), mean amplitude (meanAmp) and aims held per creature (aims); #378 adds cosmos child launches (launch).
+// (pull), mean amplitude (meanAmp) and aims held per creature (aims); #378 adds cosmos child launches (launch); #380 the adaptive refuge's floor and rate (refF, refRate).
 // GLOBALS=__A=1,__B=0 (#377) sets those engine globals before boot; with LIVE_STACK=0 it adds LIVE flags back one group at a time.
 // Reads counters and arrays; draws nothing. A row's tick is the engine's tick since THIS process booted.
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
@@ -69,7 +69,7 @@ m._compile(code+`
     if(DIAG){ const d={}; for(const k of DK){ const v=__liveness[k]|0; d[k.split('.').pop()]=v-(dPrev[k]|0); dPrev[k]=v; } let e=0,ag=0,pv=0,pr=0,am=0,na=0; const lin=new Map();
       for(let i=0;i<N;i++){ if(!palive[i])continue; e+=pE[i]; am+=amp[i]; { const _as=aimsOf(pGenome[i]); na+=_as?_as.length:0; } ag+=page[i]; pv+=pProvision[i]; lin.set(pLin[i],(lin.get(pLin[i])||0)+1); if((pProg[i]||[]).some(x=>x[0]===155))pr++; }
       let big=0; for(const v of lin.values()) if(v>big)big=v; const a=Math.max(1,alive);
-      out(JSON.stringify({diag:t, ...d, esc:deathsByEscape-escPrev, pred155:pr, meanE:+(e/a).toFixed(3), meanAmp:+(am/a).toFixed(3), aims:+(na/a).toFixed(2), meanAge:Math.round(ag/a), meanProv:+(pv/a).toFixed(3), bigLin:+(big/a).toFixed(2), lineages:lin.size, BEC:+BIRTH_ENERGY_COST.toPrecision(4), PBC:+PROV_BIRTH_COST.toPrecision(4)})); escPrev=deathsByEscape; }
+      out(JSON.stringify({diag:t, ...d, esc:deathsByEscape-escPrev, pred155:pr, meanE:+(e/a).toFixed(3), meanAmp:+(am/a).toFixed(3), aims:+(na/a).toFixed(2), meanAge:Math.round(ag/a), meanProv:+(pv/a).toFixed(3), bigLin:+(big/a).toFixed(2), lineages:lin.size, BEC:+BIRTH_ENERGY_COST.toPrecision(4), refF:(typeof REPL_REFUGE_MODE!=='undefined'&&REPL_REFUGE_MODE===2)?+__refFloor.toFixed(3):null, refRate:(typeof REPL_REFUGE_MODE!=='undefined'&&REPL_REFUGE_MODE===2)?+__refRate.toFixed(4):null, PBC:+PROV_BIRTH_COST.toPrecision(4)})); escPrev=deathsByEscape; }
     li=tEv.income; ls=tEv.sun; lp=tEv.paid; aSum=0; aN=0; lastCopies=copies; } };`, m.filename);
 if(!globalThis.TASKS_ON) console.error('warning: TASKS is off - set TASKS=1');
 const saveAt=(process.env.SAVEAT||'').split(',').filter(Boolean).map(Number), saveDir=process.env.SAVEDIR||'.';
