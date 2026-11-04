@@ -1,0 +1,26 @@
+11201 -       DEF V 9432 alive 1624 prey 5969 p155 5 Emin 0.197  |  REFUGE V 2750 alive 1240 prey 33396 p155 50 Emin 0.134  ratio 0.29
+11202 COUNTED DEF V 1834 C@7500 alive 288 prey 1100943 p155 665 Emin 0.045  |  REFUGE V 2805 alive 1648 prey 1928891 p155 1601 Emin 0.149  ratio 1.53
+11203 COUNTED DEF V 1986 C@7000 alive 725 prey 257472 p155 426 Emin 0.054  |  REFUGE V 3867 alive 1546 prey 1433195 p155 1633 Emin 0.149  ratio 1.95
+11204 COUNTED DEF V 2542 alive 1549 prey 177255 p155 133 Emin 0.138  |  REFUGE V 2550 alive 1623 prey 32468 p155 19 Emin 0.138  ratio 1.00
+11205 -       DEF V 6722 alive 1402 prey 5175 p155 3 Emin 0.143  |  REFUGE V 7451 alive 1473 prey 3766 p155 6 Emin 0.143  ratio 1.11
+11206 -       DEF V 5531 alive 1200 prey 1759 p155 14 Emin 0.144  |  REFUGE V 4333 alive 1146 prey 3594 p155 11 Emin 0.144  ratio 0.78
+11207 COUNTED DEF V 893 C@10000 alive 257 prey 103079 p155 144 Emin 0.07  |  REFUGE V 914 C@8000 alive 411 prey 8918 p155 44 Emin 0.071  ratio 1.02
+11208 COUNTED DEF V 11248 alive 1656 prey 102938 p155 54 Emin 0.146  |  REFUGE V 8325 alive 1638 prey 33835 p155 17 Emin 0.146  ratio 0.74
+11209 COUNTED DEF V 1800 alive 508 prey 472411 p155 322 Emin 0.048  |  REFUGE V 3025 alive 1632 prey 79873 p155 44 Emin 0.133  ratio 1.68
+11210 COUNTED DEF V 1828 C@10500 alive 992 prey 566180 p155 281 Emin 0.046  |  REFUGE V 1833 alive 1072 prey 3249 p155 129 Emin 0.107  ratio 1.00
+11211 -       DEF V 1707 alive 964 prey 31498 p155 98 Emin 0.131  |  REFUGE V 1161 alive 1069 prey 277831 p155 1485 Emin 0.13  ratio 0.68
+11212 COUNTED DEF V 1453 alive 1206 prey 119709 p155 249 Emin 0.123  |  REFUGE V 1847 alive 1248 prey 289 p155 3 Emin 0.137  ratio 1.27
+11213 COUNTED DEF V 1138 C@6000 alive 138 prey 178833 p155 522 Emin 0.033  |  REFUGE V 4170 alive 1639 prey 1222501 p155 1653 Emin 0.116  ratio 3.66
+11214 COUNTED DEF V 10027 alive 1622 prey 315221 p155 72 Emin 0.16  |  REFUGE V 4798 alive 1441 prey 432415 p155 399 Emin 0.16  ratio 0.48
+11215 COUNTED DEF V 7451 alive 1384 prey 5897305 p155 1107 Emin 0.05  |  REFUGE V 3362 alive 1690 prey 6219 p155 23 Emin 0.148  ratio 0.45
+11216 -       DEF V 2784 alive 1129 prey 8228 p155 12 Emin 0.14  |  REFUGE V 1889 alive 864 prey 590 p155 11 Emin 0.14  ratio 0.68
+11217 COUNTED DEF V 605 C@10000 alive 340 prey 42495 p155 126 Emin 0.104  |  REFUGE V 1353 alive 556 prey 19 p155 2 Emin 0.141  ratio 2.24
+11218 COUNTED DEF V 3326 C@7500 alive 271 prey 324218 p155 244 Emin 0.056  |  REFUGE V 5084 alive 1644 prey 7371 p155 13 Emin 0.17  ratio 1.53
+11219 -       DEF V 2575 alive 1611 prey 19643 p155 20 Emin 0.143  |  REFUGE V 2332 alive 1608 prey 18678 p155 20 Emin 0.143  ratio 0.91
+11220 COUNTED DEF V 1791 alive 1662 prey 82524 p155 52 Emin 0.149  |  REFUGE V 5441 alive 1529 prey 795 p155 6 Emin 0.149  ratio 3.04
+
+counted pairs (DEF outbreak): 14 of 20 complete
+primary Wilcoxon on log(V_refuge/V_def): n 14, W+ 79 of 105, p(refuge greater) 0.0520, p(refuge less) 0.9547; refuge ahead in 11 of 14
+reported: all predation pairs (DEF prey >= 1000): n 20, p(greater) 0.2729, p(less) 0.7392; collapse discordance on counted pairs: only DEF 6, only REFUGE 0
+guard (median REFUGE alive-late >= half DEF's): holds
+VERDICT: neither: the knob stays 0

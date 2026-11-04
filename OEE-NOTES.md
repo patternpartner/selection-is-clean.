@@ -29283,3 +29283,43 @@ NOCOSMOS world launched any.
   "AIM is mostly food" is the reading the evidence leans to. It is not ruled, and no default moves on it.
 - **The predictions I wrote down before these two experiments went 0 for 4.** That is the strongest argument in this file for
   pre-registering: every one of them would have been a plausible story told after the fact.
+
+### #379 — VERDICT: NEITHER. `REPL_REFUGE` stays 0. p = 0.052 against a pre-registered 0.05: refuge ahead in 11 of 14 outbreak pairs, and the rule stands as written. My prediction (BETTER) was wrong, narrowly.
+`lab/port/PREREG-refuge2.md` (committed de8acd9 before any decision run). 20 pairs, seeds 11201-11220, each run once as today's world
+and once with `REPL_REFUGE=1`, 12,000 ticks, the same reseed stream. Out `lab/port/out-refuge2/`, result `lab/port/refuge2-result.txt`.
+
+**Counted, and the primary test.**
+- 14 of 20 pairs counted (the DEF world had a window with at least 10,000 prey events and 50 op-155 carriers). The floor was 8.
+- **Primary, the one-sided exact Wilcoxon on log(V_refuge/V_def):** W+ 79 of 105, p(refuge greater) **0.0520**, p(refuge less)
+  0.955. Not BETTER, not WORSE: the knob stays 0.
+- **Changing the threshold now would be a new experiment** (rule 5). It is not done here.
+
+**Reported, not ruled on.**
+- **Collapse, on the counted pairs:** 6 pairs collapsed only without the refuge, and 0 only with it (both collapsed on 11207).
+  The refuge's lowest mean store in those worlds was 0.11-0.17, against 0.03-0.07 without it.
+- **The refuge hurts where there was no outbreak.** In the 6 pairs whose DEF world never had one, the refuge world found fewer new
+  functions in 5:
+  - 11201: 2,750 against 9,432;
+  - 11206, 11211, 11216 and 11219: ratios 0.68-0.91;
+  - only 11205 was ahead (1.11).
+
+  | Pairs | Geometric-mean ratio | Total new functions, DEF / REFUGE |
+  |---|---|---|
+  | Outbreak (14) | 1.30 | 47,922 / 49,374 |
+  | No outbreak (6) | 0.69 | 28,751 / 19,916 |
+  | All (20; every DEF world had at least 1,000 prey events) | 1.07 (p 0.27) | 76,673 / 69,290 |
+
+- **In the outbreak pairs, predation itself was not suppressed.** In four refuge worlds there were MORE prey events than in their
+  default twin, for example 1.9 million against 1.1 million on 11202, with 1,601 carriers. The refuge did not stop predators; it
+  stopped them draining the stores that pay for births.
+
+**What this supports, at its rung, and not more.**
+- The refuge does what it was built to do. Where an outbreak happens, it keeps the world breeding and out of collapse (6-0).
+- It is not free. In worlds that were never going to have an outbreak it cost novelty, about a third of it, which is the risk
+  named in the pre-registration from #366's finding that predation does useful work where worlds are healthy.
+- A world does not know in advance which kind it will be. Shipped as a fixed rule, the refuge's net effect on the dependent
+  variable over these 20 worlds is nothing measurable (geometric mean +7%, total -10%, p 0.27).
+- **Named follow-up, a NEW mechanism that would need its own test:** a refuge that switches on only during an outbreak. One
+  example is a refuge proportional to the current share of op-155 carriers, so that a healthy world keeps its predation and a
+  world sliding into an outbreak keeps its births.
+- **Predictions before #377, #378 and #379: 0 for 5.**
