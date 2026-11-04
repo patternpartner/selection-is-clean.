@@ -29323,3 +29323,28 @@ and once with `REPL_REFUGE=1`, 12,000 ticks, the same reseed stream. Out `lab/po
   example is a refuge proportional to the current share of op-155 carriers, so that a healthy world keeps its predation and a
   world sliding into an outbreak keeps its births.
 - **Predictions before #377, #378 and #379: 0 for 5.**
+
+### #380 — VERDICT: NEITHER. The adaptive refuge (`REPL_REFUGE=2`) stays available and off. p = 0.43 over all 20 pairs. My prediction (BETTER) was WRONG; 0 for 6 now.
+`lab/port/PREREG-refuge3.md` (committed fefc0d4 before any decision run). 20 pairs, seeds 11301-11320, today's world against
+`REPL_REFUGE=2`, 12,000 ticks. Out `lab/port/out-refuge3/`, result `lab/port/refuge3-result.txt`. Every DEF world had at least
+1,000 prey events, so all 20 pairs counted.
+- **Primary, the one-sided exact Wilcoxon on log(V_adapt/V_def):**
+  - n 17: three pairs were IDENTICAL, because their floor never rose, which is the mechanism doing what it says;
+  - W+ 81 of 153, p(greater) 0.43, p(less) 0.59;
+  - adaptive ahead in 9 of 20.
+- **Totals:**
+  - All pairs: 74,510 DEF against 74,961 ADAPT, geometric-mean ratio 1.07.
+  - The 7 outbreak pairs: 27,404 against 23,381, p 0.77. It did NOT reproduce #379's 11-of-14 lean.
+- **Collapse, again one-sided:** 5 pairs collapsed only without the refuge, and 0 only with it.
+
+**What #379 and #380 say together, at their rung.**
+- Across the two experiments, **11 pairs collapsed on one side only, and all 11 were the default world.** A refuge reliably keeps a
+  world out of predator collapse.
+- **Neither refuge turned that into more new functions by 12,000 ticks.** #379's fixed refuge cost novelty where there was no
+  outbreak. The adaptive one avoided that cost (three pairs byte-identical; 11201-like losses absent) and lost the gain as well.
+- **The reading this leaves:** at a 12,000-tick horizon, a predator collapse is not where the novelty goes. The collapsed default
+  worlds regrew and found about as many new functions as their refuge twins that never fell. #370's "novelty comes in lives" is
+  consistent with that, since each regrowth is another life. #370's dead stretches over 100,000 ticks are the case these
+  12,000-tick tests cannot see.
+- **So the next refuge test, if there is one, is a horizon test:** the same pairs run to 40,000 ticks or more, where #370 found
+  worlds that never came back. It is not a sharper rule at 12,000. Both knobs stay as they are (0); nothing in the default moves.

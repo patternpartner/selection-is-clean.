@@ -1,0 +1,26 @@
+11301 COUNTED          DEF V 2463 alive 1436 prey 1460 p155 1 Emin 0.143  |  ADAPT V 2463 alive 1436 prey 1460 p155 1 Emin 0.143 floorOn 0/24  ratio 1.00
+11302 COUNTED          DEF V 3313 alive 1667 prey 81617 p155 33 Emin 0.134  |  ADAPT V 2877 alive 1655 prey 51965 p155 39 Emin 0.134 floorOn 6/24  ratio 0.87
+11303 COUNTED outbreak DEF V 2358 C@5000 alive 1255 prey 97019 p155 144 Emin 0.111  |  ADAPT V 2084 alive 1621 prey 349062 p155 1045 Emin 0.139 floorOn 21/24  ratio 0.88
+11304 COUNTED          DEF V 471 C@4500 alive 116 prey 97351 p155 113 Emin 0.08  |  ADAPT V 1093 alive 708 prey 54030 p155 99 Emin 0.117 floorOn 17/24  ratio 2.32
+11305 COUNTED outbreak DEF V 5053 C@6500 alive 1116 prey 1802104 p155 812 Emin 0.05  |  ADAPT V 1851 C@6500 alive 518 prey 26260 p155 139 Emin 0.137 floorOn 9/24  ratio 0.37
+11306 COUNTED outbreak DEF V 3335 alive 1579 prey 542893 p155 587 Emin 0.063  |  ADAPT V 3803 alive 1616 prey 326430 p155 587 Emin 0.128 floorOn 9/24  ratio 1.14
+11307 COUNTED outbreak DEF V 2667 C@7500 alive 231 prey 144594 p155 205 Emin 0.063  |  ADAPT V 1960 C@6000 alive 504 prey 2701 p155 13 Emin 0.011 floorOn 1/24  ratio 0.73
+11308 COUNTED          DEF V 3809 alive 1587 prey 152862 p155 31 Emin 0.136  |  ADAPT V 3691 alive 1550 prey 413861 p155 597 Emin 0.136 floorOn 15/24  ratio 0.97
+11309 COUNTED          DEF V 2109 alive 734 prey 27944 p155 30 Emin 0.14  |  ADAPT V 2345 alive 1175 prey 47079 p155 101 Emin 0.14 floorOn 8/24  ratio 1.11
+11310 COUNTED outbreak DEF V 5820 alive 1382 prey 6442731 p155 1099 Emin 0.05  |  ADAPT V 4778 alive 1431 prey 1143230 p155 1434 Emin 0.155 floorOn 23/24  ratio 0.82
+11311 COUNTED          DEF V 1718 C@10000 alive 853 prey 16798 p155 67 Emin 0.098  |  ADAPT V 4443 alive 1528 prey 2615540 p155 1577 Emin 0.121 floorOn 24/24  ratio 2.59
+11312 COUNTED          DEF V 3208 alive 1633 prey 2809 p155 3 Emin 0.146  |  ADAPT V 3208 alive 1633 prey 2809 p155 3 Emin 0.146 floorOn 0/24  ratio 1.00
+11313 COUNTED          DEF V 1099 alive 640 prey 1535 p155 9 Emin 0.133  |  ADAPT V 2811 alive 1357 prey 42589 p155 50 Emin 0.133 floorOn 13/24  ratio 2.56
+11314 COUNTED          DEF V 2568 alive 1645 prey 44648 p155 40 Emin 0.147  |  ADAPT V 2004 alive 1554 prey 79344 p155 67 Emin 0.135 floorOn 12/24  ratio 0.78
+11315 COUNTED          DEF V 2908 C@11000 alive 663 prey 733335 p155 2 Emin 0.052  |  ADAPT V 2888 alive 1107 prey 83365 p155 570 Emin 0.133 floorOn 12/24  ratio 0.99
+11316 COUNTED          DEF V 4290 alive 1616 prey 16963 p155 13 Emin 0.128  |  ADAPT V 4422 alive 1638 prey 8732 p155 7 Emin 0.128 floorOn 0/24  ratio 1.03
+11317 COUNTED outbreak DEF V 6997 alive 1303 prey 1414809 p155 672 Emin 0.049  |  ADAPT V 7135 alive 1520 prey 793623 p155 561 Emin 0.125 floorOn 12/24  ratio 1.02
+11318 COUNTED          DEF V 8583 alive 1647 prey 12995 p155 2 Emin 0.164  |  ADAPT V 8768 alive 1661 prey 35676 p155 7 Emin 0.164 floorOn 4/24  ratio 1.02
+11319 COUNTED outbreak DEF V 1174 C@6500 alive 173 prey 180481 p155 334 Emin 0.055  |  ADAPT V 1770 alive 816 prey 233296 p155 876 Emin 0.117 floorOn 17/24  ratio 1.51
+11320 COUNTED          DEF V 10567 alive 1671 prey 2690 p155 2 Emin 0.174  |  ADAPT V 10567 alive 1671 prey 2690 p155 2 Emin 0.174 floorOn 0/24  ratio 1.00
+
+counted pairs (DEF prey >= 1000): 20 of 20 complete
+primary Wilcoxon on log(V_adapt/V_def): n 17, W+ 81 of 153, p(adapt greater) 0.4268, p(adapt less) 0.5912; adapt ahead in 9 of 20
+reported: outbreak pairs only: n 7, p(greater) 0.7656, p(less) 0.2891; collapse discordance on counted pairs: only DEF 5, only ADAPT 0; geometric-mean ratio 1.07
+guard (median ADAPT alive-late >= half DEF's): holds
+VERDICT: neither: mode 2 stays off

@@ -81,6 +81,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   the senses that pay whatever a creature does (age, amplitude, resource). `AIM=0` cuts novelty about tenfold; `AIM_FLAT=1` (everyone
   gets the mean aim payment) loses nothing measurable. So AIM works as FOOD here, not as selection on purposes (2 seeds counted of
   3, not ruled). Without the LIVE stack at all (`LIVE_STACK=0`) the computing world dies by tick 500.
+  **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000
+  ticks, most of them predator outbreaks that drain the stores which pay for births. Both prey refuges (`REPL_REFUGE=1` fixed, `=2`
+  adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks
+  (p 0.052 and 0.43). The fixed one cost a third of the novelty in worlds with no outbreak. Collapsed worlds regrow and keep finding.
+  The open question is the long horizon (`#370`'s worlds that never came back), not a sharper rule at 12,000.
 
 ## Every session removes or proves something — not only adds
 
