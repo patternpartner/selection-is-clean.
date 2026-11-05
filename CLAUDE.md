@@ -89,6 +89,8 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   twice the new functions in 12,000 ticks (p 0.0004, 16 of 20). `TASK_SHUFFLE` in the new world found 10-150x fewer, so the gain is
   selected. **Any result above about AIM, provision or amplitude in the computing world describes the world BEFORE #381.**
   `PROV_BIRTH=1 STORE_DEATH=0 AIM=1` restores it byte for byte. The display reads the store, not amplitude, through `visAmp()`.
+  **But per CPU-hour it is about even:** the new world sits near the population cap, so each tick costs 1.6-2.5x more (two seeds:
+  0.53x and 1.61x new functions per CPU-hour). A field runs in real time, so per-hour is what a viewer gets. Report both.
   **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000
   ticks, most of them predator outbreaks that drain the stores which pay for births. Both prey refuges (`REPL_REFUGE=1` fixed, `=2`
   adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks
