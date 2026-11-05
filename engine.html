@@ -10677,11 +10677,16 @@ function sunStep(season){
 // OVERFLOW: a payment that would take pE past SUN_STORE is cut at the store and the excess is destroyed (counted in tEv.overflow;
 // in the first pilot it was 1.3-5.2 against task income in the hundreds).
 const TASKS_ON=((typeof globalThis!=='undefined')&&((globalThis.__TASKS|0)!==0))||__TASKS_DEFAULT;
-// #381: ONE CURRENCY (PROV_BIRTH=0 STORE_DEATH=1 AIM=0) won its pre-registered per-tick test (PREREG-one.md: 20 unseen pairs,
-// p 0.0004, about twice the new functions; selected, by the TASK_SHUFFLE arm). The SHIP IS HELD at acceptance: the world sits near
-// the population cap, so a tick costs 1.6-2.5x more (about even per CPU-hour), and in a field slot-test saw 2 of 9 universes reach
-// their first save in 450 s where today's world gets most of them there in 150 s. Named follow-up: a smaller one-currency world,
-// judged on new functions per CPU-hour. Until then TASKS runs as before; set the three knobs to run one currency.
+// #381 + #382 SHIPPED: ONE CURRENCY, HELD TO A SIZE THE FIELD CAN RUN, wherever TASKS runs.
+//   #381 (PREREG-one.md): the store pays for life and births (no provision gate, amplitude no longer kills, aims no longer pay):
+//   about twice the new functions per tick, p 0.0004, selected - but the world filled the array and the ship was held, because
+//   it was about even per CPU-hour and about three times slower in a field.
+//   #382 (PREREG-crowd.md): a birth's price rises with the population (REPL_CROWD_K 450). 20 unseen pairs, new functions per
+//   CPU-HOUR: p 0.0024, 16 of 20 ahead, median 1.62x; per tick p 0.006, median 2.39x; collapses 1 against 6; the TASK_SHUFFLE arm
+//   found 65-87 against 2,406-4,200 (selected).
+// Only UNDEFINED globals are filled, so each can be set explicitly. PROV_BIRTH=1 STORE_DEATH=0 AIM=1 REPL_CROWD_K=0 restores the
+// world before #381 byte for byte. Without TASKS nothing changes.
+if(TASKS_ON&&typeof globalThis!=='undefined'){ if(globalThis.__PROV_BIRTH===undefined)globalThis.__PROV_BIRTH=0; if(globalThis.__STORE_DEATH===undefined)globalThis.__STORE_DEATH=1; if(globalThis.__AIM===undefined)globalThis.__AIM=0; if(globalThis.__REPL_CROWD_K===undefined)globalThis.__REPL_CROWD_K=450; }
 const __tk=(n,d)=>{ const v=(typeof globalThis!=='undefined')?globalThis[n]:undefined; return (v!==undefined&&Number.isFinite(+v))?+v:d; };
 const TASK_EPOCH=50, TASK_F=0.2, TASK_NF=65536, TASK_OP0=CORE_OPCODES+MAX_BOUND_OPCODES-5;
 const TASK_CAP=__tk('__TASK_CAPM',400)/1000, TASK_RATE=__tk('__TASK_RATEM',20)/1000, TASK_TROPH=__tk('__TASK_TROPHP',50)/100;
