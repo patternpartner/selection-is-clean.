@@ -30,7 +30,7 @@ for(let i=1;i<=PAIRS;i++){ const o=read(i,'old'), c=read(i,'crowd');
   const fmt=(x,t)=>{ const r=x.at(t); return r?r.F:'-'; };
   console.log('p'+i+'  F at '+AT.join('/')+' s:  OLD '+AT.map(t=>fmt(o,t)).join('/')+'  CROWD '+AT.map(t=>fmt(c,t)).join('/')+
     '  ratio '+(c.fin.F/Math.max(1,o.fin.F)).toFixed(2)+'  |  S '+o.fin.S+' / '+c.fin.S+'  ticks '+o.fin.K+' / '+c.fin.K+
-    '  alive '+o.fin.A+' / '+c.fin.A+'  universes '+o.fin.U+' / '+c.fin.U+'  5 of 9 built saved at '+(o.save5||'never')+' / '+(c.save5||'never')+' s'); }
+    '  alive '+o.fin.A+' / '+c.fin.A+'  universes '+o.fin.U+' / '+c.fin.U+'  5 of 9 built saved at '+(o.save5||'never')+' / '+(c.save5||'never')+' s  longest read '+Math.max(...o.S.map(x=>x.read|0))+' / '+Math.max(...c.S.map(x=>x.read|0))+' s  missed at final '+o.fin.bad+' / '+c.fin.bad); }
 if(missing.length) console.log('INCOMPLETE: '+missing.join(' '));
 const W=wilcoxon(P.map(p=>Math.log(Math.max(1,p.c.fin.F)/Math.max(1,p.o.fin.F))));
 console.log('\ncomplete pairs: '+P.length+'; runs failing the switch check: '+(badSw.length?badSw.join(' '):'none'));
