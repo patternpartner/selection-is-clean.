@@ -29473,3 +29473,18 @@ restart killed seven runs mid-flight; they were re-run from scratch (determinist
     one-currency world is still `50a27281`).
   - **Named follow-up, the condition for shipping:** a one-currency world held to a smaller population, pre-registered on new
     functions per CPU-hour and checked in a field (`slot-test`'s save row), not per tick alone.
+
+### #381 acceptance (with the ship held)
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40. TASKS-off behaviour is byte-identical to
+  the engine those ran on (`b07a4474`).
+- **Digests:**
+  - TASKS default: `84eaf3b7`, today's world, unchanged.
+  - One-currency knobs: `50a27281`, the tested arm.
+  - `REPL_REFUGE=1`: unchanged.
+- `smoke.sh` on the final tree, quiet machine: **69 ok, 0 failing.**
+- On `main` with this:
+  - `STORE_DEATH` and `visAmp()`;
+  - the #379, #380 and #381 pre-registrations, batches, results and verdicts;
+  - the held ship and its reasons;
+  - the per-hour measurement;
+  - `lab/port/drive.sh`, which keeps a batch topped up.
