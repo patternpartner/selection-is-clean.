@@ -1,0 +1,29 @@
+11501 ok      OLD V 2517 cpu 29.8m R 5073 alive 1507  |  CROWD V 4200 cpu 41.9m R 6012 alive 1634  R ratio 1.18  V ratio 1.67
+11502 ok      OLD V 10041 cpu 43.1m R 13967 alive 1514  |  CROWD V 2406 cpu 6.8m R 21359 alive 471 C@9000  R ratio 1.53  V ratio 0.24
+11503 ok      OLD V 5362 cpu 31.6m R 10192 alive 1479  |  CROWD V 3991 cpu 11.9m R 20199 alive 671  R ratio 1.98  V ratio 0.74
+11504 ok      OLD V 1426 cpu 5.6m R 15193 alive 659 C@12000  |  CROWD V 9438 cpu 18.1m R 31231 alive 1037  R ratio 2.06  V ratio 6.62
+11505 ok      OLD V 4726 cpu 15.8m R 18000 alive 1077  |  CROWD V 11566 cpu 32.0m R 21698 alive 1016  R ratio 1.21  V ratio 2.45
+11506 ok      OLD V 2977 cpu 16.9m R 10568 alive 1095 C@10500  |  CROWD V 3878 cpu 13.0m R 17881 alive 879  R ratio 1.69  V ratio 1.30
+11507 ok      OLD V 2997 cpu 31.4m R 5722 alive 1538  |  CROWD V 10974 cpu 41.3m R 15951 alive 1345  R ratio 2.79  V ratio 3.66
+11508 ok      OLD V 2967 cpu 7.5m R 23771 alive 586 C@6000  |  CROWD V 3806 cpu 10.7m R 21424 alive 686  R ratio 0.90  V ratio 1.28
+11509 ok      OLD V 2854 cpu 23.6m R 7251 alive 1378  |  CROWD V 10090 cpu 21.4m R 28340 alive 1015  R ratio 3.91  V ratio 3.54
+11510 ok      OLD V 3849 cpu 18.7m R 12362 alive 1167  |  CROWD V 14401 cpu 31.6m R 27352 alive 1335  R ratio 2.21  V ratio 3.74
+11511 ok      OLD V 926 cpu 7.7m R 7261 alive 749 C@9500  |  CROWD V 4673 cpu 17.1m R 16381 alive 671  R ratio 2.26  V ratio 5.05
+11512 ok      OLD V 4466 cpu 20.6m R 13019 alive 1297  |  CROWD V 2267 cpu 6.8m R 20123 alive 573  R ratio 1.55  V ratio 0.51
+11513 ok      OLD V 3429 cpu 28.4m R 7243 alive 1621  |  CROWD V 2229 cpu 6.6m R 20238 alive 527  R ratio 2.79  V ratio 0.65
+11514 ok      OLD V 3531 cpu 25.6m R 8275 alive 1496  |  CROWD V 8255 cpu 25.0m R 19795 alive 893  R ratio 2.39  V ratio 2.34
+11515 ok      OLD V 1444 cpu 4.2m R 20542 alive 427 C@5500  |  CROWD V 6487 cpu 33.5m R 11627 alive 1365  R ratio 0.57  V ratio 4.49
+11516 ok      OLD V 1952 cpu 12.4m R 9418 alive 1089  |  CROWD V 5738 cpu 28.2m R 12191 alive 1353  R ratio 1.29  V ratio 2.94
+11517 ok      OLD V 2297 cpu 10.8m R 12712 alive 694 C@10000  |  CROWD V 9786 cpu 24.6m R 23821 alive 1034  R ratio 1.87  V ratio 4.26
+11518 ok      OLD V 6360 cpu 24.9m R 15348 alive 1502  |  CROWD V 3956 cpu 40.0m R 5936 alive 1235  R ratio 0.39  V ratio 0.62
+11519 ok      OLD V 7410 cpu 37.6m R 11840 alive 1469  |  CROWD V 7316 cpu 34.4m R 12758 alive 1135  R ratio 1.08  V ratio 0.99
+11520 ok      OLD V 2356 cpu 9.3m R 15145 alive 818  |  CROWD V 10221 cpu 47.1m R 13025 alive 1401  R ratio 0.86  V ratio 4.34
+
+complete pairs: 20; CROWD arms failing the switch check: none
+primary Wilcoxon on log(R_crowd/R_old) (per CPU-hour): n 20, W+ 178 of 210, p(crowd greater) 0.0024, p(crowd less) 0.9979; crowd ahead in 16 of 20; median R ratio 1.62
+reported: per tick (V): p(greater) 0.0060, p(less) 0.9947; collapses OLD 6, CROWD 1
+guard (median V_crowd/V_old >= 0.5): 2.39 holds
+shuffle (reported): 11501 CROWD+SHUFFLE V 65 against CROWD V 4200
+shuffle (reported): 11502 CROWD+SHUFFLE V 83 against CROWD V 2406
+shuffle (reported): 11503 CROWD+SHUFFLE V 87 against CROWD V 3991
+VERDICT: BETTER: flip the TASKS default IF the field check passes
