@@ -3095,3 +3095,10 @@ layer:
 
   `computeVisuals`' brightness and saturation read it too. `pSz` still reads amplitude, because it is physics.
 - All three are in `harness-env.js` KNOBS; today's default is `PROV_BIRTH=1 STORE_DEATH=0 AIM=1`.
+- **#382:**
+  - `REPL_CROWD_K=K` gives a density-dependent birth price: `birthPrice()` at the seven birth sites, with `__crowd`
+    (living/K) updated once a tick by `crowdTick()`.
+  - `REPL_BIRTH_COSTM=n` sets the base price in thousandths.
+  - Both are in KNOBS and byte-identical unset.
+  - **Held ship:** the one-currency world held to a size is `PROV_BIRTH=0 STORE_DEATH=1 AIM=0 REPL_CROWD_K=450`. The comment after
+    `const TASKS_ON` records why it is not the default.

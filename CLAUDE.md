@@ -90,6 +90,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   even per CPU-hour. In a field `slot-test` saw 2 of 9 universes save in 450 s, where today's world gets most of them there in 150.
   **Per tick is not per hour, and a field runs in real time:** judge a change to population size on new functions per CPU-hour,
   and check it in a field. The knobs and `visAmp()` (the display reads the store under `STORE_DEATH`) are in; the default is not.
+  **`#382`: held to a size, it wins per CPU-hour too, and is held AGAIN at the field.** `REPL_CROWD_K=450` (a birth costs
+  `BIRTH_ENERGY_COST x living/K`; a fixed dearer birth is bistable, it fills the array or dies) gives 1.62x new functions per
+  CPU-hour (p 0.0024), 2.39x per tick, collapses 1 against 6, selected. But it grows to about a thousand at once, so a field's first
+  minutes are slower: `slot-test` failed in 150 s (0 of 9 saved) and passed 15/0 in 450. **The next gate is a field rig that counts
+  new functions per real hour across a running field**, the number a viewer gets.
   **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000
   ticks, most of them predator outbreaks that drain the stores which pay for births. Both prey refuges (`REPL_REFUGE=1` fixed, `=2`
   adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks

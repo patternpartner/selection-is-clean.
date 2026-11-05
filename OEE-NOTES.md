@@ -29512,3 +29512,31 @@ restart killed seven runs mid-flight; they were re-run from scratch (determinist
   Per tick, K = 450 was 2.1x and 0.67x of the old world.
 - Pre-registered as `lab/port/PREREG-crowd.md` (seeds 11501-11520). The ruling measure is per CPU-hour, with a per-tick guard and a
   field check as conditions for shipping.
+
+### #382 — VERDICT: BETTER per CPU-hour (p 0.0024), and the ship is HELD AGAIN at the pre-registered field check. My prediction was right (2 of 8).
+`lab/port/PREREG-crowd.md` (committed 0ad5160 before any decision run). 20 pairs, seeds 11501-11520, today's TASKS world against one
+currency held to a size by a density-dependent birth price (`PROV_BIRTH=0 STORE_DEATH=1 AIM=0 REPL_CROWD_K=450`), 12,000 ticks, CPU
+by bash's `time`. Out `lab/port/out-crowd/`, result `lab/port/crowd-result.txt`.
+- **Switch check:** every CROWD world made 0 aim pulls and 0 unprovisioned refusals.
+- **Primary, the one-sided exact Wilcoxon on log(new functions per CPU-hour):** W+ 178 of 210, **p(greater) 0.0024**. CROWD is ahead
+  in 16 of 20, median ratio 1.62.
+- **Reported:**
+  - Per tick: p 0.006, median ratio 2.39, so the guard (at least 0.5) holds.
+  - Collapses: **1 CROWD against 6 OLD.**
+  - Mean alive 471-1,634 against 427-1,621.
+  - **The shuffle control:** 65, 83 and 87 new functions against 4,200, 2,406 and 3,991. In this world too the gain is selected.
+- **The field check failed, and the ship is held, as the pre-registration requires.**
+  - `slot-test`, alone, in its 150-second window: 0 of 9 built universes reached their first save (tick 1,800), with the founding
+    rows failing downstream.
+  - Given 450 seconds, the same test passed **15/0**: 7 of 9 saved and 4 grew. #381's uncapped world saved 2 of 9 in 450.
+  - So nothing is broken. The crowd-priced world grows to about a thousand almost at once (984 at tick 881 in a standalone
+    universe), where today's starts near 300 and climbs. A field's first minutes are slower; its whole run, by the node
+    measure, is about 1.6 times more productive per CPU-hour.
+  - Shipping on the 450-second pass would be a rule changed after the numbers. It is not done.
+- **The display under one currency** (screenshot, standalone universe at tick 881) is bright and colourful, with a dense luminous
+  centre. `visAmp()` holds up in the smaller world.
+- **What moved:** nothing in the default. What moved is knowing what would: a one-currency world held near a thousand finds new
+  functions about 2.4 times as fast per tick and 1.6 times per CPU-hour, collapses less, and the gain is selected.
+- **Named follow-up, and the real gate:** measure the field itself. A browser rig would run a field of universes for a long session
+  under each engine (a worktree for today's) and count new functions per real hour across all of them. That is the number a viewer
+  gets, and no node rig or 150-second storage test measures it.
