@@ -3102,3 +3102,11 @@ layer:
   - Both are in KNOBS and byte-identical unset.
   - **Held ship:** the one-currency world held to a size is `PROV_BIRTH=0 STORE_DEATH=1 AIM=0 REPL_CROWD_K=450`. The comment after
     `const TASKS_ON` records why it is not the default.
+- **#383 — the field rig:**
+  - `lab/port/field-rate.js` runs a real browser field and counts F, the distinct functions ever paid anywhere in it, against wall
+    clock. It serves this tree; `ENGINE=path` swaps `engine.html` alone, so two engines can be compared with every other file
+    the same.
+  - It reads each universe through `__field.seenForTest()` (universe.html), which asks the worker's `api.seen()` (sim.worker.js,
+    beside `api.census`). That returns the engine's lifetime bitmap `tSeen`, base64 in the same layout as the save's `seen`.
+  - It also returns the economy switches as the engine resolved them: `STORE_DEATH`, `REPL_CROWD_K`, `provBirthOn()`, `aimOn()`.
+  - It is read-only and draws nothing. The rig ORs the bitmaps into one union, so a migrant's function counts once.
