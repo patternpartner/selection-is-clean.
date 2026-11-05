@@ -3078,8 +3078,8 @@ layer:
   - `DIAG=1` reports aim pulls, mean amplitude, aims per creature and cosmos launches.
   - `lab/port/probe-aims.js` takes the aim census.
 
-**#381 — one currency under TASKS (shipped).**
-- **The ship:** just after `const TASKS_ON` (TASKS only, unset globals only), `__PROV_BIRTH=0`, `__STORE_DEATH=1` and `__AIM=0`.
+**#381 — one currency (knobs; the TASKS default ship is HELD, see OEE-NOTES #381).**
+- **To run it:** `PROV_BIRTH=0 STORE_DEATH=1 AIM=0`. A comment just after `const TASKS_ON` records why it is not the default.
 - **The readers:**
   - `provBirthOn()` (line ~4561) gates a birth's provision cost in `addParticle` / `addCompound`;
   - `STORE_DEATH` (a const beside `REPL_REFUGE_MODE`) is read in the death pass's amplitude check, where a creature under
@@ -3094,4 +3094,4 @@ layer:
   - the draw-VM's `R[4]`.
 
   `computeVisuals`' brightness and saturation read it too. `pSz` still reads amplitude, because it is physics.
-- **Restore the old computing world:** `PROV_BIRTH=1 STORE_DEATH=0 AIM=1` (all in `harness-env.js` KNOBS).
+- All three are in `harness-env.js` KNOBS; today's default is `PROV_BIRTH=1 STORE_DEATH=0 AIM=1`.

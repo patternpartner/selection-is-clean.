@@ -29455,3 +29455,21 @@ restart killed seven runs mid-flight; they were re-run from scratch (determinist
   shows a viewer, it is roughly even. I am saying that plainly rather than letting "doubled" stand alone.
 - **Named follow-up:** hold the one-currency world to a smaller population, so it runs faster, and test new functions per
   CPU-hour against today's. A world at the cap may be spending its CPU on room rather than on selection.
+- **CORRECTION, made the same day: the ship is HELD, at acceptance.** The heading above says SHIPPED, and the default was briefly
+  flipped on the branch. It never reached `main`.
+  - `smoke.sh` on the flipped engine came back 65 ok and 4 failing. Re-run alone:
+    - `collective-test` passed, so that one was contention;
+    - `pop-test` failed only on a growth assumption (`N <= 420` as a stand-in for "founders spawned"; the new world reaches 1,002
+      by then);
+    - `slot-test` failed on throughput.
+  - **The `slot-test` A/B:** the pre-#381 engine passed it 15/0 in its 150-second window. The flipped engine, given 450
+    seconds, still got only **2 of 9** universes to their first save (tick 1,800), where today's world gets most of them there
+    in 150. Its founding rows passed given the time: 4 universes grew. So founding is not broken; the field is about three
+    times slower.
+  - A field shares one CPU among many universes, and a one-currency universe sits near the population cap.
+  - **So the per-tick win (registered, real, selected) does not yet carry into what a viewer sees per hour.** About even per
+    CPU-hour in node, and slower in a field.
+  - The default is back to today's world (`84eaf3b7`). The knobs, `STORE_DEATH` and `visAmp()` stay, inert unless set (the
+    one-currency world is still `50a27281`).
+  - **Named follow-up, the condition for shipping:** a one-currency world held to a smaller population, pre-registered on new
+    functions per CPU-hour and checked in a field (`slot-test`'s save row), not per tick alone.

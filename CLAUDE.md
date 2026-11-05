@@ -84,13 +84,12 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **CORRECTED by `#381`: what the stipend pays for is mostly BIRTHS.** Amplitude above `AMP_SOFT` is banked as provision, and a
   birth costs 1 provision as well as 0.25 of store (`PROV_BIRTH`, #221). That gate binds: tens of thousands of births a window
   pass the store and are refused "unprovisioned". `STORE_DEATH=1` (amplitude no longer kills) does not rescue an AIM-less world.
-  **SHIPPED by `#381`: ONE CURRENCY wherever TASKS runs.** Under TASKS, `PROV_BIRTH`, `STORE_DEATH` and `AIM` now default to 0, 1
-  and 0 (unset globals only). Life and births are paid by the store alone, which computing and sunlight fill. 20 unseen pairs: about
-  twice the new functions in 12,000 ticks (p 0.0004, 16 of 20). `TASK_SHUFFLE` in the new world found 10-150x fewer, so the gain is
-  selected. **Any result above about AIM, provision or amplitude in the computing world describes the world BEFORE #381.**
-  `PROV_BIRTH=1 STORE_DEATH=0 AIM=1` restores it byte for byte. The display reads the store, not amplitude, through `visAmp()`.
-  **But per CPU-hour it is about even:** the new world sits near the population cap, so each tick costs 1.6-2.5x more (two seeds:
-  0.53x and 1.61x new functions per CPU-hour). A field runs in real time, so per-hour is what a viewer gets. Report both.
+  **`#381`: ONE CURRENCY won its per-tick test, and its ship is HELD.** `PROV_BIRTH=0 STORE_DEATH=1 AIM=0` makes the store pay
+  for life and births. 20 unseen pairs: about twice the new functions per 12,000 ticks (p 0.0004, 16 of 20), and selected
+  (`TASK_SHUFFLE` found 10-150x fewer). But the world sits near the population cap. A tick costs 1.6-2.5x more, so it is about
+  even per CPU-hour. In a field `slot-test` saw 2 of 9 universes save in 450 s, where today's world gets most of them there in 150.
+  **Per tick is not per hour, and a field runs in real time:** judge a change to population size on new functions per CPU-hour,
+  and check it in a field. The knobs and `visAmp()` (the display reads the store under `STORE_DEATH`) are in; the default is not.
   **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000
   ticks, most of them predator outbreaks that drain the stores which pay for births. Both prey refuges (`REPL_REFUGE=1` fixed, `=2`
   adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks
