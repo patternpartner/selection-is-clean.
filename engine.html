@@ -10723,6 +10723,14 @@ function refugeTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; const c=_
 // still dies of starvation (its store cannot pay half its upkeep: REPL's rule sets amp to -1e6, which passes through), of age, and
 // by escape. Default 0: byte-identical.
 const STORE_DEATH=REPL_ON&&(__tk('__STORE_DEATH',0)|0)!==0;
+// #382: REPL_CROWD_K=K (REPL only) - a DENSITY-DEPENDENT price of a birth: BIRTH_ENERGY_COST x living/K, set once a tick, the same for
+// every parent at that moment. #382's design found the one-currency world BISTABLE under a fixed price: income comes from per-function
+// pools, so crowding barely lowers income per head, and a world either fills the array (0.25) or dies (0.3-0.5). A price that rises
+// with the population gives it an equilibrium instead of a cliff. Read at the seven birth sites through birthPrice(); the death
+// return and the refuges keep the base price. Unset: birthPrice() is BIRTH_ENERGY_COST itself, byte-identical.
+const REPL_CROWD_K=REPL_ON?(__tk('__REPL_CROWD_K',0)|0):0; let __crowd=1;
+function birthPrice(){ return REPL_CROWD_K>0?BIRTH_ENERGY_COST*__crowd:BIRTH_ENERGY_COST; }
+function crowdTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; __crowd=n/REPL_CROWD_K; }
 const TASK_SHUFFLE=(__tk('__TASK_SHUFFLE',0)|0)!==0;   // #376: see taskShuffleTo. A control, default 0.
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
@@ -21717,8 +21725,8 @@ function addParticle(x,y,tv,born,parentA,parentB){
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
-      pE[parentA]-=BIRTH_ENERGY_COST; fired('birth.paid'); }
+    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<birthPrice()){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
+      pE[parentA]-=birthPrice(); fired('birth.paid'); }
     else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
@@ -21740,7 +21748,7 @@ function addParticle(x,y,tv,born,parentA,parentB){
   phase[i]=Math.random()*Math.PI*2;freq[i]=0.02+Math.random()*0.04;
   amp[i]=born?0.5:0.3+Math.random()*0.5;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
-  if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
+  if(SUN_ON)pE[i]=(parentA>=0)?birthPrice()*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(TASKS_ON)taskBirth(i);   // #350: an empty word file
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -21841,8 +21849,8 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N&&provBirthOn()){ if(pProvision[parentA]<PROV_BIRTH_COST){ fired('birth.refused'); fired('birth.unprovisioned'); return-1; } }   // PROV_BIRTH -- see provBirthOn
   if(parentA>=0){
     if(rationOn()){ const _rw=rareBirthW(parentA); __rationAtt+=_rw; if(Math.random()>=__rationP*_rw){ fired('birth.refused'); fired('birth.rationed'); return-1; } }   // RATION (+RARE_BIRTH weight) -- see loop()
-    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
-      pE[parentA]-=BIRTH_ENERGY_COST; fired('birth.paid'); }
+    if(SUN_ON){ if(!(parentA<N)||pE[parentA]<birthPrice()){ fired('birth.refused'); return-1; }   // #272: the parent pays from what it gathered
+      pE[parentA]-=birthPrice(); fired('birth.paid'); }
     else { if(worldEnergy<BIRTH_ENERGY_COST){ fired('birth.refused'); return-1; }
     worldEnergy-=BIRTH_ENERGY_COST; fired('birth.paid'); }
   }
@@ -21852,7 +21860,7 @@ function addCompound(x,y,nt,nvx,nvy,na,np,nf,parentA,parentB){
   if(parentA>=0&&parentA<N) inheritMutate(i);   // INHERIT -- see addParticle
   phase[i]=np;freq[i]=nf;amp[i]=na;
   palive[i]=1;page[i]=0;localRes[i]=0;collapse[i]=0;clusterID[i]=-1;
-  if(SUN_ON)pE[i]=(parentA>=0)?BIRTH_ENERGY_COST*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
+  if(SUN_ON)pE[i]=(parentA>=0)?birthPrice()*SUN_ENDOW:SUN_SEED;   // #272: part of the parent's payment is the child's start
   if(TASKS_ON)taskBirth(i);   // #350: an empty word file
   if(REPL_ARMS)replKeyBirth(i,parentA);   // #277: attack and defence keys are inherited, with mutation
   // #57 — a lineage is BORN INTO a strategy and mostly keeps it, with a small chance of switching at
@@ -26006,7 +26014,7 @@ function executeSoloVM(){
     if(DIMS>4){ tend[i*DIMS+4]+=vmActions[7]*soloInfluence*0.01; { const _v4=tend[i*DIMS+4]; tend[i*DIMS+4]=Number.isFinite(_v4)?Math.max(-1,Math.min(1,_v4)):0; } }
     mutPressureAccum+=vmActions[6]*soloInfluence*0.00005;
     if(REPL_COST){ pE[i]-=REPL_INSTR_C*nInst; if(pE[i]<0){ pE[i]=0; pAdq[i]=0; } }   // #283: the run is paid for
-    if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=BIRTH_ENERGY_COST){   // #273: the program asked, the store pays (in addParticle's gate)
+    if(REPL_ON&&vmActions[4]>REPL_T&&pE[i]>=birthPrice()){   // #273: the program asked, the store pays (in addParticle's gate)
       const _nt=new Float32Array(DIMS); for(let _d=0;_d<DIMS;_d++)_nt[_d]=tend[i*DIMS+_d];
       const _ci=addParticle(px[i]+(Math.random()-0.5)*12,py[i]+(Math.random()-0.5)*12,_nt,true,i,-1); if(_ci>=0){ birthsThisTick++; fired('repl.birth'); if(REPL_SEX)replSexBirth(_ci,i); } }
     applyUserEffects(i,-1,soloInfluence); // #132: authored verbs, solo path. j=-1, so CONSERVED mode
@@ -27471,6 +27479,7 @@ function loop(){
   tick++;
   genome.totalTicks++; __germTicks=genome.totalTicks;   // #327
   if(REPL_REFUGE_MODE===2)refugeTick();   // #380: the adaptive refuge reads last tick's predation
+  if(REPL_CROWD_K>0)crowdTick();   // #382: the density-dependent birth price reads last tick's population
   if(__mindLatch!==false){ const _M=mindOn(); if(_M&&tick%_M.EVERY===0)_M.train(); }   // #296: the mind learns from the parents it has seen
   updateWorldSignal();   // #136: read the real world before deciding what the sunlight is
   // #183: the world's own legislature. One proposal on probation at a time; the population is the
