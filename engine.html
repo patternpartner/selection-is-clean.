@@ -10552,7 +10552,7 @@ const __TASKS_DEFAULT=(()=>{ try{ if(typeof process!=='undefined'&&process.versi
 const REPL_ON=(typeof globalThis!=='undefined')&&(((globalThis.__REPL|0)!==0)||((globalThis.__TASKS|0)!==0)||__TASKS_DEFAULT);   // #350: TASKS implies REPL
 const REPL_INERT=(REPL_ON&&typeof globalThis!=='undefined'&&globalThis.__REPL_INERT!==undefined)?(globalThis.__REPL_INERT|0):-1;   // #273: rigs only - the named opcode still runs through the VM but does nothing, the neutral control for its spread
 const REPL_T=0.5, REPL_ONSET=150, REPL_SCALE=0.02;   // #273: a replicator's life is short, so evolution gets generations: median life about 400 ticks at lifespanBias 1
-if(REPL_ON){ WORLD_ENERGY_REGEN=0.4; BIRTH_ENERGY_COST=0.25; }   // #278: 0.4 (was 0.6) - at 0.6 worlds reached 1,800 living and ran 5x slower, so fewer generations per window
+if(REPL_ON){ WORLD_ENERGY_REGEN=0.4; BIRTH_ENERGY_COST=0.25; if(typeof globalThis!=='undefined'&&globalThis.__REPL_BIRTH_COSTM!==undefined&&Number.isFinite(+globalThis.__REPL_BIRTH_COSTM))BIRTH_ENERGY_COST=(+globalThis.__REPL_BIRTH_COSTM)/1000; }   // #382: REPL_BIRTH_COSTM=n sets the price of a birth in thousandths (unset: 0.25, byte-identical)   // #278: 0.4 (was 0.6) - at 0.6 worlds reached 1,800 living and ran 5x slower, so fewer generations per window
 // #277 - REPL_ARMS (knob, needs REPL): AN ARMS RACE WITH NO EDGE. Predation starts at full strength, as under plain REPL
 // where it arose and spread on 3 of 3 seeds (#273). Each particle also carries two heritable 4-number keys: an attack
 // (pKey) and a defence (pDef), each copied from its parent with a small mutation at every birth and never clamped. A
