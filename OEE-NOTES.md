@@ -29540,3 +29540,10 @@ by bash's `time`. Out `lab/port/out-crowd/`, result `lab/port/crowd-result.txt`.
 - **Named follow-up, and the real gate:** measure the field itself. A browser rig would run a field of universes for a long session
   under each engine (a worktree for today's) and count new functions per real hour across all of them. That is the number a viewer
   gets, and no node rig or 150-second storage test measures it.
+
+### #382 acceptance (the ship held)
+- `substrate-test` 264/0 at TICKS=40, TICKS=900, the default, and FOUND=0 at TICKS=40.
+- Digests: TASKS off `b07a4474`, TASKS default `84eaf3b7` (today's world, unchanged), the held world `d7d1c3aa`.
+- **`smoke.sh`: 68 ok, 1 failing.** The failure was `collective-test`'s `returnPathIsATrickle`, inside the suite. It passed twice
+  alone straight after (`←19 →1`, `←13 →1`): CLAUDE.md's documented fragile row. The default behaviour is byte-identical to the
+  previous acceptance; I did not retune the row.
