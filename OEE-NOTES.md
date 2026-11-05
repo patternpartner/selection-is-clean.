@@ -29681,3 +29681,14 @@ read before anything changed, and each was A/B'd against `main` in a worktree wh
     parents a mind has seen.
   - One was a real consequence for a viewer, and the fix was in the field, not the rig.
   - None was made green by loosening a threshold.
+- **Final acceptance, on the tree that ships:**
+  - `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0.
+  - `smoke.sh` alone: **69 ok, 0 failing**. `browser-test` was run alone as well, with no SKIP.
+  - Digests: TASKS off `b07a4474` (unchanged); the TASKS default is now `d7d1c3aa` (one currency held to a size); the four knobs set
+    back give `84eaf3b7`, the old world byte for byte.
+- **Open, and named:**
+  - The field past 30 minutes: the lead fell from 3.5x to 1.8x across the first half hour, and nothing longer was measured in a
+    field.
+  - A reloaded field: #383 measured fresh fields only.
+  - The cost of the clock save in a field: about 2.6 MB of population a save for a universe of about a thousand, every 2 minutes
+    for a slow universe. It was not measured against F.
