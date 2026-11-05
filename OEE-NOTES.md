@@ -29441,3 +29441,17 @@ restart killed seven runs mid-flight; they were re-run from scratch (determinist
     viewer gets. If the early slowdown held all run, that could be LOWER than before.
   - Being measured over the full 12,000 ticks by CPU time (`lab/port/out-onespeed/`). The result is appended here, not
     rewritten.
+- **Speed, measured over the full 12,000 ticks** (CPU time, `lab/port/out-onespeed/`, the decision's own seeds and streams; the
+  old-world arm reproduced the decision's DEF V exactly, 6,945 and 3,960):
+
+  | Seed | Old world: CPU, V, per CPU-hour | One currency: CPU, V, per CPU-hour | Per-hour ratio |
+  |---|---|---|---|
+  | 11401 | 16.6 min, 6,945, 25,044 | 42.1 min, 9,346, 13,327 | 0.53 |
+  | 11402 | 20.7 min, 3,960, 11,481 | 34.0 min, 10,464, 18,462 | 1.61 |
+
+  The one-currency world holds more creatures (mean 1,635-1,707 against 1,317-1,387), and a tick costs more for each of them.
+  **So: about twice the new functions per tick, and about the same per hour of computer time** (two seeds, geometric mean 0.93,
+  not a test). The registered rule is per tick, and the ship stands on it. Per hour, which is what a field running in real time
+  shows a viewer, it is roughly even. I am saying that plainly rather than letting "doubled" stand alone.
+- **Named follow-up:** hold the one-currency world to a smaller population, so it runs faster, and test new functions per
+  CPU-hour against today's. A world at the cap may be spending its CPU on room rather than on selection.
