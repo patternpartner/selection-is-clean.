@@ -1,0 +1,16 @@
+p1  F at 300/600/1200/1800 s:  OLD 771/2009/3534/5229  CROWD 2680/3823/6091/7925  ratio 1.52  |  S 15952 / 29532  ticks 102677 / 48267  alive 17290 / 25481  universes 31 / 31  5 of 9 built saved at 300 / 1620 s  longest read 16 / 52 s  missed at final 0 / 0
+p2  F at 300/600/1200/1800 s:  OLD 862/1873/3160/4256  CROWD 1862/2795/5040/7235  ratio 1.70  |  S 12179 / 27812  ticks 217933 / 47302  alive 4174 / 25575  universes 31 / 31  5 of 9 built saved at 240 / never s  longest read 1 / 50 s  missed at final 0 / 0
+p3  F at 300/600/1200/1800 s:  OLD 720/1829/3971/5577  CROWD 2685/3926/5914/8007  ratio 1.44  |  S 16857 / 30084  ticks 101629 / 46205  alive 17169 / 25556  universes 31 / 31  5 of 9 built saved at 240 / never s  longest read 9 / 60 s  missed at final 0 / 0
+p4  F at 300/600/1200/1800 s:  OLD 263/608/1634/2687  CROWD 1558/2788/4470/5592  ratio 2.08  |  S 8865 / 24525  ticks 226507 / 45364  alive 6488 / 29331  universes 31 / 31  5 of 9 built saved at 240 / never s  longest read 1 / 60 s  missed at final 0 / 0
+p5  F at 300/600/1200/1800 s:  OLD 544/1035/2430/3953  CROWD 1949/3196/5521/7163  ratio 1.81  |  S 13881 / 27978  ticks 83295 / 42989  alive 26276 / 29531  universes 31 / 31  5 of 9 built saved at 420 / never s  longest read 44 / 44 s  missed at final 0 / 0
+p6  F at 300/600/1200/1800 s:  OLD 486/880/1490/1920  CROWD 2039/3449/5221/6438  ratio 3.35  |  S 10472 / 25779  ticks 113724 / 44295  alive 22354 / 29950  universes 31 / 31  5 of 9 built saved at 300 / 1800 s  longest read 11 / 45 s  missed at final 0 / 0
+p7  F at 300/600/1200/1800 s:  OLD 721/1128/2840/3956  CROWD 2146/3444/6126/8282  ratio 2.09  |  S 13609 / 30174  ticks 89164 / 41581  alive 21578 / 28648  universes 31 / 31  5 of 9 built saved at 360 / never s  longest read 33 / 55 s  missed at final 0 / 0
+p8  F at 300/600/1200/1800 s:  OLD 803/1252/2265/3360  CROWD 1693/2646/4253/5994  ratio 1.78  |  S 12696 / 24609  ticks 87778 / 46286  alive 20675 / 28236  universes 31 / 31  5 of 9 built saved at 1140 / never s  longest read 38 / 37 s  missed at final 0 / 0
+
+complete pairs: 8; runs failing the switch check: none
+primary Wilcoxon on log(F_crowd/F_old) at 1800 s: n 8, W+ 36 of 36, p(crowd greater) 0.0039, p(crowd less) 1.0000; crowd ahead in 8 of 8; median ratio 1.80
+reported: median F ratio at 300 s: 3.53 (8 pairs)
+reported: median F ratio at 600 s: 2.60 (8 pairs)
+reported: median F ratio at 1200 s: 2.02 (8 pairs)
+reported: median time for 5 of the built nine to pass tick 1,800: OLD 300 s, CROWD 9999 s
+VERDICT:  BETTER: ship the TASKS default from 1b04adf
