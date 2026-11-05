@@ -42,19 +42,19 @@ let F = 0;
 const perSlot = {};   // slot -> {max n-boot, last ticks}
 const emit = o => { const s = JSON.stringify(o); if (OUT) fs.appendFileSync(OUT, s + '\n'); else console.log(s); };
 
-const readField = page => page.evaluate(async () => {
+// #383 amendment: every universe is asked AT ONCE, with one timeout for the lot. The first version asked them one at a time with
+// 15 s each, and in a busy field one sample took six minutes, so a sample's time no longer said when it was read.
+const readField = (page, ms) => page.evaluate(async ms => {
   const slotOf = el => { const m = (el.getAttribute('src') || '').match(/[?&]slot=([^&#]*)/); return m ? m[1] : '?'; };
   const one = async el => { const s = slotOf(el);
     try { const a = el.contentWindow && el.contentWindow.__field; if (!a || !a.seenForTest) return [s, null];
-      const r = await Promise.race([a.seenForTest(), new Promise(z => setTimeout(() => z(null), 15000))]);
+      const r = await Promise.race([a.seenForTest(), new Promise(z => setTimeout(() => z(null), ms))]);
       return [s, r]; } catch (e) { return [s, { err: String(e && e.message) }]; } };
   const els = [];
   for (const c of document.querySelectorAll('.cell')) if (c.firstChild && c.firstChild.contentWindow) els.push(c.firstChild);
   for (const d of document.querySelectorAll('#below .deep, #below .grown')) els.push(d);
-  const o = [];
-  for (const el of els) o.push(await one(el));
-  return o;
-});
+  return Promise.all(els.map(one));
+}, ms);
 
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -65,8 +65,8 @@ const readField = page => page.evaluate(async () => {
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   const t0 = Date.now();
   await page.goto(base + '/' + HASH, { waitUntil: 'load' });
-  const sample = async final => {
-    const rows = await readField(page);
+  const sample = async (final, at) => {
+    const rows = await readField(page, final ? 120000 : 60000);
     let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0;
     const slots = [];
     for (const [s, r] of rows) {
@@ -82,11 +82,12 @@ const readField = page => page.evaluate(async () => {
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0]);
     }
     for (const s in perSlot) S += perSlot[s].found;
-    emit({ t: Math.round((Date.now() - t0) / 1000), F, S, K, A, U, off, bad, sw, slots, errs: errs.length, final: !!final });
+    emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, S, K, A, U, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
-  while (Date.now() - t0 < SECS * 1000) {
-    await page.waitForTimeout(Math.max(1000, Math.min(EVERY * 1000, SECS * 1000 - (Date.now() - t0))));
-    try { await sample(Date.now() - t0 >= SECS * 1000); } catch (e) { emit({ t: Math.round((Date.now() - t0) / 1000), sampleErr: String(e && e.message) }); }
+  // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
+  for (let at = EVERY; at <= SECS; at += EVERY) {
+    const wait = t0 + at * 1000 - Date.now(); if (wait > 0) await page.waitForTimeout(wait);
+    try { await sample(at >= SECS, at); } catch (e) { emit({ t: at, sampleErr: String(e && e.message) }); }
   }
   if (errs.length) emit({ pageErrors: errs.slice(0, 5) });
   await browser.close(); server.close();

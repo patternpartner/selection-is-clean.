@@ -75,3 +75,18 @@ field ages. The risks I see:
 ## Saved worlds (rule 6)
 As in #382: a reloaded TASKS universe would run under one currency with a density-dependent birth price. A restored population
 above about 450 faces a dearer birth until it settles. Said here; it does not block.
+
+## Amendment, made before any pair completed (the rule is unchanged)
+- **The first pair was stopped at about 20 minutes, because the rig's samples had stopped meaning their time.**
+  - The rig asked the universes one at a time, with 15 s each.
+  - In a busy field one sample took up to six minutes. At one sample, 12 of 31 universes missed their 15 s.
+  - So a sample stamped 1,200 s held reads taken across several minutes, and the two arms were read at different moments.
+- **The fix:** `field-rate.js` now asks every universe at once.
+  - Each read has one timeout: 60 s, or 120 s at the final sample.
+  - Samples are scheduled at exactly 60, 120, ... 1,800 s from page load. `t` is the scheduled time, and `read` is how long the
+    reads took.
+  - Checked: 3 minutes, both arms together, reads 0-1 s, no universe missed.
+- **Pair 1's partial files are kept in `out-field/void-p1/`, as seen data.** At its last sample, about 20 minutes, it read F 1,228
+  OLD against 4,900 CROWD. It does not count.
+- **The rule, the floor, the arms and the verdict are as written above.** The 8 pairs are run fresh with the fixed rig.
+- **Reported as well:** each run's longest `read`, and its universes missed at the final sample.
