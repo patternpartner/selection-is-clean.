@@ -29710,3 +29710,45 @@ ticks per universe (45,000 across 31). #382's twenty paired node worlds go to 12
   converging last ten minutes sit in the first quarter, where the per-tick ratio is lowest.
 - **Still not a field measurement past 30 minutes.** It is named, and not run: at about 2 hours a pair it would take most of a day
   for a floor of five pairs.
+
+### #386 — THE SAME WORLD, 22% CHEAPER A TICK: a per-tick cache in the pair loop (byte-identical)
+**Why.** #383 showed that in a field the number a viewer gets is novelty per real hour. The shipped world's ticks are dear: about
+1,000 creatures a universe, about 55 ms a tick. A change that makes the same world cheaper raises that number with no rule moved.
+**Where the time went** (`node --cpu-prof`, 2,000 ticks of the shipped TASKS world, seed 10401):
+- `processGrid` (the pair loop) took 37% self time, `applyEntropy` 14%, `executeVM` 7.5% and `render` 6.9%.
+- Inside the pair loop, about 45% of the time was two accessors called once per CANDIDATE PAIR: `reachOf(j)` (the carrier's
+  `interactionRadius`) and `particleActive(j)` (its `tickRate` and `tickPhase` against the tick).
+- In 3,000 ticks of seed 10401 they were called 1.7 and 1.5 billion times, about 560,000 a tick.
+
+**The change.**
+- At the top of `processGrid`, both values are computed once for every creature alive at the start of the tick, along with the
+  genome OBJECT each came from.
+- A lookup in the pair loop uses the cached value only while `pGenome[j]` is still that object, and the index is below the tick's
+  starting N. A birth that reuses a slot gives it a new object; otherwise the function is called as before.
+- It draws nothing.
+
+**Why that is not enough on its own, and the test that is.**
+- The writes found by name are decode, sanitize, the germline's mutation and a child's mutation at birth.
+- A name search cannot see a generic gene copy (CLAUDE.md's alias trap), and a birth mid-loop can reuse a slot.
+- So a verifying build used the cached value as production does, recomputed the true value at every cached lookup, and counted
+  mismatches. **0 in about 4.1 billion lookups**, across four worlds:
+  - the shipped TASKS world on seeds 10401 and 5;
+  - the old TASKS world on seed 7;
+  - TASKS off on seed 3.
+- Digests are identical to the previous engine:
+  - `b07a4474`, `84eaf3b7` and `d7d1c3aa` at 1,500 ticks;
+  - seed 10401 `9effe3c8` at 1,500 and `c8378b52` at 2,000;
+  - seed 5 `902de2e5` at 2,000.
+
+**Speed, alone on this machine, two runs each, 1,500 ticks of seed 10401:** 109 s and 107 s before, 84 s and 82 s after. TASKS off
+changes little (20.3 s to 19.6 s), because its world has fewer pairs.
+**Tried and not kept:** stopping `applyEntropy`'s trait-distance sum once its outcome is decided.
+- It was byte-identical, with 0 decision mismatches in about 1.07 billion pairs, and it cut 41-95% of the sums.
+- It made no measurable difference (84 s against 82-84 s), so it was left out rather than added as code that earns nothing.
+- **In a field** (one pair, 10 minutes, the two engines together):
+  - The cached engine ran **12.5% more ticks** across its 31 universes (23,969 against 21,301). That is less than node's 22%, since a
+    browser also draws.
+  - Its F was 3,225 against 3,912. One pair of unseeded fields says nothing about F: #383's OLD fields alone ranged 1,920-5,577 at
+    30 minutes.
+  - The rules are byte-identical, so ticks are the direct measure. Novelty per tick is unchanged in distribution, so more ticks
+    per hour is more novelty per hour in expectation. That expectation is not a measurement.

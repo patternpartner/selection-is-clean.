@@ -26037,8 +26037,19 @@ function executeSoloVM(){
   }
 }
 
+// #386: PER-TICK CACHE OF TWO PER-CREATURE READS the pair loop below made once per CANDIDATE PAIR: reachOf(j) and
+// particleActive(j). They read the carrier's genome (interactionRadius, tickRate, tickPhase) and the tick, and they were 45% of
+// this function's own time in the shipped TASKS world. Filled once here for every creature alive at the start of the tick, with
+// the genome OBJECT each was read from; a lookup uses the cached value only while pGenome[j] is still that object (a birth that
+// reuses a slot gives it a new one), and otherwise calls the function as before. Draws nothing. Its test: byte-identical digests,
+// and a verifying build that recomputed every cached lookup counted 0 mismatches.
+const __PG_NONE={};
+let __pgReach=new Float64Array(0), __pgAct=new Uint8Array(0), __pgRef=[];
 function processGrid(){
   clearGrid();
+  if(__pgReach.length<N){ const L=Math.max(N,CAP); __pgReach=new Float64Array(L); __pgAct=new Uint8Array(L); __pgRef=new Array(L).fill(__PG_NONE); }
+  const _pgN=N;
+  for(let i=0;i<_pgN;i++){ if(!palive[i]){ __pgRef[i]=__PG_NONE; continue; } __pgRef[i]=pGenome[i]; __pgReach[i]=reachOf(i); __pgAct[i]=(!__STIME||particleActive(i))?1:0; }
   for(let i=0;i<N;i++){if(!palive[i])continue;const k=gKey(px[i],py[i]);pnext[i]=grid[k];grid[k]=i}
   for(let i=0;i<N;i++){localRes[i]=0;pNeighborCount[i]=0;pIntCount[i]=0;} // Pe51: reset density + interaction counters each tick
   // Resolve the per-tick interaction budget. globalThis.__CAP_K lets the headless A/B
@@ -26072,9 +26083,9 @@ function processGrid(){
         // Exactly once in every case, and WHETHER a pair happens no longer depends on who was
         // allocated first. Each particle sweeps its own radius, so each pays for its own reach and
         // no lineage can impose its sweep cost on the world.
-        if(j!==i&&palive[j]&&palive[i]&&(!__STIME||particleActive(j))){
+        if(j!==i&&palive[j]&&palive[i]&&(!__STIME||((j<_pgN&&__pgRef[j]===pGenome[j])?__pgAct[j]===1:particleActive(j)))){
           const ddx=px[i]-px[j],ddy=py[i]-py[j],d2=ddx*ddx+ddy*ddy,d=Math.sqrt(d2),minD=pSz[i]+pSz[j];
-          const _rJ=reachOf(j);
+          const _rJ=(j<_pgN&&__pgRef[j]===pGenome[j])?__pgReach[j]:reachOf(j);
           const iR=_rI;
           const _mine=d<_rI, _theirs=d<_rJ;
           const _owns=__REACH?(_mine&&(!_theirs||i<j)):(j>i&&d<iR);
