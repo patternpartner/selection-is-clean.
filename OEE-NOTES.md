@@ -29692,3 +29692,21 @@ read before anything changed, and each was A/B'd against `main` in a worktree wh
   - A reloaded field: #383 measured fresh fields only.
   - The cost of the clock save in a field: about 2.6 MB of population a save for a universe of about a thousand, every 2 minutes
     for a slow universe. It was not measured against F.
+
+### #383 — the horizon, read from #382's node worlds (seen data, reported, not ruled)
+The field lead fell from 3.5x at 5 minutes to 1.8x at 30. In the last 10 minutes the CROWD field's new distinct functions were
+only 1.07-1.08x OLD's in 4 of 8 pairs (median about 1.45). But a field at 30 minutes, at half this machine, has run about 1,500
+ticks per universe (45,000 across 31). #382's twenty paired node worlds go to 12,000 ticks, and per quarter of the run they read:
+
+| Ticks | Median new functions, OLD / CROWD | Per tick ratio | Per creature-tick ratio (a CPU stand-in) | CROWD ahead |
+|---|---|---|---|---|
+| 0-3,000 | 854 / 1,853 | 2.29 | 1.75 | 16 of 20 |
+| 3,000-6,000 | 1,109 / 1,885 | 1.25 | 1.66 | 13 of 20 |
+| 6,000-9,000 | 578 / 1,852 | 2.35 | 3.26 | 16 of 20 |
+| 9,000-12,000 | 469 / 1,078 | 3.76 | 4.69 | 14 of 20 |
+
+- Past the first quarter, the old world's discovery falls away: six of its twenty collapsed. The one-currency world's holds.
+- So, at the horizon a field reaches after a few hours, the node evidence says the lead widens rather than closes. The field's
+  converging last ten minutes sit in the first quarter, where the per-tick ratio is lowest.
+- **Still not a field measurement past 30 minutes.** It is named, and not run: at about 2 hours a pair it would take most of a day
+  for a floor of five pairs.
