@@ -87,3 +87,5 @@ lab/port/out-one/*.pid
 lab/port/out-one/*.part
 lab/port/out-onespeed/*.part
 lab/port/out-cap-design/*.part
+lab/port/out-crowd/*.pid
+lab/port/out-crowd/*.part

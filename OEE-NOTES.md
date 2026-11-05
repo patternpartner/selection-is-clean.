@@ -29488,3 +29488,27 @@ restart killed seven runs mid-flight; they were re-run from scratch (determinist
   - the held ship and its reasons;
   - the per-hour measurement;
   - `lab/port/drive.sh`, which keeps a batch topped up.
+
+### #382 — DESIGN (seeds 10401, 10402; design only): a smaller one-currency world, and the knob that makes one
+#381's ship was held because the one-currency world sits near the array cap and runs about three times slower in a field. Out
+`lab/port/out-cap-design/` (5 rounds, 4,000 ticks, arms concurrent, CPU timed by bash's `time`).
+- **Less sunlight does not shrink it** (`TASK_SUNP=10`: still about 1,700 alive). Income comes from 65,536 per-function pools, so
+  crowding barely lowers income per head, and nothing in the store economy is density-dependent.
+- **A dearer fixed birth (`REPL_BIRTH_COSTM`, new, unset byte-identical) is BISTABLE:**
+  - at 0.25 the world fills the array;
+  - at 0.30 and 0.35, 10401 filled it and 10402 died near 100;
+  - at 0.40-0.80 every world died.
+- **A density-dependent price (`REPL_CROWD_K=K`, new, unset byte-identical, seven birth sites asserted):** a birth costs
+  `BIRTH_ENERGY_COST x living/K`, the same for every parent at that moment. New functions per CPU-hour, against the old world's
+  25,916 and 24,958:
+
+  | K | Seed 10401 | Seed 10402 | Population |
+  |---|---|---|---|
+  | 900 | 23,450 | 14,646 | still at the cap |
+  | 600 | 31,274 | 24,372 | regulated on 10401 only |
+  | **450** | **42,407** | **38,559** | regulated on both: 400-1,250 and 350-760 |
+  | 300 | 43,708 | 28,609 | 10402 held at about 350 |
+
+  Per tick, K = 450 was 2.1x and 0.67x of the old world.
+- Pre-registered as `lab/port/PREREG-crowd.md` (seeds 11501-11520). The ruling measure is per CPU-hour, with a per-tick guard and a
+  field check as conditions for shipping.
