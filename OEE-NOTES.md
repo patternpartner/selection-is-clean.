@@ -29433,3 +29433,11 @@ restart killed seven runs mid-flight; they were re-run from scratch (determinist
   unchanged by it.
 - Size stays on amplitude, because `pSz` is collision extent, and that is the world the decision tested.
 - Screenshots before and after are in the session's scratchpad.
+- **A COST THE PRE-REGISTRATION DID NOT MEASURE: speed.** The one-currency world fills to about 1,700 alive, near the cap, by
+  tick 500 and stays there. Per-tick cost grows with population.
+  - **Preliminary, seed 10401, 4,000 ticks, node, alone:** 557 seconds against 180 for the old world, about 3.1 times slower
+    per tick.
+  - The decision is per tick and stands as registered. But the field runs in real time, so new functions per hour is what a
+    viewer gets. If the early slowdown held all run, that could be LOWER than before.
+  - Being measured over the full 12,000 ticks by CPU time (`lab/port/out-onespeed/`). The result is appended here, not
+    rewritten.
