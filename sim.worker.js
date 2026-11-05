@@ -103,6 +103,15 @@ const BRIDGE =
     'if(dt<1)dt=1; if(dt>600)dt=600;' +
     'if(!(Math.random()<1-Math.pow(1-Math.min(1,r),dt)))return null;' +
     'var d=buildMigrantPacket();return d?netPacket("migrant",d):null;}catch(e){return null;}};' +
+  // #383 - WHAT THIS UNIVERSE HAS EVER BEEN PAID FOR, as the engine's own lifetime bitmap (tSeen, the one #369 saves), so a rig can
+  // count new functions across a running field: the union over universes, not a sum that counts a migrant's function twice. Read off
+  // arrays, nothing drawn or written. Also the switches a field rig must check are on (STORE_DEATH, REPL_CROWD_K, PROV_BIRTH, AIM).
+  '__inst.api.seen=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON||!tSeen)return {off:true,tick:tick};' +
+    'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="";for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
+    'return {tick:tick,totalTicks:genome.totalTicks|0,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+      'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
+        'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
+  '}catch(e){return {err:String(e&&e.message)};}};' +
   '__inst.api.census=function(){var o={};try{' +
     'o.N=N;o.CAP=CAP;' +
     'var pg=0,pa=0,pl=0,pp=0;' +
@@ -488,6 +497,13 @@ Universe.prototype.handle = function (d) {
   // Diagnostic: COUNT THE LIVE STRUCTURES. Forced collection freed nothing, so the question was
   // which live objects were growing — and four hypotheses about that had already been wrong. The
   // counts came back tiny, which is half of how #162 was found.
+  // #383: the lifetime paid-for bitmap - read-only, request/reply like stat
+  if (d.type === 'seen') {
+    let r = null; try { r = api() && api().seen ? api().seen() : null; } catch (e) { r = { err:String(e&&e.message) }; }
+    this.post({ type: 'seen-result', rid: d.rid, seen: r });
+    return;
+  }
+
   if (d.type === 'census') {
     let c = null;
     try { c = api() && api().census ? api().census() : null; } catch (e) { c = { err:String(e&&e.message) }; }
