@@ -29391,3 +29391,45 @@ amplitude to -1e6 when the store cannot pay half its upkeep, which passes throug
 - **One consequence a viewer would see:** rendering scales brightness by `0.5 + amp*0.8` and saturation by `0.4 + amp*0.6`, so in
   this world creatures would draw about 2.5 times dimmer. A display question, named for the follow-up, not part of the decision.
 - Pre-registered as `lab/port/PREREG-one.md`, seeds 11401-11420, with a `TASK_SHUFFLE` arm reported on five of them.
+
+### #381 — VERDICT: BETTER, SHIPPED. One currency for life wherever TASKS runs: the store, which computing fills, pays for living and for breeding. New functions roughly double (p 0.0004), and the shuffle control says the gain is SELECTED. My prediction was right, for once (1 of 7).
+`lab/port/PREREG-one.md` (committed 01b5c9c before any decision run). 20 pairs, seeds 11401-11420, today's world against `PROV_BIRTH=0
+STORE_DEATH=1 AIM=0`, 12,000 ticks, the same reseed stream. Out `lab/port/out-one/`, result `lab/port/one-result.txt`. A container
+restart killed seven runs mid-flight; they were re-run from scratch (deterministic).
+- **Switch check:** every ONE world made 0 aim pulls and 0 unprovisioned refusals.
+- **Primary, the one-sided exact Wilcoxon on log(V_one/V_def), n 20:** W+ 190 of 210, **p(greater) 0.0004**, p(less) 0.9997. ONE
+  is ahead in 16 of 20.
+- **Size of the gain:**
+  - Total new functions 149,409 against 77,027.
+  - Median ratio 2.04, geometric mean 2.20, range 0.72-8.50.
+  - Outbreak pairs alone: p 0.02.
+  - Late mean formula size 5.68 against 5.06.
+- **Guard:** median alive-late holds.
+- **The selection control** (`TASK_SHUFFLE=1` in the ONE world, seeds 11401-11405, reported): 63, 73, 538, 63 and 541 new functions,
+  against 9,346, 10,464, 5,506, 6,235 and 5,461 for their unshuffled twins. **10 to 150 times fewer:** in the new world, as in the
+  old (#376), new functions arrive because the creature that computes is the one fed.
+- **Reported, not ruled on: one currency collapses more.**
+  - On 4 pairs only the ONE world collapsed, against 1 with only the DEF world.
+  - Predators came back in several ONE worlds: up to 1,699 op-155 carriers and 9.7 million prey events, with stores drained to
+    0.03-0.05.
+  - Even so, those worlds out-found their twins (11412: 8,184 against 994; 11420: 12,245 against 5,375). That is #379/#380's
+    lesson again: a collapse at this horizon is not where the novelty goes.
+
+**What moved in the universe, and against which number.**
+- The browser's default world (TASKS) now decides who lives and who breeds by one thing, the store. Computing and sunlight fill it.
+- The provision gate (#221) stops deciding anything there. So does AIM's stipend: aims stay in the genome and mutate, but they no
+  longer pay. Amplitude stops killing.
+- Against the dependent variable, new functions in 12,000 ticks: about twice as many, on 20 unseen worlds, against the
+  pre-registered test, and selected (the shuffle control).
+- `PROV_BIRTH=1 STORE_DEATH=0 AIM=1` restores the old world byte for byte (seed 3, 1,500 ticks: `84eaf3b7`). Without TASKS
+  (node's default) nothing changes (`b07a4474`). The shipped default equals the tested arm exactly (`50a27281` on both engines).
+
+**The look (the named follow-up), done with the ship.**
+- In this world amplitude sits near its floor, and EIGHT drawing sites read it. Brightness and saturation were the obvious two;
+  the others are alpha in three paths, both bond paths, the core highlight and the evolved draw program's input.
+- A field screenshot went from dense and bright to mostly dark.
+- `visAmp(i)` now gives those sites the store (`min(1.5, pE*4)`, so a birth's price draws like amplitude 1) under one currency,
+  and amplitude otherwise. Display only: colours and alpha feed nothing in the selection path, and the simulation digests are
+  unchanged by it.
+- Size stays on amplitude, because `pSz` is collision extent, and that is the world the decision tested.
+- Screenshots before and after are in the session's scratchpad.

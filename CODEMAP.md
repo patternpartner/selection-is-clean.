@@ -3077,3 +3077,21 @@ layer:
   - `lab/port/probe-reload.js GLOBALS=__A=1,...` sets engine globals before boot.
   - `DIAG=1` reports aim pulls, mean amplitude, aims per creature and cosmos launches.
   - `lab/port/probe-aims.js` takes the aim census.
+
+**#381 — one currency under TASKS (shipped).**
+- **The ship:** just after `const TASKS_ON` (TASKS only, unset globals only), `__PROV_BIRTH=0`, `__STORE_DEATH=1` and `__AIM=0`.
+- **The readers:**
+  - `provBirthOn()` (line ~4561) gates a birth's provision cost in `addParticle` / `addCompound`;
+  - `STORE_DEATH` (a const beside `REPL_REFUGE_MODE`) is read in the death pass's amplitude check, where a creature under
+    `deathThreshold` is held at it unless starvation set amplitude to -1e6;
+  - `aimOn()` gates the aim pull inside `applyNicheEconomy`'s opcode-novelty branch.
+- **Display:** `visAmp(i)` (just above `computeVisuals`) is what every drawing site reads as vitality. Under `STORE_DEATH` it is the
+  store, `min(1.5, pE*4)`; otherwise it is amplitude. Eight sites:
+  - `runDrawProgram`'s alpha;
+  - both bond paths;
+  - three particle-alpha paths;
+  - the core highlight;
+  - the draw-VM's `R[4]`.
+
+  `computeVisuals`' brightness and saturation read it too. `pSz` still reads amplitude, because it is physics.
+- **Restore the old computing world:** `PROV_BIRTH=1 STORE_DEATH=0 AIM=1` (all in `harness-env.js` KNOBS).

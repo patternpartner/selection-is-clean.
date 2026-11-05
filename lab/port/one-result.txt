@@ -1,0 +1,31 @@
+11401 ok      outbreak DEF V 6945 alive 1313 prey 799543 p155 314 Emin 0.043 S 6.09  |  ONE V 9346 alive 1630 prey 3497499 p155 833 Emin 0.059 S 6.02 pulls 0 unprov 0  ratio 1.35
+11402 ok               DEF V 3960 alive 1626 prey 5475 p155 8 Emin 0.147 S 4.63  |  ONE V 10464 alive 1710 prey 1629 p155 1 Emin 0.134 S 6.13 pulls 0 unprov 0  ratio 2.64
+11403 ok      outbreak DEF V 6690 alive 1677 prey 94562 p155 50 Emin 0.14 S 5.86  |  ONE V 5506 C@7500 alive 245 prey 180526 p155 689 Emin 0.051 S 2.03 pulls 0 unprov 0  ratio 0.82
+11404 ok      outbreak DEF V 6896 alive 1055 prey 6671688 p155 1649 Emin 0.049 S 6.20  |  ONE V 6235 alive 1708 prey 1209 p155 2 Emin 0.12 S 6.12 pulls 0 unprov 0  ratio 0.90
+11405 ok               DEF V 4321 alive 1662 prey 5118 p155 1 Emin 0.133 S 5.08  |  ONE V 5461 C@10500 alive 970 prey 766747 p155 635 Emin 0.048 S 4.58 pulls 0 unprov 0  ratio 1.26
+11406 ok               DEF V 2369 alive 1520 prey 3 p155 0 Emin 0.145 S 5.89  |  ONE V 12374 alive 1716 prey 11297 p155 8 Emin 0.321 S 6.88 pulls 0 unprov 0  ratio 5.22
+11407 ok               DEF V 1469 alive 292 prey 56089 p155 103 Emin 0.138 S 4.90  |  ONE V 10294 alive 1714 prey 126184 p155 72 Emin 0.129 S 6.42 pulls 0 unprov 0  ratio 7.01
+11408 ok               DEF V 2311 alive 1609 prey 4851 p155 2 Emin 0.139 S 4.96  |  ONE V 3364 C@5000 alive 123 prey 1252732 p155 1055 Emin 0.033 S 1.95 pulls 0 unprov 0  ratio 1.46
+11409 ok      outbreak DEF V 1815 alive 315 prey 136207 p155 93 Emin 0.078 S 4.26  |  ONE V 7940 alive 1438 prey 5070219 p155 1699 Emin 0.033 S 6.87 pulls 0 unprov 0  ratio 4.37
+11410 ok               DEF V 2092 alive 1192 prey 170 p155 1 Emin 0.133 S 5.67  |  ONE V 3761 alive 1705 prey 88517 p155 293 Emin 0.115 S 6.07 pulls 0 unprov 0  ratio 1.80
+11411 ok      outbreak DEF V 1781 C@3500 alive 147 prey 120367 p155 137 Emin 0.064 S 1.25  |  ONE V 5218 alive 1579 prey 2555464 p155 1155 Emin 0.045 S 6.15 pulls 0 unprov 0  ratio 2.93
+11412 ok               DEF V 994 C@5500 alive 218 prey 28093 p155 81 Emin 0.074 S 4.10  |  ONE V 8184 C@8500 alive 1259 prey 7680660 p155 1309 Emin 0.045 S 5.50 pulls 0 unprov 0  ratio 8.23
+11413 ok               DEF V 11618 alive 1698 prey 6515 p155 6 Emin 0.129 S 7.12  |  ONE V 12995 alive 1670 prey 3850841 p155 1299 Emin 0.051 S 7.20 pulls 0 unprov 0  ratio 1.12
+11414 ok      outbreak DEF V 1328 alive 1566 prey 3530001 p155 287 Emin 0.034 S 5.14  |  ONE V 9064 alive 1612 prey 7325298 p155 829 Emin 0.053 S 6.04 pulls 0 unprov 0  ratio 6.83
+11415 ok               DEF V 5542 alive 1656 prey 92239 p155 3 Emin 0.14 S 5.58  |  ONE V 3997 alive 1705 prey 3066 p155 2 Emin 0.147 S 5.46 pulls 0 unprov 0  ratio 0.72
+11416 ok      outbreak DEF V 3778 alive 972 prey 1498142 p155 486 Emin 0.047 S 5.38  |  ONE V 8664 alive 1423 prey 7977444 p155 1622 Emin 0.026 S 6.02 pulls 0 unprov 0  ratio 2.29
+11417 ok      outbreak DEF V 1014 alive 458 prey 281296 p155 687 Emin 0.081 S 3.33  |  ONE V 8614 alive 1706 prey 3341 p155 2 Emin 0.167 S 6.43 pulls 0 unprov 0  ratio 8.50
+11418 ok               DEF V 1913 alive 832 prey 5029 p155 25 Emin 0.137 S 4.26  |  ONE V 2202 alive 1457 prey 495308 p155 2 Emin 0.038 S 5.31 pulls 0 unprov 0  ratio 1.15
+11419 ok               DEF V 4816 alive 1359 prey 15590 p155 20 Emin 0.129 S 5.42  |  ONE V 3481 alive 1711 prey 99581 p155 87 Emin 0.091 S 5.63 pulls 0 unprov 0  ratio 0.72
+11420 ok               DEF V 5375 alive 1391 prey 69183 p155 43 Emin 0.142 S 5.99  |  ONE V 12245 C@4000 alive 1668 prey 9691686 p155 1659 Emin 0.039 S 6.76 pulls 0 unprov 0  ratio 2.28
+
+complete pairs: 20; ONE arms failing the switch check: none
+primary Wilcoxon on log(V_one/V_def): n 20, W+ 190 of 210, p(one greater) 0.0004, p(one less) 0.9997; one ahead in 16 of 20
+reported: outbreak pairs only: n 8, p(greater) 0.0195, p(less) 0.9883; collapse discordance on counted pairs: only DEF 1, only ONE 4; geometric-mean ratio 2.20
+guard (median ONE alive-late >= half DEF's): holds
+shuffle (reported): 11401 ONE+SHUFFLE V 67 against ONE V 9346
+shuffle (reported): 11402 ONE+SHUFFLE V 73 against ONE V 10464
+shuffle (reported): 11403 ONE+SHUFFLE V 538 against ONE V 5506
+shuffle (reported): 11404 ONE+SHUFFLE V 63 against ONE V 6235
+shuffle (reported): 11405 ONE+SHUFFLE V 541 against ONE V 5461
+VERDICT: BETTER: ship one currency wherever TASKS runs
