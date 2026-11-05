@@ -59,8 +59,10 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
     await page.evaluate(readPop, true);
     await page.reload(); await page.evaluate(() => window.__field.ready());
     const s2 = await stat();
-    console.log('  wrong fingerprint: pop ' + JSON.stringify(s2 && s2.pop) + ', ' + (s2 && s2.N) + ' alive');
-    ck('a snapshot from a different genome is refused, and founders are spawned', !!s2 && !!s2.pop && s2.pop.why === 'not this genome' && s2.pop.restored === 0 && s2.N <= 420, JSON.stringify(s2 && s2.pop) + ', N ' + (s2 && s2.N));
+    console.log('  wrong fingerprint: pop ' + JSON.stringify(s2 && s2.pop) + ', ' + (s2 && s2.N) + ' alive at tick ' + (s2 && s2.tick));
+    // #384: founders are read off the boot report, not off N. Under one currency (#383) founders can afford a birth from their
+    // first tick, so by the time stat() answers (tick 2) the 400 founders were 693 alive and N <= 420 failed on a correct refusal.
+    ck('a snapshot from a different genome is refused, and founders are spawned', !!s2 && !!s2.pop && s2.pop.why === 'not this genome' && s2.pop.restored === 0 && s2.pop.founders > 0 && s2.pop.founders <= 420, JSON.stringify(s2 && s2.pop) + ', N ' + (s2 && s2.N));
     await page.goto(base + '/universe.html?r=1#reset'); await page.evaluate(() => window.__field.ready());   // a query change, so it is a real navigation
     const s3 = await stat();
     ck('#reset restores nothing', !!s3 && s3.pop === null, JSON.stringify(s3 && s3.pop));

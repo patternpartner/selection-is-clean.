@@ -331,16 +331,21 @@
   // their ticks to it. Tapping a cell stops meaning "make this bigger" and starts meaning "wake this
   // up", which is what the instruments were always for.
   //
-  // 200ms is five ticks a second for a universe nobody is looking at, against roughly twenty-three
+  // 200ms was five ticks a second for a universe nobody is looking at, against roughly twenty-three
   // in a full field. #bgpace=0 turns the whole thing off and every cell runs flat out always.
+  // #384: NOW 1000ms, because the ratio was the design and the milliseconds were not. A pace is a delay AFTER each tick, so a
+  // stood-down mate keeps C/(C+pace) of its thread, C being its own tick. Under #383's world C is about 55ms, not about 8, and a
+  // full field runs about five ticks a second; so 200ms stood nobody down (a mate kept 22% of the thread, 4% before), and
+  // pool-test measured the open universe at 100 ticks where it had been 384. 1000ms is one tick a second against about five:
+  // the old fifth of full speed, and about 5% of the thread per mate.
   //
   // Worth knowing, because it is a real consequence and not a side effect: #163 makes a paced
   // universe ISOLATED as well as slow — it accepts migrants in proportion to its own clock, so the
   // eight that stand down also stop taking much in while you look at the ninth. Over the seconds or
   // minutes of actually looking at something that is nothing; it would matter if a cell were left
   // open for hours, and that is the case to watch.
-  var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):200;
-                            return Math.max(0,Math.min(5000,isFinite(v)?v:200)); })();
+  var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
+                            return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
   // What you see is one face. `#layers=K` puts K more layers of the same count underneath: universes
   // with no cell, drawing nothing, running slow, on the same wire as everything above them.

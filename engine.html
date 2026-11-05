@@ -26589,6 +26589,9 @@ function init(){
   } else {
     for(let i=0;i<n;i++)addParticle(Math.random()*W,Math.random()*H,randomTendency(),false);
   }
+  // #384: a boot that TRIED a snapshot and fell through to founders says how many it spawned - read off N, nothing drawn. pop-test
+  // asserts it: under one currency founders breed from their first tick, so a later count of the living no longer says founders.
+  if(__popBoot)__popBoot.founders=N;
   if(loaded){
     genEl.textContent=`gen ${genome.generation} | ${genome.totalTicks} ticks inherited`;
   }

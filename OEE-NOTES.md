@@ -29645,3 +29645,39 @@ by bash's `time`. Out `lab/port/out-crowd/`, result `lab/port/crowd-result.txt`.
     have told apart.
   - What exact matching still cannot separate is two slots saved at exactly the same T (`u0`, `u4` and `collective` all at 800 in
     one run). The saved-genome fingerprint row covers that case.
+
+### #383 + #384 acceptance: three rigs read the old world's SPEED as a fact, and one of them found a real loss
+The first `smoke.sh` on the shipped tree was 66 ok, 3 failing: `pool-test`, `mind-test` and `pop-test`. Each was rerun alone and
+read before anything changed, and each was A/B'd against `main` in a worktree where it mattered.
+- **`pop-test` (a proxy):**
+  - The refused-snapshot row asserts `N <= 420` to mean "founders were spawned". The engine had correctly refused the snapshot
+    (`restored 0, why "not this genome"`), and N was 693 at tick 2.
+  - Founders are `min(400, W*H/2800)`, 329 here. Under one currency a founder can afford a birth from its first tick (under the old
+    world it had no provision), so the population roughly doubles before `stat()` answers.
+  - The engine now records the founder count in the boot report (`__popBoot.founders = N` after the founder loop, only when a
+    snapshot was tried; read off N, nothing drawn). The row asserts `founders` in 1..420.
+  - 11/11. The digests are unchanged.
+- **`pool-test` (a real loss, fixed in the field):**
+  - "Closing it puts the worker-mates back to full" failed alone twice: mates 40 while a cell was open, 42 after.
+  - On `main` it passes: open 384, mates 51, after 104.
+  - The cause is that a pace is a delay after each tick, so a stood-down mate keeps C/(C+pace) of its thread, where C is its own
+    tick. C is about 55 ms in the shipped world, against about 8. At `BGPACE` 200 a mate kept 22% of the thread instead of 4%.
+  - **The universe a viewer opens got 100 ticks where it had got 384.**
+  - `BGPACE`'s own comment states the design as a ratio: 5 ticks a second against about 23 in a full field. In the shipped world
+    a full field runs about 5, so the default is now 1,000 ms (one a second against about five; about 5% of the thread per mate).
+  - 28/0 twice: open 74 and 120, mates 11-13, after close 35-43. The open universe's own tick cost caps it near 180 a window, so
+    the old 384 is not available to this world.
+- **`mind-test` (a proxy):**
+  - "Every universe past 1,000 ticks has seen parents and written children" failed on its floor of three: only 2 universes passed
+    tick 1,000 in the 60 s window.
+  - Every mind in both fields had seen 450-2,448 parents and written 173-963 children. On `main` (green today) a mind at 1,000
+    ticks had seen 1,272-2,089.
+  - A mind is consulted per birth, and the shipped world has many more births a tick and fewer ticks a second. So a universe now
+    counts as having run if it passed 1,000 ticks or its mind has seen 1,000 parents. The floor and every condition are unchanged.
+  - 10/10, learning rows included (loss 3.8-4.9 against 6.06 uniform).
+- **The general point:** a rig assertion written as a number of ticks, a count of the living, or a pace in milliseconds is a
+  statement about one world's speed. #383 changed the speed.
+  - Two of the three were proxies, and the fix in each was to read the quantity they stood for: the founder count, and the
+    parents a mind has seen.
+  - One was a real consequence for a viewer, and the fix was in the field, not the rig.
+  - None was made green by loosening a threshold.

@@ -50,7 +50,12 @@ const minds = page => page.evaluate(async () => {
         ck(hash + ': every universe has a ' + want + ' mind', ms.every(([, m]) => m && m.mode === want));
         // activity only where there has been time for it: the layers run paced and a grown universe may be seconds old,
         // so they can have had no birth yet. Every universe must HAVE the mind (above); the ones past 1,000 ticks must use it.
-        const ran = ms.filter(([, m, t]) => t >= 1000);
+        // #384: RUN IS COUNTED IN THE MIND'S OWN EXPERIENCE as well as in ticks. A mind is consulted per BIRTH, and under #383's
+        // one-currency world a tick holds far more births and a field ticks about five times a second, not twenty. So in this rig's
+        // window only 2 universes passed tick 1,000, while every mind in both fields had seen 450-2,448 parents and written
+        // 173-963 children; on the old world a mind at tick 1,000 had seen 1,272-2,089. A universe counts as having run if it
+        // passed 1,000 ticks OR its mind has seen 1,000 parents. The floor of three and every condition on it are unchanged.
+        const ran = ms.filter(([, m, t]) => t >= 1000 || (m && m.seen >= 1000));
         ck(hash + ': every universe past 1,000 ticks has seen parents and written children', ran.length >= 3 && ran.every(([, m]) => m && m.seen > 0 && m.uses > 0),
            ran.map(([s, m]) => s + ' ' + (m ? m.seen + '/' + m.uses : '-')).join(' '));
         if (want === 'learn') ck(hash + ': and is learning', ran.every(([, m]) => m && m.trained > 0 && m.lossOp > 0 && m.lossOp < m.uniformOp),
