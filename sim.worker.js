@@ -66,6 +66,11 @@ function engineSource(url) {
 // global is exactly what a second universe in the same isolate breaks).
 const BRIDGE =
   '\n;try{__inst.api={};' +
+  // #384: the tick count this universe BOOTED with - its restored genome's T, read once here, at the end of the engine's body, before
+  // the first tick... except that the engine's own boot ends init(); loop(); so one tick has run: hence totalTicks minus this session's
+  // tick. slot-test matches it EXACTLY against each slot's saved T; nearest-tick matching cannot tell apart two universes whose clock
+  // saves landed a tick apart.
+  'try{__inst.bootT=(genome.totalTicks|0)-(tick|0);}catch(_b){__inst.bootT=null;}' +
   '__inst.api.exportFile=function(){try{return {data:JSON.stringify({type:"selection-genome",version:2,exportedAt:new Date().toISOString(),genome:encodeGenome(),mind:(typeof mindSerialize==="function")?mindSerialize():null},null,2),filename:"selection_gen"+genome.generation+"_t"+genome.totalTicks+".json"};}catch(e){return null;}};' +
   '__inst.api.importFile=function(txt){try{if(decodeGenome(txt)){' +
     // #296: a universe file carries its mind beside its genome; taken if it fits this engine
@@ -186,7 +191,7 @@ const BRIDGE =
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to
   // believe the relay's own bookkeeping, which counts sends, not arrivals. netStats and
   // __liveness are written by the engine on the receive side, so they are arrivals.
-  '__inst.api.stat=function(){try{return {tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,' +
+  '__inst.api.stat=function(){try{return {tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,' +
     'peers:(typeof countPeers==="function"?countPeers():-1),' +
     // #253: whether this universe's switchboard is on (#prune), and its settings - read, not drawn.
     'swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState():null,' +

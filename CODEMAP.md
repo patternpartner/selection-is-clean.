@@ -3110,3 +3110,13 @@ layer:
     beside `api.census`). That returns the engine's lifetime bitmap `tSeen`, base64 in the same layout as the save's `seen`.
   - It also returns the economy switches as the engine resolved them: `STORE_DEATH`, `REPL_CROWD_K`, `provBirthOn()`, `aimOn()`.
   - It is read-only and draws nothing. The rig ORs the bitmaps into one union, so a migrant's function counts once.
+- **#383 SHIPPED:** the TASKS default fill line after `const TASKS_ON` (unset globals only) sets `PROV_BIRTH 0, STORE_DEATH 1,
+  AIM 0, REPL_CROWD_K 450`.
+- **#384 — the save on the clock:**
+  - `SAVE_WALL_MS`, `__saveWallAt` and `persistOnly()` sit just after that fill line. The call is in `loop()`'s finally,
+    beside the tick-900 `archiveGenome()`.
+  - `persistOnly()` writes the genome (untrimmed; skipped if over `SAVE_BUDGET`), `popPersist(g)` and `mindPersist()`. It does not
+    write `genomeArchive`.
+  - `__saveWallN` counts the saves.
+  - The worker's `stat()` reports `bootT`, the T a universe booted with (`totalTicks - tick`, read at the end of the engine's body),
+    and `slot-test` matches it exactly against each slot's saved T.

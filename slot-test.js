@@ -62,7 +62,7 @@ const liveTicks = page => page.evaluate(async () => {
   const one = async el => { const s = slotOf(el);
     try { const a = el.contentWindow && el.contentWindow.__field; if (!a) return [s, -1];
       const r = await Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 8000))]);
-      return [s, r ? (r.totalTicks | 0) : -1]; } catch (e) { return [s, -1]; } };
+      return [s, r ? (r.totalTicks | 0) : -1, r && typeof r.bootT === 'number' ? r.bootT : null]; } catch (e) { return [s, -1, null]; } };
   const o = [];
   for (const c of document.querySelectorAll('.cell')) o.push(await one(c.firstChild));
   for (const d of document.querySelectorAll('#below .deep, #below .grown')) o.push(await one(d));
@@ -143,7 +143,7 @@ const liveTicks = page => page.evaluate(async () => {
 
   let own = 0, wrong = 0, unsaved = 0;
   const detail = [];
-  for (const [slot, t] of after.filter(x => BUILT(x[0]))) {
+  for (const [slot, t, bootT] of after.filter(x => BUILT(x[0]))) {
     // savedSlots now returns {T, fp, n} per slot rather than a bare T (see the check above), so this
     // reads .T. It compared the object directly for one commit and every slot came back "WRONG" with
     // [object Object] in the diagnostic - a reminder that changing a helper's return shape is a change
@@ -151,11 +151,18 @@ const liveTicks = page => page.evaluate(async () => {
     const svr = saved[slot];
     if (svr === undefined) { unsaved++; detail.push(slot + '=nosave'); continue; }
     const sv = svr.T;
-    const drift = t - sv;
-    const plausible = drift >= 0 && drift < 4000;
-    const better = Object.keys(saved).some(k => k !== slot && Math.abs(t - saved[k].T) < Math.abs(drift));
-    if (plausible && !better) { own++; detail.push(slot + '(' + sv + '->' + t + ')'); }
-    else { wrong++; detail.push(slot + '=WRONG(' + sv + '->' + t + ')'); }
+    // #384: EXACT, NOT NEAREST. The header above says why nearest-tick matching is noise, and #384's save on the clock made it
+    // fail on correct code: nine universes started together save on the same two-minute clock, so their saved T values land a
+    // tick or two apart (597, 597, 598), and "another slot's T is closer to what came back" was true of a neighbour by one tick.
+    // The worker now reports the T each universe BOOTED with (stat().bootT, read before its first tick), which is exactly the T
+    // of the genome it restored. So a slot is its own if bootT equals its own saved T, and wrong if bootT is some other slot's
+    // T and not its own. The nearest-tick rule is kept only for a worker that does not report bootT.
+    let ok;
+    if (bootT !== null) ok = bootT === sv;
+    else { const drift = t - sv;
+      ok = drift >= 0 && drift < 4000 && !Object.keys(saved).some(k => k !== slot && Math.abs(t - saved[k].T) < Math.abs(drift)); }
+    if (ok) { own++; detail.push(slot + '(' + sv + '->' + (bootT !== null ? 'boot ' + bootT + ', ' : '') + t + ')'); }
+    else { wrong++; detail.push(slot + '=WRONG(' + sv + '->' + (bootT !== null ? 'boot ' + bootT + ', ' : '') + t + ')'); }
   }
   ck('every universe that HAD saved came back carrying its own genome',
      own === keys.length && wrong === 0,

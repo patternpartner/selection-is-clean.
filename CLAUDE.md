@@ -95,6 +95,16 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   CPU-hour (p 0.0024), 2.39x per tick, collapses 1 against 6, selected. But it grows to about a thousand at once, so a field's first
   minutes are slower: `slot-test` failed in 150 s (0 of 9 saved) and passed 15/0 in 450. **The next gate is a field rig that counts
   new functions per real hour across a running field**, the number a viewer gets.
+  **`#383`: judged on that number, it SHIPPED.** `lab/port/field-rate.js` runs a real browser field and counts the distinct
+  functions ever paid anywhere in it (the union of every universe's `tSeen`, via `__field.seenForTest()`). In 8 of 8 paired
+  fields one currency held to a size found more by 30 minutes: median 1.80x, p 0.0039, and 3.5x at 5 minutes. The lead shrinks
+  with time, and nothing past 30 minutes was measured. So wherever TASKS runs, the default is now `PROV_BIRTH 0, STORE_DEATH 1,
+  AIM 0, REPL_CROWD_K 450`; `PROV_BIRTH=1 STORE_DEATH=0 AIM=1 REPL_CROWD_K=0` restores the old world byte for byte. The ship's
+  cost was saving, because a slower-ticking world reached the tick-1,800 autosave late. **`#384` saves on the clock too**
+  (`SAVE_WALL_MS`, 2 minutes in a browser, off in node). It writes only what the autosave writes: no archive entry, no trim.
+  `SAVE_WALL_MS=50` under node is byte-identical to 0; that is its test.
+  **A field rig must read every universe AT ONCE (`#383`'s amendment).** Asked one at a time, a busy field took six minutes for
+  one sample.
   **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000
   ticks, most of them predator outbreaks that drain the stores which pay for births. Both prey refuges (`REPL_REFUGE=1` fixed, `=2`
   adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks

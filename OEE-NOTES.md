@@ -29547,3 +29547,101 @@ by bash's `time`. Out `lab/port/out-crowd/`, result `lab/port/crowd-result.txt`.
 - **`smoke.sh`: 68 ok, 1 failing.** The failure was `collective-test`'s `returnPathIsATrickle`, inside the suite. It passed twice
   alone straight after (`←19 →1`, `←13 →1`): CLAUDE.md's documented fragile row. The default behaviour is byte-identical to the
   previous acceptance; I did not retune the row.
+
+### #383 — VERDICT: BETTER IN A RUNNING FIELD, SHIPPED. Judged on the number a viewer gets (distinct functions found anywhere in a browser field, by 30 minutes of wall clock), one currency held to a size wins in 8 of 8 pairs, p 0.0039. My prediction was right (3 of 9).
+`lab/port/PREREG-field.md` (committed ccd1c32 before any decision run; amended at 32a0187, before any pair completed). Rig
+`lab/port/field-rate.js`, batch `field-batch.sh`, analysis `analyse-field.js`, out `lab/port/out-field/`, result
+`lab/port/field-result.txt`.
+- **The arms.**
+  - OLD is today's `engine.html`.
+  - CROWD is `engine.html` at 1b04adf, the #382 ship: one currency (`PROV_BIRTH 0, STORE_DEATH 1, AIM 0`) and a density-dependent
+    birth price (`REPL_CROWD_K 450`).
+  - Each is served into the default field (`/`, 412x915, a fresh browser profile, 31 universes: the built nine, 18 layer
+    universes, and 4 the field grew).
+  - An OLD and a CROWD field run together in two browsers, sharing the four cores. Each browser runs its whole field in one
+    renderer process at about 195% CPU.
+- **The measure.**
+  - **F** is the union of every universe's lifetime paid-for bitmap (`tSeen`, read through a new read-only
+    `__field.seenForTest()`).
+  - A function carried by a migrant counts once, and a universe that leaves still counts.
+  - The browser has no seed, so every field is a fresh draw.
+- **Why the measure, and not slot-test.**
+  - #382's field check counted universes reaching their first save (tick 1,800) in 150 s. That is a measure of ticks.
+  - The pilot (one field each, 2 minutes, seen) found F 265 OLD against 2,157 CROWD, while CROWD ran fewer than half the ticks.
+- **The amendment, and why it was needed.**
+  - The first rig asked universes one at a time with 15 s each. In a busy field one sample took six minutes, and 12 of 31
+    universes timed out, so sample times stopped meaning anything.
+  - That pair was stopped at about 20 minutes and set aside (`out-field/void-p1/`, seen: F 1,228 against 4,900).
+  - The rig now asks all of them at once, on a fixed 60 s schedule. The rule was not changed.
+  - The longest read in the counted pairs was 60 s, and no universe was missed at any final sample.
+- **Switch check:** every sample of every CROWD run read `storeDeath 1, crowdK 450, provBirth 0, aim 0`, and every OLD sample
+  read `0, 0, 1, 1`. No page errors.
+
+| Pair | OLD F at 5 / 10 / 20 / 30 min | CROWD F at 5 / 10 / 20 / 30 min | Ratio at 30 min |
+|---|---|---|---|
+| 1 | 771 / 2,009 / 3,534 / 5,229 | 2,680 / 3,823 / 6,091 / 7,925 | 1.52 |
+| 2 | 862 / 1,873 / 3,160 / 4,256 | 1,862 / 2,795 / 5,040 / 7,235 | 1.70 |
+| 3 | 720 / 1,829 / 3,971 / 5,577 | 2,685 / 3,926 / 5,914 / 8,007 | 1.44 |
+| 4 | 263 / 608 / 1,634 / 2,687 | 1,558 / 2,788 / 4,470 / 5,592 | 2.08 |
+| 5 | 544 / 1,035 / 2,430 / 3,953 | 1,949 / 3,196 / 5,521 / 7,163 | 1.81 |
+| 6 | 486 / 880 / 1,490 / 1,920 | 2,039 / 3,449 / 5,221 / 6,438 | 3.35 |
+| 7 | 721 / 1,128 / 2,840 / 3,956 | 2,146 / 3,444 / 6,126 / 8,282 | 2.09 |
+| 8 | 803 / 1,252 / 2,265 / 3,360 | 1,693 / 2,646 / 4,253 / 5,994 | 1.78 |
+
+- **Primary, the one-sided exact Wilcoxon on log(F_crowd / F_old) at 1,800 s:** W+ 36 of 36, **p(greater) 0.0039**. CROWD is
+  ahead in 8 of 8, median ratio 1.80. **BETTER.**
+- **The lead shrinks with time:** the median ratio is 3.53 at 5 minutes, 2.60 at 10, 2.02 at 20 and 1.80 at 30. Two readings fit:
+  - the union filling with the functions every world finds;
+  - OLD's built universes, which run 2-5 times the ticks, catching up.
+
+  The node measure (1.62x per CPU-hour over 12,000 ticks, #382) says the lead should settle above 1, not cross it. **That is not a
+  field measurement past 30 minutes, and none was made.**
+- **Reported:**
+  - Ticks across the field: OLD 83,000-227,000, CROWD 41,600-48,300.
+  - Creatures alive at 30 minutes: OLD 4,200-26,300, CROWD 25,500-30,000.
+  - S, the sum of per-universe finds: OLD 8,900-17,000, CROWD 24,500-30,200.
+- **And the cost, which is real:** saving.
+  - OLD's built nine had 5 universes past tick 1,800, their first autosave, by a median 300 s.
+  - CROWD's got there in 2 of the 8 pairs (1,620 s and 1,800 s) and in none of the other six by 30 minutes.
+  - At half this machine, a viewer who closed a CROWD field within half an hour lost all of it. That is fixed by #384, below,
+    before the ship.
+- **What moved:** the browser's default world. Wherever TASKS runs, the store pays for life and births, aims pay nothing, and a
+  birth's price rises with the population.
+  - Against the number the artwork is about, a viewer's field finds 1.8 times the new functions in its first half hour, and 3.5
+    times in its first five minutes.
+  - **Removed from deciding anything in the default world:** AIM's stipend and the provision gate (#377, #381). Both remain as
+    knobs.
+- **The prediction slip:** the pre-registration says "I am 1 for 8". #382's verdict had already made it 2 of 8. Recorded as written.
+
+### #384 — A SAVE ON THE CLOCK AS WELL AS THE TICK (`SAVE_WALL_MS`): how soon a world first persists no longer depends on how fast it ticks
+- **The autosave comes every 900 ticks from tick 1,800.** So a world's first save is set by its tick rate:
+  - about 2 minutes for today's built universes;
+  - more than 30 minutes for #383's world at half this machine;
+  - 15-27 minutes for today's layer universes as well.
+- **The change.** At the end of `loop()`, a world that has gone `SAVE_WALL_MS` of the clock without a save, and has run 300 ticks
+  this boot, calls `persistOnly()`.
+  - `SAVE_WALL_MS` is 120,000 in a browser and 0 under node unless set.
+  - `persistOnly()` writes what the autosave writes: the genome to `selection_genome`, the population snapshot and the mind.
+  - It writes **nothing else.** There is no archive entry, because `archiveGenome` pushes `genomeArchive`, which is world state.
+  - There is **no trim**, because `trimGenomeToBudget` sheds atoms when over budget, and the world would then depend on the clock.
+    A genome over budget waits for the tick save.
+  - A world fast enough to save on the tick within 2 minutes never takes this path.
+- **Its test: the world cannot tell.** Under node, `SAVE_WALL_MS=50` (a save every 10 ticks) against 0, with a population hook
+  installed so that the snapshot is really encoded, gave the same digest every time:
+  - TASKS off: `b07a4474`, 121 saves, 113 MB of snapshots;
+  - TASKS on: `d7d1c3aa`, 121 saves, 319 MB;
+  - TASKS with `MIND=1`: `8d2e2ae6`, 121 saves;
+  - seed 5 with `SAVE_WALL_MS=7`: `d95333fa`, 601 saves, 1.29 GB.
+- **`slot-test` passes at its unchanged 150 s window under the shipped world: 15/0, with 9 of 9 built universes saved.**
+  - #382 saw 0 of 9. The pre-registration's planned move of `WARM` to 450 s was not needed and was not made.
+- **One `slot-test` row had to change, and the change is stricter.**
+  - Clock saves land universes' saved T values a tick or two apart (597, 597, 598). The restore row's "no other slot's T is
+    closer" rule called three correct restores WRONG by one tick. That is the nearest-tick noise its own header warns about.
+  - The worker now reports `stat().bootT`, the T each universe booted with. The engine's boot runs one tick synchronously, so it
+    is `totalTicks - tick` at the end of the engine's body.
+  - The row requires `bootT` to equal the slot's own saved T exactly. Result: 9 own, 0 wrong.
+  - **Negative side:** with `u1`'s and `u3`'s saves swapped before the reload, the row went red on exactly those two (`u1` booted
+    with 874, `u3`'s T; `u3` with 1080, `u1`'s). `u1` and `u5` had saved one tick apart (1080, 1079), which the old rule could not
+    have told apart.
+  - What exact matching still cannot separate is two slots saved at exactly the same T (`u0`, `u4` and `collective` all at 800 in
+    one run). The saved-genome fingerprint row covers that case.
