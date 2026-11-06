@@ -29800,3 +29800,31 @@ to a container restart at 22 minutes and is kept as `void-reload1-container-rest
 - **What this says, and what it does not.**
   - It says a viewer's field under the shipped world, reloaded, picks up where it was and goes on finding.
   - It is one field, one reload, one hour. It is not a comparison: there is no old-world arm.
+
+### #385 — DESIGN ONLY, not pre-registered: the LIVE stack under one currency has no direction per CPU-hour
+- **What `LIVE_STACK=0` turns off.** It skips the LIVE table's fill, so only the flags whose readers default off go off: 18 of 44.
+  - `NICHE_FRONTIER`, `NICHE_NDIM`, `NICHE_LOCAL`, `SPECIATE`, `COLO_SURV`, `COLO_PIONEER`;
+  - `DRAW_VM` (a display mechanism), `GROUP_ROLES`, `DIMS_SAT`, `SPATIAL_NICHE`, `NICHE_BUILD`, `RED_QUEEN`;
+  - `FRONTIER_EXPAND`, `OPCODE_NOVELTY` (and with it AIM's pull, already off), `NOVELTY_ARCHIVE`, `GROUP_COMMONS`, `MEME_TRANSFER`;
+  - and `MINT_GATE`, for which no reader was found.
+
+  The other 26 are read as `??1` and stay on.
+- **#377 found the computing world dead by tick 500 without it.** That was under two currencies, where amplitude killed. In the
+  shipped world it lives.
+- **Six seen seeds**, 4,000 ticks each, CPU timed, the default against `LIVE_STACK=0`:
+
+  | Seed | V ratio | Per-CPU-hour ratio |
+  |---|---|---|
+  | 10401 | 0.67 | 1.47 |
+  | 10402 | 2.79 | 0.48 |
+  | 10403 | 1.45 | 0.53 |
+  | 11501 | 10.3 | 1.38 |
+  | 11502 | 0.72 | 1.69 |
+  | 11503 | 0.60 | 0.55 |
+
+  Per CPU-hour it is 3 up and 3 down, with a geometric mean of 0.88.
+- **The no-LIVE worlds split in size.** Some settled near 1,600-1,650 alive (10402, 10403, 11501) and others near 650-850. The
+  large ones find more per tick and pay for it in CPU.
+- There is no direction to pre-register. Nothing moves, and the knob stays.
+- If it is taken up again, it should be split: `DRAW_VM` is a display mechanism, and a ship built on `LIVE_STACK=0` would change the
+  look.

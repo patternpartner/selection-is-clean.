@@ -1,5 +1,0 @@
-{"boot":true,"tick":0,"alive":651,"loaded":false,"germLen":19}
-{"tick":500,"alive":542,"meanAlive":644,"taskInc":142.77,"sunInc":131.82,"paid":6132,"fnPaid":156,"newToHistory":156,"everPaid":156,"expH":108.23,"meanSz":3.735,"progs":296,"readCarried":536,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
-{"diag":500,"birth":991,"refused":1071,"unprovisioned":0,"rationed":0,"prey":4,"scavenge":0,"pull":0,"launch":0,"esc":27,"pred155":1,"meanE":0.15,"meanAmp":0.061,"aims":2,"meanAge":214,"meanProv":0.003,"bigLin":0.18,"lineages":233,"BEC":0.25,"refF":null,"refRate":null,"PBC":1}
-{"tick":1000,"alive":857,"meanAlive":791,"taskInc":619.06,"sunInc":62.3,"paid":3723,"fnPaid":607,"newToHistory":485,"everPaid":641,"expH":440.81,"meanSz":5.596,"progs":540,"readCarried":847,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
-{"diag":1000,"birth":1323,"refused":1499,"unprovisioned":0,"rationed":0,"prey":5,"scavenge":0,"pull":0,"launch":2,"esc":101,"pred155":0,"meanE":0.219,"meanAmp":0.046,"aims":2,"meanAge":216,"meanProv":0.003,"bigLin":0.29,"lineages":130,"BEC":0.25,"refF":null,"refRate":null,"PBC":1}
