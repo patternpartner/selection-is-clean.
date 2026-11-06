@@ -29878,3 +29878,24 @@ per-instruction price is charged to amplitude, which no longer kills, so the cap
 - **`VM_CAP0` is removed** (the engine is back to `main` byte for byte). The finding stands in this note: the length cap is not what
   holds depth back. Depth at this rung is built across creatures, by reading neighbours' published words, more than inside one
   program.
+
+### #390 — DESIGN ONLY: the drain on read functions' pools is at a local optimum (TASK_TROPHP 50 beats 0 and 100 per CPU-hour on 3 of 3)
+**The drain (#348).** When a word built from read words is paid, `TASK_TROPHP/100 x pay / m` is taken from the pools of the m
+functions that fed it. The tax is destroyed, and the creature that published the read word gets nothing. It is the one price on
+building from a neighbour's work, so it is the lever #389 pointed at.
+
+**Design:** seeds 10401-10403 (seen), 4,000 ticks, CPU timed. The default arm is #389's, from a byte-identical engine.
+
+| Seed | No drain (0): V | No drain (0): per CPU | Double (100): V | Double (100): per CPU |
+|---|---|---|---|---|
+| 10401 | 0.39x | 0.70x | 0.65x | 0.76x |
+| 10402 | 1.33x | 0.96x | 2.01x | 0.44x |
+| 10403 | 0.93x | 0.90x | 0.46x | 0.62x |
+
+- The default is best per CPU-hour on all three seeds, against both directions.
+- So the chain economy matters: no drain costs 4-30% and a double drain costs 24-56%.
+- The drain is not a lever to move. Nothing changes.
+- **The untested alternative is a ROYALTY:** pay the creature whose published word was read when the word built on it is paid.
+  - Nothing tracks that now. A word keeps only function keys.
+  - Any per-word record of a source creature would have to survive `compact()` moving slots every 45 ticks inside a 50-tick epoch.
+    That is CLAUDE.md's slot trap.
