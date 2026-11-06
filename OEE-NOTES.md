@@ -29899,3 +29899,38 @@ building from a neighbour's work, so it is the lever #389 pointed at.
   - Nothing tracks that now. A word keeps only function keys.
   - Any per-word record of a source creature would have to survive `compact()` moving slots every 45 ticks inside a 50-tick epoch.
     That is CLAUDE.md's slot trap.
+
+### #391 — DESIGN ONLY: novelty here is built on neighbours' work, and a royalty to them does not help per CPU-hour
+- **The census that prompted it.** The engine's read-only payment hook (`__taskOnPay`) was run over 4,000 ticks of the shipped
+  world. It split paid words into those built from read words (any read key in `tK`) and those built without:
+
+  | Seed | Payments, without / with reads | Mean formula size, without / with reads | New functions built from reads | New size-9+ functions built from reads |
+  |---|---|---|---|---|
+  | 10401 | 13,662 / 25,481 | 2.5 / 5.1 | 3,837 of 4,238 (91%) | 1,390 of 1,510 (92%) |
+  | 10403 | 12,530 / 64,652 | 2.4 / 4.3 | 5,446 of 5,610 (97%) | 2,171 of 2,221 (98%) |
+
+  **Novelty at this rung is cumulative across creatures.** Almost every new function, and almost every deep one, is computed on top
+  of a word a neighbour published. (A read key marks data flow into the word, not that the read bits were essential.)
+- **The publisher of a word that others build on is paid nothing**, and #390's drain taxes its function's pool. So a royalty was
+  the obvious test.
+  - `TASK_ROYP=p`: p percent of a paid word's pay, split among the creatures that published its read words. The builder keeps the
+    rest, and any share whose publisher has died or is itself.
+  - Publishers were found by a serial carried across `compact()` by `taskMove`, with the slot as a hint.
+  - Unset it was byte-identical (`b07a4474`, `d7d1c3aa`, `c8378b52`). It was checked to pay: 77.9 of 340.4 income in 1,000 ticks
+    at 25%.
+- **Design:** seeds 10401-10403 (seen), 4,000 ticks, CPU timed. The default arm is #389's.
+
+  | Seed | 25%: V | 25%: per CPU | 50%: V | 50%: per CPU |
+  |---|---|---|---|---|
+  | 10401 | 0.47x | 0.79x | 0.70x | 1.36x |
+  | 10402 | 2.26x | 0.78x | 8.41x | 3.00x |
+  | 10403 | 0.54x | 0.79x | 0.22x | 0.33x |
+
+  - At 25% it is about 21% worse per CPU-hour on all three. At 50% it swings from 3x to a third. The best world it made (10402: 8,928
+    new functions, mean paid size 8.3, the deepest seen) is matched by its worst.
+  - No direction to pre-register. **The knob is removed** and the engine is back to `main` byte for byte. The census stands.
+- **Where #389-#391 leave the TASKS economy:**
+  - The program cap, the logic-op draw share, the drain and a royalty were each moved one way or both. None improved on the shipped
+    world per CPU-hour on the design seeds.
+  - The economy sits at, or near, a local optimum on every axis tried. The next gains are more likely in speed (#386's kind) or in
+    the field, than in another price.
