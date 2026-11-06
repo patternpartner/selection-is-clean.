@@ -29752,3 +29752,12 @@ changes little (20.3 s to 19.6 s), because its world has fewer pairs.
     30 minutes.
   - The rules are byte-identical, so ticks are the direct measure. Novelty per tick is unchanged in distribution, so more ticks
     per hour is more novelty per hour in expectation. That expectation is not a measurement.
+- **Acceptance:**
+  - `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0.
+  - `smoke.sh` alone: 68 ok, 1 failing. The failure was `layers-test`'s "a dark universe ticks faster than a lit one" at 632 against
+    569 (1.11, against 1.15).
+  - Alone it passed twice at 1.28 and 1.26 (49/0). `main`'s engine alone read 1.23.
+  - So it is the suite's own overhead on a one-universe, 20-second timing row, the same class as `collective-test`'s trickle. Not
+    retuned.
+  - A browser A/B of one lit universe for 30 s, four runs each way, cannot measure the cache: unseeded worlds ran 663-1,432
+    creatures. The clean measure is node's, the identical trajectory on the same V8.
