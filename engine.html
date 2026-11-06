@@ -10698,6 +10698,12 @@ function persistOnly(){ const g=encodeGenome(); if(g&&g.length<SAVE_BUDGET){ loc
 const __tk=(n,d)=>{ const v=(typeof globalThis!=='undefined')?globalThis[n]:undefined; return (v!==undefined&&Number.isFinite(+v))?+v:d; };
 const TASK_EPOCH=50, TASK_F=0.2, TASK_NF=65536, TASK_OP0=CORE_OPCODES+MAX_BOUND_OPCODES-5;
 const TASK_CAP=__tk('__TASK_CAPM',400)/1000, TASK_RATE=__tk('__TASK_RATEM',20)/1000, TASK_TROPH=__tk('__TASK_TROPHP',50)/100;
+// #391: TASK_ROYP=p - A ROYALTY. #390's census found 91-97% of a world's NEW functions are built from words read off neighbours, and the
+// neighbour whose word was built on is paid nothing (the drain even taxes its function's pool). With p>0, when a word is paid, p percent of
+// the pay is split among the creatures that PUBLISHED the read words that fed it (one share per read key; the builder keeps the rest, and
+// keeps any share whose publisher has died or is itself). Energy moves, none is made. Publishers are found by a serial (tUid) that
+// taskMove carries across compact(), with the slot as a hint. Default 0: every line of it is behind TASK_ROY>0, byte-identical.
+const TASK_ROY=__tk('__TASK_ROYP',0)/100;
 const TASK_SUN=__tk('__TASK_SUNP',25)/100, TASK_DRAWP=__tk('__TASK_DRAWP',25)/100;
 // #353 - TASK_FOUNDER=1 (the package under test, PREREG-founder.md): READ that MISSES (no neighbour in the sector published this epoch)
 // leaves its target word and its masks as they were, instead of writing 0; and the founder computes with ONE output that is a
@@ -10753,6 +10759,7 @@ const TASK_SZ4=TASKS_ON?(()=>{ const s='5>;:;:>::>8;8;:6;:>:>:B<===;=;>9:>8;===;
 const tWin=new Uint32Array(4);
 const tW=TASKS_ON?new Uint32Array(CAP*4):null, tJ=TASKS_ON?new Uint32Array(CAP*4):null, tDm=TASKS_ON?new Uint32Array(CAP*4):null;
 const tK=TASKS_ON?new Int32Array(CAP*16).fill(-1):null;   // per word, the keys of up to 4 clean read functions that fed it
+const tUid=(TASKS_ON&&TASK_ROY>0)?new Float64Array(CAP):null, tKs=(TASKS_ON&&TASK_ROY>0)?new Float64Array(CAP*16):null, tKsS=(TASKS_ON&&TASK_ROY>0)?new Int32Array(CAP*16).fill(-1):null; let __tUidN=0;   // #391: a creature's serial; per read key, its publisher's serial and slot
 const tLast=TASKS_ON?new Uint32Array(CAP):null, tLastE=TASKS_ON?new Int32Array(CAP).fill(-1):null, tLastJ=TASKS_ON?new Uint32Array(CAP):null, tLastDm=TASKS_ON?new Uint32Array(CAP):null, tLastK=TASKS_ON?new Int32Array(CAP).fill(-1):null;
 const tIc=TASKS_ON?new Uint8Array(CAP):null, tPE=TASKS_ON?new Int32Array(CAP).fill(-1):null;
 const tRd=TASKS_ON?new Uint32Array(CAP*4):null, tRdE=TASKS_ON?new Int32Array(CAP*4).fill(-1):null, tRdI=TASKS_ON?new Uint8Array(CAP):null;
@@ -10779,9 +10786,10 @@ function taskTick(){   // once per tick, before the solo programs run: the epoch
   const e=Math.floor(tick/TASK_EPOCH);
   if(e!==tEpoch){ tEpoch=e; taskDrawInputs(); for(let q=0;q<CAP*4;q++){ tJ[q]=(tJ[q]|tDm[q])>>>0; tDm[q]=0; } tK.fill(-1); }   // last epoch's input bits are junk now; read keys do not outlive it
   for(let T=0;T<TASK_NF;T++)tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); }
-function taskBirth(i){ const o=i*4; tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
+function taskBirth(i){ const o=i*4; if(TASK_ROY>0){ tUid[i]=++__tUidN; } tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
   tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; tRE[i]=-1; }
 function taskMove(w,r){ const a=w*4, b=r*4; for(let q=0;q<4;q++){ tW[a+q]=tW[b+q]; tJ[a+q]=tJ[b+q]; tDm[a+q]=tDm[b+q]; tRd[a+q]=tRd[b+q]; tRdE[a+q]=tRdE[b+q]; } for(let q=0;q<16;q++)tK[a*4+q]=tK[b*4+q];
+  if(TASK_ROY>0){ tUid[w]=tUid[r]; for(let q=0;q<16;q++){ tKs[a*4+q]=tKs[b*4+q]; tKsS[a*4+q]=tKsS[b*4+q]; } }
   tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tRdI[w]=tRdI[r]; tRx[w]=tRx[r]; tRy[w]=tRy[r]; tRE[w]=tRE[r]; tRT[w]=tRT[r]; }
 // the nearest living particle in sector s (of 8, world axes) within one interaction radius, from the cells sunStep listed this tick
 function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1); let best=-1, bd=CELL*CELL;
@@ -10793,13 +10801,13 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   if(t===0){ tW[D]=tWin[tIc[i]]; tIc[i]=(tIc[i]+1)&3; tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); return; }   // T_INPUT
   if(t===1){ const a0=tW[D], s0=tW[S], ja=tJ[D], js=tJ[S], da=tDm[D], ds=tDm[S], fa=~a0&~ja, fs=~s0&~js, both=fa&fs, none=~(fa|fs);   // T_NAND; fa, fs: clean zeros
     tW[D]=(~(a0&s0))>>>0; tJ[D]=(none&(ja|js))>>>0; tDm[D]=((both&da&ds)|(fa&~fs&da)|(fs&~fa&ds)|(none&(da|ds)))>>>0;   // a forced bit depends on the clean zero that forced it
-    if(S!==D) for(let q=0;q<4;q++){ const k=tK[S*4+q]; if(k<0)continue; let has=false, free=-1; for(let r=0;r<4;r++){ if(tK[D*4+r]===k)has=true; if(tK[D*4+r]<0&&free<0)free=r; } if(!has&&free>=0)tK[D*4+free]=k; }
+    if(S!==D) for(let q=0;q<4;q++){ const k=tK[S*4+q]; if(k<0)continue; let has=false, free=-1; for(let r=0;r<4;r++){ if(tK[D*4+r]===k)has=true; if(tK[D*4+r]<0&&free<0)free=r; } if(!has&&free>=0){ tK[D*4+free]=k; if(TASK_ROY>0){ tKs[D*4+free]=tKs[S*4+q]; tKsS[D*4+free]=tKsS[S*4+q]; } } }
     return; }
-  if(t===2){ tW[D]=tW[S]; tJ[D]=tJ[S]; tDm[D]=tDm[S]; for(let q=0;q<4;q++)tK[D*4+q]=tK[S*4+q]; return; }   // T_COPY
+  if(t===2){ tW[D]=tW[S]; tJ[D]=tJ[S]; tDm[D]=tDm[S]; for(let q=0;q<4;q++)tK[D*4+q]=tK[S*4+q]; if(TASK_ROY>0)for(let q=0;q<4;q++){ tKs[D*4+q]=tKs[S*4+q]; tKsS[D*4+q]=tKsS[S*4+q]; } return; }   // T_COPY
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e, v=hit?tLast[a]:0; tEv.reads++; if(TASK_FOUNDER&&!hit)return;   // #353: a miss leaves the word alone
     tW[D]=v; if(v)tEv.readHits++;   // T_READ
     if(hit){ tRx[i]=px[a]; tRy[i]=py[a]; tRE[i]=e; tRT[i]=tLastK[a]; }   // #357: for the renderer only
-    tJ[D]=v?tLastJ[a]:0; tDm[D]=v?tLastDm[a]:0; tK.fill(-1,D*4,D*4+4); if(v&&tLastK[a]>=0)tK[D*4]=tLastK[a];
+    tJ[D]=v?tLastJ[a]:0; tDm[D]=v?tLastDm[a]:0; tK.fill(-1,D*4,D*4+4); if(v&&tLastK[a]>=0){ tK[D*4]=tLastK[a]; if(TASK_ROY>0){ tKs[D*4]=tUid[a]; tKsS[D*4]=a; } }
     const q=o+tRdI[i]; tRd[q]=v; tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; }
   // T_OUTPUT: published first (a neighbour may read it whether or not it pays), then judged
   const v=tW[D]; tEv.outs++; tLast[i]=v; tLastE[i]=e; tLastJ[i]=tJ[D]; tLastDm[i]=tDm[D]; { const K=tJ[D]===0?taskFn(v):-1; tLastK[i]=(K>0&&K<0xFFFF)?K:-1; }
@@ -10807,11 +10815,17 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   if(tJ[D]!==0){ tEv.dirty++; return; }
   const T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; }
   if(tPE[i]===e)return; tPE[i]=e;   // one payment per epoch
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+(TASK_ROY>0?taskRoyalty(D,g,P):g); if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
 // that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between
 // computing a function and being fed for it is cut. Off (default) this is never called and draws nothing.
+// #391: pay the publishers of the read words that fed word D their shares of g; returns what the payer P keeps
+function taskRoyalty(D,g,P){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(!m)return g; const sh=TASK_ROY*g/m; let kept=g;
+  for(let q=0;q<4;q++){ if(tK[D*4+q]<0)continue; const u=tKs[D*4+q]; if(!(u>0))continue; let s=tKsS[D*4+q];
+    if(!(s>=0&&s<N&&palive[s]&&tUid[s]===u)){ s=-1; for(let j=0;j<N;j++) if(palive[j]&&tUid[j]===u){ s=j; break; } }
+    if(s<0||s===P)continue; kept-=sh; tEv.royalty=(tEv.royalty||0)+sh; const y=pE[s]+sh; if(y>SUN_STORE){ tEv.overflow+=y-SUN_STORE; pE[s]=SUN_STORE; } else pE[s]=y; }
+  return kept; }
 function taskShuffleTo(i){ for(let t=0;t<32;t++){ const r=(Math.random()*N)|0; if(palive[r])return r; } return i; }
 function taskDrawOp(){ return Math.random()<TASK_DRAWP?TASK_OP0+((Math.random()*5)|0):Math.floor(Math.random()*OPCODE_DRAW); }   // only called under TASKS
 // the threshold-free readouts (#345): effective number of functions over the whole income vector, and every function with income >= 10 per mille of the total
