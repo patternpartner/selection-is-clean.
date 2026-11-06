@@ -29761,3 +29761,42 @@ changes little (20.3 s to 19.6 s), because its world has fewer pairs.
     retuned.
   - A browser A/B of one lit universe for 30 s, four runs each way, cannot measure the cache: unseeded worlds ran 663-1,432
     creatures. The clean measure is node's, the identical trajectory on the same V8.
+
+### #387 — THE SHIPPED FIELD FOR AN HOUR, RELOADED HALFWAY (descriptive, one field, alone on this machine)
+`lab/port/field-rate.js` with `SECS=3600 RELOAD_AT=1800`. Out `lab/port/out-field-long/reload2.jsonl`. The first attempt was lost
+to a container restart at 22 minutes and is kept as `void-reload1-container-restart.jsonl`.
+- **Novelty kept arriving all hour.** F, the distinct functions paid anywhere in the field:
+
+  | Minute | F |
+  |---|---|
+  | 5 | 4,665 |
+  | 10 | 7,071 |
+  | 15 | 9,584 |
+  | 20 | 12,142 |
+  | 25 | 14,112 |
+  | 30 | 15,879 |
+  | reload | |
+  | 35 | 17,390 |
+  | 40 | 18,652 |
+  | 45 | 20,006 |
+  | 50 | 21,349 |
+  | 55 | 22,499 |
+  | 60 | 23,639 |
+
+  - The rate slows from about 2,500 per 5 minutes in the first 15 to about 1,150-1,350 per 5 minutes in the last 15. It does not
+    stop: the second half found 7,760, about half of the first.
+  - 217,000 ticks ran across 31 universes. About 25,900-30,800 creatures were alive throughout. No page errors, and no universe
+    missed a read.
+  - Alone on the machine, this field found 15,879 by 30 minutes. #383's pairs at half the machine found 5,592-8,282.
+- **The reload cost about one minute of novelty and almost no world.**
+  - F rose 88 in the minute containing the reload, against about 300 a minute either side.
+  - All 31 universes restored their populations (restored 438-1,770 creatures each, against 429-1,716 alive just before).
+  - Ticks lost at the reload were a median of 19, at most 217. Some came back at a later T than the last pre-reload sample showed,
+    because the universe ran and saved between that sample and the reload.
+  - Saves came from both clocks: `u0` and `u4` booted at 4,500 (a tick autosave), `u1` at 6,213 and `u5` at 6,216 (#384's clock
+    saves).
+  - Each universe's own lifetime count came back within a few functions of where it was (for example 2,717 to 2,713, and 4,824 to
+    4,788). The difference is what was found after its last save. The field's union keeps those.
+- **What this says, and what it does not.**
+  - It says a viewer's field under the shipped world, reloaded, picks up where it was and goes on finding.
+  - It is one field, one reload, one hour. It is not a comparison: there is no old-world arm.
