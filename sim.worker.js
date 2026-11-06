@@ -113,7 +113,7 @@ const BRIDGE =
   // arrays, nothing drawn or written. Also the switches a field rig must check are on (STORE_DEATH, REPL_CROWD_K, PROV_BIRTH, AIM).
   '__inst.api.seen=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON||!tSeen)return {off:true,tick:tick};' +
     'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="";for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
-    'return {tick:tick,totalTicks:genome.totalTicks|0,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+    'return {tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +

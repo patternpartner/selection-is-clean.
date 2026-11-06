@@ -24,6 +24,9 @@ const ENGINE = process.env.ENGINE ? path.resolve(process.env.ENGINE) : path.join
 const SECS = +(process.env.SECS || 1800), EVERY = +(process.env.EVERY || 60);
 const OUT = process.env.OUT || '';
 const HASH = process.env.HASH || '';
+// RELOAD_AT=s reloads the page once at s seconds, as a viewer's tab kill does; the union carries on across it, and the first sample
+// after it records, per universe, the T it booted with (bootT) and what its population snapshot restored (pop).
+const RELOAD_AT = +(process.env.RELOAD_AT || 0);
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
 const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>fs.existsSync(p)) || '/opt/pw-browsers/chromium';
 const NF = 65536;
@@ -79,14 +82,16 @@ const readField = (page, ms) => page.evaluate(async ms => {
       const b = Buffer.from(r.b64, 'base64');
       for (let j = 0; j < b.length; j++) { const x = b[j]; if (!x) continue;
         for (let k = 0; k < 8; k++) if ((x >> k) & 1) { const T = j * 8 + k; if (!union[T]) { union[T] = 1; F++; } } }
-      slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0]);
+      slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);
     }
     for (const s in perSlot) S += perSlot[s].found;
     emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, S, K, A, U, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
+  let reloaded = false;
   for (let at = EVERY; at <= SECS; at += EVERY) {
     const wait = t0 + at * 1000 - Date.now(); if (wait > 0) await page.waitForTimeout(wait);
+    if (RELOAD_AT && !reloaded && at > RELOAD_AT) { reloaded = true; await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(5000); emit({ t: at, reloaded: true }); }
     try { await sample(at >= SECS, at); } catch (e) { emit({ t: at, sampleErr: String(e && e.message) }); }
   }
   if (errs.length) emit({ pageErrors: errs.slice(0, 5) });
