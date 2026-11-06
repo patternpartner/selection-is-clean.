@@ -70,6 +70,7 @@ console.error=()=>{};console.warn=()=>{};};
 // #296: MIND=<percent> puts the primitive mind (#293) into the real engine: it learns from every parent and writes one
 // instruction of a child with those odds. MIND_MODE 1 frozen, 2 uniform (the controls); MIND_SEED its own random stream.
 // #376: TASK_SHUFFLE=1 - every task payment feeds a random living creature, not the one that computed (the control for selection).
+// #389: VM_CAP0=n - a fresh world's founding program-length cap (vmMaxInstructions; default 16). Unset: byte-identical.
 // #384: SAVE_WALL_MS=ms - save (genome, population, mind; no archive, no trim) after ms of the clock without one; browser 120000, node 0.
 // #382: REPL_CROWD_K=K - under REPL, a birth costs BIRTH_ENERGY_COST x living/K (a density-dependent price; unset: fixed).
 // #382: REPL_BIRTH_COSTM=n - under REPL, a birth costs n thousandths of store (default 250).
@@ -81,7 +82,7 @@ console.error=()=>{};console.warn=()=>{};};
 // #369: LATERAL_HERIT=1 makes op 225's lateral program copy heritable (it also becomes the genome's program).
 // #350: TASKS=1 makes computation pay (implies REPL); TASK_CAPM pool cap per formula gate in thousandths, TASK_RATEM regrowth in
 // thousandths, TASK_TROPHP the drain in percent, TASK_SUNP sunlight as a percent of REPL's, TASK_DRAWP percent of opcode draws that are logic ops.
-module.exports.KNOBS = ['SAVE_WALL_MS','REPL_CROWD_K','REPL_BIRTH_COSTM','STORE_DEATH','COSMOS','COSMOS_LAW','AIM_FLAT','LIVE_STACK','TASK_SHUFFLE','REPL_REFUGE','LATERAL_HERIT','MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT','SUN','REPL','REPL_INERT','REPL_ARMS','REPL_ATOMS','REPL_KEYD','REPL_SEX','REPL_ATOM_INERT','REPL_COST','REPL_FROZEN','MIND','MIND_MODE','MIND_SEED','TASKS','TASK_CAPM','TASK_RATEM','TASK_TROPHP','TASK_SUNP','TASK_DRAWP','TASK_FOUNDER','TASK_MUT','TASK_LEAN','TASK_TRICKLE','REPL_PREY'];
+module.exports.KNOBS = ['VM_CAP0','SAVE_WALL_MS','REPL_CROWD_K','REPL_BIRTH_COSTM','STORE_DEATH','COSMOS','COSMOS_LAW','AIM_FLAT','LIVE_STACK','TASK_SHUFFLE','REPL_REFUGE','LATERAL_HERIT','MEME_TRANSFER','MOTIF_SELECT','FOUND','LAW_PERSIST','MUTMAG','AIM','INHERIT','INHERIT_SD','RATION','PROV_BIRTH','RARE_BIRTH_K','OUTLIER_BIRTH_K','EXTINCT_UNDO','AIM_STILL','LAW_KCAP','PEERINS','SWITCHBOARD','MECH_PACE','GROUP_PROBE','GENE_DRAW','LAWMUT','SUN','REPL','REPL_INERT','REPL_ARMS','REPL_ATOMS','REPL_KEYD','REPL_SEX','REPL_ATOM_INERT','REPL_COST','REPL_FROZEN','MIND','MIND_MODE','MIND_SEED','TASKS','TASK_CAPM','TASK_RATEM','TASK_TROPHP','TASK_SUNP','TASK_DRAWP','TASK_FOUNDER','TASK_MUT','TASK_LEAN','TASK_TRICKLE','REPL_PREY'];
 module.exports.applyKnobs = function(g){
   for (const kn of module.exports.KNOBS)
     if (process.env[kn] !== undefined) g['__'+kn] = parseInt(process.env[kn], 10);
