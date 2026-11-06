@@ -26574,10 +26574,6 @@ function init(){
   resize();N=0;
   const loaded=loadGenome();
   sanitizeGenome();
-  // #389: VM_CAP0=n sets a FRESH world's founding program-length cap (vmMaxInstructions, default 16; the gene then evolves as always).
-  // A design knob: under one currency the per-instruction price is charged to amplitude, which no longer kills, and 53-83% of
-  // programs sit at their cap. Unset, or a loaded world: byte-identical.
-  if(!loaded&&typeof globalThis!=='undefined'&&globalThis.__VM_CAP0!==undefined&&Number.isFinite(+globalThis.__VM_CAP0))genome.vmMaxInstructions=__cl(Math.round(+globalThis.__VM_CAP0),1,96);
   if(loaded&&REPL_ON)replEnsureHead();   // #352: a saved germline gets the REPL/TASKS head back
   const n=Math.min(400,(W*H/2800)|0);
   // #368: the saved population, when there is one and it is this genome's, IS the boot population. Nothing below runs.

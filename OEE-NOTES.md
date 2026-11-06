@@ -29858,3 +29858,23 @@ a world has found can be read against what exists, by size:
   is at size 9 or more.
 - A field's union is larger, because 31 universes search in parallel and migrants carry finds. But it is the same shape: the
   23,639 after an hour cannot be mostly small, since only 9,000 functions exist at size 8 or below.
+
+### #389 — DESIGN ONLY: neither a longer founding program nor more logic-op draws reaches deeper, per CPU-hour
+#388 found that the bound is depth. In the shipped world 53-83% of programs sit at their own length cap (13-20 instructions, an
+evolving gene that started at 16). Only 5-6 of about 16 instructions are logic ops, and about 1.7 are NANDs. Under one currency the
+per-instruction price is charged to amplitude, which no longer kills, so the cap looked like the binding thing.
+- Design: seeds 10401-10403 (seen), 4,000 ticks, CPU timed. The arms were the default; `CAP32` (a fresh world's founding cap 32, a
+  temporary knob `VM_CAP0`); and `DRAW50` (`TASK_DRAWP=50`, half of opcode draws are logic ops, against 25).
+
+  | Seed | CAP32, V | CAP32, per CPU | DRAW50, V | DRAW50, per CPU |
+  |---|---|---|---|---|
+  | 10401 | 0.75x | 0.67x | 1.69x | 1.47x |
+  | 10402 | 2.37x | 0.64x | 2.23x | 0.45x |
+  | 10403 | 0.26x | 0.23x | 0.91x | 0.79x |
+
+- **`CAP32` is worse per CPU-hour on all three, and its paid functions are SHALLOWER:** mean formula size 6.2, 3.6 and 3.8 against
+  6.4, 5.2 and 7.3. Room to grow does not make programs compute deeper. Longer programs dilute the logic ops and cost more CPU.
+- **`DRAW50` is mixed**, and there is nothing to pre-register.
+- **`VM_CAP0` is removed** (the engine is back to `main` byte for byte). The finding stands in this note: the length cap is not what
+  holds depth back. Depth at this rung is built across creatures, by reading neighbours' published words, more than inside one
+  program.
