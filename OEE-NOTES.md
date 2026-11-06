@@ -29828,3 +29828,33 @@ to a container restart at 22 minutes and is kept as `void-reload1-container-rest
 - There is no direction to pre-register. Nothing moves, and the knob stays.
 - If it is taken up again, it should be split: `DRAW_VM` is a display mechanism, and a ship built on `LIVE_STACK=0` would change the
   look.
+
+### #388 — THE FUNCTION SPACE IS NOT FILLING UP; ITS EASY END IS (one world each on seeds 10401 and 10403, 6,000 ticks, shipped world)
+Prompted by #387: the field's union reached 23,639 of the 65,536 four-input functions in an hour, while the rate halved. A finite
+space a third found could mean the ceiling is near. The engine keeps each function's exact NAND formula size (`TASK_SZ4`), so what
+a world has found can be read against what exists, by size:
+
+| Formula size | Exist | Found, 10401 | Found, 10403 |
+|---|---|---|---|
+| 1-4 | 322 | 314 (98%) | 314 (98%) |
+| 5 | 556 | 73% | 90% |
+| 6 | 1,081 | 60% | 78% |
+| 7 | 2,190 | 37% | 51% |
+| 8 | 3,335 | 24% | 37% |
+| 9 | 5,772 | 12% | 19% |
+| 10 | 6,418 | 7.2% | 12% |
+| 11 | 7,661 | 3.8% | 6.4% |
+| 12 | 8,069 | 1.9% | 3.5% |
+| 13 | 8,139 | 1.0% | 2.6% |
+| 14-17 | 18,600 | 0.1-0.6% | 0.3-1.3% |
+| 18-26 | 3,389 | 1 | 7 |
+
+- Totals found: 4,724 and 6,994.
+- **The space is shaped like a bell centred on size 12-13.** 55,000 of its functions sit at sizes 9-17, and a world after 6,000
+  ticks has found 1-19% of the classes at sizes 9-12 and almost nothing beyond.
+- **The found fraction roughly halves with each step in size past 6.** That is a frontier that moves outward, not a pool running
+  dry.
+- **So the bound on novelty at this rung is how DEEP a function a program reaches, not how many are left.** Of what is left, 99%
+  is at size 9 or more.
+- A field's union is larger, because 31 universes search in parallel and migrants carry finds. But it is the same shape: the
+  23,639 after an hour cannot be mostly small, since only 9,000 functions exist at size 8 or below.
