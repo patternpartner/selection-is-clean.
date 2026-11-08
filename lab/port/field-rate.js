@@ -40,7 +40,7 @@ const server = http.createServer((req, res) => {
     res.end(b); });
 });
 
-const union = new Uint8Array(NF);
+const union = new Uint8Array(NF), union5 = new Set();   // #392: five-input worlds report canonical truth tables
 let F = 0;
 const perSlot = {};   // slot -> {max n-boot, last ticks}
 const emit = o => { const s = JSON.stringify(o); if (OUT) fs.appendFileSync(OUT, s + '\n'); else console.log(s); };
@@ -80,6 +80,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
       ps.found = Math.max(ps.found, (r.n | 0) - (r.boot | 0)); ps.ticks = r.totalTicks | 0;
       if (!sw) sw = r.sw;
       const b = Buffer.from(r.b64, 'base64');
+      if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]); continue; }   // #392: canonical truth tables
       for (let j = 0; j < b.length; j++) { const x = b[j]; if (!x) continue;
         for (let k = 0; k < 8; k++) if ((x >> k) & 1) { const T = j * 8 + k; if (!union[T]) { union[T] = 1; F++; } } }
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);

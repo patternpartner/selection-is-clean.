@@ -112,8 +112,11 @@ const BRIDGE =
   // count new functions across a running field: the union over universes, not a sum that counts a migrant's function twice. Read off
   // arrays, nothing drawn or written. Also the switches a field rig must check are on (STORE_DEATH, REPL_CROWD_K, PROV_BIRTH, AIM).
   '__inst.api.seen=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON||!tSeen)return {off:true,tick:tick};' +
-    'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="";for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
-    'return {tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+    'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="",in5=(typeof TASK_IN!=="undefined"&&TASK_IN===5);' +
+    // #392: at five inputs a slot means nothing outside its universe, so the canonical truth tables of seen functions go instead (4 bytes each)
+    'if(in5){for(var n=0;n<tSlotN;n++){var Ts=tSlots[n];if(!tSeen[Ts])continue;var Fk=tKey[Ts];b+=String.fromCharCode(Fk&255,(Fk>>>8)&255,(Fk>>>16)&255,(Fk>>>24)&255);}}else ' +
+    'for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
+    'return {in5:in5,tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
@@ -183,9 +186,9 @@ const BRIDGE =
       'if(tRE[i]>=e-1&&tRT[i]>=0)r[tRT[i]]=(r[tRT[i]]|0)+1;' +
       'var pe=tPE[i];if((pe!==e&&pe!==e-1)||tLastE[i]!==pe)continue;var K=tLastK[i];if(K<0)continue;paid++;' +
       'var o=f[K];if(!o)o=f[K]={n:0,w:tLast[i]>>>0,x:0,rd:0,cur:0};o.n++;o.x+=px[i];if(tRE[i]===pe)o.rd++;if(pe===e)o.cur++;}' +
-    'var v=Object.keys(f).map(function(k){var o=f[k];return [+k,o.n,o.w,+(o.x/o.n/W).toFixed(3),TASK_SZ4[+k],+(o.rd/o.n).toFixed(2)];})' +
+    'var v=Object.keys(f).map(function(k){var o=f[k];return [+k,o.n,o.w,+(o.x/o.n/W).toFixed(3),(typeof TASK_SZ!=="undefined"?TASK_SZ:TASK_SZ4)[+k],+(o.rd/o.n).toFixed(2)];})' +
       '.sort(function(a,b){return b[1]-a[1];}).slice(0,8);' +
-    'var h=Object.keys(r).map(function(k){return [+k,r[k],TASK_SZ4[+k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,3);' +
+    'var h=Object.keys(r).map(function(k){return [+k,r[k],(typeof TASK_SZ!=="undefined"?TASK_SZ:TASK_SZ4)[+k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,3);' +
     'return {tick:tick,epoch:e,alive:alive,paid:paid,v:v,h:h};}catch(err){return null;}};' +
   // A few numbers off the sim's own counters. The field is nine worlds behind worker
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to

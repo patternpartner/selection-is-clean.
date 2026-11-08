@@ -63,7 +63,7 @@ m._compile(code+`
       out(JSON.stringify({saved:t, genomeLen:g.length, popLen:pl, everPaid:seen.length, tSeenN:(typeof tSeenN!=='undefined')?tSeenN:null})); }
     if(t%WIN) continue;
     let tot=0, H=0, ms=0, nf=0, fresh=0; const inc=[]; for(let T=0;T<TASK_NF;T++){ const d=tE[T]-prev[T]; prev[T]=tE[T]; if(d>0){ inc.push([T,d]); tot+=d; if(!ever[T]){ ever[T]=1; fresh++; } } }
-    for(const [T,d] of inc){ const q=d/tot; H-=q*Math.log(q); ms+=q*TASK_SZ4[T]; nf++; }
+    for(const [T,d] of inc){ const q=d/tot; H-=q*Math.log(q); ms+=q*(typeof TASK_SZ!=='undefined'?TASK_SZ:TASK_SZ4)[T]; nf++; }
     const progs=new Set(); let alive=0, rd=0, desync=0; for(let i=0;i<N;i++){ if(!palive[i])continue; alive++; if(pGenome[i]&&pProg[i]!==pGenome[i].vmProgram)desync++; const p=pProg[i]||[]; let k=''; let r=0; for(const x of p){ k+=x[0]+','+(x[1]|0)+','+(x[2]|0)+','+(x[3]|0)+';'; if(x[0]===TASK_OP0+3)r=1; } rd+=r; progs.add(k); }
     out(JSON.stringify({tick:t, alive, meanAlive:aN?Math.round(aSum/aN):alive, taskInc:+(tEv.income-li).toFixed(2), sunInc:+(tEv.sun-ls).toFixed(2), paid:tEv.paid-lp, fnPaid:nf, newToHistory:fresh, everPaid:ever.reduce((a,b)=>a+b,0), expH:+Math.exp(H).toFixed(2), meanSz:+ms.toFixed(3), progs:progs.size, readCarried:rd, copies:copies-lastCopies, desync, laws:__liveness['cosmos.law']|0, lawKept:__liveness['cosmos.lawKept']|0, lawRevert:__liveness['cosmos.lawRevert']|0, lawTrial:__lawTrial&&__lawTrial.idx!==undefined?LAW_DECLARED[__lawTrial.idx].name:null}));
     if(DIAG){ const d={}; for(const k of DK){ const v=__liveness[k]|0; d[k.split('.').pop()]=v-(dPrev[k]|0); dPrev[k]=v; } let e=0,ag=0,pv=0,pr=0,am=0,na=0; const lin=new Map();
