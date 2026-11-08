@@ -10685,9 +10685,12 @@ const TASKS_ON=((typeof globalThis!=='undefined')&&((globalThis.__TASKS|0)!==0))
 //   #383 (PREREG-field.md): in a running browser field, distinct functions found anywhere in it by 30 minutes: 8 of 8 pairs ahead, median 1.80x, p 0.0039 (3.5x at 5 minutes, 2.0x at 20).
 //   Its cost was saving: a slower-ticking world reached the tick-1,800 autosave late. #384 (SAVE_WALL_MS, in loop) saves on the
 //   clock as well.
-// Only UNDEFINED globals are filled, so each can be set explicitly. PROV_BIRTH=1 STORE_DEATH=0 AIM=1 REPL_CROWD_K=0 restores the
-// world before #381 byte for byte. Without TASKS nothing changes.
-if(TASKS_ON&&typeof globalThis!=='undefined'){ if(globalThis.__PROV_BIRTH===undefined)globalThis.__PROV_BIRTH=0; if(globalThis.__STORE_DEATH===undefined)globalThis.__STORE_DEATH=1; if(globalThis.__AIM===undefined)globalThis.__AIM=0; if(globalThis.__REPL_CROWD_K===undefined)globalThis.__REPL_CROWD_K=450; }
+// #392 SHIPPED (PREREG-in5.md): FIVE-INPUT FUNCTIONS, TASK_IN 5. 20 unseen pairs, new functions per CPU-hour 3.56x (19 of 20, p < 0.0001),
+//   late/early 1.37 against 0.55 (slows less), shuffle 9-78x fewer (selected); in a running field 5.28x the distinct functions by 30 minutes
+//   (8 of 8, p 0.0039). TASK_IN=4 restores the four-input world byte for byte.
+// Only UNDEFINED globals are filled, so each can be set explicitly. PROV_BIRTH=1 STORE_DEATH=0 AIM=1 REPL_CROWD_K=0 TASK_IN=4 restores
+// the world before #381 byte for byte. Without TASKS nothing changes.
+if(TASKS_ON&&typeof globalThis!=='undefined'){ if(globalThis.__PROV_BIRTH===undefined)globalThis.__PROV_BIRTH=0; if(globalThis.__STORE_DEATH===undefined)globalThis.__STORE_DEATH=1; if(globalThis.__AIM===undefined)globalThis.__AIM=0; if(globalThis.__REPL_CROWD_K===undefined)globalThis.__REPL_CROWD_K=450; if(globalThis.__TASK_IN===undefined)globalThis.__TASK_IN=5; }
 // #384: the save on the clock (see the end of loop). On in a browser at 2 minutes; off under node unless SAVE_WALL_MS is set.
 const SAVE_WALL_MS=(()=>{ try{ const v=(typeof globalThis!=='undefined')?globalThis.__SAVE_WALL_MS:undefined; if(v!==undefined&&Number.isFinite(+v))return Math.max(0,+v);
   return (typeof process!=='undefined'&&process.versions&&process.versions.node)?0:120000; }catch(_){ return 0; } })();

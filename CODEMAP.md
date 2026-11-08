@@ -3120,3 +3120,14 @@ layer:
   - `__saveWallN` counts the saves.
   - The worker's `stat()` reports `bootT`, the T a universe booted with (`totalTicks - tick`, read at the end of the engine's body),
     and `slot-test` matches it exactly against each slot's saved T.
+- **#392 — five-input functions (`TASK_IN`, shipped as the TASKS default 5):**
+  - Everything sits beside `TASK_SZ4` and `taskDrawInputs` and is behind `TASK_IN===5`:
+    - `taskDrawInputs5` (one 32-row order);
+    - `taskTT5` (word to canonical truth table);
+    - `taskSz5` (grade: exact for functions of at most 4 inputs, Shannon or direct-form upper bound otherwise);
+    - `taskSlot5` and `taskFind5` (the open-addressed slot table `tKey`, `TASK_SZ`, `tSlots`);
+    - `seen5Add` and `tSet5` (the lifetime set);
+    - `taskRebuild5` (drops pools unpaid for 1,000 ticks above 85% fill, at an epoch boundary).
+  - The pay path refuses trivial words and checks the per-epoch payment before taking a slot.
+  - The save carries `world.seen5` (canonical ids).
+  - `sim.worker.js`'s `seen()` reports canonical ids with `in5:true`, and `field-rate.js` unions them (`union5`), reporting `n5`.

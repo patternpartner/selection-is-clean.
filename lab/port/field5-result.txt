@@ -1,0 +1,16 @@
+p1  F at 300/600/1200/1800 s:  IN4 2318/4630/7376/9680  IN5 12660/18907/31740/42335  ratio 4.37  |  S 35930 / 85603  ticks 62455 / 37506  alive 31577 / 33357  universes 31 / 31  5 of 9 built saved at 1080 / never s  longest read 33 / 39 s  missed at final 0 / 0
+p2  F at 300/600/1200/1800 s:  IN4 1786/3107/5599/7898  IN5 10354/17603/31538/43656  ratio 5.53  |  S 34045 / 89879  ticks 69120 / 39655  alive 26487 / 34690  universes 31 / 31  5 of 9 built saved at 1080 / never s  longest read 12 / 40 s  missed at final 0 / 0
+p3  F at 300/600/1200/1800 s:  IN4 3306/5246/7837/9702  IN5 15850/22597/36774/50460  ratio 5.20  |  S 37155 / 94555  ticks 57000 / 36595  alive 29727 / 33035  universes 31 / 31  5 of 9 built saved at 1620 / never s  longest read 31 / 56 s  missed at final 0 / 0
+p4  F at 300/600/1200/1800 s:  IN4 1722/2821/5052/6608  IN5 12282/18743/29438/40466  ratio 6.12  |  S 29007 / 77119  ticks 63081 / 33936  alive 30286 / 32250  universes 31 / 31  5 of 9 built saved at 1260 / never s  longest read 26 / 61 s  missed at final 0 / 0
+p5  F at 300/600/1200/1800 s:  IN4 2231/3812/6398/8263  IN5 12382/20415/30535/44785  ratio 5.42  |  S 33577 / 86361  ticks 61263 / 34570  alive 30913 / 35423  universes 31 / 31  5 of 9 built saved at 1080 / never s  longest read 23 / 60 s  missed at final 0 / 0
+p6  F at 300/600/1200/1800 s:  IN4 2441/3974/6091/7883  IN5 14021/21256/32301/42317  ratio 5.37  |  S 33449 / 85403  ticks 67962 / 34146  alive 27536 / 38595  universes 31 / 31  5 of 9 built saved at 1380 / never s  longest read 23 / 60 s  missed at final 0 / 0
+p7  F at 300/600/1200/1800 s:  IN4 2119/3658/6482/8350  IN5 12013/18248/28670/38622  ratio 4.63  |  S 34923 / 79149  ticks 67923 / 37347  alive 22349 / 35781  universes 31 / 31  5 of 9 built saved at 1200 / never s  longest read 28 / 54 s  missed at final 0 / 0
+p8  F at 300/600/1200/1800 s:  IN4 1955/3601/5990/7771  IN5 9813/16016/25853/37071  ratio 4.77  |  S 33834 / 74398  ticks 52528 / 34522  alive 31276 / 36402  universes 31 / 31  5 of 9 built saved at 1500 / never s  longest read 28 / 60 s  missed at final 0 / 0
+
+complete pairs: 8; runs failing the switch check: none
+primary Wilcoxon on log(F_in5/F_in4) at 1800 s: n 8, W+ 36 of 36, p(in5 greater) 0.0039, p(in5 less) 1.0000; in5 ahead in 8 of 8; median ratio 5.28
+reported: median F ratio at 300 s: 5.61 (8 pairs)
+reported: median F ratio at 600 s: 5.17 (8 pairs)
+reported: median F ratio at 1200 s: 4.73 (8 pairs)
+reported: median time for 5 of the built nine to pass tick 1,800: IN4 1230 s, IN5 9999 s
+VERDICT:  FIELD CHECK PASSES: TASK_IN 5 ships

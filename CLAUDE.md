@@ -103,6 +103,16 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   cost was saving, because a slower-ticking world reached the tick-1,800 autosave late. **`#384` saves on the clock too**
   (`SAVE_WALL_MS`, 2 minutes in a browser, off in node). It writes only what the autosave writes: no archive entry, no trim.
   `SAVE_WALL_MS=50` under node is byte-identical to 0; that is its test.
+  **`#392`: FIVE-INPUT FUNCTIONS SHIPPED (`TASK_IN 5`, a space of 2^32).** `#388` found the four-input space's easy shells mined
+  out (all of size <=4, most of 5-8) while 99% of what was left sat at size 9+, so a world's finds halved with each size step.
+  Four prices (`#389`-`#391`: program cap, logic-op draw, drain, a royalty) could not move it. Five inputs did: 3.56x new
+  functions per CPU-hour (19 of 20 unseen pairs, p < 0.0001), more found late than early (median 1.37 against 0.55), the
+  shuffle control 9-78x fewer (selected), and 5.28x the distinct functions in a running field by 30 minutes (8 of 8). A
+  function is its canonical 32-bit truth table in a slot of a 131,072-slot table (taken on first PAYMENT). Pools unpaid for
+  1,000 ticks are dropped above 85% fill, and the lifetime record is a separate growable set. The grade is exact for
+  functions of <=4 inputs and an upper bound for five. **Part of a count gain in a bigger space is mechanical**: more
+  functions at every depth. Read the deceleration and shuffle numbers beside any count. `TASK_IN=4` restores the old world.
+  **Novelty here is cumulative across creatures (`#391`):** 91-97% of new functions are built on words read off neighbours.
   **A field rig must read every universe AT ONCE (`#383`'s amendment).** Asked one at a time, a busy field took six minutes for
   one sample.
   **Preventing collapse is not the same as finding more (`#379`, `#380`).** A third of default computing worlds collapse by 12,000

@@ -30001,3 +30001,43 @@ building from a neighbour's work, so it is the lever #389 pointed at.
     the very plateau this removes.
   - So the ship carries a fix that changes nothing ruled here: pools of functions not paid for 1,000 ticks are dropped, with the
     lifetime record kept apart. That only fires above any decision world's fill.
+
+### #392 — THE FIELD CHECK PASSES, SHIPPED: five-input functions are the TASKS default. A field finds 5.28x the distinct functions by 30 minutes (8 of 8, p 0.0039).
+The pre-registered condition (`lab/port/PREREG-in5.md`'s Verdict): `field-rate.js`, 8 pairs of fields run together for 1,800 s, F the union of
+canonical truth tables, a one-sided exact Wilcoxon on log(F_in5/F_in4). Batch `lab/port/field5-batch.sh`, analysis
+`lab/port/analyse-field5.js`, out `lab/port/out-field5/`, result `lab/port/field5-result.txt`.
+- **The arms.**
+  - IN4 is today's engine.
+  - IN5 is the same engine (#392's ship fix included) with `TASK_IN 5` added to the TASKS default fill.
+  - The switch check passed in every sample: all 31 universes reported five inputs in every IN5 sample, none in any IN4 sample. The
+    economy read one currency held to a size in both.
+- **F at 30 minutes:**
+
+  | Pair | IN4 | IN5 | Ratio |
+  |---|---|---|---|
+  | 1 | 9,680 | 42,335 | 4.37 |
+  | 2 | 7,898 | 43,656 | 5.53 |
+  | 3 | 9,702 | 50,460 | 5.20 |
+  | 4 | 6,608 | 40,466 | 6.12 |
+  | 5 | 8,263 | 44,785 | 5.42 |
+  | 6 | 7,883 | 42,317 | 5.37 |
+  | 7 | 8,350 | 38,622 | 4.63 |
+  | 8 | 7,771 | 37,071 | 4.77 |
+
+  W+ 36 of 36, **p 0.0039**, median 5.28. Median ratio at 5, 10 and 20 minutes: 5.61, 5.17, 4.73.
+- **The cost:**
+  - IN5 fields ran 34,000-40,000 ticks across the field against 52,000-69,000, because they held more creatures (32,000-38,600
+    alive against 22,300-31,600).
+  - **Memory**, read late in pair 7 by tying each renderer to its field's process: **2,392 MB for the five-input field against
+    1,957 MB** (+22%), with the machine at 5.2 GB of 16 GB.
+  - Reads stayed inside their timeouts (longest 61 s against 60 s, at the final sample's 120 s none missed).
+- **What moved: the browser's default world.** Wherever TASKS runs, creatures compute five-input functions of five world inputs, from a
+  space of 2^32.
+  - In 12,000-tick worlds they find 3.56x the new functions per CPU-hour and find more late than early. In a running field they find
+    5.3x the distinct functions in the first half hour, and the gain is selected.
+  - `TASK_IN=4` restores the four-input world byte for byte: `d7d1c3aa`, and `84eaf3b7` with the four one-currency knobs set back.
+- **Saved worlds (rule 6, as pre-registered).** A saved TASKS universe reloads into five inputs. Its creatures and genomes come back,
+  and their programs now cycle five input words. Its four-input record of functions ever paid does not carry, so its count of new
+  functions starts again.
+- **The look.** The renderer colours a read's function by a hash of its slot, a display only. Nothing else drawn depends on the
+  function space.
