@@ -64,3 +64,17 @@ union as much as it seeds new ones. Six pairs can only see a large effect.
 
 ## Saved worlds (rule 6)
 The gate is a rule, not a gene. Nothing saved changes.
+
+## Amendment, made after pairs 1-3 and before pairs 4-6 (the rule's direction is unchanged)
+- **The manipulation check's instrument was wrong.** `mig` was `netStats.accepted`, which counts every heritable packet queued:
+  migrants, plasmids, motifs and inscriptions. It does not count migrants.
+  - Pairs 1-3 read AMP 7,320 / 7,264 / 6,940 against VIS 7,278 / 6,280 / 8,795, so the check as wired failed.
+  - That says nothing about migrants.
+- **Found by reading the receive path** (`handleNetworkMessage`, `queueNetworkPacket`) after the check failed.
+  - The engine already counts accepted migrants alone: `network.migrantAccepted`, fired only on a migrant.
+  - The worker now reports it as `migA`, and the rig sums it as `MA`.
+- **What I have seen:** pairs 1-3's F, at ratios 1.00, 1.01 and 1.11.
+- **Amended check.**
+  - The manipulation check is judged on the pairs that carry `MA`, which are pairs 4-6. It requires VIS above AMP in **all** of
+    them (3 of 3, against the original 5 of 6).
+  - The primary rule, the verdict and the 6 pairs are unchanged.

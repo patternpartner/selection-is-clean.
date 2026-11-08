@@ -116,7 +116,7 @@ const BRIDGE =
     // #392: at five inputs a slot means nothing outside its universe, so the canonical truth tables of seen functions go instead (4 bytes each)
     'if(in5){var pa=[];for(var n=0;n<tSet5.length;n++){var Fk=tSet5[n];if(Fk)pa.push(String.fromCharCode(Fk&255,(Fk>>>8)&255,(Fk>>>16)&255,(Fk>>>24)&255));}b=pa.join("");}else ' +
     'for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
-    'return {in5:in5,mig:(netStats.accepted|0),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+    'return {in5:in5,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +

@@ -33,7 +33,11 @@ for(let i=1;i<=PAIRS;i++){ const o=read(i,'amp'), c=read(i,'vis');
     '  ratio '+(c.fin.F/Math.max(1,o.fin.F)).toFixed(2)+'  |  migrants '+o.fin.M+' / '+c.fin.M+'  S '+o.fin.S+' / '+c.fin.S+'  ticks '+o.fin.K+' / '+c.fin.K+
     '  alive '+o.fin.A+' / '+c.fin.A+'  universes '+o.fin.U+' / '+c.fin.U+'  5 of 9 built saved at '+(o.save5||'never')+' / '+(c.save5||'never')+' s  longest read '+Math.max(...o.S.map(x=>x.read|0))+' / '+Math.max(...c.S.map(x=>x.read|0))+' s  missed at final '+o.fin.bad+' / '+c.fin.bad); }
 if(missing.length) console.log('INCOMPLETE: '+missing.join(' '));
-const manip=P.filter(p=>(p.c.fin.M|0)>(p.o.fin.M|0)).length, manipOk=manip>=5; console.log('manipulation check: VIS accepted more migrants than AMP in '+manip+' of '+P.length+(manipOk?' (holds)':' (FAILS)'));
+// AMENDMENT (before pairs 4-6): M was netStats.accepted, every heritable packet type, not migrants. The check is now MA (the engine's
+// network.migrantAccepted) on the pairs that carry it, and requires all of them; pairs 1-3 carry none.
+const PM=P.filter(p=>p.c.fin.MA!==undefined&&p.o.fin.MA!==undefined), manip=PM.filter(p=>(p.c.fin.MA|0)>(p.o.fin.MA|0)).length, manipOk=PM.length>=3&&manip===PM.length;
+console.log('manipulation check (accepted MIGRANTS, pairs with the counter): VIS more than AMP in '+manip+' of '+PM.length+(manipOk?' (holds)':' (FAILS)')+'  ['+PM.map(p=>'p'+p.i+' '+p.o.fin.MA+'/'+p.c.fin.MA).join(', ')+']');
+console.log('reported, all heritable packets accepted (the first, wrong instrument): '+P.map(p=>'p'+p.i+' '+p.o.fin.M+'/'+p.c.fin.M).join(', '));
 const W=wilcoxon(P.map(p=>Math.log(Math.max(1,p.c.fin.F)/Math.max(1,p.o.fin.F))));
 console.log('\ncomplete pairs: '+P.length+'; runs failing the switch check: '+(badSw.length?badSw.join(' '):'none'));
 console.log('primary Wilcoxon on log(F_vis/F_amp) at '+SECS+' s: n '+W.n+', W+ '+W.Wp+' of '+W.max+', p(vis greater) '+W.pGreater.toFixed(4)+

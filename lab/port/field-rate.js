@@ -70,12 +70,12 @@ const readField = (page, ms) => page.evaluate(async ms => {
   await page.goto(base + '/' + HASH, { waitUntil: 'load' });
   const sample = async (final, at) => {
     const rows = await readField(page, final ? 120000 : 60000);
-    let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0, n5 = 0, M = 0;
+    let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0, n5 = 0, M = 0, MA = 0;
     const slots = [];
     for (const [s, r] of rows) {
       if (!r || r.err) { bad++; continue; }
       if (r.off) { off++; continue; }
-      U++; K += r.totalTicks | 0; A += r.alive | 0; if (r.in5) n5++; M += r.mig | 0;
+      U++; K += r.totalTicks | 0; A += r.alive | 0; if (r.in5) n5++; M += r.mig | 0; MA += r.migA | 0;
       const ps = perSlot[s] || (perSlot[s] = { found: 0, ticks: 0 });
       ps.found = Math.max(ps.found, (r.n | 0) - (r.boot | 0)); ps.ticks = r.totalTicks | 0;
       if (!sw) sw = r.sw;
@@ -86,7 +86,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);
     }
     for (const s in perSlot) S += perSlot[s].found;
-    emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, S, K, A, U, n5, M, off, bad, sw, slots, errs: errs.length, final: !!final });
+    emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;
