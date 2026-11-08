@@ -1,0 +1,30 @@
+11601 ok      IN4 V 3312 cpu 6.6m R 30331 alive 649 late/early 0.65  |  IN5 V 20878 cpu 16.3m R 76837 alive 1031 C@7500 late/early 1.82 slots 20878  R ratio 2.53  V ratio 6.30
+11602 ok      IN4 V 3926 cpu 11.3m R 20886 alive 749 late/early 1.81  |  IN5 V 16758 cpu 36.6m R 27446 alive 1444 late/early 0.75 slots 16758  R ratio 1.31  V ratio 4.27
+11603 ok      IN4 V 1567 cpu 3.0m R 31768 alive 403 C@6500 late/early 0.02  |  IN5 V 33500 cpu 38.9m R 51645 alive 1673 late/early 0.32 slots 33500  R ratio 1.63  V ratio 21.38
+11604 ok      IN4 V 6702 cpu 12.5m R 32179 alive 812 late/early 0.26  |  IN5 V 26435 cpu 19.3m R 82135 alive 1171 late/early 0.64 slots 26435  R ratio 2.55  V ratio 3.94
+11605 ok      IN4 V 10887 cpu 16.3m R 40184 alive 1056 late/early 0.50  |  IN5 V 64864 cpu 20.9m R 185873 alive 1346 late/early 5.42 slots 64864  R ratio 4.63  V ratio 5.96
+11606 ok      IN4 V 4014 cpu 5.7m R 42259 alive 716 late/early 0.60  |  IN5 V 29951 cpu 13.8m R 130446 alive 1193 late/early 0.33 slots 29951  R ratio 3.09  V ratio 7.46
+11607 ok      IN4 V 6530 cpu 16.7m R 23530 alive 1210 late/early 0.88  |  IN5 V 48464 cpu 25.6m R 113568 alive 1317 late/early 3.73 slots 48464  R ratio 4.83  V ratio 7.42
+11608 ok      IN4 V 7259 cpu 21.5m R 20294 alive 1573 late/early 0.12  |  IN5 V 85768 cpu 28.4m R 181076 alive 1608 late/early 3.89 slots 85768  R ratio 8.92  V ratio 11.82
+11609 ok      IN4 V 1964 cpu 6.5m R 18008 alive 627 late/early 0.30  |  IN5 V 13116 cpu 14.6m R 54059 alive 1190 late/early 1.27 slots 13116  R ratio 3.00  V ratio 6.68
+11610 ok      IN4 V 5787 cpu 13.2m R 26394 alive 840 late/early 0.72  |  IN5 V 29760 cpu 16.8m R 106548 alive 1084 late/early 6.24 slots 29760  R ratio 4.04  V ratio 5.14
+11611 ok      IN4 V 14876 cpu 44.8m R 19909 alive 1642 late/early 0.18  |  IN5 V 25381 cpu 30.0m R 50764 alive 1669 late/early 0.95 slots 25381  R ratio 2.55  V ratio 1.71
+11612 ok      IN4 V 17388 cpu 41.9m R 24929 alive 1490 late/early 0.28  |  IN5 V 45796 cpu 21.1m R 130031 alive 1578 late/early 3.84 slots 45796  R ratio 5.22  V ratio 2.63
+11613 ok      IN4 V 7377 cpu 11.1m R 39701 alive 878 late/early 1.48  |  IN5 V 23735 cpu 16.7m R 85276 alive 1693 late/early 0.38 slots 23735  R ratio 2.15  V ratio 3.22
+11614 ok      IN4 V 3533 cpu 6.5m R 32562 alive 695 late/early 0.61  |  IN5 V 64335 cpu 29.2m R 132016 alive 1376 late/early 6.71 slots 64335  R ratio 4.05  V ratio 18.21
+11615 ok      IN4 V 7279 cpu 28.9m R 15097 alive 1367 late/early 0.90  |  IN5 V 22359 cpu 19.9m R 67291 alive 1658 late/early 0.83 slots 22359  R ratio 4.46  V ratio 3.07
+11616 ok      IN4 V 5583 cpu 6.3m R 53474 alive 694 late/early 1.47  |  IN5 V 25076 cpu 31.9m R 47141 alive 1660 late/early 0.44 slots 25076  R ratio 0.88  V ratio 4.49
+11617 ok      IN4 V 1784 cpu 5.8m R 18423 alive 530 late/early 0.67  |  IN5 V 59858 cpu 28.5m R 125928 alive 1323 late/early 2.86 slots 59858  R ratio 6.84  V ratio 33.55
+11618 ok      IN4 V 4863 cpu 8.4m R 34712 alive 840 C@9500 late/early 0.07  |  IN5 V 12760 cpu 12.0m R 63911 alive 990 late/early 0.63 slots 12760  R ratio 1.84  V ratio 2.62
+11619 ok      IN4 V 2151 cpu 4.1m R 31210 alive 482 C@9500 late/early 0.22  |  IN5 V 65649 cpu 23.3m R 168776 alive 1377 late/early 4.22 slots 65649  R ratio 5.41  V ratio 30.52
+11620 ok      IN4 V 6431 cpu 18.2m R 21205 alive 1132 C@10500 late/early 0.00  |  IN5 V 65664 cpu 29.0m R 135774 alive 1577 late/early 1.47 slots 65664  R ratio 6.40  V ratio 10.21
+
+complete pairs: 20; IN5 worlds that refused for a full table: none
+primary Wilcoxon on log(R_in5/R_in4) (per CPU-hour): n 20, W+ 209 of 210, p(in5 greater) 0.0000, p(in5 less) 1.0000; in5 ahead in 19 of 20; median R ratio 3.56
+reported: per tick (V): p(greater) 0.0000, p(less) 1.0000; collapses IN4 4, IN5 1
+reported: late/early (windows 19-24 over 1-6): median IN4 0.55, IN5 1.37; IN5 higher in 15 of 20
+guard (median V_in5/V_in4 >= 0.5): 6.13 holds
+shuffle (reported): 11601 IN5+SHUFFLE V 269 against IN5 V 20878
+shuffle (reported): 11602 IN5+SHUFFLE V 237 against IN5 V 16758
+shuffle (reported): 11603 IN5+SHUFFLE V 2372 against IN5 V 33500
+VERDICT: BETTER: TASK_IN 5 becomes the TASKS default IF the field check passes

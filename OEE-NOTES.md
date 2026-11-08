@@ -29976,3 +29976,28 @@ building from a neighbour's work, so it is the lever #389 pointed at.
 - **Stated before any decision number:** a bigger space holds more functions at every depth (NAND has ten input pairs at five
   inputs, six at four). So part of a COUNT gain is mechanical. The ruling is on the count per CPU-hour, the artwork's dependent
   variable. Deceleration and the shuffle control are reported beside it, because a purely mechanical gain would explain neither.
+
+### #392 — VERDICT: BETTER. Five-input worlds find 3.56x the new functions per CPU-hour (19 of 20 pairs, p < 0.0001), slow down less, and stay selected. Shipping waits on the pre-registered field check. My prediction was right (4 of 10).
+`lab/port/PREREG-in5.md` (committed 7c7d170 before any decision run). 20 pairs, seeds 11601-11620, 12,000 ticks. Out
+`lab/port/out-in5/`, result `lab/port/in5-result.txt`.
+- **Floor:** 20 complete pairs. No IN5 world refused a payment for a full table. The busiest used 85,768 of 131,072 slots.
+- **Primary, the one-sided exact Wilcoxon on log(new functions per CPU-hour):** W+ 209 of 210, **p(greater) < 0.0001**. IN5 is ahead
+  in 19 of 20, median ratio 3.56 (0.88-8.92). The one pair behind was 11616, at 0.88.
+- **Reported:**
+  - Per tick: median V ratio 6.13 (1.71-33.6). The guard holds.
+  - **Deceleration:** V in windows 19-24 over windows 1-6 has a median of **1.37 at five inputs against 0.55 at four**, and is
+    higher at five inputs in 15 of 20 pairs. Four-input worlds find about half as much late as early. Five-input worlds find more
+    late than early.
+  - **Selected:** the shuffle arm found 269, 237 and 2,372 new functions, against its IN5 twins' 20,878, 16,758 and 33,500 (9-78x
+    fewer).
+  - Collapses: 1 at five inputs against 4 at four.
+  - Mean alive: 990-1,693 against 403-1,642. CPU: 12-39 minutes against 3-45.
+- **What the caveat leaves standing.** Part of a count gain in a bigger space is mechanical: more functions at every depth. But a
+  merely bigger shelf would not make a world find MORE late than early while the four-input world finds half. It also would not
+  vanish under the shuffle control. Both measures say the extra novelty is found by selection, and keeps arriving.
+- **Before a field can run it for hours: the table.**
+  - The busiest world filled 85,768 slots by tick 12,000, 73% of the 90% refusal line.
+  - A fast field universe passes 12,000 ticks within an hour or two. At the ceiling it would stop being paid for new functions,
+    the very plateau this removes.
+  - So the ship carries a fix that changes nothing ruled here: pools of functions not paid for 1,000 ticks are dropped, with the
+    lifetime record kept apart. That only fires above any decision world's fill.
