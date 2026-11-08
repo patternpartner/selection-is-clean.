@@ -29934,3 +29934,45 @@ building from a neighbour's work, so it is the lever #389 pointed at.
     world per CPU-hour on the design seeds.
   - The economy sits at, or near, a local optimum on every axis tried. The next gains are more likely in speed (#386's kind) or in
     the field, than in another price.
+
+### #392 — DESIGN, then PRE-REGISTERED (`lab/port/PREREG-in5.md`, committed 7c7d170): FIVE-INPUT FUNCTIONS (`TASK_IN=5`)
+**The user's choice:** after #388-#391 the bigger change, a function space of 2^32 instead of 65,536.
+
+**What the knob is** (engine 11f891f; default 4, byte-identical: `b07a4474`, `d7d1c3aa`, `c8378b52`):
+- **Inputs.** Five world inputs, each a 32-row truth-table column in one random row order per epoch. At four inputs each 16-bit half
+  holds the table, so every row appears twice. One copy is enough now, because the bit-exact clean rule pays only logic of the
+  inputs (#338's first pilot needed two copies before that rule existed).
+- **Slots.** A function is its canonical 32-bit truth table, held in a slot of a 131,072-slot open-addressed table. Every
+  per-function array keeps its shape, so the consumers (stats, history, the probe) keep working.
+  - **Slots are taken on first PAYMENT.** The first version allocated on every publish and took 21,424 slots for 4,300 functions
+    paid in 1,500 ticks. The second still allocated before the one-payment-per-epoch check (19,684). Now slots equal functions paid
+    (3,797 of 3,797).
+  - Pools start full at the first payment, and regrow over slots in use.
+  - The drain acts only on functions that have been paid at least once. At four inputs every pool exists from boot.
+- **Grade.** A function of at most four of the inputs gets its exact four-input formula size. Unit-checked: 20,000 of 20,000 with
+  the first input ignored, and 20,000 of 20,000 with the last.
+  - A function of all five gets the best Shannon split `sz4(lo)+sz4(hi)+4`, or a direct form where a half is constant. That is an
+    upper bound.
+  - The constants cost 5 and 2 in the four-input table, so without the direct forms AND5 graded 17. With them it grades 12.
+  - Random five-input functions grade 10-48, median 26.
+- **Instruments.**
+  - The probe and the sound score grade by `TASK_SZ`, the per-slot grade.
+  - The probe reports slots used and table refusals.
+  - At five inputs, the worker's `seenForTest` and the save carry canonical truth tables (a slot means nothing outside its
+    universe), and the field rig unions those.
+
+**Design** (seeds 10401-10403, seen, 4,000 ticks, CPU timed; against #389's four-input runs):
+
+| Seed | V, four / five | CPU min, four / five | Mean alive, four / five | Per CPU-hour | Late/early, four / five |
+|---|---|---|---|---|---|
+| 10401 | 3,840 / 10,556 | 4.2 / 8.8 | 812 / 1,216 | 1.30x | 0.60 / 1.49 |
+| 10402 | 1,061 / 13,819 | 1.4 / 7.4 | 496 / 1,475 | 2.51x | 2.01 / 2.88 |
+| 10403 | 6,981 / 7,965 | 7.2 / 5.6 | 1,053 / 1,578 | 1.46x | 3.06 / 3.16 |
+
+- Ahead per CPU-hour on 3 of 3.
+- The last two windows found more relative to the first two on 3 of 3. In 10401's last two windows it found 1,131 and 1,446, against
+  154 and 322.
+- More fresh pools mean more income (3.6x at 1,500 ticks on seed 3), so the population sits higher.
+- **Stated before any decision number:** a bigger space holds more functions at every depth (NAND has ten input pairs at five
+  inputs, six at four). So part of a COUNT gain is mechanical. The ruling is on the count per CPU-hour, the artwork's dependent
+  variable. Deceleration and the shuffle control are reported beside it, because a purely mechanical gain would explain neither.
