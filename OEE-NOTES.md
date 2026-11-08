@@ -30072,3 +30072,19 @@ canonical truth tables, a one-sided exact Wilcoxon on log(F_in5/F_in4). Batch `l
   acceptance row is green for a reason. Field novelty is unchanged by it, within what 6 pairs can see.
 - **Named, not done:** the structural sweep this invites. Which other mechanisms gate on `amp` and now read a vestigial number
   under one currency? Predation (`amp[i] > amp[j]` picks prey) is the first candidate.
+
+### #392 + #393 acceptance
+- `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0, on the final engine.
+- **`smoke.sh` alone: 69 ok, 0 failing, no SKIP.** Two rows of the first pass needed something, and neither was loosened:
+  - `layers-test` hit the suite's 180 s default (exit 124). Alone it passes 49/0 in 186 s, against `main`'s four-input 141 s:
+    five-input worlds hold more creatures, so every step is slower. It now has its own 300 s with that measurement in `smoke.sh`, as
+    `grammar-test`, `reach-test` and `autosave-test` already do.
+  - `collective-test`'s `silenceRespected` was a real defect, fixed and tested as #393.
+- **A slip of mine, caught by the rerun:** an atomic rewrite of `smoke.sh` (write a temporary file, `os.replace`) dropped its
+  execute bit in 371018c, and the next `./smoke.sh` was "Permission denied". Restored in 76bd287. No other tracked file changed
+  mode. Rewrites of executable files should copy the mode.
+- **Digests on the shipped engine:**
+  - TASKS off `b07a4474` (unchanged);
+  - the TASKS default (five inputs, the `visAmp` migrant) `3ec5f521` at 1,500 ticks and `7f3a6bfd` at 2,000;
+  - `TASK_IN=4` `11f765b3` (the four-input one-currency world, whose migrant now reads `visAmp`);
+  - the world before #381 `84eaf3b7`.
