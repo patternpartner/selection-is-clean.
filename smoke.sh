@@ -98,6 +98,10 @@ timeout_for() {
     # exit 124 inside the suite and 20/0 alone. 600s is that measurement plus the same margin
     # grammar got for the same 6,000-tick shape. The other rigs stay at 180s.
     reach-test.js) echo 600 ;;
+    # layers-test.js (SECS=30) builds a 27-universe cube, harvests it and runs two more for #dark. #392's five-input default holds more
+    # creatures, so every step is slower: alone 186s and 49/0, against main's four-input 141s. At the 180s default it was exit 124 inside
+    # the suite. 300s is that measurement plus margin, for this rig only.
+    layers-test.js) echo 300 ;;
     *) echo 180 ;;
   esac
 }

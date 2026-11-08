@@ -1581,7 +1581,11 @@ function buildMigrantPacket(){
   let idx=-1;
   for(let tries=0;tries<10;tries++){
     const pick=(Math.random()*N)|0;
-    if(palive[pick]&&amp[pick]>0.2){idx=pick;break;}
+    // #393: a migrant must be alive and well. Under one currency (STORE_DEATH) amplitude no longer measures that - it sits near its floor -
+    // so the gate reads visAmp, which is the store there and amplitude everywhere else (byte-identical where amplitude is still the currency).
+    // Measured: amp>0.2 held for 99.8% (TASKS off) and 97.2% (two currencies), but 17.2% at one currency and 2.6% at five inputs, so 3 in 4
+    // of the relay's pulls came back empty and the few that left were chosen by a vestigial number. visAmp>0.2: 92-97%.
+    if(palive[pick]&&visAmp(pick)>0.2){idx=pick;break;}
   }
   if(idx<0)return null;
   {
