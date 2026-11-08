@@ -1,0 +1,16 @@
+p1  F at 300/600/1200/1800 s:  AMP 13327/20452/32984/44584  VIS 13147/19872/32685/44726  ratio 1.00  |  migrants 7320 / 7278  S 87906 / 90352  ticks 35958 / 30888  alive 38023 / 42867  universes 31 / 31  5 of 9 built saved at never / never s  longest read 67 / 61 s  missed at final 0 / 0
+p2  F at 300/600/1200/1800 s:  AMP 12096/17350/31691/44673  VIS 15308/23281/35094/44943  ratio 1.01  |  migrants 7264 / 6280  S 87154 / 89374  ticks 35364 / 29717  alive 36242 / 41768  universes 31 / 31  5 of 9 built saved at never / never s  longest read 61 / 62 s  missed at final 0 / 0
+p3  F at 300/600/1200/1800 s:  AMP 11305/17742/27604/39754  VIS 12829/19390/31797/44193  ratio 1.11  |  migrants 6940 / 8795  S 81155 / 87932  ticks 36330 / 34159  alive 36164 / 37379  universes 31 / 31  5 of 9 built saved at never / never s  longest read 61 / 60 s  missed at final 0 / 0
+p4  F at 300/600/1200/1800 s:  AMP 12073/18896/32624/45083  VIS 12608/19583/30192/39667  ratio 0.88  |  migrants 6593 / 7550  S 90852 / 81095  ticks 35361 / 32097  alive 38460 / 38204  universes 31 / 31  5 of 9 built saved at never / never s  longest read 60 / 59 s  missed at final 0 / 0
+p5  F at 300/600/1200/1800 s:  AMP 15652/23304/35096/46678  VIS 13901/19431/29626/40463  ratio 0.87  |  migrants 7940 / 6272  S 89435 / 82643  ticks 35904 / 31663  alive 34066 / 38531  universes 31 / 31  5 of 9 built saved at never / never s  longest read 49 / 53 s  missed at final 0 / 0
+p6  F at 300/600/1200/1800 s:  AMP 12516/17895/27402/38740  VIS 15004/21191/31190/39991  ratio 1.03  |  migrants 8097 / 8719  S 77383 / 78463  ticks 39027 / 33229  alive 31513 / 35078  universes 31 / 31  5 of 9 built saved at never / never s  longest read 39 / 60 s  missed at final 0 / 0
+manipulation check (accepted MIGRANTS, pairs with the counter): VIS more than AMP in 3 of 3 (holds)  [p4 1614/2794, p5 2145/2232, p6 2477/3248]
+reported, all heritable packets accepted (the first, wrong instrument): p1 7320/7278, p2 7264/6280, p3 6940/8795, p4 6593/7550, p5 7940/6272, p6 8097/8719
+
+complete pairs: 6; runs failing the switch check: none
+primary Wilcoxon on log(F_vis/F_amp) at 1800 s: n 6, W+ 10 of 21, p(vis greater) 0.5781, p(vis less) 0.5000; vis ahead in 4 of 6; median ratio 1.00
+reported: median F ratio at 300 s: 1.09 (6 pairs)
+reported: median F ratio at 600 s: 1.06 (6 pairs)
+reported: median F ratio at 1200 s: 1.05 (6 pairs)
+reported: median time for 5 of the built nine to pass tick 1,800: AMP 9999 s, VIS 9999 s
+VERDICT:  NOT WORSE: the fix ships

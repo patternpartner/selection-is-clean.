@@ -30041,3 +30041,34 @@ canonical truth tables, a one-sided exact Wilcoxon on log(F_in5/F_in4). Batch `l
   functions starts again.
 - **The look.** The renderer colours a read's function by a hash of its slot, a display only. Nothing else drawn depends on the
   function space.
+
+### #393 — VERDICT: NOT WORSE, SHIPPED. Emigrants are chosen by health in the currency that is health (`visAmp`), not by vestigial amplitude.
+`lab/port/PREREG-migrant.md` (committed 371018c before any run; amended at 6762339, after pairs 1-3, before 4-6). Out
+`lab/port/out-migrant/`, result `lab/port/migrant-result.txt`.
+- **Found by an acceptance rig, which is what they are for.** #392's `smoke.sh` had `collective-test`'s `silenceRespected` red, alone
+  in 2 of 3 runs: at netMigrantRate 1 the relay got a migrant 31-49 times in 60.
+  - `buildMigrantPacket()` takes a creature only if `amp > 0.2`, in 10 random tries.
+  - Under one currency (#381) amplitude no longer kills and sits near its floor. The share above 0.2 was 99.8% with TASKS off and
+    97.2% with two currencies, but 17.2% at one currency and **2.6% at five inputs**.
+  - So three in four of the shipped field's relay pulls were empty, and the few emigrants were chosen by a number that means
+    nothing there.
+  - CLAUDE.md's trap of one switch carrying another: `STORE_DEATH` made amplitude vestigial, and migration still read it.
+- **The fix:** the gate reads `visAmp(pick) > 0.2`, the store under `STORE_DEATH` and amplitude everywhere else.
+  - Byte-identical where amplitude is still the currency (`b07a4474`, `84eaf3b7`).
+  - Under one currency the node digests change (the shipped default `47771e0e` to `3ec5f521`; four-input one-currency `d7d1c3aa` to
+    `11f765b3`). That is only the random stream, because in node a migrant goes to no one.
+  - With the fix, `collective-test` reads 60 of 60 in four runs alone.
+- **The instrument mistake, and the amendment.**
+  - The manipulation check first summed `netStats.accepted`, which counts every heritable packet queued (migrants, plasmids, motifs,
+    inscriptions), not migrants. It read as "failing" for that reason alone.
+  - It was found by reading the receive path. The engine's own `network.migrantAccepted` replaced it for pairs 4-6, with the check
+    tightened to all 3 of them. The rule was not changed.
+- **Result:**
+  - **Manipulation:** VIS accepted more migrants in 3 of 3 (1,614 to 2,794; 2,145 to 2,232; 2,477 to 3,248).
+  - **Primary:** F at 1,800 s, ratios 1.00, 1.01, 1.11, 0.88, 0.87, 1.03. Median 1.00, W+ 10 of 21, p(less) 0.50. **NOT WORSE.**
+  - **Reported:** the median F ratio was 1.09 at 5 minutes, 1.06 at 10 and 1.05 at 20. VIS fields ran fewer ticks (29,700-34,200
+    against 35,400-39,000).
+- **What moved:** migration in the shipped field is back to what it was for the project's whole life before #381, and a red
+  acceptance row is green for a reason. Field novelty is unchanged by it, within what 6 pairs can see.
+- **Named, not done:** the structural sweep this invites. Which other mechanisms gate on `amp` and now read a vestigial number
+  under one currency? Predation (`amp[i] > amp[j]` picks prey) is the first candidate.
