@@ -1,1 +1,4 @@
 {"boot":true,"tick":0,"alive":641,"loaded":true,"germLen":23}
+{"tick":250,"alive":626,"meanAlive":703,"taskInc":18.11,"sunInc":101.97,"paid":3469,"fnPaid":22,"newToHistory":22,"everPaid":22,"slots":22,"full":0,"rebuilds":0,"expH":17.16,"meanSz":1.112,"progs":224,"readCarried":626,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":500,"alive":209,"meanAlive":358,"taskInc":13.93,"sunInc":26.96,"paid":1704,"fnPaid":18,"newToHistory":1,"everPaid":23,"slots":23,"full":0,"rebuilds":0,"expH":15.12,"meanSz":1.093,"progs":102,"readCarried":209,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":750,"alive":223,"meanAlive":208,"taskInc":17.11,"sunInc":30.94,"paid":1015,"fnPaid":21,"newToHistory":5,"everPaid":28,"slots":28,"full":0,"rebuilds":0,"expH":17.25,"meanSz":1.072,"progs":109,"readCarried":223,"copies":0,"desync":0,"laws":1,"lawKept":0,"lawRevert":0,"lawTrial":"BIRTH_SHRINK"}
