@@ -125,6 +125,8 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   seeds, p 0.26) after a 3-of-3 design reading: **three seen seeds agreeing is not a direction here**, a harvest's value swings
   sevenfold on which one creature is copied. Neither pick finds a computer: each had never been paid on 3 of 11 seeds. Still
   open: a pick by payments, the adoption splice that inserts old task ops into the adopted program, and founding priced in amplitude.
+  **`#395`: the same world 16% cheaper a tick** (the VM's register clamp writes only where it changes a value; instructions are
+  read by index). Byte-identical on five worlds. Not measured in a field.
 
 ## Every session removes or proves something — not only adds
 
@@ -220,12 +222,15 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   run twice. Both are fixed. **The general rule, which this file broke in its own setup steps: an env
   var with no line in `KNOBS` and no `applyKnobs` call is not a control, it is a no-op that reads
   like one.**
-- `./smoke.sh` — boots every rig briefly. `slot-test`, `layers-test` and `collective-test` drive a
+- `./smoke.sh` — boots every rig briefly (`SLICE=k/n` runs one slice, so a full pass fits three 30-minute launches). `slot-test`, `layers-test` and `collective-test` drive a
   real browser and are the only things that catch anything about the field's layout or its controls.
   **`browser-test` and `collective-test` print SKIP and exit 0 when they cannot load playwright, and `smoke.sh` counts that as
   ok.** `#377`: after a container image update (chromium-1194 became 1243, and `playwright-core` left `NODE_PATH`), ten browser
   rigs failed and these two "passed" without running. All twelve now fall back to `require('playwright')` and to the
   `/opt/pw-browsers/chromium` symlink. If a smoke pass shows those two as ok, grep their output for SKIP before believing it.
+- **`layers-test` has two timing rows that fail alone on `main` (`#395`).** "A dark universe ticks faster than a lit one" failed
+  2 of 3 runs on the engine before `#395` and 2 of 5 after; "the second layer runs slower than the first" sits on its 1.4x line
+  (45-50 ticks against 32-36). Run it alone three times and A/B against the previous engine before believing either colour.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.
 - **The rig takes minutes and long runs get reaped.** `substrate-test` runs several minutes per
   budget and `smoke.sh` longer; in the hosted sessions this project is developed in, shell jobs

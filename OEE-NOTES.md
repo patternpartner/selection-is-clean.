@@ -30149,3 +30149,52 @@ prediction was wrong.**
 
 **Acceptance.** No file a rig reads differs from `main` (`git diff origin/main -- engine.html harness-env.js` is empty), so
 `substrate-test` and `smoke.sh` were not rerun.
+
+### #395 — THE SAME WORLD, 16% CHEAPER A TICK: two changes in the VM's inner loop (byte-identical)
+**Why.** #394 found no rule to move, and #383 made the viewer's number novelty per real hour. A cheaper tick raises that with no
+rule changed, as #386 did.
+
+**Where the time went** (`node --cpu-prof`, 1,500 ticks of the shipped five-input world, seed 10401, by source line):
+- **8.4% on one line of `vmStep`:** after every instruction, all 24 registers were read, clamped to +/-8 and WRITTEN back, whether
+  or not the value changed.
+- **4.9% on one line of `executeVM`** (2.1% on its twin in `executeSoloVM`): `const [op,src,dst,_k0]=inst`, an array
+  destructuring, which goes through the iterator protocol once per instruction.
+
+**The change.**
+- The clamp writes a register only when it is outside [-8, 8] or not a number. NaN fails both comparisons and becomes 0, and an
+  infinity becomes 0, as before. Two sites (the live one and the profiler's), count asserted.
+- Instructions are read by index. Four sites (main, cluster, solo, profiler), count asserted.
+- It draws nothing and changes no value.
+
+**The test: identical outputs against the previous engine (fa3118e) on five worlds.** `probe-reload.js` rows with `DIAG=1` plus
+the saved genome and the list of functions paid; `probe-amp.js` rows for the TASKS-off world.
+- the shipped world, seed 10401, 1,500 ticks; and seed 5, 2,000 ticks;
+- the world before #381 at four inputs, seed 7, 1,500 ticks;
+- TASKS off, seed 3, 1,500 ticks;
+- (and #394's own check of the same shipped world earlier in the day).
+
+**Speed, alone on this machine, two runs each, 1,500 ticks of seed 10401:** 53.8 s and 53.3 s before, **44.7 s and 44.6 s
+after** (16.5% less wall time; user CPU 64.5 s to 57.0 s). TASKS off: 20.7 s to 17.7 s, one run each.
+- After it, the clamp line is still 5.4% and no other line is above 4%. `processGrid` 15.1%, `executeVM` 13.6%, `vmStep` 9.0%,
+  `applyEntropy` 7.5%, `loop` 6.9%, `render` 6.5%.
+- **Not measured in a field.** #386's 22% in node was 12.5% more ticks in a browser field, since a browser also draws. Expect less
+  than 16% there. The rules are identical, so more ticks per hour is more novelty per hour in expectation, not by measurement.
+
+**What moved:** the shipped world's cost per tick, down about a sixth in node. No rule, no number of the world's.
+
+**Acceptance.**
+- `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0.
+- `smoke.sh` in three slices, nothing else running: **68 ok, 1 failing.** `browser-test` and `collective-test` ran (no SKIP).
+- **The failure is `layers-test`, two timing rows, and an A/B does not pin it on this change:**
+
+  | Row | Previous engine alone, 3 runs | This engine alone, 5 runs |
+  |---|---|---|
+  | a dark universe ticks faster than a lit one (needs 1.15x) | failed 2 | failed 2 |
+  | the second layer runs slower than the first (needs 1.4x) | passed 3: 1.42, 1.53, 1.48 | failed 3: 1.50, 1.47, 1.36, 1.32, 1.33 |
+
+  - The dark row is flaky on `main` since five inputs: unseeded worlds hold 1,184-1,647 creatures and the row compares two of them.
+  - The layer row sits on its threshold on both engines: 45-50 ticks against 32-36, so one or two ticks decide it. This engine
+    landed under more often. Eight runs cannot say whether a cheaper VM narrows that ratio.
+  - Neither threshold was retuned.
+- `smoke.sh` gained `SLICE=k/n` (the k-th of n slices of the rig list), so a full pass fits the 30-minute limit on a background
+  job as three launches.
