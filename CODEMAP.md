@@ -3131,3 +3131,4 @@ layer:
   - The pay path refuses trivial words and checks the per-epoch payment before taking a slot.
   - The save carries `world.seen5` (canonical ids).
   - `sim.worker.js`'s `seen()` reports canonical ids with `in5:true`, and `field-rate.js` unions them (`union5`), reporting `n5`.
+- **#394 (nothing shipped):** `lab/port/probe-amp.js` is the amplitude census (distribution, gate pass rates, who is paid, every liveness counter for diffing two arms). `lab/port/crowd5-design.sh` and `analyse-crowd5-design.js` are the crowd-price design sweep at five inputs. `lab/port/probe-germ.js`, `germ-design.sh` (`SAVEONLY=1` splits the save stage from the boots) and `analyse-germ.js` are the germline harvest test; the probe needs the removed `GERM_STORE` knob, so point `INDEX=` at the engine from f1b1843.

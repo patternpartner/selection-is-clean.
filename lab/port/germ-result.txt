@@ -1,0 +1,15 @@
+PRIMARY: what a harvest finds in 2,000 ticks
+12101 T 3000 counted  amp-pick V 18397 (payments 8, store 3.1323)  store-pick V 14378 (payments 4, store 4)  ratio 0.78  adopted own program: amp true store false  end alive 1720/1576
+12102 T 3000 counted  amp-pick V 13082 (payments 16, store 0.7754)  store-pick V 13250 (payments 5, store 4)  ratio 1.01  adopted own program: amp true store true  end alive 1791/1710
+12103 T 3000 counted  amp-pick V 10177 (payments 2, store 0.3632)  store-pick V 13481 (payments 2, store 2.0038)  ratio 1.32  adopted own program: amp true store true  end alive 1759/1728
+12104 T 3000 counted  amp-pick V 1834 (payments 0, store 0.6666)  store-pick V 3215 (payments 0, store 3.7561)  ratio 1.75  adopted own program: amp false store false  end alive 1731/1735
+12105 T 3000 counted  amp-pick V 30989 (payments 7, store 0.6857)  store-pick V 11469 (payments 3, store 2.1315)  ratio 0.37  adopted own program: amp true store true  end alive 1724/1728
+12106 T 3000 counted  amp-pick V 14127 (payments 4, store 0.1165)  store-pick V 28836 (payments 6, store 3.2447)  ratio 2.04  adopted own program: amp true store true  end alive 1730/1720
+12107 T 6000 counted  amp-pick V 12915 (payments 5, store 3.0017)  store-pick V 9675 (payments 5, store 4)  ratio 0.75  adopted own program: amp true store false  end alive 1795/1795
+12109 T 6000 counted  amp-pick V 6701 (payments 0, store 1.2964)  store-pick V 25612 (payments 8, store 4)  ratio 3.82  adopted own program: amp false store false  end alive 1703/1708
+12110 T 6000 counted  amp-pick V 5692 (payments 63, store 0.4618)  store-pick V 10441 (payments 0, store 0.9408)  ratio 1.83  adopted own program: amp false store true  end alive 1389/466
+12111 T 6000 counted  amp-pick V 2639 (payments 0, store 0.1913)  store-pick V 18537 (payments 3, store 1.2139)  ratio 7.02  adopted own program: amp true store true  end alive 1419/1722
+12112 T 6000 counted  amp-pick V 15958 (payments 10, store 3.2585)  store-pick V 1717 (payments 0, store 4)  ratio 0.11  adopted own program: amp false store true  end alive 1708/1291
+INCOMPLETE: 12108
+counted 11 (floor 9); Wilcoxon W+ 41 of 66, p(store greater) 0.2598, p(store less) 0.7676; store ahead in 7 of 11; median ratio 1.32
+primary: no difference

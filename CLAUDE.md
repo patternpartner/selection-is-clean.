@@ -120,6 +120,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   adaptive) stopped that: 11 of 11 one-sided collapses were the default world. Neither found more new functions at 12,000 ticks
   (p 0.052 and 0.43). The fixed one cost a third of the novelty in worlds with no outbreak. Collapsed worlds regrow and keep finding.
   The open question is the long horizon (`#370`'s worlds that never came back), not a sharper rule at 12,000.
+  **`#394`: three nulls, nothing shipped.** The crowd price has no direction at five inputs (K=450 best on 2 of 3 seen seeds).
+  Picking the germline's source by the store instead of by amplitude made no difference to what a harvest finds (11 unseen
+  seeds, p 0.26) after a 3-of-3 design reading: **three seen seeds agreeing is not a direction here**, a harvest's value swings
+  sevenfold on which one creature is copied. Neither pick finds a computer: each had never been paid on 3 of 11 seeds. Still
+  open: a pick by payments, the adoption splice that inserts old task ops into the adopted program, and founding priced in amplitude.
 
 ## Every session removes or proves something — not only adds
 

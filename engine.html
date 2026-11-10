@@ -11068,16 +11068,9 @@ function inheritProg(parentProg,inheritedCap){ fired('prog.inherit'); // child =
   if(!p.length)p.push([0,0,0,0]);
   return p;
 }
-// #394: WHO THE GERMLINE COPIES. Both picks below took the living creature with the most AMPLITUDE. Under one currency (STORE_DEATH,
-// #381) amplitude no longer measures health - the same vestige #393 found in the migrant gate - so the germline, which is what a
-// harvest, a founding and a population-less reload start from, carried a creature unrelated to the store. GERM_STORE=1 picks by the
-// store itself under STORE_DEATH (the raw store, not visAmp: visAmp saturates at 1.5 and an argmax over it is the first slot past
-// the line). Without STORE_DEATH, or with GERM_STORE=0, the pick is amplitude as before, byte for byte. A let, so a rig can flip it.
-let GERM_STORE=(__tk('__GERM_STORE',0)|0)!==0;
-function germHealth(i){ return (GERM_STORE&&STORE_DEATH)?pE[i]:amp[i]; }
 function selfLearnFromBest(){ fired('self.learn'); // the population's best discovery flows back into the reflective baseline
   let best=-1,bestAmp=-1e9;
-  for(let i=0;i<N;i++){if(palive[i]&&pProg[i]){ const _h=germHealth(i); if(_h>bestAmp){bestAmp=_h;best=i;} }}
+  for(let i=0;i<N;i++){if(palive[i]&&pProg[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;}}
   if(best>=0&&pProg[best]&&pProg[best].length){
     // DURABILITY FIX (confirmed via orphanverify): this adoption was STRIPPING every authored
     // bound-opcode call-site within ~2000 ticks (the best lineage rarely carries a freshly-authored
@@ -11101,7 +11094,7 @@ const DECIDE_PHYS_AXES=[["entropyBaseline",0.0001,0.003],["entropyK",0.00005,0.0
 function decideFromRealWinner(){ fired('shadow.decide');
   if(!__DECIDE_REAL)return;
   let best=-1,bestAmp=-1e9;
-  for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]){ const _h=germHealth(i); if(_h>bestAmp){bestAmp=_h;best=i;} } }
+  for(let i=0;i<N;i++){ if(palive[i]&&pGenome[i]&&amp[i]>bestAmp){bestAmp=amp[i];best=i;} }
   if(best<0||!pGenome[best])return;
   const bg=pGenome[best];
   // VALIDATION drives confidence for REAL: did tracking the winner coincide with the self's fitness rising?

@@ -4,6 +4,7 @@
 // <seed>_AMP.genome with GERM_STORE off (most amplitude), then, with what they wrote put back, <seed>_VIS.genome with GERM_STORE on
 // (richest in the store). It reports how often each of the two creatures
 // was paid. Each genome is then booted with probe-reload.js LOAD=. Draws nothing before tick T.
+// NEEDS the GERM_STORE knob, which #394's verdict removed: run it with INDEX= pointing at engine.html from commit f1b1843.
 //   SEED=s T=3000 OUTDIR=d TASKS=1 node lab/port/probe-germ.js
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis);

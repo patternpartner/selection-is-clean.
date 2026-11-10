@@ -1,0 +1,11 @@
+10401_K130   V   1116  cpu   1.9m  per CPU-hour   35655  alive   355  late/early 4.07  meanSz 4.362
+10401_K200   V   2379  cpu   2.8m  per CPU-hour   51850  alive   505  late/early 0.61  meanSz 9.878
+10401_K300   V   2663  cpu   3.3m  per CPU-hour   48098  alive   673  late/early 0.61  meanSz 5.832
+10401_K450   V  10866  cpu   5.6m  per CPU-hour  117322  alive  1513  late/early 1.29  meanSz 9.663
+10402_K200   V   2157  cpu   1.8m  per CPU-hour   70873  alive   459  late/early 0.60  meanSz 10.079
+10402_K300   V   4172  cpu   4.1m  per CPU-hour   61672  alive   935  late/early 0.44  meanSz 8.374
+10402_K450   V   5465  cpu   7.1m  per CPU-hour   46203  alive   984  late/early 0.31  meanSz 0
+10402_K700   V   5889  cpu   6.8m  per CPU-hour   52131  alive  1642  late/early 0.39  meanSz 9.423
+10403_K300   V   3775  cpu   5.4m  per CPU-hour   41566  alive  1019  late/early 0.28  meanSz 8.429
+10403_K450   V  37410  cpu  16.0m  per CPU-hour  140397  alive  1591  late/early 1.28  meanSz 10.681
+10403_K700   V   9656  cpu   6.6m  per CPU-hour   87313  alive  1673  late/early 0.31  meanSz 7.521

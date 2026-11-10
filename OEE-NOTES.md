@@ -30088,3 +30088,64 @@ canonical truth tables, a one-sided exact Wilcoxon on log(F_in5/F_in4). Batch `l
   - the TASKS default (five inputs, the `visAmp` migrant) `3ec5f521` at 1,500 ticks and `7f3a6bfd` at 2,000;
   - `TASK_IN=4` `11f765b3` (the four-input one-currency world, whose migrant now reads `visAmp`);
   - the world before #381 `84eaf3b7`.
+
+### #394 — THREE NULLS, NOTHING SHIPPED: what still reads amplitude, the crowd price at five inputs, and who the germline copies
+**What moved in the universe: nothing.** The engine and `harness-env.js` are `main`'s, byte for byte. This entry is a census and
+two closed questions, so the next session does not reopen them.
+
+**1. The amplitude census (#393's named sweep).** `lab/port/probe-amp.js`, seeds 12001-12003, 3,000 ticks, shipped world against
+two currencies. Reads arrays and counters only.
+- Under one currency amplitude has a median of 0.007-0.04. The share above 0.2 is 17-29% at tick 500 and mostly under 4% after tick
+  1,500 (one seed was back at 13% at tick 3,000). Under two currencies its median is 1.2 for most of the run.
+- **Who still reads it, by reading the code:** predation's direction (`amp[i]>amp[j]`), the self-write gate, the tunnel gate, the
+  VM's vigour senses, the pair interaction's energy, cosmos launch and founding affordability, and the germline's two picks.
+- **By diffing liveness counters between the arms** (same direction, over 5x, on both complete seeds): the aim counters (off by
+  design), unprovisioned refusals (off by design), and **`cosmos.foundRefused`: 95 and 93 against 11 and 3.** Founding a universe
+  is paid in amplitude, so under one currency it is refused about ten times as often. Foundings were 1 against 2. Not tested further.
+- **The store is thin too.** On 2 of 3 seeds the median living creature held an empty store late in the run, in a world of about
+  1,700. Half to nine-tenths of the living had been paid at least once (0.51, 0.75, 0.93 at tick 3,000 on seeds 10401-10403).
+- **A profile** (`node --cpu-prof`, 1,500 ticks, seed 10401): `executeVM` 15.8%, `processGrid` 13.9%, `vmStep` 10.9%,
+  `applyEntropy` 6.4%, `loop` 5.8%, `render` 5.4%, `executeSoloVM` 5.2%. No single cheap target of #386's kind is left.
+
+**2. The crowd price at five inputs: DESIGN ONLY, no direction.** `REPL_CROWD_K=450` was chosen at four inputs, where it held the
+world to 400-1,250 (#382). Five inputs pay more and the world is back near the array cap. `lab/port/crowd5-design.sh`, seen seeds,
+4,000 ticks, new functions per CPU-hour (`lab/port/crowd5-design-result.txt`):
+
+| K | 10401 | 10402 | 10403 |
+|---|---|---|---|
+| 130 | 35,655 | | |
+| 200 | 51,850 | 70,873 | |
+| 300 | 48,098 | 61,672 | 41,566 |
+| 450 (shipped) | 117,322 | 46,203 | 140,397 |
+| 700 | | 52,131 | 87,313 |
+
+- The shipped value is best on 2 of 3 and worst on the third, where the world's last window paid nothing.
+- My hunch was that a smaller world would win per CPU-hour, as at four inputs. It did not. Nothing was pre-registered.
+- K=700 on 10401 was cut off by the 30-minute job limit and dropped.
+
+**3. Who the germline copies: PRE-REGISTERED (`lab/port/PREREG-germ.md`, f1b1843), verdict NO DIFFERENCE, knob removed. My
+prediction was wrong.**
+- Every 600 ticks the germline adopts the program of the living creature with the most amplitude. A harvest, a founding and a
+  reload without a population start from it. `GERM_STORE=1` picked the creature richest in the store instead.
+- **Design, seen seeds, 3 of 3 for the store pick** (ratios 2.19, 1.16, 1.45). That is what the unseen seeds did not repeat.
+- **Primary** (`lab/port/germ-result.txt`): from one world state the engine's own picks ran both ways; each harvest was booted for
+  2,000 ticks. 11 counted seeds of 12 (floor 9). Store ahead in 7 of 11, median ratio 1.32, range 0.11-7.02.
+  Wilcoxon W+ 41 of 66, **p(greater) 0.26**.
+- **Seed 12108 was not run.** Its 6,000-tick world did not fit a 30-minute launch. With 11 counted, the twelfth cannot bring
+  p to 0.05 (W+ would need 61 of 78 and can reach 53), so the verdict does not depend on it.
+- The guard was not run: with the primary not BETTER the rule already says the default does not move and the knob goes.
+- **Why it is noise either way: neither pick finds a computer.** The amplitude-best had never been paid on 3 of 11 seeds. The
+  store-richest had never been paid on 3 of 11 either; a full store can be taken, not earned. The harvest's value swings sevenfold
+  both ways on which single creature happens to be copied.
+- `lab/port/probe-germ.js` needs the knob, so it runs against the engine at f1b1843 (`INDEX=`).
+
+**Named, not done.**
+- **Pick by what was paid.** If the germline should carry the best computer, the measure is payments or distinct functions paid,
+  not a balance. That needs a per-creature record that follows a creature through compaction. It is a new pre-registration.
+- **The adoption splice.** `selfLearnFromBest` carries the old germline's instructions with opcode >= `CORE_OPCODES` into the
+  adopted program at random positions (`__ATOM_DURABLE`, written for authored atoms). The five task ops sit above that line. On
+  8 of 22 adoptions in the primary the adopted program was not the picked creature's own, which is what the splice would do.
+- **Founding is priced in amplitude** (the refusals above). In a field this decides which universes found daughters.
+
+**Acceptance.** No file a rig reads differs from `main` (`git diff origin/main -- engine.html harness-env.js` is empty), so
+`substrate-test` and `smoke.sh` were not rerun.
