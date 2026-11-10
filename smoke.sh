@@ -9,6 +9,7 @@
 #
 #   ./smoke.sh              quick pass (40 ticks each)
 #   TICKS=400 ./smoke.sh    slower, exercises more of each rig
+#   SLICE=2/3 ./smoke.sh    the second of three slices
 set -u
 cd "$(dirname "$0")"
 TICKS="${TICKS:-40}"
@@ -106,6 +107,9 @@ timeout_for() {
   esac
 }
 
+# SLICE=k/n runs the k-th of n equal slices of the list (1-based), so a full pass fits the 30-minute limit on a background job as
+# n launches with nothing else running. Unset runs everything.
+if [ -n "${SLICE:-}" ]; then k=${SLICE%/*}; n=${SLICE#*/}; t=${#RIGS[@]}; a=$(( (k-1)*t/n )); b=$(( k*t/n )); RIGS=("${RIGS[@]:$a:$((b-a))}"); echo "  slice $SLICE: rigs $((a+1))-$b of $t"; fi
 for r in "${RIGS[@]}"; do
   printf '  %-26s ' "$r"
   out=$(env TICKS="$TICKS" SAMPLE="$TICKS" SWIN="$TICKS" $(extra_env_for "$r") timeout "$(timeout_for "$r")" node "$r" 2>&1)
