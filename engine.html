@@ -10848,8 +10848,15 @@ function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floo
 // overwrites it - across epochs and across deaths. A READ that finds no live neighbour's word reads the ground of its own cell: the
 // stored function, expressed in this epoch's row order, clean, keyed to its pool (so the drain applies) and entered in the read record
 // (so publishing it unchanged is refused as a copy, like any read). Draws nothing.
-const TASK_GROUND=TASKS_ON&&(__tk('__TASK_GROUND',0)|0)!==0;
-const tG=(TASK_GROUND&&TASK_IN===5)?new Uint32Array(FIELD_W*FIELD_H):null;
+// Modes (design, #397): 1 the last payment in the cell overwrites; 2 THE DEEPEST STAYS - a payment overwrites only a function of no
+// greater formula size; 3 THE TIP OF A CHAIN - a payment overwrites only if its word was built on the ground's function (that
+// function's pool is among the word's read keys), or the cell is empty, or nothing has extended it for 500 ticks.
+const TASK_GROUND=TASKS_ON?(__tk('__TASK_GROUND',0)|0):0;
+const tG=(TASK_GROUND&&TASK_IN===5)?new Uint32Array(FIELD_W*FIELD_H):null, tGS=tG?new Float32Array(FIELD_W*FIELD_H):null, tGT=tG?new Int32Array(FIELD_W*FIELD_H):null;
+function taskGroundWrite(i,T,D){ const c=sunCell(i), F=tG[c]; let ok=(F===0)||TASK_GROUND===1;
+  if(!ok&&TASK_GROUND===2)ok=TASK_SZ[T]>=tGS[c];
+  if(!ok&&TASK_GROUND===3){ if(tick-tGT[c]>500)ok=true; else { const k=taskFind5(F); if(k>=0) for(let q=0;q<4;q++) if(tK[D*4+q]===k){ ok=true; tEv.gExt=(tEv.gExt|0)+1; break; } } }
+  if(ok){ tG[c]=tKey[T]; tGS[c]=TASK_SZ[T]; tGT[c]=tick; tEv.gWrites=(tEv.gWrites|0)+1; } }
 function taskExpr5(F){ const I=tWin; let v=0; for(let q=0;q<32;q++){ const k=(((I[0]>>>q)&1)<<4)|(((I[1]>>>q)&1)<<3)|(((I[2]>>>q)&1)<<2)|(((I[3]>>>q)&1)<<1)|((I[4]>>>q)&1); if((F>>>k)&1)v|=1<<q; } return v>>>0; }   // the inverse of taskTT5
 function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, D=o+d, S=o+s, e=tEpoch;
   if(t===0){ tW[D]=tWin[tIc[i]]; tIc[i]=(TASK_IN===5)?((tIc[i]+1)%5):((tIc[i]+1)&3); tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); return; }   // T_INPUT
@@ -10874,7 +10881,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   else { T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; } if(tPE[i]===e)return; }
   tPE[i]=e;   // one payment per epoch
   if(TASK_IN===5)tLastK[i]=T;   // #392: the slot this payment may just have taken
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ tG[sunCell(i)]=tKey[T]; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null)taskGroundWrite(i,T,D); if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
 // that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between

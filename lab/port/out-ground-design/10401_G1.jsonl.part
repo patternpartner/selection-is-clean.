@@ -1,4 +1,0 @@
-{"boot":true,"tick":0,"alive":646,"loaded":false,"germLen":19}
-{"reseeded":1,"k":1}
-{"tick":500,"alive":1284,"meanAlive":1143,"taskInc":1073.79,"sunInc":133.44,"paid":11001,"fnPaid":689,"newToHistory":689,"everPaid":689,"slots":689,"full":0,"rebuilds":0,"expH":481.85,"meanSz":4.733,"progs":651,"readCarried":1274,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
-{"diag":500,"birth":1981,"refused":2470,"unprovisioned":0,"rationed":0,"prey":0,"scavenge":113,"pull":0,"launch":6,"esc":51,"pred155":0,"meanE":0.345,"meanAmp":0.265,"aims":2,"meanAge":208,"meanProv":0.699,"bigLin":0.19,"lineages":298,"BEC":0.25,"refF":null,"refRate":null,"PBC":1}
