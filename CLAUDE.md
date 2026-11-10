@@ -130,6 +130,13 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   FEWER ticks in 4 of 4 while holding more creatures in 4 of 4, with about the same ticks-times-creatures. A node speed-up is not a
   field speed-up, and one pair of unseeded fields (`#386`'s 12.5%) cannot carry a speed claim. A browser rig that boots one
   universe from a saved population is the missing instrument.
+  **`#396`: A FIELD UNIVERSE'S WORLD WAS ITS CELL, and that is SHIPPED away.** The engine's world is its canvas: 1280x720 in
+  node, 137x304 in a field cell on a phone, so a viewer's universes were twenty times denser than any node experiment and their
+  tick was three-quarters pair loops (119 ms against 35). The field now gives every universe 920 thousand square pixels drawn
+  scaled into its cell (`#world=0` restores 1:1): 1.71x the distinct functions by 25 minutes (8 of 8 pairs, p 0.0039), behind
+  at 5 minutes (0.84), ahead from 10. The look changes (small sparse creatures, not a saturated blob). **Before trusting a node
+  result in a field, check the two run the same world**: `lab/port/field-phase.js` reads each universe's world size, tick cost and
+  where the tick goes (`phaseForTest`). Not measured: a desktop-sized field, anything past 25 minutes, the shuffle control in a field.
 
 ## Every session removes or proves something — not only adds
 
@@ -234,6 +241,7 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
 - **`layers-test` has two timing rows that fail alone on `main` (`#395`).** "A dark universe ticks faster than a lit one" failed
   2 of 3 runs on the engine before `#395` and 2 of 5 after; "the second layer runs slower than the first" sits on its 1.4x line
   (45-50 ticks against 32-36). Run it alone three times and A/B against the previous engine before believing either colour.
+- **A field launch of 1,800 s does not fit the 30-minute job limit; 1,500 s does (`#396`).** One pair of fields per launch.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.
 - **The rig takes minutes and long runs get reaped.** `substrate-test` runs several minutes per
   budget and `smoke.sh` longer; in the hosted sessions this project is developed in, shell jobs

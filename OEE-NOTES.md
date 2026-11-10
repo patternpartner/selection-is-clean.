@@ -30294,3 +30294,10 @@ cell. By 25 minutes a field finds 1.71x the distinct functions, on a 412x915 scr
 - The slow first minutes: a founder population spread over a large world reads few neighbours. A smaller founding patch would
   be the obvious thing to try.
 - A desktop-sized field has not been measured either way.
+
+**#396 acceptance.**
+- **`smoke.sh` on the shipped default, three slices, nothing else running: 69 ok, 0 failing.** `layers-test`, `slot-test`,
+  `pool-test` and `collective-test` are in it; `layers-test`'s two timing rows (#395) passed this time.
+- `substrate-test` was not rerun at its four budgets: `engine.html` and `harness-env.js` are unchanged since #395's 264/0 x4, and
+  it reads none of `index.html`, `universe.html` or `sim.worker.js`. It passed inside slice 1 at TICKS=40.
+- Both settings were read off a running field: the default gives 644x1429 worlds, `#world=0` gives 137x304.
