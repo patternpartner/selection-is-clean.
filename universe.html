@@ -248,6 +248,7 @@
     censusForTest: function(){ return ask('census', null); },
     // #383: test-only - this universe's lifetime paid-for bitmap and the economy switches, for a field-throughput rig
     seenForTest: function(){ return ask('seen', null); },
+    phaseForTest: function(){ return ask('phase', null); },   // #396: where this universe's time goes (installs timers on first call)
     // #158: test-only. Lets collective-test.js drive the evolved-silence case directly.
     setGeneForTest: function(gene,value){ return ask('setgene', { gene:String(gene), value:+value }); },
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
@@ -285,6 +286,7 @@
     if (d.type === 'gc-result'){ settle(d.rid, !!d.ran); return; }
     if (d.type === 'census-result'){ settle(d.rid, d.census || null); return; }
     if (d.type === 'seen-result'){ settle(d.rid, d.seen || null); return; }
+    if (d.type === 'phase-result'){ settle(d.rid, d.phase || null); return; }
     if (d.type === 'setgene-result'){ settle(d.rid, !!d.ok); return; }
     if (d.type === 'export'){
       // A field-level save asks for the DATA, not a download. Only a click on this universe's own

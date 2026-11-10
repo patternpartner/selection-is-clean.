@@ -120,6 +120,20 @@ const BRIDGE =
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
+  // #396 - WHERE A FIELD UNIVERSE'S TIME GOES. Nothing is installed until a rig first asks; from then on loop and its largest
+  // phases are timed with performance.now(), and the wall time between one loop ending and the next starting (the wait for this
+  // worker's thread: its other universes, messages, timers) is kept as gap. Read-only for the world: no draw, no state touched.
+  '__inst.api.phase=function(){try{if(!__inst.ph){var P=__inst.ph={t0:performance.now(),n:0,loop:0,gap:0,last:0,f:{}};' +
+    'var W=function(name,get,set){var g=get();if(typeof g!=="function")return;P.f[name]=0;set(function(){var a=performance.now();try{return g.apply(this,arguments);}finally{P.f[name]+=performance.now()-a;}});};' +
+    'W("render",function(){return render;},function(w){render=w;});' +
+    'W("processGrid",function(){return processGrid;},function(w){processGrid=w;});' +
+    'W("applyEntropy",function(){return applyEntropy;},function(w){applyEntropy=w;});' +
+    'W("updateParticles",function(){return updateParticles;},function(w){updateParticles=w;});' +
+    'W("applyNicheEconomy",function(){return applyNicheEconomy;},function(w){applyNicheEconomy=w;});' +
+    'var L=loop;loop=function(){var a=performance.now();if(P.last)P.gap+=a-P.last;try{return L.apply(this,arguments);}finally{var b=performance.now();P.loop+=b-a;P.n++;P.last=b;}};' +
+    'return {installed:true,tick:tick};}' +
+    'var P=__inst.ph,al=0;for(var i=0;i<N;i++)if(palive[i])al++;var o={ms:performance.now()-P.t0,n:P.n,loop:P.loop,gap:P.gap,alive:al,tick:tick,pace:(typeof __paceMs!=="undefined")?__paceMs:null,f:{}};for(var k in P.f)o.f[k]=P.f[k];return o;' +
+  '}catch(e){return {err:String(e&&e.message)};}};' +
   '__inst.api.census=function(){var o={};try{' +
     'o.N=N;o.CAP=CAP;' +
     'var pg=0,pa=0,pl=0,pp=0;' +
@@ -506,6 +520,11 @@ Universe.prototype.handle = function (d) {
   // which live objects were growing — and four hypotheses about that had already been wrong. The
   // counts came back tiny, which is half of how #162 was found.
   // #383: the lifetime paid-for bitmap - read-only, request/reply like stat
+  if (d.type === 'phase') {
+    let r = null; try { r = api() && api().phase ? api().phase() : null; } catch (e) { r = { err:String(e&&e.message) }; }
+    this.post({ type: 'phase-result', rid: d.rid, phase: r });
+    return;
+  }
   if (d.type === 'seen') {
     let r = null; try { r = api() && api().seen ? api().seen() : null; } catch (e) { r = { err:String(e&&e.message) }; }
     this.post({ type: 'seen-result', rid: d.rid, seen: r });
