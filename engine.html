@@ -17033,7 +17033,7 @@ function profileVM(){
 
     for(let ip=0,_prs=0;ip<nInst&&_prs<nInst*2;ip++,_prs++){
       const inst=prog[ip];if(!inst)continue;
-      const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
+      const op=inst[0],src=inst[1],dst=inst[2],_k0=inst[3]; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
       const si=Math.abs(src)%12,di=Math.abs(dst)%12;
       switch(op){
         case 0:vmRegs[di]=vmRegs[si];break;
@@ -17788,7 +17788,7 @@ function profileVM(){
           if(_bua) vmRegs[di]=uaChain(_bua,_boi,vmRegs[si],vmRegs[(si+1)%__vmRC]);
         }
       }
-      for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+      for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];if(!(_v>=-8&&_v<=8))vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:8):0;}   /* #395: the same clamp, written only where it changes a value (NaN fails both comparisons and becomes 0, as before) */
     }
 
     for(let a=0;a<7;a++)totals[a]+=vmActions[a];
@@ -25075,7 +25075,7 @@ function vmStep(op,src,dst,k,si,di,i,j,ip){
         }
       }
     }
-    for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:_v>8?8:_v):0;}
+    for(let r=0;r<VM_REGS_MAX;r++){const _v=vmRegs[r];if(!(_v>=-8&&_v<=8))vmRegs[r]=Number.isFinite(_v)?(_v<-8?-8:8):0;}   /* #395: the same clamp, written only where it changes a value (NaN fails both comparisons and becomes 0, as before) */
     return ip;
 }
 
@@ -25270,7 +25270,7 @@ function executeVM(i,j,sim,d){
   __vmMode=VM_MAIN;__vmProg=prog;__vmN=nInst;__vmLen=nInst;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231: the one dispatch reads these, set once per program run
   for(let ip=0,_vs=0;ip<nInst&&_vs<nInst*2;ip++,_vs++){
     const inst=prog[ip];if(!inst)continue;
-    const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
+    const op=inst[0],src=inst[1],dst=inst[2],_k0=inst[3]; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
     const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
 
     ip=vmStep(op,src,dst,k,si,di,i,j,ip);   // #231: one dispatch for all four machines
@@ -25601,7 +25601,7 @@ function executeClusterVM(i,j,sim,d){
   __vmMode=VM_CLUS;__vmProg=prog;__vmN=nInst;__vmLen=nInst;__vmCl=cl;__vmSim=sim;__vmPA=phaseAlign;__vmProx=proximity;__vmD=d;   // #231
   for(let ip=0,_cs=0;ip<nInst&&_cs<nInst*2;ip++,_cs++){
     const inst=prog[ip];if(!inst)continue;
-    const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
+    const op=inst[0],src=inst[1],dst=inst[2],_k0=inst[3]; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
     const si=Math.abs(src)%12,di=Math.abs(dst)%12;
     ip=vmStep(op,src,dst,k,si,di,i,j,ip);   // #231
   }
@@ -26072,7 +26072,7 @@ function executeSoloVM(){
     __vmMode=VM_SOLO;__vmProg=prog;__vmN=nInst;__vmLen=nInst;   // #231: no partner, so sim/d/proximity are never read on this path
     for(let ip=0,_ss=0;ip<nInst&&_ss<nInst*2;ip++,_ss++){
       const inst=prog[ip];if(!inst)continue;
-      const [op,src,dst,_k0]=inst; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
+      const op=inst[0],src=inst[1],dst=inst[2],_k0=inst[3]; const k=Number.isFinite(_k0)?_k0:0; // NaN-FIX: k is an evolvable instruction immediate; a NaN here flows through case-4 (vmActions+=vmRegs*k) past the register clamp into amp/tend and poisons the fitness EMA.
       const si=Math.abs(src)%__vmRC,di=Math.abs(dst)%__vmRC;   // #200a
       ip=vmStep(op,src,dst,k,si,di,i,-1,ip);   // #231: j=-1, no partner
     }
