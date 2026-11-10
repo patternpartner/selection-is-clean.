@@ -1,0 +1,11 @@
+pair 1  default F 32979 K 27052 A 38190 read 64s M 6299  |  world F 67251 K 41286 A 48317 read 55s M 9062  ratio 2.04  (5/10/15 min: 0.90 / 1.72 / 1.92)
+pair 2  default F 44437 K 26162 A 37832 read 56s M 5477  |  world F 60052 K 40018 A 43498 read 46s M 8854  ratio 1.35  (5/10/15 min: 0.78 / 1.11 / 1.29)
+pair 3  default F 34080 K 27417 A 36012 read 54s M 7438  |  world F 69155 K 39904 A 43416 read 49s M 8822  ratio 2.03  (5/10/15 min: 1.27 / 1.74 / 1.99)
+pair 4  default F 38727 K 24321 A 37173 read 61s M 5468  |  world F 53753 K 39035 A 44780 read 56s M 8097  ratio 1.39  (5/10/15 min: 0.64 / 1.03 / 1.17)
+pair 5  default F 38343 K 22818 A 35906 read 60s M 4764  |  world F 60119 K 41164 A 43987 read 49s M 9427  ratio 1.57  (5/10/15 min: 0.61 / 1.13 / 1.39)
+pair 6  default F 36625 K 26927 A 35835 read 52s M 6557  |  world F 67853 K 44740 A 31464 read 25s M 12512  ratio 1.85  (5/10/15 min: 0.91 / 1.22 / 1.48)
+pair 7  default F 33566 K 26937 A 38506 read 58s M 5999  |  world F 65409 K 39567 A 42206 read 52s M 9596  ratio 1.95  (5/10/15 min: 1.16 / 1.76 / 1.94)
+pair 8  default F 40086 K 28071 A 40534 read 60s M 7617  |  world F 60456 K 40312 A 44645 read 41s M 8920  ratio 1.51  (5/10/15 min: 0.73 / 1.17 / 1.33)
+complete pairs 8 (floor 6); F at 1,500 s: W+ 36 of 36, p(world greater) 0.0039, p(world less) 1.0000; world ahead in 8 of 8; median ratio 1.71
+median ratio at 5, 10, 15 min: 0.84, 1.20, 1.44
+verdict: BETTER

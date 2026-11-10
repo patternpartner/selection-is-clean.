@@ -79,7 +79,7 @@
       /#n=4,hud         put the HUD back on every frame (a field is clean by default)
       /#pool=2          pack the universes onto exactly two workers (default: one per core, max 4)
       /#nopool          one worker per universe, the pre-#162 layout — for comparison, and costs more
-      /#world=920       give every universe a world of 920 thousand square pixels, drawn scaled down into its cell (#396)
+      /#world=0         each universe's world is its own cell again, 1:1 (the field before #396; default is world=920)
       /#bgpace=400      how hard to slow the OTHER universes while one is open (default 200ms, 0 = off)
       /                 THE CUBE — no hash needed. Nine universes on the face and layers under
                         them, drawing nothing, running slow, trading on the same wire. It turns
@@ -345,8 +345,8 @@
   // eight that stand down also stop taking much in while you look at the ninth. Over the seconds or
   // minutes of actually looking at something that is nothing; it would matter if a cell were left
   // open for hours, and that is the case to watch.
-  // #396: #world=K gives every universe a world of at least K thousand square pixels whatever its frame's size (universe.html). 0 or unset: off.
-  var WORLDQ = (function(){ var m=raw.match(/(?:^|,)world=(\d+)/); var v=m?parseInt(m[1],10):0; return v>0?('&world='+v):''; })();
+  // #396: every universe gets a world of at least K thousand square pixels whatever its frame's size (universe.html). #world=0: off.
+  var WORLDQ = (function(){ var m=raw.match(/(?:^|,)world=(\d+)/); var v=m?parseInt(m[1],10):920; return v>0?('&world='+v):''; })();   // SHIPPED default 920 (PREREG-world.md: 8 of 8 pairs, median 1.71x by 25 minutes); #world=0 is the old 1:1 world
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
