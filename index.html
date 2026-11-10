@@ -79,6 +79,7 @@
       /#n=4,hud         put the HUD back on every frame (a field is clean by default)
       /#pool=2          pack the universes onto exactly two workers (default: one per core, max 4)
       /#nopool          one worker per universe, the pre-#162 layout — for comparison, and costs more
+      /#world=920       give every universe a world of 920 thousand square pixels, drawn scaled down into its cell (#396)
       /#bgpace=400      how hard to slow the OTHER universes while one is open (default 200ms, 0 = off)
       /                 THE CUBE — no hash needed. Nine universes on the face and layers under
                         them, drawing nothing, running slow, trading on the same wire. It turns
@@ -247,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -344,6 +345,8 @@
   // eight that stand down also stop taking much in while you look at the ninth. Over the seconds or
   // minutes of actually looking at something that is nothing; it would matter if a cell were left
   // open for hours, and that is the case to watch.
+  // #396: #world=K gives every universe a world of at least K thousand square pixels whatever its frame's size (universe.html). 0 or unset: off.
+  var WORLDQ = (function(){ var m=raw.match(/(?:^|,)world=(\d+)/); var v=m?parseInt(m[1],10):0; return v>0?('&world='+v):''; })();
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
@@ -430,7 +433,7 @@
     // (#153 gave it one precisely because the shared key kept overwriting it), which is now just the
     // general case rather than a special one.
     f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
-         +'&slot='+(isColl?'collective':('u'+i))
+         +'&slot='+(isColl?'collective':('u'+i))+WORLDQ
          +withMind(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
@@ -460,7 +463,7 @@
         // Two different "slots" meet on this line, so they are named apart: which WORKER this
         // universe shares (#162) and which STORAGE key holds its lineage (#170).
         var poolSlot=(cells.length+(L-1)*total+k)%pool;
-        d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k
+        d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k+WORLDQ
              +withMind('#cleanart,dark,pace='+(DEEPPACE*L));
         d.title='Layer '+L+', universe '+(k+1);
         deepFrag.appendChild(d); deep.push(d);
@@ -574,7 +577,7 @@
     g.style.width = cw+'px'; g.style.height = ch+'px';
     // Parked past the layers, on the same off-screen row.
     g.style.left = ((LAYERS*total) + grown.length) * (cw+4) + 'px';
-    g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot
+    g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot+WORLDQ
           + withMind('#cleanart,dark,pace='+DEEPPACE);
     g.title = 'Grown universe '+slot;
     below.appendChild(g);

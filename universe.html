@@ -57,8 +57,14 @@
   }
 
   // ── size the drawing buffer 1:1 with the viewport (matches index.html's resize()) ──
-  function bufW(){ return Math.max(1, window.innerWidth|0); }
-  function bufH(){ return Math.max(1, window.innerHeight|0); }
+  // #396: A WORLD IS NOT ITS FRAME. The engine's world is its canvas, so a universe in a field cell (137x304 on a phone) packed the
+  // same thousand creatures into a twentieth of the area every node experiment ran in (1280x720), and its tick was three-quarters
+  // pair loops. ?world=K gives the buffer at least K thousand square pixels at the frame's own aspect; CSS draws it scaled down, and
+  // pointers are scaled up to match. Unset or 0 is the old 1:1 buffer, exactly.
+  var WORLD = (function(){ try { var m=(location.search||'').match(/[?&]world=(\d{1,5})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();
+  function wscale(){ if(!(WORLD>0)) return 1; var a=Math.max(1,(window.innerWidth|0)*(window.innerHeight|0)); return Math.max(1, Math.sqrt(WORLD*1000/a)); }
+  function bufW(){ return Math.max(1, Math.round((window.innerWidth|0)*wscale())); }
+  function bufH(){ return Math.max(1, Math.round((window.innerHeight|0)*wscale())); }
   canvas.width = bufW(); canvas.height = bufH();
 
   // ═══ #170 — THIS UNIVERSE'S OWN SLOT ═══════════════════════════════════════════════════════
@@ -316,17 +322,18 @@
 
   // ── forward input to the worker ────────────────────────────────
   function post(ev, detail){ worker.postMessage({ type:'input', event:ev, detail:detail }); }
-  function mouseDetail(e){ return { clientX:e.clientX, clientY:e.clientY, button:e.button, buttons:e.buttons }; }
+  function mouseDetail(e){ var k=wscale(); return { clientX:e.clientX*k, clientY:e.clientY*k, button:e.button, buttons:e.buttons }; }
   function touchDetail(e){
     var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || {clientX:0,clientY:0};
-    var pack = function(list){ var a=[],i; if(!list) return a; for(i=0;i<list.length;i++) a.push({clientX:list[i].clientX, clientY:list[i].clientY}); return a; };
-    return { clientX:t.clientX, clientY:t.clientY, touches:pack(e.touches), changedTouches:pack(e.changedTouches) };
+    var k = wscale();
+    var pack = function(list){ var a=[],i; if(!list) return a; for(i=0;i<list.length;i++) a.push({clientX:list[i].clientX*k, clientY:list[i].clientY*k}); return a; };
+    return { clientX:t.clientX*k, clientY:t.clientY*k, touches:pack(e.touches), changedTouches:pack(e.changedTouches) };
   }
   window.addEventListener('mousemove', function(e){ post('mousemove', mouseDetail(e)); });
   // #314b: the field's tile covers this frame, so it hands the pointer through (index.html lookThrough). Only from the parent.
   window.addEventListener('message', function(e){ var d=e.data; if(e.source!==window.parent||!d||d.type!=='fieldpointer')return;
     if(typeof d.x!=='number'||typeof d.y!=='number'||!isFinite(d.x)||!isFinite(d.y))return;
-    post('mousemove', { clientX:d.x, clientY:d.y, button:0, buttons:0 }); });
+    post('mousemove', { clientX:d.x*wscale(), clientY:d.y*wscale(), button:0, buttons:0 }); });
   window.addEventListener('mousedown', function(e){ post('mousedown', mouseDetail(e)); });
   window.addEventListener('mouseup',   function(e){ post('mouseup',   mouseDetail(e)); });
   window.addEventListener('keydown',   function(e){ post('keydown', { key:e.key, code:e.code, keyCode:e.keyCode }); });

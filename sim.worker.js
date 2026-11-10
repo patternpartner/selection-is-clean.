@@ -124,15 +124,15 @@ const BRIDGE =
   // phases are timed with performance.now(), and the wall time between one loop ending and the next starting (the wait for this
   // worker's thread: its other universes, messages, timers) is kept as gap. Read-only for the world: no draw, no state touched.
   '__inst.api.phase=function(){try{if(!__inst.ph){var P=__inst.ph={t0:performance.now(),n:0,loop:0,gap:0,last:0,f:{}};' +
-    'var W=function(name,get,set){var g=get();if(typeof g!=="function")return;P.f[name]=0;set(function(){var a=performance.now();try{return g.apply(this,arguments);}finally{P.f[name]+=performance.now()-a;}});};' +
-    'W("render",function(){return render;},function(w){render=w;});' +
-    'W("processGrid",function(){return processGrid;},function(w){processGrid=w;});' +
-    'W("applyEntropy",function(){return applyEntropy;},function(w){applyEntropy=w;});' +
-    'W("updateParticles",function(){return updateParticles;},function(w){updateParticles=w;});' +
-    'W("applyNicheEconomy",function(){return applyNicheEconomy;},function(w){applyNicheEconomy=w;});' +
+    'var WR=function(name,get,set){var g=get();if(typeof g!=="function")return;P.f[name]=0;set(function(){var a=performance.now();try{return g.apply(this,arguments);}finally{P.f[name]+=performance.now()-a;}});};' +
+    'WR("render",function(){return render;},function(w){render=w;});' +
+    'WR("processGrid",function(){return processGrid;},function(w){processGrid=w;});' +
+    'WR("applyEntropy",function(){return applyEntropy;},function(w){applyEntropy=w;});' +
+    'WR("updateParticles",function(){return updateParticles;},function(w){updateParticles=w;});' +
+    'WR("applyNicheEconomy",function(){return applyNicheEconomy;},function(w){applyNicheEconomy=w;});' +
     'var L=loop;loop=function(){var a=performance.now();if(P.last)P.gap+=a-P.last;try{return L.apply(this,arguments);}finally{var b=performance.now();P.loop+=b-a;P.n++;P.last=b;}};' +
     'return {installed:true,tick:tick};}' +
-    'var P=__inst.ph,al=0;for(var i=0;i<N;i++)if(palive[i])al++;var o={ms:performance.now()-P.t0,n:P.n,loop:P.loop,gap:P.gap,alive:al,tick:tick,pace:(typeof __paceMs!=="undefined")?__paceMs:null,f:{}};for(var k in P.f)o.f[k]=P.f[k];return o;' +
+    'var P=__inst.ph,al=0;for(var i=0;i<N;i++)if(palive[i])al++;var o={ms:performance.now()-P.t0,n:P.n,loop:P.loop,gap:P.gap,alive:al,tick:tick,W:W,H:H,pace:(typeof __paceMs!=="undefined")?__paceMs:null,f:{}};for(var k in P.f)o.f[k]=P.f[k];return o;' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
   '__inst.api.census=function(){var o={};try{' +
     'o.N=N;o.CAP=CAP;' +
