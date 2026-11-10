@@ -126,7 +126,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   sevenfold on which one creature is copied. Neither pick finds a computer: each had never been paid on 3 of 11 seeds. Still
   open: a pick by payments, the adoption splice that inserts old task ops into the adopted program, and founding priced in amplitude.
   **`#395`: the same world 16% cheaper a tick** (the VM's register clamp writes only where it changes a value; instructions are
-  read by index). Byte-identical on five worlds. Not measured in a field.
+  read by index). Byte-identical on five worlds. **In node only (`#395b`):** in four pairs of browser fields the faster engine ran
+  FEWER ticks in 4 of 4 while holding more creatures in 4 of 4, with about the same ticks-times-creatures. A node speed-up is not a
+  field speed-up, and one pair of unseeded fields (`#386`'s 12.5%) cannot carry a speed claim. A browser rig that boots one
+  universe from a saved population is the missing instrument.
 
 ## Every session removes or proves something — not only adds
 

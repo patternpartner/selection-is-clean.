@@ -30198,3 +30198,33 @@ after** (16.5% less wall time; user CPU 64.5 s to 57.0 s). TASKS off: 20.7 s to 
   - Neither threshold was retuned.
 - `smoke.sh` gained `SLICE=k/n` (the k-th of n slices of the rig list), so a full pass fits the 30-minute limit on a background
   job as three launches.
+
+### #395b — IN A FIELD THE SPEED-UP DOES NOT SHOW: four pairs, fewer ticks in 4 of 4, about the same creature-ticks
+#395 said "not measured in a field" and expected a smaller gain there. Measured, it is not there. `lab/port/speed-field.sh`: four
+pairs of browser fields run together for 600 s, the engine before #395 (fa3118e) against today's, `field-rate.js` sampling every
+60 s. Out `lab/port/out-speed-field/`. The rules are byte-identical, so K (ticks across the field) is the measure.
+
+| Pair | K old / new | Alive old / new | K x alive, old / new (millions) | F old / new |
+|---|---|---|---|---|
+| 1 | 13,673 / 11,704 | 32,923 / 34,589 | 450 / 405 | 17,433 / 21,627 |
+| 2 | 11,562 / 11,405 | 33,907 / 34,558 | 392 / 394 | 20,938 / 18,625 |
+| 3 | 11,437 / 9,967 | 31,193 / 36,682 | 357 / 366 | 14,590 / 20,011 |
+| 4 | 11,259 / 10,003 | 33,278 / 37,142 | 375 / 372 | 19,769 / 20,235 |
+
+- **The new engine ran FEWER ticks in 4 of 4** (-14%, -1%, -13%, -11%) and **held MORE creatures in 4 of 4** (+5%, +2%, +18%, +12%).
+- Ticks times creatures alive at the end, a rough count of work done, is about equal: ratios 0.90, 1.01, 1.03, 0.99.
+- In the first minute the new engine was ahead on ticks in 3 of 4 (1,691 / 1,601, 1,590 / 1,538, 1,677 / 1,599; behind in pair 1).
+- F was higher on the new engine in 3 of 4. With identical rules that is not a claim; #383's fields alone ranged threefold.
+- **What this does and does not say.**
+  - A field's throughput did not rise. Whatever a field is limited by, it is not the two lines #395 made cheaper, or the browser's
+    V8 already ran them cheaply. I did not find which.
+  - Four of four in one direction on both ticks and population is p 0.06 one-sided each. A world with identical rules should not hold
+    more creatures at fewer ticks. The likeliest reading is that things a field does on the wall clock (migration, the tick budget
+    shared between universes) interact with how fast early ticks go, so populations grow sooner and then cost more. Not tested.
+  - **#386's field reading (12.5% more ticks) was one pair.** These four say one pair of unseeded fields cannot carry a
+    speed claim in either direction.
+- **So #395's claim is narrowed:** the identical world is 16% cheaper per tick IN NODE. That makes every node experiment here
+  cheaper. It is not shown to raise the number a viewer gets, and #395's sentence expecting that is wrong as written.
+- **Named:** a browser speed rig that boots ONE universe from a saved population, so both engines run the same world, and counts
+  ticks in a fixed time. Without it no engine speed change can be judged where it matters.
+
