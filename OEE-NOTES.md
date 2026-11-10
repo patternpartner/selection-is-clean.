@@ -30228,3 +30228,69 @@ pairs of browser fields run together for 600 s, the engine before #395 (fa3118e)
 - **Named:** a browser speed rig that boots ONE universe from a saved population, so both engines run the same world, and counts
   ticks in a fixed time. Without it no engine speed change can be judged where it matters.
 
+
+### #396 — A FIELD UNIVERSE'S WORLD WAS ITS CELL: SHIPPED, a fixed-area world finds 1.71x the distinct functions by 25 minutes (8 of 8, p 0.0039)
+`lab/port/PREREG-world.md` (committed 8df16cb before any decision run). Out `lab/port/out-world/`, result `lab/port/world-result.txt`.
+
+**How it was found.** #395b left a question: why did a tick 16% cheaper in node give a field no more ticks? I added a read-only
+timing probe to the worker (`phaseForTest`, `sim.worker.js`: `performance.now()` around `loop` and its largest phases, installed only
+when a rig asks) and a rig, `lab/port/field-phase.js`. One default field, 4 minutes warm, 3 minutes measured (`out-phase/field-1.json`):
+- **The field's four workers were 98% busy inside the tick.** It is limited by the engine, not by pacing, drawing or messages.
+- **A tick averaged 119 ms**, against about 35 in node, at similar populations (33,759 creatures in 31 universes).
+- **`processGrid` took 49% of it and `applyEntropy` 27%.** In node they are 15% and 7.5%. Both are pair loops.
+- **Every universe's world was 137x304.** The engine's world is its canvas (`W=c.width=window.innerWidth`). A node world is
+  1280x720. On the rig's 412x915 screen a field cell is a twentieth of that area, holding the same 700-1,700 creatures.
+- So the VM lines #395 trimmed were a small part of a field tick, and **every node result since #350 was measured in a world
+  about twenty times sparser than the one a viewer runs.**
+
+**The change.** `index.html` passes `?world=K` to every universe frame (three sites, each asserted). `universe.html` sizes the drawing
+buffer to at least K thousand square pixels at the frame's own aspect; CSS draws it scaled down and pointers are scaled up to
+match. K = 920 is node's area. A frame already that large is untouched. `universe.html` opened alone is unchanged.
+
+**Design (one field each, seen):**
+- At 90 seconds: mean tick 43 ms against 123, `applyEntropy` 8% against 29%, 2,425 ticks in 30 s against 961.
+- Three fields together for 10 minutes: F at 1, 5 and 10 minutes was 5,823 / 10,941 / 15,458 for today's field, 686 / 6,001 /
+  14,087 at `world=230` and 303 / 6,420 / 16,106 at `world=920`. The dense field bursts and slows; the large one starts slowly and
+  was finding about 2,700 a minute at minute 10.
+
+**Decision: 8 pairs, two fields run together, 1,500 s** (not #383's 1,800: a launch has to end inside the 30-minute job limit).
+
+| Pair | F today | F world=920 | Ratio | Ratio at 5 / 10 / 15 min | Ticks today / world |
+|---|---|---|---|---|---|
+| 1 | 32,979 | 67,251 | 2.04 | 0.90 / 1.72 / 1.92 | 27,052 / 41,286 |
+| 2 | 44,437 | 60,052 | 1.35 | 0.78 / 1.11 / 1.29 | 26,162 / 40,018 |
+| 3 | 34,080 | 69,155 | 2.03 | 1.27 / 1.74 / 1.99 | 27,417 / 39,904 |
+| 4 | 38,727 | 53,753 | 1.39 | 0.64 / 1.03 / 1.17 | 24,321 / 39,035 |
+| 5 | 38,343 | 60,119 | 1.57 | 0.61 / 1.13 / 1.39 | 22,818 / 41,164 |
+| 6 | 36,625 | 67,853 | 1.85 | 0.91 / 1.22 / 1.48 | 26,927 / 44,740 |
+| 7 | 33,566 | 65,409 | 1.95 | 1.16 / 1.76 / 1.94 | 26,937 / 39,567 |
+| 8 | 40,086 | 60,456 | 1.51 | 0.73 / 1.17 / 1.33 | 28,071 / 40,312 |
+
+- **Primary:** W+ 36 of 36, **p 0.0039**, ahead in 8 of 8, median ratio 1.71. **BETTER.** My prediction (7 of 8, about 1.5) was close.
+- **Early cost, as predicted:** behind at 5 minutes in 6 of 8 (median 0.84), ahead at 10 in 8 of 8 (1.20), 1.44 at 15. The lead
+  was still growing at 25 minutes. Nothing past that was measured.
+- **Ticks:** about 1.5x (39,035-44,740 against 22,818-28,071). So roughly 1.13x per tick and the rest from more ticks.
+- **Creatures:** more in 7 of 8 (42,206-48,317 against 35,835-40,534; pair 6 had 31,464). Migrants accepted: more in 8 of 8.
+- **Reads:** the longest read was shorter in 8 of 8 (25-56 s against 52-64 s).
+- **Switch check:** default worlds 137x304 and 137x305; `world=920` worlds 644x1429 and 643x1431 (920 thousand square pixels).
+- **Not run:** the shuffle control in a field, and memory. The larger buffers are about 3.7 MB a universe on this screen.
+
+**What moved in the universe:** the field's default. Each universe now lives in a world of node's area, drawn scaled into its
+cell. By 25 minutes a field finds 1.71x the distinct functions, on a 412x915 screen.
+- **The look changes.** Creatures draw small and sparse, and clusters read as shapes; before, a cell was a saturated blob
+  (`lab/port/shots/396-field-default-90s.png` against `396-field-world920-90s.png`). `#world=0` is the field as it was.
+- **Scope.** On a desktop the cells are larger, so the scale-up and the gain are smaller. A cell of 920 thousand square pixels or
+  more is unchanged.
+- **Saved worlds (rule 6).** A reloaded universe's creatures come back at their saved positions, which lie in the top-left
+  twentieth of the larger world, and spread from there.
+- **#395b is explained:** the field was dominated by pair loops in a crowded cell, so a cheaper VM could not show.
+- **The node and field regimes now match in area**, so node results carry to the field better than they did. Whether the
+  crowd price and the other #381-#392 choices are still right in a field was tested there at the old density; they are worth
+  re-reading with that in mind, not re-running by default.
+
+**Named:**
+- `world=920` was node's area, not a tuned value. The design's `world=230` was close at 10 minutes. A larger or smaller world
+  might do better; that is a new pre-registration.
+- The slow first minutes: a founder population spread over a large world reads few neighbours. A smaller founding patch would
+  be the obvious thing to try.
+- A desktop-sized field has not been measured either way.
