@@ -1,1 +1,3 @@
 {"boot":true,"tick":0,"alive":647,"loaded":true,"germLen":23}
+{"tick":250,"alive":655,"meanAlive":720,"taskInc":23.06,"sunInc":101.92,"paid":3291,"fnPaid":25,"newToHistory":25,"everPaid":25,"slots":25,"full":0,"rebuilds":0,"expH":20.06,"meanSz":1.739,"progs":246,"readCarried":655,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
+{"tick":500,"alive":436,"meanAlive":507,"taskInc":28.52,"sunInc":29.74,"paid":2377,"fnPaid":27,"newToHistory":7,"everPaid":32,"slots":32,"full":0,"rebuilds":0,"expH":23.05,"meanSz":1.429,"progs":229,"readCarried":436,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}

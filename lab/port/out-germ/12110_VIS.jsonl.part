@@ -1,1 +1,2 @@
 {"boot":true,"tick":0,"alive":645,"loaded":true,"germLen":23}
+{"tick":250,"alive":711,"meanAlive":830,"taskInc":71.84,"sunInc":102.17,"paid":4114,"fnPaid":105,"newToHistory":105,"everPaid":105,"slots":105,"full":0,"rebuilds":0,"expH":75.47,"meanSz":2.636,"progs":311,"readCarried":711,"copies":0,"desync":0,"laws":0,"lawKept":0,"lawRevert":0,"lawTrial":null}
