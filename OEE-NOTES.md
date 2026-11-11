@@ -30418,3 +30418,22 @@ written in the current epoch (50 ticks). Same cells, same read path, no memory p
 - So a reload that empties the ground costs a field its accumulated part. **Saving the ground with the population is worth
   building** (#399).
 - `TASK_GROUND=2` stays in the engine as a control, like `TASK_SHUFFLE`. It is not a world.
+
+### #399 — THE GROUND SURVIVES A RELOAD (a persistence fix, byte-identical for a running world)
+#398 showed the ground's memory is the part of #397's gain that grows with time, and #397 left the ground out of the population
+snapshot, so every reload or tab kill emptied it.
+
+- **The change.** `encodePopulation` adds `world.ground`, the 1,600 cells as base64 (about 8.5 kB beside a snapshot of about
+  6 MB). `decodePopulation` restores it when the length matches and the engine's ground is the remembering one. A snapshot
+  without it, or of another size, leaves the ground empty, as before. The forgetting control (`TASK_GROUND=2`) neither saves nor restores.
+- **Round trip** (`probe-reload.js`, seed 10401, saved at tick 600, which now prints the ground): 1,538 cells held a function
+  at the save. A boot from that snapshot shows 1,540 after the one tick a boot runs. The same boot under `TASK_GROUND=2`,
+  which does not restore, shows 417.
+- **A running world is unchanged.** `probe-reload` rows on seed 10401, 800 ticks, against the previous engine: `c70c7d32` both
+  with the ground on, `362f0e8b` both with it off. (These digests leave out the boot row, which gained a field.)
+- **Not measured:** what a reload now costs a field in functions found. #387 and #368 measured reloads before the ground existed.
+
+**A correction to #396.** I wrote that a reloaded universe's creatures "come back at their saved positions, which lie in the
+top-left twentieth of the larger world". That is wrong. The snapshot stores the world's width and height, and
+`decodePopulation` rescales every position by `W/P.W` and `H/P.H`. A universe saved in a 137x304 world comes back spread over
+the whole 644x1429 one. I had not read the decoder. `lab/port/PREREG-world.md` carries the same wrong sentence.
