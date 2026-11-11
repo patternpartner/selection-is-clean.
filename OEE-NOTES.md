@@ -30499,3 +30499,36 @@ CLAUDE.md documents. Alone, with the suite's SECS=22, it passed three times of t
   seconds the collective takes in fewer migrants than it did before #396 gave every universe a larger world, which is slower in
   its first minutes. The row still passes alone, but on smaller counts than it was written for, so it is more fragile than the
   note says. I did not A/B it against the engine before #396.
+
+### #402 — A SECOND RULER: the depth of what is new (instrument, and one descriptive pair)
+**Why.** #397's variants and #400's royalty were all judged on F, a count of distinct functions. A count cannot tell a field that
+keeps finding more of the same from one that builds deeper on what it has, and "builds on itself" is the claim.
+
+**The instrument.** `lab/port/field-rate.js` now reports `D` with every sample: the formula sizes of the functions that joined
+the union since the last sample (how many, mean, median, 90th percentile, largest, and how many are of size 13+ and 17+). The
+grade is the engine's own (`lab/port/sz5.js`, a port of `taskSz5`), checked against the engine's `TASK_SZ` on every function a
+node world paid in 1,500 ticks: **0 mismatches of 6,500.** It is exact for functions of at most four inputs and an upper bound
+for five, as in the engine.
+
+**One pair, descriptive** (`out-depth/`, the shipped engine against a copy with the ground off, 1,500 s, run together):
+
+| Minutes | Ground: new | mean depth | size 17+ | No ground: new | mean depth | size 17+ |
+|---|---|---|---|---|---|---|
+| 0-5 | 11,361 | 10.25 | 1,202 (11%) | 10,210 | 10.04 | 909 (9%) |
+| 5-10 | 19,773 | 11.55 | 2,678 (14%) | 12,900 | 11.09 | 1,244 (10%) |
+| 10-15 | 22,840 | 12.02 | 3,334 (15%) | 11,907 | 11.68 | 1,310 (11%) |
+| 15-20 | 24,855 | 12.50 | 4,015 (16%) | 8,670 | 11.68 | 886 (10%) |
+| 20-25 | 17,590 | 12.56 | 2,812 (16%) | 7,511 | 11.86 | 835 (11%) |
+
+- **The ground's field found deeper things as well as more.** F 96,419 against 51,198 (1.88). Functions of size 17 or more:
+  14,041 against 5,184 (2.7x). The largest new function stayed at 33-35 with the ground and fell from 31 to 27 without.
+- **Without the ground the rate of finding falls** (12,900 a five minutes at its best, 7,511 at the end). With it the rate held
+  at 18,000-25,000.
+- **In both, the depth of what is new rises and then flattens**: 10.3 to 12.5 by 20 minutes and 12.6 at 25 with the ground; 10.0
+  to 11.9 without. A random five-input function grades about 26 (#392). So a field's frontier sits in the shallow end of its
+  space and, over 25 minutes, stops getting deeper. **That flattening is the nearest thing this project has to a measured
+  ceiling on open-endedness**, and it is one pair over 25 minutes.
+- One pair, not a verdict. What it gives is a second number to rule on.
+
+**What it reopens.** #397 dropped "the deepest function stays" because it found fewer functions than plain overwriting (1.55x
+against 1.88x, one pair each). On a count, that was right. It was never read on depth.
