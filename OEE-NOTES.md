@@ -30474,3 +30474,23 @@ A world whose own outputs set what is worth doing may need a measure that is not
 instrument, and I have not answered it.
 
 `lab/port/field-pair.sh` stays: one pair of fields, the engine against a copy with one default changed.
+
+### #401 — THE GROUND IS DRAWN, by depth (display only; the world's digest is unchanged)
+#397 made the ground the thing that accumulates in a world, and it was invisible.
+
+- **First version, rejected:** each cell glowed in the colour of the function it holds, keyed like the read threads. With
+  nearly every cell holding something (1,538 of 1,600 by tick 600), 24 hues at about three pixels a cell averaged to a grey
+  haze, and at three times the strength it washed out the field (`lab/port/shots/401-rejected-ground-by-function.png`).
+- **What is in:** a cell glows by the DEPTH of the function it holds (its formula size over 24, squared, so shallow ground stays
+  dark), in a warm white, added into the art renderer's existing 40x40 medium image. No extra draw calls. `tGZ` holds the size
+  per cell, written with the ground and read only by the renderer; on a reload it is recomputed from the restored ground.
+  `GROUND_GLOWP` sets the strength (100; 0 hides it).
+- **What it looks like** (`lab/port/shots/401-ground-depth-25min.png`): at four minutes, nothing to see; the ground is shallow.
+  At 25 minutes it is faint, hidden under a crowded universe and visible as a blocky texture where a universe has thinned, so a
+  world's record shows after most of its creatures are gone. It does not wash the picture out. Whether that is enough is the
+  user's call; it is one number.
+- **The world is unchanged:** `c70c7d32` on seed 10401 at 800 ticks, as before.
+
+**Acceptance.** `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0. `smoke.sh` in three slices: **68 ok, 1
+failing.** The failure is `collective-test`'s `returnPathIsATrickle` inside slice 2, the ratio over single-digit counts that
+CLAUDE.md documents. Alone, with the suite's SECS=22, it passed three times of three. Not retuned.
