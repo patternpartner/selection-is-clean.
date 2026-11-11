@@ -316,6 +316,9 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   is not the cause and the day-to-day drift is environmental. Recorded because the hypothesis was
   reasonable, the A/B is cheap (`git worktree add --detach <sha>`, symlink `node_modules`), and the
   next person will suspect the same thing.
+  **`#401`: the inbound count has dropped.** Alone it read `←15 →0` and `←8 →0`, and `←3 →1` in the failing run inside the suite,
+  where this note says 17-28. The likely cause is `#396`'s larger world, which is slower in its first minutes; not A/B'd. The row
+  now rides on a single-digit count on BOTH sides.
 - **Test the boring side of your own change — the side you expect to be fine is where the finding
   is.** `#216x` added a `LAW_PERSIST` knob and the OFF arm came back identical to the ON arm. Not
   because the fix was wrong: because **four of the six rigs never called `applyKnobs`** and silently
