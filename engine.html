@@ -10852,6 +10852,11 @@ function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floo
 // p 0.0039; with payments shuffled the field found 0.086 of its twin, so the gain is selected). TASK_GROUND=0 restores the world before.
 // Design (#397, three field pairs): this plain rule - the last payment in a cell overwrites - found 1.88x the functions of today's field
 // by 25 minutes; keeping the deepest function (1.55x) or only what was built upon (1.56x) did no better, so neither was kept.
+// #408 DESIGN ARMS (TASK_VAR, default 0 = none): three ways for the world's own record to set what is paid.
+//   1 NOT WHAT THIS PLACE HOLDS - a word computing the very function its cell's ground holds is not paid.
+//   2 DEEPER THAN THE PLACE - the share of the pool a payment takes is scaled by (its size / the size the cell's ground holds), 0.5-2.
+//   3 BUILT ON THE PLACE - a word built on its cell's ground function takes a double share of the pool.
+const TASK_VAR=TASKS_ON?(__tk('__TASK_VAR',0)|0):0;
 // TASK_GROUND=2 is a CONTROL, not a world (#398): the ground forgets at the epoch boundary - a cell answers only with a function
 // written in the current epoch. Same cells, same reads, no memory past 50 ticks; it separates "the place remembers" from "more reads succeed".
 const TASK_GROUND=TASKS_ON?(__tk('__TASK_GROUND',0)|0):0;
@@ -10877,11 +10882,14 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   const v=tW[D]; tEv.outs++; tLast[i]=v; tLastE[i]=e; tLastJ[i]=tJ[D]; tLastDm[i]=tDm[D]; { const K=tJ[D]===0?((TASK_IN===5)?taskFind5(taskTT5(v)):taskFn(v)):-1; tLastK[i]=(TASK_IN===5)?K:((K>0&&K<0xFFFF)?K:-1); }
   for(let q=o;q<o+4;q++){ if(tRdE[q]!==e)continue; const w=tRd[q]; if(v===w||v===((~w)>>>0)){ tEv.refused++; return; } }   // a copy or a complement of a word read this epoch
   if(tJ[D]!==0){ tEv.dirty++; return; }
-  let T; if(TASK_IN===5){ const F=taskTT5(v); if(F===0||F===0xFFFFFFFF||TASK_TRIV5.indexOf(F)>=0){ tEv.trivial++; return; } if(tPE[i]===e)return; T=taskSlot5(F); if(T<0)return; }   // #392: a slot only for a payment
+  let T; if(TASK_IN===5){ const F=taskTT5(v); if(F===0||F===0xFFFFFFFF||TASK_TRIV5.indexOf(F)>=0){ tEv.trivial++; return; } if(tPE[i]===e)return; if(TASK_VAR===1&&tG!==null&&tG[sunCell(i)]===F){ tEv.known=(tEv.known|0)+1; return; } T=taskSlot5(F); if(T<0)return; }   // #392: a slot only for a payment
   else { T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; } if(tPE[i]===e)return; }
   tPE[i]=e;   // one payment per epoch
   if(TASK_IN===5)tLastK[i]=T;   // #392: the slot this payment may just have taken
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ const c=sunCell(i); tG[c]=tKey[T]; tGZ[c]=TASK_SZ[T]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+  let __fr=TASK_F; if(TASK_VAR>=2&&tG!==null){ const c=sunCell(i);
+    if(TASK_VAR===2){ const z=tGZ[c]; if(z>0){ const m=TASK_SZ[T]/z; __fr=TASK_F*(m<0.5?0.5:m>2?2:m); } }
+    else if(TASK_VAR===3&&tG[c]!==0){ const k=taskFind5(tG[c]); if(k>=0) for(let q=0;q<4;q++) if(tK[D*4+q]===k){ __fr=TASK_F*2; tEv.onGround=(tEv.onGround|0)+1; break; } } }
+  const g=tRes[T]*__fr; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ const c=sunCell(i); tG[c]=tKey[T]; tGZ[c]=TASK_SZ[T]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
 // that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between
