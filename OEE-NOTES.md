@@ -30613,3 +30613,41 @@ non-constant four-input functions:
 - So at this level a rise in the bound is a rise in true size, less a nearly constant offset. That does not prove the same at
   five inputs, where no exact table exists, but it is the nearest check there is, and it gives no sign that #404's climb from
   11.0 to 17.75 is the bound loosening.
+
+### #406 — THE GROUND OVER TWO AND A HALF HOURS: the field with it holds its rate, the field without settles at half (one pair, descriptive)
+#397 measured the ground at 25 minutes (1.86x). #404 ran one field for 150 minutes but with nothing beside it. This is the two
+together: `lab/port/long-pair.sh`, the shipped engine and a copy with the ground off, run side by side for six chained legs of
+1,500 s, each leg reloading the field the last one left (`out-long/lp1-*`, `lab/port/lp1-result.txt`,
+`lab/port/analyse-long-pair.js`).
+
+| Leg | Minutes | Ground: new | depth, last 5 min | size 17+ | No ground: new | depth, last 5 min | size 17+ | Ratio of new | Cumulative |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0-25 | 77,179 | 12.29 | 10,704 | 66,948 | 12.21 | 7,092 | 1.15 | 1.15 |
+| 2 | 25-50 | 82,976 | 13.48 | 16,378 | 43,508 | 12.73 | 6,528 | 1.91 | 1.45 |
+| 3 | 50-75 | 82,688 | 13.87 | 18,206 | 39,036 | 13.31 | 7,007 | 2.12 | 1.62 |
+| 4 | 75-100 | 82,941 | 14.12 | 19,992 | 40,660 | 13.61 | 8,339 | 2.04 | 1.71 |
+| 5 | 100-125 | 82,964 | 14.25 | 20,483 | 42,654 | 13.70 | 9,368 | 1.95 | 1.76 |
+| 6 | 125-150 | 88,253 | 14.77 | 23,635 | 44,112 | 13.88 | 10,518 | 2.00 | 1.79 |
+
+- **Totals:** 497,001 against 276,918 (1.79). Functions of size 17 or more: 109,398 against 48,852 (2.24).
+- **With the ground the rate holds**: 77-88 thousand a leg, the last leg the highest.
+- **Without it the rate falls by a third after the first leg and then HOLDS at about half**: 66,948, then 39-44 thousand. It
+  does not keep falling. From leg 3 on it creeps up (39,036, 40,660, 42,654, 44,112). So a field without the ground is not a
+  field that stops; it is a field that runs at half speed.
+- **The ground's effect is a level, not a widening gap.** The per-leg ratio is 1.9-2.1 from leg 2 on. #398's "the part that
+  grows with time" was true inside 25 minutes; past that it is a steady doubling.
+- **Both get deeper, the ground a little faster**: 12.3 to 14.8 against 12.2 to 13.9.
+- **The first leg was the closest (1.15).** #397's eight 25-minute pairs had a median of 1.86 and a lowest of 1.41, so this
+  pair began unusually level. One pair.
+- For scale against #404: a field in a pair gets about half the machine. #404's field alone found about 250,000 a leg.
+
+**A reload can lose a universe's population, and it happened 3 times in 155.** In the ground field one universe at the fourth
+reload and two at the fifth came back from founders (about 740 creatures, `pop.restored` 0): `L2_6`, `u7`, `L1_3`. The
+no-ground field restored 31 of 31 every time, and so did #404's field. `universe.html` races the population read from
+IndexedDB against a 4-second timeout and boots without it if the read is late; a mismatch between the saved genome and the
+snapshot's fingerprint would look the same from here. I did not find out which. A universe that restarts this way also
+loses its ground.
+
+**Named:**
+- Find out why those three did not restore (log `__popBoot.why` through the rig), and if it is the 4-second race, lengthen it.
+- A second long pair. This is one.

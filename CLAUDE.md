@@ -167,6 +167,14 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   found depends on all five inputs, where the grade is an UPPER BOUND; the grade and the pools are mine.
   **A field alone on the machine is not a field in a pair.** Alone, a field ran 57,864 ticks in 25 minutes and found 203k; beside
   a twin, about 35,000 ticks and 80-110k. Compare fields only within the same arrangement.
+  **`#405`: the depth bound is about 1.7 too high and nearly flat in depth**, checked one level down where the exact size is known
+  (all 65,534 four-input functions graded by the same split recipe). No sign that a rising bound is the bound loosening.
+  **`#406`: THE GROUND OVER 150 MINUTES, side by side (`lab/port/long-pair.sh`).** With the ground a field holds 77-88 thousand new
+  functions a leg; without it the rate falls by a third after the first leg and then HOLDS at about half (39-44 thousand, creeping
+  up). Cumulative 1.79x; functions of size 17+ 2.24x. So the ground is a steady doubling, not a widening gap, and a field without
+  it runs at half speed, it does not stop. One pair.
+  **A reload can lose a universe's population (3 of 155 in `#406`'s ground field).** `universe.html` races the IndexedDB read
+  against 4 seconds and boots from founders if it is late; a fingerprint mismatch would look the same. Not diagnosed.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
