@@ -30598,3 +30598,18 @@ whether the world makes its own problems. And "did not stop in 150 minutes" is n
 - An exact grade for a sample of five-input functions, to learn how loose the bound is and whether its looseness grows with depth.
 - Longer. The chain can go on as long as the container keeps the browser profile.
 - The chain file carries every truth table found (7.8 MB here). It is in the repo once, as the run's record.
+
+### #405 — HOW LOOSE IS THE DEPTH BOUND? One level down, where the exact answer is known: about 1.7 too high, and nearly flat in depth
+#404's depth is an upper bound for 96% of what a field finds (five-input functions graded by the best Shannon split of two
+exactly graded four-input halves). If that bound got looser as functions got deeper, a rising bound would overstate rising depth.
+
+The same recipe can be run one level down and checked: grade every four-input function by the best split into two exactly
+graded THREE-input halves, with the same direct forms, and compare with its exact size (`lab/nand4-sz.bin`). All 65,534
+non-constant four-input functions:
+- The bound is never below the exact size (0 cases). It equals it for 19.9%. Mean exact 12.23, mean bound 13.97.
+- **The excess is about 1.7 and close to flat across the range that matters**: 1.67 at exact size 6, 1.76 at 8, 1.76 at 10,
+  1.73 at 12, 1.64 at 14, 1.84 at 16, 2.06 at 18, 2.17 at 20. It grows only in the far tail (2.5-5.0 at sizes 21-26, which are
+  460 functions of 65,534).
+- So at this level a rise in the bound is a rise in true size, less a nearly constant offset. That does not prove the same at
+  five inputs, where no exact table exists, but it is the nearest check there is, and it gives no sign that #404's climb from
+  11.0 to 17.75 is the bound loosening.
