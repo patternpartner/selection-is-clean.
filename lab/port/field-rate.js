@@ -45,11 +45,19 @@ const server = http.createServer((req, res) => {
 // deeper on what it has. Each sample now carries D: the formula sizes (the engine's own grade, lab/port/sz5.js) of the functions that
 // joined the union since the last sample - how many, their mean, median, 90th percentile and largest, and how many are of size 13+ and 17+.
 const { sz5 } = require('./sz5.js'); let newSz = [];
+// #404: A FIELD LONGER THAN ONE LAUNCH. A background job ends at about 30 minutes, so nothing here was ever measured past that.
+// CHAIN=file carries the union and the elapsed time from one launch (a "leg") to the next; with PROFILE and a fixed PORT each leg
+// reloads the field the last one left. A sample's t is then seconds since the FIRST leg began, and leg is which launch it came from.
+// What a leg loses: whatever each universe did after its last autosave (on the clock every 2 minutes, #384).
+const PORT = +(process.env.PORT || 0), PROFILE = process.env.PROFILE || '', CHAIN = process.env.CHAIN || '';
+let T_OFF = 0, LEG = 1;
 const depth = () => { const a = newSz.slice().sort((x, y) => x - y); newSz = []; if (!a.length) return { n: 0 };
   return { n: a.length, mean: +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2), p50: a[a.length >> 1], p90: a[Math.min(a.length - 1, Math.floor(a.length * 0.9))], max: a[a.length - 1],
     ge13: a.filter(z => z >= 13).length, ge17: a.filter(z => z >= 17).length }; };
 const union = new Uint8Array(NF), union5 = new Set();   // #392: five-input worlds report canonical truth tables
 let F = 0;
+if (CHAIN && fs.existsSync(CHAIN)) { const c = JSON.parse(fs.readFileSync(CHAIN, 'utf8')); T_OFF = c.elapsed | 0; LEG = (c.legs | 0) + 1;
+  const b = Buffer.from(c.tables, 'base64'); for (let j = 0; j + 3 < b.length; j += 4) union5.add(b.readUInt32LE(j)); F = union5.size; }
 const perSlot = {};   // slot -> {max n-boot, last ticks}
 const emit = o => { const s = JSON.stringify(o); if (OUT) fs.appendFileSync(OUT, s + '\n'); else console.log(s); };
 
@@ -68,10 +76,13 @@ const readField = (page, ms) => page.evaluate(async ms => {
 }, ms);
 
 (async () => {
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   const base = 'http://127.0.0.1:' + server.address().port;
-  const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-  const ctx = await browser.newContext({ viewport: { width: 412, height: 915 } });
+  // #404: with PROFILE the browser keeps its storage in that directory, so the next launch (same PORT, so the same origin) reloads the
+  // same universes - their creatures, lifetime records and ground - the way a viewer's tab does after being killed.
+  const browser = PROFILE ? null : await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  const ctx = PROFILE ? await chromium.launchPersistentContext(PROFILE, { executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'], viewport: { width: 412, height: 915 } })
+                      : await browser.newContext({ viewport: { width: 412, height: 915 } });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   const t0 = Date.now();
@@ -94,7 +105,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);
     }
     for (const s in perSlot) S += perSlot[s].found;
-    emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
+    emit({ t: T_OFF + at, leg: LEG, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;
@@ -104,5 +115,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
     try { await sample(at >= SECS, at); } catch (e) { emit({ t: at, sampleErr: String(e && e.message) }); }
   }
   if (errs.length) emit({ pageErrors: errs.slice(0, 5) });
-  await browser.close(); server.close();
+  if (CHAIN) { const u = new Uint32Array(union5.size); let q = 0; for (const Fk of union5) u[q++] = Fk;
+    fs.writeFileSync(CHAIN, JSON.stringify({ elapsed: T_OFF + SECS, legs: LEG, n: u.length, tables: Buffer.from(u.buffer).toString('base64') })); }
+  if (browser) await browser.close(); else await ctx.close(); server.close();
 })().catch(e => { emit({ fatal: String(e && e.stack || e) }); process.exit(1); });

@@ -30532,3 +30532,19 @@ for five, as in the engine.
 
 **What it reopens.** #397 dropped "the deepest function stays" because it found fewer functions than plain overwriting (1.55x
 against 1.88x, one pair each). On a count, that was right. It was never read on depth.
+
+### #403 — "THE DEEPEST STAYS", READ ON DEPTH: one pair, level on count and a little deeper. Not pursued; the arm is removed.
+#402 reopened #397's dropped variant (a payment overwrites a cell only with a function at least as deep as the one there). One
+pair, the shipped ground against it, 1,500 s, run together (`out-depth/b-*`, `lab/port/analyse-depth.js`):
+
+| | F | size 13+ | size 17+ | mean depth of the new, minutes 20-25 | ticks |
+|---|---|---|---|---|---|
+| shipped (last payment overwrites) | 80,900 | 32,618 | 11,276 | 12.83 | 35,907 |
+| the deepest stays | 80,322 | 34,532 | 13,118 | 13.26 | 32,669 |
+
+- Level on count (0.99), 16% more functions of size 17+, on 9% fewer ticks. A field varies by about 15%, so this is a lean, not a
+  finding. #397's design pairs (1.55x against 1.88x) were each against a no-ground field, never head to head.
+- In this pair the shipped field's depth did NOT flatten: 12.33 at 15-20 minutes and 12.83 at 20-25, where #402's pair read
+  12.50 and 12.56. So #402's "flattening" is not established either. Twenty-five minutes cannot say whether depth has a ceiling.
+- **Not pre-registered.** A possible sixth more deep functions is small beside the question both pairs raise and cannot answer:
+  what happens after 25 minutes. The arm (`TASK_GROUND=3`) is removed; the engine is #401's.
