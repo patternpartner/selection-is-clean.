@@ -1,0 +1,9 @@
+pair 1  remember F 94114 K 34833 A 50437  |  forget F 77403 K 34989 A 47150  ratio 1.22  (5/10/15/20 min: 1.00 / 1.11 / 1.11 / 1.17)
+pair 2  remember F 88922 K 31785 A 50296  |  forget F 70127 K 31488 A 49983  ratio 1.27  (5/10/15/20 min: 0.94 / 1.09 / 1.17 / 1.23)
+pair 3  remember F 111743 K 32793 A 49716  |  forget F 72141 K 33413 A 48081  ratio 1.55  (5/10/15/20 min: 1.06 / 1.04 / 1.25 / 1.36)
+pair 4  remember F 92525 K 34106 A 52393  |  forget F 88302 K 33083 A 50281  ratio 1.05  (5/10/15/20 min: 0.71 / 0.74 / 0.84 / 0.93)
+pair 5  remember F 91338 K 34594 A 52363  |  forget F 67707 K 31212 A 49296  ratio 1.35  (5/10/15/20 min: 0.55 / 0.82 / 1.04 / 1.20)
+pair 6  remember F 98735 K 35693 A 51501  |  forget F 83309 K 32542 A 48226  ratio 1.19  (5/10/15/20 min: 0.85 / 0.91 / 1.02 / 1.10)
+complete pairs 6 (floor 5); W+ 21 of 21, p(remember greater) 0.0156, p(remember less) 1.0000; remember ahead in 6 of 6; median ratio 1.24
+median ratio at 5, 10, 15, 20 min: 0.90, 0.98, 1.07, 1.19
+verdict: MEMORY
