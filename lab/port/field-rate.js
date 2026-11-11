@@ -14,6 +14,7 @@
 //   F(t)  distinct functions ever paid anywhere in the field by wall time t (the union)  <- what #383 rules on
 //   S(t)  the sum over universes of functions each found since its own boot (counts a function once per universe)
 //   K(t)  total ticks run across the field; U(t) universes seen; A(t) creatures alive
+//   D(t)  #402: the formula sizes of the functions that joined F since the last sample (n, mean, p50, p90, max, ge13, ge17)
 //
 // Output: one JSON line per sample to OUT, the last line carrying {final:true}. Usage:
 //   OUT=x.jsonl SECS=1800 EVERY=60 [ENGINE=path/engine.html] [HASH=] node lab/port/field-rate.js
@@ -40,6 +41,13 @@ const server = http.createServer((req, res) => {
     res.end(b); });
 });
 
+// #402: THE DEPTH OF WHAT IS NEW. F counts functions; it cannot tell a field that keeps finding more of the same from one that builds
+// deeper on what it has. Each sample now carries D: the formula sizes (the engine's own grade, lab/port/sz5.js) of the functions that
+// joined the union since the last sample - how many, their mean, median, 90th percentile and largest, and how many are of size 13+ and 17+.
+const { sz5 } = require('./sz5.js'); let newSz = [];
+const depth = () => { const a = newSz.slice().sort((x, y) => x - y); newSz = []; if (!a.length) return { n: 0 };
+  return { n: a.length, mean: +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2), p50: a[a.length >> 1], p90: a[Math.min(a.length - 1, Math.floor(a.length * 0.9))], max: a[a.length - 1],
+    ge13: a.filter(z => z >= 13).length, ge17: a.filter(z => z >= 17).length }; };
 const union = new Uint8Array(NF), union5 = new Set();   // #392: five-input worlds report canonical truth tables
 let F = 0;
 const perSlot = {};   // slot -> {max n-boot, last ticks}
@@ -80,13 +88,13 @@ const readField = (page, ms) => page.evaluate(async ms => {
       ps.found = Math.max(ps.found, (r.n | 0) - (r.boot | 0)); ps.ticks = r.totalTicks | 0;
       if (!sw) sw = r.sw;
       const b = Buffer.from(r.b64, 'base64');
-      if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]); continue; }   // #392: canonical truth tables
+      if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; newSz.push(sz5(Fk)); } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]); continue; }   // #392: canonical truth tables
       for (let j = 0; j < b.length; j++) { const x = b[j]; if (!x) continue;
         for (let k = 0; k < 8; k++) if ((x >> k) & 1) { const T = j * 8 + k; if (!union[T]) { union[T] = 1; F++; } } }
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);
     }
     for (const s in perSlot) S += perSlot[s].found;
-    emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
+    emit({ t: at, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;
