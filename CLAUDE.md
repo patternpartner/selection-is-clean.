@@ -137,6 +137,18 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   at 5 minutes (0.84), ahead from 10. The look changes (small sparse creatures, not a saturated blob). **Before trusting a node
   result in a field, check the two run the same world**: `lab/port/field-phase.js` reads each universe's world size, tick cost and
   where the tick goes (`phaseForTest`). Not measured: a desktop-sized field, anything past 25 minutes, the shuffle control in a field.
+  **`#397`: THE GROUND REMEMBERS, SHIPPED (`TASK_GROUND`).** A paid function is written into the field cell its computer stands
+  in and stays across epochs and deaths; a READ that finds no live neighbour reads the ground. A field finds 1.86x the distinct
+  functions by 25 minutes (8 of 8 pairs, p 0.0039), with no early cost, on fewer ticks, and selected: with payments shuffled the
+  field found 0.086 of its twin. `TASK_GROUND=0` restores the world before. Two variants that SELECTED what stays (the deepest;
+  only what was built upon) did no better than plain overwriting and were removed, so the evidence is "something stays", not
+  "the right thing stays". It came from asking what the PROCESS that builds this engine has that the engine lacks: a record that
+  outlives its writers. The ground is not saved with the population yet.
+  **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
+  the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
+  node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
+  price) is weaker for it. **Design in a field**: it sums 31 universes and one engine's fields vary by about 15%, so ONE pair of
+  fields showed what six node worlds could not. Decide there too; the two regimes match in area since `#396`.
 
 ## Every session removes or proves something — not only adds
 

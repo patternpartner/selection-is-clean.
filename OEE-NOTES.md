@@ -30376,3 +30376,9 @@ ones paid. With #396 that is about 3x the field of two days ago, though the two 
 - **Redo the design-only nulls in a field** where they matter: the drain, the royalty, the crowd price.
 - The next step toward the process: the ground is one function per cell and the grade is still mine. What a world keeps is not
   yet what a world is paid for.
+
+**#397 acceptance.**
+- `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0, on the shipped engine.
+- **`smoke.sh` in three slices, nothing else running: 69 ok, 0 failing.**
+- Digests: `TASK_GROUND=0` on seed 10401 at 800 ticks `9c51d9bb` (the engine before #397); TASKS off on seed 3 `ad497d03` (the
+  engine before #395).
