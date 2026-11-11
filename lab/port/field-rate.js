@@ -44,7 +44,7 @@ const server = http.createServer((req, res) => {
 // #402: THE DEPTH OF WHAT IS NEW. F counts functions; it cannot tell a field that keeps finding more of the same from one that builds
 // deeper on what it has. Each sample now carries D: the formula sizes (the engine's own grade, lab/port/sz5.js) of the functions that
 // joined the union since the last sample - how many, their mean, median, 90th percentile and largest, and how many are of size 13+ and 17+.
-const { sz5 } = require('./sz5.js'); let newSz = [];
+const { sz5 } = require('./sz5.js'); let newSz = []; const armSets = {};   // #407: per-arm unions, for a field built with #arms
 // #404: A FIELD LONGER THAN ONE LAUNCH. A background job ends at about 30 minutes, so nothing here was ever measured past that.
 // CHAIN=file carries the union and the elapsed time from one launch (a "leg") to the next; with PROFILE and a fixed PORT each leg
 // reloads the field the last one left. A sample's t is then seconds since the FIRST leg began, and leg is which launch it came from.
@@ -90,7 +90,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
   const sample = async (final, at) => {
     const rows = await readField(page, final ? 120000 : 60000);
     let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0, n5 = 0, M = 0, MA = 0;
-    const slots = [];
+    const slots = [], tally = {}, lost = [];
     for (const [s, r] of rows) {
       if (!r || r.err) { bad++; continue; }
       if (r.off) { off++; continue; }
@@ -98,14 +98,20 @@ const readField = (page, ms) => page.evaluate(async ms => {
       const ps = perSlot[s] || (perSlot[s] = { found: 0, ticks: 0 });
       ps.found = Math.max(ps.found, (r.n | 0) - (r.boot | 0)); ps.ticks = r.totalTicks | 0;
       if (!sw) sw = r.sw;
+      // #407: a field built with #arms tells each universe's arm; each arm keeps its own union (what ITS universes found) and depth
+      let AK = null; if (r.arm) { const key = Object.entries(r.arm).map(([k, v]) => k + '=' + v).join(','); AK = armSets[key] || (armSets[key] = { set: new Set(), sz: [] });
+        const T = tally[key] || (tally[key] = { U: 0, K: 0, A: 0, ground: {} }); T.U++; T.K += r.totalTicks | 0; T.A += r.alive | 0; T.ground[r.ground] = (T.ground[r.ground] || 0) + 1; }
+      if (r.pop && r.pop.restored === 0 && r.pop.why) lost.push(s + ':' + r.pop.why);
       const b = Buffer.from(r.b64, 'base64');
-      if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; newSz.push(sz5(Fk)); } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]); continue; }   // #392: canonical truth tables
+      if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; newSz.push(sz5(Fk)); } if (AK && !AK.set.has(Fk)) { AK.set.add(Fk); AK.sz.push(sz5(Fk)); } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]); continue; }   // #392: canonical truth tables
       for (let j = 0; j < b.length; j++) { const x = b[j]; if (!x) continue;
         for (let k = 0; k < 8; k++) if ((x >> k) & 1) { const T = j * 8 + k; if (!union[T]) { union[T] = 1; F++; } } }
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);
     }
     for (const s in perSlot) S += perSlot[s].found;
-    emit({ t: T_OFF + at, leg: LEG, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
+    const arms = {}; for (const key in tally) { const a = armSets[key], z = a.sz.slice().sort((x, y) => x - y); a.sz = [];
+      arms[key] = { F: a.set.size, new: z.length, mean: z.length ? +(z.reduce((x, y) => x + y, 0) / z.length).toFixed(2) : null, ge17: z.filter(v => v >= 17).length, U: tally[key].U, K: tally[key].K, A: tally[key].A, ground: tally[key].ground }; }
+    emit({ t: T_OFF + at, leg: LEG, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), arms: Object.keys(arms).length ? arms : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;
