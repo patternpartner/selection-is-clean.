@@ -14596,6 +14596,7 @@ function encodePopulation(fp){   // reads arrays, draws nothing
   const world={};   // #369: world state that belongs to this universe's history rather than to any creature
   if(TASKS_ON&&TASK_IN===5){ const parts=[]; for(let q=0;q<tSet5.length;q++){ const F=tSet5[q]; if(F)parts.push(String.fromCharCode(F&255,(F>>>8)&255,(F>>>16)&255,(F>>>24)&255)); } world.seen5=btoa(parts.join('')); }   // #392: the lifetime set
   else if(TASKS_ON){ let b=''; for(let T=0;T<TASK_NF;T+=8){ let x=0; for(let k=0;k<8;k++) if(tSeen[T+k])x|=1<<k; b+=String.fromCharCode(x); } world.seen=btoa(b); }
+  if(tG!==null&&tGE===null){ const u=new Uint8Array(tG.buffer,tG.byteOffset,tG.byteLength); let b=''; for(let q=0;q<u.length;q++)b+=String.fromCharCode(u[q]); world.ground=btoa(b); }   // #399: what the ground holds (#398: it is memory, so a reload should not erase it)
   return JSON.stringify({v:1,fp,ticks:genome.totalTicks|0,W,H,DIMS,MEM:MEM_SIZE,rows,nk,genes,obj,world,run});
 }
 function decodePopulation(s){   // replaces the founders with the saved creatures; returns how many, or why not
@@ -14627,6 +14628,7 @@ function decodePopulation(s){   // replaces the founders with the saved creature
   if(TASKS_ON&&TASK_IN===5&&typeof Wd.seen5==='string'){ try{ const b=atob(Wd.seen5); tSeenN=0; for(let q=0;q+3<b.length;q+=4){ const F=(b.charCodeAt(q)|(b.charCodeAt(q+1)<<8)|(b.charCodeAt(q+2)<<16)|(b.charCodeAt(q+3)<<24))>>>0; if(seen5Add(F))tSeenN++; } tSeenBoot=tSeenN; }catch(_){} }   // #392
   else if(TASKS_ON&&TASK_IN!==5&&typeof Wd.seen==='string'){ try{ const b=atob(Wd.seen); if(b.length===TASK_NF/8){ tSeenN=0;
     for(let T=0;T<TASK_NF;T++){ tSeen[T]=(b.charCodeAt(T>>3)>>(T&7))&1; tSeenN+=tSeen[T]; } tSeenBoot=tSeenN; } }catch(_){} }
+  if(tG!==null&&tGE===null&&typeof Wd.ground==='string'){ try{ const b=atob(Wd.ground); if(b.length===tG.byteLength){ const u=new Uint8Array(tG.buffer,tG.byteOffset,tG.byteLength); for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q)&255; } }catch(_){} }   // #399: a snapshot of another size, or none, leaves the ground empty
   return N;
 }
 function popRestore(){   // at boot, after the genome: the saved population, if it is this genome's

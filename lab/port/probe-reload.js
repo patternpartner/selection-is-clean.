@@ -34,11 +34,12 @@ const Module=require('module'); const m=new Module('/tmp/reload-sim.js'); m.file
 m._compile(code+`
 ;globalThis.__R=function(ticks,WIN,saveAt,saveDir,seed,out,fs,path){ const prev=new Float64Array(TASK_NF), ever=new Uint8Array(TASK_NF); let li=tEv.income, ls=tEv.sun, lp=tEv.paid, errs=0, aSum=0, aN=0;
   if(process.env.POPLOAD) out(JSON.stringify({popBoot:(typeof __popBoot!=='undefined')?__popBoot:'engine has no #368', seenRestored:(typeof tSeenN!=='undefined')?tSeenN:null}));
+  const GND=()=>{ if(typeof tG==='undefined'||tG===null)return null; let n=0, h=0x811c9dc5; for(let q=0;q<tG.length;q++){ if(tG[q])n++; h=Math.imul(h^tG[q],0x01000193); } return {cells:n, hash:(h>>>0).toString(16)}; };   /* #399: how many ground cells hold a function, and a hash of all of them */
   for(let T=0;T<TASK_NF;T++)prev[T]=tE[T];
   let copies=0, lastCopies=0; __on225=function(i,f){ if(f)copies++; };
   const DIAG=!!process.env.DIAG, DK=['repl.birth','birth.refused','birth.unprovisioned','birth.rationed','repl.prey','repl.scavenge','aim.pull','cosmos.launch'], dPrev={}; let escPrev=deathsByEscape;   /* #372 */   /* #369b: op 225's copies, from the engine's own hook; draws nothing */
   if(process.env.SEEN){ for(const T of JSON.parse(fs.readFileSync(process.env.SEEN,'utf8')))ever[T]=1; }   /* the functions this universe paid before its save */
-  { let a=0; for(let i=0;i<N;i++) if(palive[i])a++; out(JSON.stringify({boot:true, tick:0, alive:a, loaded:!!process.env.LOAD, germLen:(genome.vmProgram||[]).length})); }
+  { let a=0; for(let i=0;i<N;i++) if(palive[i])a++; out(JSON.stringify({boot:true, tick:0, alive:a, loaded:!!process.env.LOAD, germLen:(genome.vmProgram||[]).length, ground:GND()})); }
   const RAT=+(process.env.RESEED_AT||0), RK=+(process.env.RESEED||0), PERT=process.env.PERTURB||'', SUN0=SUN_ON?sunField.slice():null;   /* the light field as this boot left it: full, which is what a reload hands back */
   for(let t=1;t<=ticks;t++){ if(RAT&&t===RAT+1&&RK){ let a=((+seed)*7919+RK*104729)>>>0; Math.random=function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}; out(JSON.stringify({reseeded:RAT, k:RK})); }
     globalThis.__detMs+=5; try{loop();}catch(e){ if(errs++<3)console.log(JSON.stringify({err:String(e&&e.stack||e).slice(0,300)})); }
@@ -60,7 +61,7 @@ m._compile(code+`
     if(saveAt.includes(t)){ const g=encodeGenome(); fs.writeFileSync(path.join(saveDir,seed+'_'+t+'.genome'),g);
       let pl=-1; if(process.env.POP&&typeof encodePopulation==='function'){ const p=encodePopulation(popHash(g)); fs.writeFileSync(path.join(saveDir,seed+'_'+t+'.pop'),p); pl=p.length; }
       const seen=[]; for(let T=0;T<TASK_NF;T++) if(ever[T]||tE[T]>0)seen.push(T); fs.writeFileSync(path.join(saveDir,seed+'_'+t+'.seen'),JSON.stringify(seen));
-      out(JSON.stringify({saved:t, genomeLen:g.length, popLen:pl, everPaid:seen.length, tSeenN:(typeof tSeenN!=='undefined')?tSeenN:null})); }
+      out(JSON.stringify({saved:t, ground:GND(), genomeLen:g.length, popLen:pl, everPaid:seen.length, tSeenN:(typeof tSeenN!=='undefined')?tSeenN:null})); }
     if(t%WIN) continue;
     let tot=0, H=0, ms=0, nf=0, fresh=0; const inc=[]; for(let T=0;T<TASK_NF;T++){ const d=tE[T]-prev[T]; prev[T]=tE[T]; if(d>0){ inc.push([T,d]); tot+=d; if(!ever[T]){ ever[T]=1; fresh++; } } }
     for(const [T,d] of inc){ const q=d/tot; H-=q*Math.log(q); ms+=q*(typeof TASK_SZ!=='undefined'?TASK_SZ:TASK_SZ4)[T]; nf++; }
