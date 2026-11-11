@@ -144,6 +144,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   only what was built upon) did no better than plain overwriting and were removed, so the evidence is "something stays", not
   "the right thing stays". It came from asking what the PROCESS that builds this engine has that the engine lacks: a record that
   outlives its writers. The ground is not saved with the population yet.
+  **`#398`: it IS memory.** Against a control whose ground forgets at every epoch boundary (`TASK_GROUND=2`), the remembering
+  ground was ahead in 6 of 6 fields at 25 minutes (median 1.24, p 0.016). The forgetting ground is level or ahead for the first
+  ten minutes and the remembering one gains on it all the way, so persistence is the part of the gain that grows. Roughly:
+  no ground 56k, forgetting 75k, remembering 93k (medians, not run together).
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

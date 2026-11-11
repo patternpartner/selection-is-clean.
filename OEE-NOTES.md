@@ -30382,3 +30382,39 @@ ones paid. With #396 that is about 3x the field of two days ago, though the two 
 - **`smoke.sh` in three slices, nothing else running: 69 ok, 0 failing.**
 - Digests: `TASK_GROUND=0` on seed 10401 at 800 ticks `9c51d9bb` (the engine before #397); TASKS off on seed 3 `ad497d03` (the
   engine before #395).
+
+### #398 — IT IS MEMORY: the ground that remembers beats a ground that forgets each epoch, 6 of 6 (median 1.24, p 0.016). My prediction was wrong.
+`lab/port/PREREG-ground-memory.md` (committed after one seen pair, before the six). Out `lab/port/out-ground-control/`, result
+`lab/port/ground-memory-result.txt`. Nothing ships; this settles what #397 is and what to build next.
+
+**The question #397 left.** A ground read replaces a failed read. So the gain could be the function PERSISTING past its epoch and
+its writer's death, or just reads SUCCEEDING more often. `TASK_GROUND=2` is the control: a cell answers only with a function
+written in the current epoch (50 ticks). Same cells, same read path, no memory past that.
+
+| Pair | Remembers | Forgets | Ratio | Ratio at 5 / 10 / 15 / 20 min |
+|---|---|---|---|---|
+| seen | 93,153 | 80,900 | 1.15 | 0.54 / 0.72 / 0.89 / 1.03 |
+| 1 | 94,114 | 77,403 | 1.22 | 1.00 / 1.11 / 1.11 / 1.17 |
+| 2 | 88,922 | 70,127 | 1.27 | 0.94 / 1.09 / 1.17 / 1.23 |
+| 3 | 111,743 | 72,141 | 1.55 | 1.06 / 1.04 / 1.25 / 1.36 |
+| 4 | 92,525 | 88,302 | 1.05 | 0.71 / 0.74 / 0.84 / 0.93 |
+| 5 | 91,338 | 67,707 | 1.35 | 0.55 / 0.82 / 1.04 / 1.20 |
+| 6 | 98,735 | 83,309 | 1.19 | 0.85 / 0.91 / 1.02 / 1.10 |
+
+- **Primary (pairs 1-6):** W+ 21 of 21, **p 0.0156**, remembering ahead in 6 of 6, median ratio 1.24. **MEMORY.**
+- **I predicted NOT SHOWN** (4 of 6, about 1.1). The seen pair was 1.15 for remembering (the pre-registration quotes it the
+  other way up, 0.87), and I judged that too small for six pairs to carry. It was not.
+- **The shape is the same in all seven pairs.** The forgetting ground is level or ahead early (median 0.90 at 5 minutes, 0.98 at
+  10) and the remembering ground gains on it through the run (1.07 at 15, 1.19 at 20, 1.24 at 25). The ratio rose from 5 to 25
+  minutes in 7 of 7.
+- **About half and half, at 25 minutes.** No ground: #397's eight fields, median 56,407. Forgetting ground: these six, median
+  74,772. Remembering ground: these six, median 93,320. The three were not run together, so this is a rough split: answering a
+  failed read inside the epoch is worth about a third more, and remembering past the epoch about a quarter on top.
+- **Why the forgetting ground leads early is not known.** With little written yet, most cells are empty in both arms, so the
+  arms should be alike. Not tested.
+
+**What it settles.**
+- #397's name stands: what persists in the ground is doing work, and it is the part that grows with time.
+- So a reload that empties the ground costs a field its accumulated part. **Saving the ground with the population is worth
+  building** (#399).
+- `TASK_GROUND=2` stays in the engine as a control, like `TASK_SHUFFLE`. It is not a world.
