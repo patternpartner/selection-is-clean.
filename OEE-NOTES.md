@@ -30494,3 +30494,8 @@ instrument, and I have not answered it.
 **Acceptance.** `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0. `smoke.sh` in three slices: **68 ok, 1
 failing.** The failure is `collective-test`'s `returnPathIsATrickle` inside slice 2, the ratio over single-digit counts that
 CLAUDE.md documents. Alone, with the suite's SECS=22, it passed three times of three. Not retuned.
+- **What that row's numbers were, because they have moved.** The failing run inside slice 2 read `←3 →1`. Two runs alone
+  afterwards read `←15 →0` and `←8 →0`. CLAUDE.md records the inbound count as sitting at 17-28. It is lower now: in its 22
+  seconds the collective takes in fewer migrants than it did before #396 gave every universe a larger world, which is slower in
+  its first minutes. The row still passes alone, but on smaller counts than it was written for, so it is more fragile than the
+  note says. I did not A/B it against the engine before #396.
