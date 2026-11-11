@@ -30437,3 +30437,9 @@ snapshot, so every reload or tab kill emptied it.
 top-left twentieth of the larger world". That is wrong. The snapshot stores the world's width and height, and
 `decodePopulation` rescales every position by `W/P.W` and `H/P.H`. A universe saved in a 137x304 world comes back spread over
 the whole 644x1429 one. I had not read the decoder. `lab/port/PREREG-world.md` carries the same wrong sentence.
+
+**#399 acceptance.**
+- `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0.
+- `smoke.sh` in three slices, nothing else running: **68 ok, 1 failing.** The failure is `layers-test`'s "a dark universe ticks
+  faster than a lit one" (341 against 352) inside slice 2, the row #395 recorded as failing alone on `main`. Alone, straight
+  after, it passed three times of three: 429 / 317, 361 / 282, 362 / 290 (49/0 each). Not retuned.
