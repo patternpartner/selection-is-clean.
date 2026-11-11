@@ -156,6 +156,17 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   Removed again. `lab/port/field-pair.sh` runs one such design pair (the engine against a copy with one default changed).
   **`#401`: the ground is drawn**, by the depth of what each cell holds (`GROUND_GLOWP`, 100; 0 hides it). Colouring each cell
   by its function was tried first and averaged to a grey haze. It is faint: visible where a universe has thinned.
+  **`#402`: A SECOND RULER, the depth of what is new.** `field-rate.js` reports `D` with each sample: the formula sizes (the
+  engine's grade, `lab/port/sz5.js`, 0 mismatches against the engine on 6,500 functions) of the functions that joined the union.
+  A count cannot tell more-of-the-same from building deeper. `lab/port/analyse-depth.js` reads it.
+  **`#404`: TWO AND A HALF HOURS OF ONE FIELD, the first measurement past 30 minutes.** `field-rate.js` chains launches
+  (`PROFILE`, `PORT`, `CHAIN`; `lab/port/long-field.sh` is one leg, and every leg reloads the field the last one left). One field
+  alone on the machine found 1,456,777 distinct functions in 150 minutes; the rate never fell (38-60 thousand every five minutes,
+  the last block the highest) and the mean depth of what was new rose from 11.0 to 17.75. **A flat leg is not a ceiling**: I
+  called one after leg 5 (16.9 to 17.0) and leg 6 went to 17.75. Caveats that travel with the number: one field; 96% of what it
+  found depends on all five inputs, where the grade is an UPPER BOUND; the grade and the pools are mine.
+  **A field alone on the machine is not a field in a pair.** Alone, a field ran 57,864 ticks in 25 minutes and found 203k; beside
+  a twin, about 35,000 ticks and 80-110k. Compare fields only within the same arrangement.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

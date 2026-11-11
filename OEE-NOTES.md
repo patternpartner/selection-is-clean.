@@ -30548,3 +30548,53 @@ pair, the shipped ground against it, 1,500 s, run together (`out-depth/b-*`, `la
   12.50 and 12.56. So #402's "flattening" is not established either. Twenty-five minutes cannot say whether depth has a ceiling.
 - **Not pre-registered.** A possible sixth more deep functions is small beside the question both pairs raise and cannot answer:
   what happens after 25 minutes. The arm (`TASK_GROUND=3`) is removed; the engine is #401's.
+
+### #404 — TWO AND A HALF HOURS OF ONE FIELD: the rate of new functions does not fall and what is new keeps getting deeper (descriptive, one field)
+**Why.** The artwork's claim is that novelty keeps arriving. Nothing here had been measured past 30 minutes, because a background
+job ends there. #402 and #403 disagreed on whether the depth of what is new flattens by 25 minutes, and neither could say.
+
+**The instrument.** `lab/port/field-rate.js` can now chain launches: `PROFILE` keeps the browser's storage, a fixed `PORT`
+keeps the origin, and `CHAIN` carries the union and the clock from one launch (a leg) to the next. Each leg reloads the field the
+last one left, as a viewer's tab does after being killed. `lab/port/long-field.sh` runs one leg. A two-leg smoke test restored 9
+of 31 universes after 3 minutes; in the real run every leg after the first restored 31 of 31.
+
+**The run** (`out-long/long1.*`, `lab/port/long1-result.txt`): six legs of 1,500 s, the shipped engine, alone on the machine.
+
+| Leg | Minutes | New functions | Mean depth of the new, last 5 min | Size 17+ share, last 5 min | Largest |
+|---|---|---|---|---|---|
+| 1 | 0-25 | 202,837 | 13.70 | 22% | 40 |
+| 2 | 25-50 | 228,200 | 14.98 | 32% | 38 |
+| 3 | 50-75 | 250,133 | 16.06 | 41% | 39 |
+| 4 | 75-100 | 254,034 | 16.92 | 48% | 40 |
+| 5 | 100-125 | 245,007 | 17.00 | 50% | 40 |
+| 6 | 125-150 | 276,566 | 17.75 | 56% | 45 |
+
+- **1,456,777 distinct functions in 150 minutes**, on about 8,300 ticks a universe. 52,000 creatures alive throughout.
+- **The rate did not fall.** Every five-minute block from minute 5 on found between 37,943 and 59,923 new functions; the last
+  block found the most. The one dip (37,943) was the block straight after a reload.
+- **What is new kept getting deeper**, from 10.97 in the first five minutes to 17.75 in the last. The gain per leg was 2.7,
+  1.3, 1.1, 0.9, 0.1 and 0.75.
+- **I called a ceiling one leg too early.** After leg 5 (depth 16.9 then 17.0) I told the user depth "looks to be levelling off
+  near 17". Leg 6 went to 17.75. A flat leg is not a ceiling; #402's flattening at 25 minutes was the same mistake at a smaller scale.
+- **Reloads cost little.** A leg loses what each universe did after its last autosave (up to 2 minutes). The blocks after
+  reloads found 42,333, 48,439, 47,723, 37,943 and 50,472.
+
+**What the depth number is, and is not.**
+- 1,404,503 of the 1,456,777 functions (96.4%) depend on all five inputs. For those the grade is the engine's UPPER BOUND (the
+  best Shannon split of two exactly graded four-input halves), not an exact formula size. So "depth 17.75" is a bound that
+  rose, built from exact sizes of the halves. It is evidence the functions are getting harder; it is not a measurement of how hard.
+- Only 52,274 depend on four inputs or fewer (mean exact size 8.6 for four). That shelf holds about 323,000, so it is not
+  being emptied; the field moved on to five-input functions because nearly all of the space is there.
+- A random five-input function grades about 26 by this bound (#392). The field's newest are at 17.75 and it has found 0.034%
+  of the space.
+
+**What this is evidence for.** Over two and a half hours, in one field, novelty kept arriving at an undiminished rate and
+kept getting harder by the only grade this engine has. That is the artwork's claim, measured for the first time past half an
+hour. **What it is not:** it is one field, alone on four cores, against a grade and pools I wrote. It says nothing about
+whether the world makes its own problems. And "did not stop in 150 minutes" is not "does not stop".
+
+**Named:**
+- A second long field, and a no-ground one beside it, so the long-horizon effect of #397 is measured, not inferred.
+- An exact grade for a sample of five-input functions, to learn how loose the bound is and whether its looseness grows with depth.
+- Longer. The chain can go on as long as the container keeps the browser profile.
+- The chain file carries every truth table found (7.8 MB here). It is in the repo once, as the run's record.
