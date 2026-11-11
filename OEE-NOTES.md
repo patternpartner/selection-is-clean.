@@ -30301,3 +30301,78 @@ cell. By 25 minutes a field finds 1.71x the distinct functions, on a 412x915 scr
 - `substrate-test` was not rerun at its four budgets: `engine.html` and `harness-env.js` are unchanged since #395's 264/0 x4, and
   it reads none of `index.html`, `universe.html` or `sim.worker.js`. It passed inside slice 1 at TICKS=40.
 - Both settings were read off a running field: the default gives 644x1429 worlds, `#world=0` gives 137x304.
+
+### #397 — THE GROUND REMEMBERS: SHIPPED. A field finds 1.86x the distinct functions by 25 minutes (8 of 8, p 0.0039), and the gain is selected
+`lab/port/PREREG-ground.md` (committed bed7a45 before any decision run). Out `lab/port/out-ground/`, result `lab/port/ground-result.txt`.
+
+**Where it came from.** The user's point, after #396: the process that builds this engine is itself open-ended, and the engine has
+to catch up with it. Set side by side, the process has something the engine did not: a record that outlives whoever wrote it
+(CLAUDE.md, these notes), which every later session reads. In the engine a published word lasted one epoch and a program died
+with its lineage. Nothing a world found outlived the creatures carrying it.
+
+**The mechanism (`TASK_GROUND`, five inputs).**
+- When a creature is PAID for a function, the function is written, as its canonical truth table, into the field cell (40x40) it
+  stands in. It stays until another payment there overwrites it: across epochs and across deaths.
+- A READ that finds no live neighbour's word reads the ground of its own cell: the function expressed in this epoch's row order
+  (`taskExpr5`, the inverse of `taskTT5`), clean, keyed to its pool so the drain applies, and entered in the read record so that
+  publishing it unchanged is refused as a copy.
+- It draws nothing. In a first look about a quarter of all reads were answered by the ground (576,909 of 2.28 million in 1,500 ticks).
+
+**Design, and two things it taught.**
+- **Node could not see it.** Off against three variants on two seen seeds, 4,000 ticks: every variant was best on one seed and
+  worst on the other (`out-ground-design/`).
+- **Why: a world's count is mostly draw order.** Four continuations of ONE world state from tick 2,000 found 517, 592, 764 and
+  1,052 new functions in the next 2,000 ticks (`out-null-spread/`). The same seed reseeded after tick 1 found 10,866 by tick
+  4,000 where the unreseeded run found about 3,100. So a two- or three-seed design sweep in node sees only severalfold effects.
+  **That weakens every "design only, no direction" entry in this file** (#385, #389-#391, and #394's crowd price).
+- **A field is the sensitive instrument.** It sums 31 universes; #396's eight fields of one engine ranged 53,753-69,155.
+  One pair of fields per variant, 1,500 s:
+
+  | Variant | F today | F with ground | Ratio |
+  |---|---|---|---|
+  | the last payment overwrites | 59,164 | 111,312 | 1.88 |
+  | the deepest function stays | 63,866 | 98,700 | 1.55 |
+  | only what was built upon replaces | 64,867 | 101,208 | 1.56 |
+
+- **My story was wrong and the design said so.** I expected the gain to come from selecting what stays ("judged by what is built
+  on it"). The two selecting variants did no better than plain overwriting, so they were removed before the pre-registration.
+  What the evidence supports is "something stays", not "the right thing stays".
+
+**Decision: 8 pairs of fields run together, 1,500 s, today's engine against a copy with the default flipped.**
+
+| Pair | F today | F ground | Ratio | Ratio at 5 / 10 / 15 min | Ticks today / ground | Alive today / ground |
+|---|---|---|---|---|---|---|
+| 1 | 56,273 | 103,134 | 1.83 | 0.74 / 0.95 / 1.24 | 40,235 / 39,456 | 40,546 / 51,500 |
+| 2 | 54,986 | 91,804 | 1.67 | 1.11 / 1.31 / 1.49 | 42,288 / 38,106 | 43,711 / 51,170 |
+| 3 | 51,455 | 104,693 | 2.03 | 0.96 / 1.27 / 1.56 | 40,496 / 39,788 | 41,704 / 52,655 |
+| 4 | 56,540 | 128,120 | 2.27 | 1.35 / 1.77 / 1.91 | 40,345 / 38,368 | 41,054 / 51,683 |
+| 5 | 53,846 | 75,930 | 1.41 | 1.11 / 1.06 / 1.15 | 35,007 / 34,873 | 44,916 / 49,770 |
+| 6 | 60,189 | 116,234 | 1.93 | 1.03 / 1.39 / 1.62 | 43,231 / 40,580 | 42,778 / 52,586 |
+| 7 | 81,841 | 121,976 | 1.49 | 0.98 / 1.20 / 1.30 | 43,600 / 40,445 | 45,137 / 51,541 |
+| 8 | 67,242 | 127,274 | 1.89 | 0.97 / 1.43 / 1.54 | 43,245 / 42,203 | 43,790 / 51,931 |
+
+- **Primary:** W+ 36 of 36, **p 0.0039**, ahead in 8 of 8, **median ratio 1.86.** BETTER. My prediction (8 of 8, about 1.6) held.
+- **Selected:** the control pair, GROUND against GROUND with `TASK_SHUFFLE=1`, found 87,015 against **7,460** (0.086 of its twin).
+  A ground makes more functions reachable, so part of any count is shelf. A shelf alone would not vanish when payments go to
+  random creatures. Prediction (under a fifth) held.
+- **No early cost:** median ratio 1.00 at 5 minutes, 1.29 at 10, 1.51 at 15, and still widening at 25.
+- **On fewer ticks:** the ground field ran fewer ticks in 8 of 8 (34,873-42,203 against 35,007-43,600) and held more creatures in
+  8 of 8 (49,770-52,655 against 40,546-45,137). So the gain per tick is larger than 1.86x.
+- **Pair 5 was run twice.** The container restarted during its first run; the partial files were removed and it was rerun whole.
+
+**What moved in the universe:** wherever TASKS runs at five inputs, what a creature is paid for is left in the ground and later
+creatures build on it. A field finds 1.86x the distinct functions by 25 minutes, and the gain needs the computers to be the
+ones paid. With #396 that is about 3x the field of two days ago, though the two were not measured together.
+- `TASK_GROUND=0` restores the world before, byte for byte (`9c51d9bb` on seed 10401, 800 ticks, before and after). TASKS off is
+  unchanged against the engine before #395 (`ad497d03`).
+- **Saved worlds (rule 6):** the ground is not in the population snapshot, so a reloaded universe starts with empty ground.
+- **Not measured:** past 25 minutes; a desktop-sized field; per-CPU-hour in node (the instrument there is too noisy, see above).
+
+**Named:**
+- **Save the ground** beside the population, so a reload keeps what the world wrote.
+- **Is it the persistence or the extra hit rate?** A ground read replaces a miss. A control that answers a miss with a random
+  already-paid function, not the local one, would separate "more reads succeed" from "the place remembers".
+- **Draw it.** The ground is invisible. The artwork could show what each cell holds.
+- **Redo the design-only nulls in a field** where they matter: the drain, the royalty, the crowd price.
+- The next step toward the process: the ground is one function per cell and the grade is still mine. What a world keeps is not
+  yet what a world is paid for.
