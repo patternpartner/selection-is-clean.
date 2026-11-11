@@ -30443,3 +30443,34 @@ the whole 644x1429 one. I had not read the decoder. `lab/port/PREREG-world.md` c
 - `smoke.sh` in three slices, nothing else running: **68 ok, 1 failing.** The failure is `layers-test`'s "a dark universe ticks
   faster than a lit one" (341 against 352) inside slice 2, the row #395 recorded as failing alone on `main`. Alone, straight
   after, it passed three times of three: 429 / 317, 361 / 282, 362 / 290 (49/0 each). Not retuned.
+
+### #400 — DESIGN IN A FIELD: a royalty to the creatures a word was built on does not help (0.85 and 0.86 of the shipped field). Knob removed again, this time on evidence that can see.
+**Why it was reopened.** #391 dropped the royalty on three node seeds whose results ran from 0.22x to 8.4x. #397 showed that is
+what draw order alone does to a node world. And the royalty is the plainest form of the gap I named after #397: being PAID for
+what others build on you, where today a creature is paid only for what it computes against my pools.
+
+**The knob** (`TASK_ROYP=p`, restored from 117dcdb onto today's engine): when a word is paid, p percent of the pay is split among
+the living creatures that published the read words it was built on. The builder keeps the rest, and any share whose publisher
+is dead, is itself, or is the ground. Off, byte-identical (`c70c7d32`). At 25% it moved 340 of 3,700 income in 1,000 ticks.
+
+**One pair of fields each, run together with the shipped engine, 1,500 s** (`lab/port/field-pair.sh`, `out-royalty-design/`):
+
+| Royalty | F shipped | F with royalty | Ratio | Ratio at 5 / 10 / 15 / 20 min |
+|---|---|---|---|---|
+| 25% | 90,483 | 77,313 | 0.85 | 0.51 / 0.59 / 0.70 / 0.80 |
+| 50% | 74,939 | 64,506 | 0.86 | 0.67 / 0.86 / 0.89 / 0.88 |
+
+- Behind at every five-minute mark in both pairs. Ticks and creatures were about the same (36,628 and 37,323 ticks against
+  32,609 and 36,541; 51,216 and 49,198 alive against 51,251 and 50,006).
+- One pair of fields varies by about 15%, so neither ratio alone shows harm. Two pairs at two strengths, both behind throughout,
+  show no direction worth pre-registering as a gain. **Not pre-registered. The knob is removed** and the engine is #399's again.
+- **A reading, not tested:** the words most often built on are the common easy ones. A royalty moves pay from whoever just made
+  something new to whoever publishes what everyone already has.
+
+**What this leaves of the larger question.** "Paid for being built upon" in its simplest form does not raise what a field finds.
+The record so far: what stays in the ground matters (#398), choosing what stays by what is built on it does not (#397's
+variants), and paying for being built on does not (this). All three were judged by a count of functions against a grade I wrote.
+A world whose own outputs set what is worth doing may need a measure that is not that count. That is a question about the
+instrument, and I have not answered it.
+
+`lab/port/field-pair.sh` stays: one pair of fields, the engine against a copy with one default changed.

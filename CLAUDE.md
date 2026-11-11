@@ -151,6 +151,9 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **`#399`: the ground is saved with the population** (`world.ground` in the snapshot) and restored on reload. A running world is
   byte-identical. And a correction to `#396`: reloaded creatures are NOT left in a corner of a larger world, `decodePopulation`
   rescales positions by the saved width and height. **Read the decoder before saying what a reload does.**
+  **`#400`: a royalty in a field: no.** `#391`'s royalty (a share of each payment to the living publishers of the words it was
+  built on), reopened where it can be seen: 0.85 of the shipped field at 25% and 0.86 at 50%, behind at every five-minute mark.
+  Removed again. `lab/port/field-pair.sh` runs one such design pair (the engine against a copy with one default changed).
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
