@@ -10855,6 +10855,7 @@ function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floo
 // TASK_GROUND=2 is a CONTROL, not a world (#398): the ground forgets at the epoch boundary - a cell answers only with a function
 // written in the current epoch. Same cells, same reads, no memory past 50 ticks; it separates "the place remembers" from "more reads succeed".
 const TASK_GROUND=TASKS_ON?(__tk('__TASK_GROUND',0)|0):0;
+const tGZ=(TASK_GROUND&&TASK_IN===5)?new Float32Array(FIELD_W*FIELD_H):null;   // #401: for the renderer only
 const tG=(TASK_GROUND&&TASK_IN===5)?new Uint32Array(FIELD_W*FIELD_H):null, tGE=(tG&&TASK_GROUND===2)?new Int32Array(FIELD_W*FIELD_H).fill(-1):null;
 function taskExpr5(F){ const I=tWin; let v=0; for(let q=0;q<32;q++){ const k=(((I[0]>>>q)&1)<<4)|(((I[1]>>>q)&1)<<3)|(((I[2]>>>q)&1)<<2)|(((I[3]>>>q)&1)<<1)|((I[4]>>>q)&1); if((F>>>k)&1)v|=1<<q; } return v>>>0; }   // the inverse of taskTT5
 function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, D=o+d, S=o+s, e=tEpoch;
@@ -10880,7 +10881,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   else { T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; } if(tPE[i]===e)return; }
   tPE[i]=e;   // one payment per epoch
   if(TASK_IN===5)tLastK[i]=T;   // #392: the slot this payment may just have taken
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ const c=sunCell(i); tG[c]=tKey[T]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ const c=sunCell(i); tG[c]=tKey[T]; tGZ[c]=TASK_SZ[T]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
 // that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between
@@ -14628,7 +14629,7 @@ function decodePopulation(s){   // replaces the founders with the saved creature
   if(TASKS_ON&&TASK_IN===5&&typeof Wd.seen5==='string'){ try{ const b=atob(Wd.seen5); tSeenN=0; for(let q=0;q+3<b.length;q+=4){ const F=(b.charCodeAt(q)|(b.charCodeAt(q+1)<<8)|(b.charCodeAt(q+2)<<16)|(b.charCodeAt(q+3)<<24))>>>0; if(seen5Add(F))tSeenN++; } tSeenBoot=tSeenN; }catch(_){} }   // #392
   else if(TASKS_ON&&TASK_IN!==5&&typeof Wd.seen==='string'){ try{ const b=atob(Wd.seen); if(b.length===TASK_NF/8){ tSeenN=0;
     for(let T=0;T<TASK_NF;T++){ tSeen[T]=(b.charCodeAt(T>>3)>>(T&7))&1; tSeenN+=tSeen[T]; } tSeenBoot=tSeenN; } }catch(_){} }
-  if(tG!==null&&tGE===null&&typeof Wd.ground==='string'){ try{ const b=atob(Wd.ground); if(b.length===tG.byteLength){ const u=new Uint8Array(tG.buffer,tG.byteOffset,tG.byteLength); for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q)&255; } }catch(_){} }   // #399: a snapshot of another size, or none, leaves the ground empty
+  if(tG!==null&&tGE===null&&typeof Wd.ground==='string'){ try{ const b=atob(Wd.ground); if(b.length===tG.byteLength){ const u=new Uint8Array(tG.buffer,tG.byteOffset,tG.byteLength); for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q)&255; for(let c=0;c<tG.length;c++)tGZ[c]=tG[c]?taskSz5(tG[c]):0; } }catch(_){} }   // #399: a snapshot of another size, or none, leaves the ground empty
   return N;
 }
 function popRestore(){   // at boot, after the genome: the saved population, if it is this genome's
@@ -26550,6 +26551,8 @@ function __artDrawProgram(i,sp,aw,r,g,b){
       case 4:{ const ang=A*6.283,dist=__cl(base*(1+2.5*B),1,16),rad=__cl(base*0.5*C,0.3,6)*1.8; X.globalAlpha=__cl(aw*0.5,0,0.5)*0.3; X.drawImage(sp,x+Math.cos(ang)*dist-rad,y+Math.sin(ang)*dist-rad,rad*2,rad*2); break; }   // SATELLITE
     } }
 }
+// #401: how the ground is drawn. tGZ is the formula size of what each cell holds, written with the ground and read only by the renderer.
+const GROUND_GLOW=__tk('__GROUND_GLOWP',100)/100, GROUND_DEEP=24;   // GROUND_GLOWP=0 hides it; a function of size 24 or more glows fully
 function renderArt(){
   if(!__artS||__artS.w!==W||__artS.h!==H)__artS=__artInit();
   const s=__artS;
@@ -26571,6 +26574,11 @@ function renderArt(){
         r+=(fieldLineageCache[ci]*own+100*(1-own))*k; g+=(fieldLineageCache[ci+1]*own+240*(1-own))*k; b+=(fieldLineageCache[ci+2]*own+220*(1-own))*k; }
       const v2=field2[i]; if(v2>0.05){ const k=Math.min(1,v2*0.7); r+=230*k; g+=80*k; b+=150*k; }
       const cs=cellProgStr[i]; if(cs>0.1){ r+=255*cs*0.5; g+=220*cs*0.5; b+=120*cs*0.5; }
+      // #401: THE GROUND, DRAWN. A cell glows by the DEPTH of the function it holds (its formula size, squared so shallow ground stays
+      // dark): the world's kept record shows as terrain that brightens where deep things were left. A first version coloured each cell by
+      // its function, the read threads' way; with nearly every cell holding something, 24 hues at a few pixels a cell averaged to a grey
+      // haze over the whole picture. Drawing only.
+      if(tGZ!==null){ const z=tGZ[i]; if(z>0){ const k0=z>GROUND_DEEP?1:z/GROUND_DEEP, k=k0*k0*GROUND_GLOW; r+=255*k; g+=214*k; b+=150*k; } }
       d[n]=r>255?255:r; d[n+1]=g>255?255:g; d[n+2]=b>255?255:b; d[n+3]=255;
     }
     s.fx.putImageData(s.id,0,0);
