@@ -1,0 +1,12 @@
+pair 1  today F 56273 K 40235 A 40546 read 55s M 9824  |  ground F 103134 K 39456 A 51500 read 35s M 9192  ratio 1.83  (5/10/15 min: 0.74 / 0.95 / 1.24)
+pair 2  today F 54986 K 42288 A 43711 read 32s M 9016  |  ground F 91804 K 38106 A 51170 read 33s M 8840  ratio 1.67  (5/10/15 min: 1.11 / 1.31 / 1.49)
+pair 3  today F 51455 K 40496 A 41704 read 55s M 8538  |  ground F 104693 K 39788 A 52655 read 29s M 8969  ratio 2.03  (5/10/15 min: 0.96 / 1.27 / 1.56)
+pair 4  today F 56540 K 40345 A 41054 read 47s M 9863  |  ground F 128120 K 38368 A 51683 read 58s M 8984  ratio 2.27  (5/10/15 min: 1.35 / 1.77 / 1.91)
+pair 5  today F 53846 K 35007 A 44916 read 78s M 7568  |  ground F 75930 K 34873 A 49770 read 65s M 7853  ratio 1.41  (5/10/15 min: 1.11 / 1.06 / 1.15)
+pair 6  today F 60189 K 43231 A 42778 read 40s M 9508  |  ground F 116234 K 40580 A 52586 read 31s M 9427  ratio 1.93  (5/10/15 min: 1.03 / 1.39 / 1.62)
+pair 7  today F 81841 K 43600 A 45137 read 42s M 10256  |  ground F 121976 K 40445 A 51541 read 28s M 9928  ratio 1.49  (5/10/15 min: 0.98 / 1.20 / 1.30)
+pair 8  today F 67242 K 43245 A 43790 read 42s M 10003  |  ground F 127274 K 42203 A 51931 read 25s M 9977  ratio 1.89  (5/10/15 min: 0.97 / 1.43 / 1.54)
+complete pairs 8 (floor 6); F at 1,500 s: W+ 36 of 36, p(ground greater) 0.0039, p(ground less) 1.0000; ground ahead in 8 of 8; median ratio 1.86
+median ratio at 5, 10, 15 min: 1.00, 1.29, 1.51
+verdict: BETTER
+control: ground F 87015, ground + shuffle F 7460 (0.086 of its twin) -> selected
