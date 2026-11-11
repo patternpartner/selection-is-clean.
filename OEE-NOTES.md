@@ -22094,7 +22094,7 @@ rather than leave a dead hole.
 
 ### #240 — PACED HALT PATH GUARDS THE NATIVE setTimeout. Codex P1 on PR #64.
 
-(OEE #239 is reserved for peer-inscription retire-or-prove; this paced-halt fix is #240.)
+(#239 is the cold-start spark; peer-inscription retire-or-prove is #241. An earlier version of this line said #239 was reserved for it, which went stale at the renumber.)
 
 The worker's `raf` shim already refused to schedule after `halt`. `scheduleNext()` still used the native `setTimeout(loop, PACE)` (and the hidden-tab timeout) and went round that shim, so a paced world kept ticking and broadcasting `found` after pagehide.
 
@@ -22184,6 +22184,30 @@ Fingerprints differed on both counted focals, so the named numbers were read. Se
 
 **Scope.** This is who is alive and how the kinds are spread at 20,000 ticks, with a peer present. It is not a claim that selection sorted inscriptions. Four focals never applied a packet by this budget. That is "not by tick 20,000" on those four, and it is why they were not scored. The two that did apply were enough for the keep clause, so the extension was not owed.
 
+### #243 — TRAVEL-WINDOW CENSUS. Measurement only. Pre-registered before the runs exist.
+
+**Why.** #241 kept the bundle on 2 of 6 focals, and on all six the FOCAL sent 0 inscription packets. Seeds 1-4 sent none in either direction despite 1,851-23,715 spark fires. So the send path has not been shown to reach EXECUTED on the focal, and nothing above that rung should be read until it has. This entry asks why, and changes nothing.
+
+**The arithmetic under test.** The send (`networkBroadcast`, once per tick) passes `genome.netInscribeRate` (default 0.004), then draws 20 of 1,600 cell indexes and posts only if one holds `cellProgStr > 0.3`. The #239 spark floors a cold cell at 0.35. `CELL_DECAY` is 0.998. A floor spark is above 0.3 for ln(0.3/0.35)/ln(0.998), about 77 ticks. So a floor spark is seen by the sampler with probability about 77 x 0.004 x 20/1600, about 0.4%. The spark writes only into a cell below 0.2. A particle that keeps firing on the same cell is refused for about 280 ticks after the first write, so fires and cells written are different counts.
+
+**What the harness adds** (`harness-peerins.js`, both processes, no engine edit, zero `Math.random` draws). After each driver `loop()`, reported as `travel` (focal) and `peerTravel` (peer):
+- `aboveEnd`: cells with `cellProgStr > 0.3` at the last tick. Summed over ticks as `aboveTicks`. Also `peakAbove` and `firstAbove`, the first tick it is non-zero.
+- `rateMean`, `rateMin`, `rateMax`, `rateEnd`: `genome.netInscribeRate` read each tick, to see whether it mutates down.
+- `expSendLin`: sum of `above x rate x 20/1600`, the approximation above. `expSendExact`: sum of `rate x (1 - (1 - above/1600)^20)`.
+- `fires`: `__liveness['cell.inscribe']` differenced from boot, with `firstFire`. `writes`: cells whose strength went up since the last scan. Any write counts (spark or applied packet), and two fires on one cell in one tick count once. `writesAbove` is the subset now above 0.3, and `firstWrite` is the first tick with one. `fires - writes` is an upper-side read of fires that hit a warm cell.
+- `inscSent` and `peerInscSent`, as before.
+
+**Boring side.** Focal 5, peer 15, 3,000 ticks. The focal's 1,000-tick fingerprints must be identical to the pre-#243 harness (a detached worktree at `e3fd116`, same engine). A mismatch means the census consumed a draw, and nothing below is a result.
+
+The scan runs after the whole tick. The send reads mid-tick, before `processGrid` and the field decay. So `above` is one decay step off the value the sampler saw. That is a factor of 0.998 on strength. It moves a cell across 0.3 only in a thin band, and the entry says so rather than correcting for it.
+
+**Reading, fixed now.** Per side, on seeds 1-6 (peers 11-16), 20,000 ticks, `PEERINS=1`:
+- If `expSendExact` is below 1 wherever `inscSent` is 0, and not far from `inscSent` where it is not, the 0.4% window is the whole story. The send path is starved by the sampling window, not broken.
+- If `expSendExact` is several (say above 3) where `inscSent` is 0, the arithmetic does not explain the zeros. Something else blocks the post, and that is the next thing to find.
+- If `rateMean` or `rateMin` falls well under 0.004, mutation of the rate is part of the story. The result says by how much.
+- `writes` against `fires` says how much of the fire count ever reached the field.
+
+**Scope.** This entry KEEPs and DELETEs nothing. #241's KEEP stands. #242's clamp is untouched. #237's overwrite stays closed. If the window is the story, the follow-up is either the spark-vs-packet split at a horizon that can carry a packet, or a separate retire-or-prove on the send gate. Either is its own entry. This is a rig change, and CLAUDE.md is plain that a rig change does not move the universe. It is here because #241's KEEP was read from a path that, on the focal, has not yet been shown to run once.
 
 ### #244 — A REVIEW OF #236-#243, TWO BUGS FIXED, AND ONE VERDICT THE RULE COULD NOT SEE
 

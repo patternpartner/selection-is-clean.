@@ -10,6 +10,12 @@
 // (EVERY 250, WARM 2000, ESTN 10). The census draws nothing. Migrants, plasmids, motifs and laws
 // still cross in both arms.
 //
+// #243: travel-window census on focal and peer, every driver step, draw-free. Cells above the 0.3
+// send gate (end of tick), cell-ticks above it summed, spark fires (cell.inscribe differenced from
+// boot), cells whose strength rose (spark or peer write), and the expected inscription sends given the
+// genome's own netInscribeRate that tick: linear a*r*20/cells and exact r*(1-(1-a/cells)^20). Compare
+// against inscSent / peerInscSent.
+//
 // Env: SEED (focal, default 1)  PEER (default SEED+10)  TICKS (default 20000)  PEERINS (0 or 1)
 //      INDEX (engine html)  TIME=1 (stderr timings)
 // Prints one JSON object.
@@ -87,6 +93,30 @@ function childMain() {
     '  for(i=0;i<N;i++){ if(!palive[i])continue; l=pLin[i]; cnt[l]=(cnt[l]||0)+1; }',
     '  for(l in cnt){ if(est.first[l]===undefined) est.first[l]=tick|0; if(!(est.peak[l]>=cnt[l])) est.peak[l]=cnt[l]; }',
     '};',
+    // #243 travel-window census. Reads cellProgStr, genome.netInscribeRate and __liveness only.
+    // No Math.random, no engine call. Runs after loop(), so it sees the end-of-tick field, not the
+    // field at the moment networkBroadcast sampled it (that is mid-loop, before processGrid decays).
+    'globalThis.__tw={cells:0,above:0,aboveTicks:0,peakAbove:0,firstAbove:null,writes:0,writesAbove:0,',
+    '  firstWrite:null,fires:0,firstFire:null,expLin:0,expExact:0,rateSum:0,rateMin:null,rateMax:null,ticks:0};',
+    'globalThis.__twPrev=null;globalThis.__twFire0=null;',
+    'globalThis.__travel=function(){',
+    '  var tw=globalThis.__tw,n=cellProgStr.length,prev=globalThis.__twPrev,a=0,w=0,wa=0,i,v;',
+    '  if(!prev){ prev=globalThis.__twPrev=new Float32Array(n); for(i=0;i<n;i++) prev[i]=cellProgStr[i]; globalThis.__twFire0=(__liveness["cell.inscribe"]|0); tw.cells=n; return; }',
+    '  for(i=0;i<n;i++){ v=cellProgStr[i]; if(v>0.3) a++; if(v>prev[i]){ w++; if(v>0.3) wa++; } prev[i]=v; }',
+    '  var t=tick|0,r=+genome.netInscribeRate||0,f=(__liveness["cell.inscribe"]|0)-globalThis.__twFire0;',
+    '  tw.ticks++; tw.above=a; tw.aboveTicks+=a; if(a>tw.peakAbove) tw.peakAbove=a; if(a>0&&tw.firstAbove===null) tw.firstAbove=t;',
+    '  tw.writes+=w; tw.writesAbove+=wa; if(w>0&&tw.firstWrite===null) tw.firstWrite=t;',
+    '  if(f>tw.fires&&tw.firstFire===null) tw.firstFire=t; tw.fires=f;',
+    '  tw.expLin+=a*r*20/n; tw.expExact+=r*(1-Math.pow(1-a/n,20));',
+    '  tw.rateSum+=r; if(tw.rateMin===null||r<tw.rateMin) tw.rateMin=r; if(tw.rateMax===null||r>tw.rateMax) tw.rateMax=r;',
+    '};',
+    'globalThis.__twOut=function(){',
+    '  var tw=globalThis.__tw;',
+    '  return {cells:tw.cells,ticks:tw.ticks,aboveEnd:tw.above,aboveTicks:tw.aboveTicks,peakAbove:tw.peakAbove,firstAbove:tw.firstAbove,',
+    '    fires:tw.fires,firstFire:tw.firstFire,writes:tw.writes,writesAbove:tw.writesAbove,firstWrite:tw.firstWrite,',
+    '    rateMean:tw.ticks?+(tw.rateSum/tw.ticks).toPrecision(4):null,rateMin:tw.rateMin,rateMax:tw.rateMax,rateEnd:+genome.netInscribeRate||0,',
+    '    expSendLin:+tw.expLin.toFixed(4),expSendExact:+tw.expExact.toFixed(4)};',
+    '};',
     'globalThis.__steps=0;',
     'globalThis.__fps=[];',
     'globalThis.__peersAt100=null;',
@@ -95,6 +125,7 @@ function childMain() {
     '  globalThis.__detMs+=5;',
     '  try{ loop(); }catch(e){ if(!globalThis.__loopErr) globalThis.__loopErr=String(e&&e.message||e); }',
     '  globalThis.__steps++;',
+    '  globalThis.__travel();',
     '  if(globalThis.__steps%500===0) globalThis.__sampleDiv();',
     '  if(globalThis.__steps%250===0) globalThis.__census();',
     '  if(globalThis.__steps%1000===0) globalThis.__fps.push(globalThis.__fp());',
@@ -110,6 +141,7 @@ function childMain() {
     mod._compile(code + DRIVER, mod.filename);
     globalThis.__sampleDiv();
     globalThis.__census();
+    globalThis.__travel();
   } catch (e) {
     bootErr = String(e && e.stack || e);
   }
@@ -154,7 +186,8 @@ function childMain() {
         series: globalThis.__series || [],
         est: globalThis.__est || { first: {}, peak: {} },
         peersAt100: globalThis.__peersAt100,
-        inscSent: globalThis.__inscSent | 0
+        inscSent: globalThis.__inscSent | 0,
+        travel: bootErr ? null : globalThis.__twOut()
       });
     }
   });
@@ -281,6 +314,8 @@ async function parentMain() {
     maxStr: end.maxStr,
     inscSent: repA.inscSent | 0,
     peerInscSent: repB.inscSent | 0,
+    travel: repA.travel || null,
+    peerTravel: repB.travel || null,
     loopErr: repA.loopErr,
     peerLoopErr: repB.loopErr,
     entropyRatio: oee.entropyRatio,
