@@ -30822,3 +30822,14 @@ open and the harvest button did nothing. They asked for it to be reviewed later,
 - **How to measure it:** a rig that runs a field and records the page's longest gap between timer callbacks and its long
   tasks, for the shipped field, for `#world=0`, and with saves staggered. Nothing on this page measures responsiveness; every
   field rig reads the workers.
+
+### HANDOVER (12 Nov, the user's weekly allowance ran out mid-run)
+- **In flight and unfinished:** a pair of fields, shipped against `REPL_CROWD_K=150` (`out-crowd-field/a-*`). If its `.done` is
+  missing, rerun it with `lab/port/field-pair.sh` (the command is in #411's commit). It is the design pair for the crowd price.
+- **Next, in order:** (1) if that pair agrees with #411's arms, pre-register a lower crowd K in fields of one arm each and
+  decide; K=100 and 150 both want a pair. (2) the same for a weaker drain (5-12%). (3) remove the `TASK_VAR` design arms from
+  `engine.html` and `harness-env.js` (#408: none earned its place; default 0 is byte-identical, `c70c7d32`). (4) the user's
+  frozen-screen report above. (5) a "not worse" test to switch the cosmos off (#410).
+- **On `main` but not run through the full acceptance:** #409's shell fix passed its own test and `smoke.sh` slice 2. After
+  that, `sim.worker.js` changed again (a universe with a knob gets its own `globalThis`; one without is handed the real one)
+  and has since booted every field run in #408-#411, but `smoke.sh` and `substrate-test` were not rerun on it.
