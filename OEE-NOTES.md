@@ -30882,3 +30882,31 @@ booted every field run in #408-#411, and was never run through the full acceptan
   the population and levelled off with it at about 54,000, so 25 minutes cannot say whether it keeps growing overnight.
 - **Running:** one page kept alive for 110 minutes, the probe every 2 minutes, the browser's resident memory beside it
   (`out-jank/long1.*`).
+- **One page kept alive for 110 minutes** (`out-jank/long1.*`, probe every 2 minutes, the browser's renderer memory every 2):
+
+  | Minutes | Main thread in long tasks a minute | Longest task | Longest timer gap | Renderer memory | Creatures |
+  |---|---|---|---|---|---|
+  | 10 | 4.9 s | 386 ms | 459 ms | 3.0 GB | 50,963 |
+  | 30 | 7.8 s | 425 ms | 620 ms | 2.7 GB | 55,065 |
+  | 60 | 7.8 s | 458 ms | 483 ms | 2.8 GB | 55,608 |
+  | 90 | 8.7 s | 424 ms | 562 ms | 2.9 GB | 55,716 |
+  | 110 | 9.0 s | 482 ms | 529 ms | 3.1 GB | about 55,800 |
+
+  - **No freeze here in 110 minutes.** No timer gap reached a second, and `evaluate` answered in 1-121 ms.
+  - **Two things keep climbing after the population levels off (by about 30 minutes):**
+    - the main thread's save load, 13% to 15% of the thread;
+    - the stored snapshots, 68.8 MB at 25 minutes to 85.2 MB at 110 (the largest 2.8 to 4.0 MB). Renderer memory rose about 400 MB
+      with them.
+
+    The snapshot grows because the lifetime record and the ground inside it grow while the population does not.
+  - So on this four-core box the save path costs about a seventh of the thread that answers clicks, and the cost grows with time.
+    A night is about five times this run, and a phone is slower. That is enough to make the save load a cause worth removing,
+    whatever else the freeze turns out to need.
+  - **Memory is the other candidate and is not explained.** 400 MB in 80 minutes is more than the lifetime sets (a few MB across
+    31 universes). It may be heap growth rather than a leak; this run cannot tell.
+- **Next: move the save out of the main thread.**
+  - Workers have IndexedDB and `CompressionStream`, so the worker can gzip and store the snapshot itself and tell the shell only
+    that it has landed.
+  - #409's rule, a genome never newer than its saved population, is kept by a small handshake: the worker says a snapshot is
+    pending, then that it has landed, with a sequence number.
+  - The engine is untouched, so the world is byte-identical. The test is the same probe on the same field, and the persistence rigs.
