@@ -30970,3 +30970,18 @@ booted every field run in #408-#411, and was never run through the full acceptan
   recorded and not ruled on.
 - **Still open for the freeze:** renderer memory grew about 400 MB over 80 minutes in #413's long page, unexplained, and no run here
   is a night.
+- **#414 acceptance.**
+  - `smoke.sh` in three slices, nothing else running: **69 ok, 1 failing.** `browser-test` and `collective-test` ran (no SKIP).
+    `pop-test`, `slot-test`, `persistence-test`, `pophold-test`, `grown-test` and `mind-persist-test` all passed.
+  - **The failure is `layers-test`'s "a dark universe ticks faster than a lit one"** (474 against 418), the row #395 recorded as
+    failing alone on `main` 2 of 5. Alone, three runs each:
+
+    | Shell | Dark/lit ratios (needs 1.15) | Failed |
+    |---|---|---|
+    | before #414 (e495c7c) | 0.90, 1.79, 1.28 | 1 |
+    | #414 | 1.11, 1.06, 2.76 | 2 |
+
+  - **#414 cannot reach that row.** It runs one universe for 15 s, and the first save comes at tick 1,800 or after 2 minutes.
+    Not retuned.
+  - `substrate-test` was not rerun: `engine.html` and `harness-env.js` are `main`'s byte for byte, and it reads neither shell file.
+    It passed inside slice 1 at TICKS=40.
