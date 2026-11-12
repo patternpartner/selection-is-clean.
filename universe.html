@@ -184,7 +184,7 @@
   // autosaved genome is held (popHold) until the snapshot the engine posts straight after it has landed, and written then. A
   // kill mid-write leaves the previous genome beside the previous snapshot, which match. If no snapshot follows (an engine that
   // keeps none), the genome is written after POP_WAIT ms as it always was.
-  var POP_WAIT = 250, popHold = null, popHoldT = 0;   // the snapshot message follows the genome within the same worker turn, so a quarter second is ample
+  var POP_WAIT = 250, popHold = null, popHoldT = 0, popWait = {};   // #414: popWait[n] is the genome waiting for worker-stored snapshot n   // the snapshot message follows the genome within the same worker turn, so a quarter second is ample
   function genomeWrite(g){ try { localStorage.setItem(GKEY, g); } catch(ex){} }
   function popHoldFlush(){ if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } if (popHold !== null){ var g = popHold; popHold = null; genomeWrite(g); } }
   var POPTEST = (function(){ try { var m=(location.search||'').match(/[?&]poptest=(\d{1,5})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();   // a rig's delay on the snapshot write, in ms
@@ -204,6 +204,7 @@
       genome: (stored && stored.length>10) ? stored : null,
       mind: (storedMind && storedMind.length>10) ? storedMind : null,
       pop: (typeof pop === 'string' && pop.length > 10) ? pop : null,   // #368
+      pkey: PKEY, poptest: POPTEST,   // #414: the worker stores the snapshot itself, under this key
       hash: location.hash || '', src:'engine.html'
     }, [off]);
   });
@@ -288,6 +289,12 @@
       if (genEl && genEl.textContent === 'booting…') genEl.textContent = '';
       while(readyWaiters.length) readyWaiters.shift()(); return;
     }
+    // #414: the worker stores the snapshot. 'pending' comes in the same turn as the genome, so the genome now waits for its number;
+    // 'landed' writes the newest genome whose snapshot is stored, and drops older ones whose snapshots were replaced before landing.
+    if (d.type === 'pop' && d.pending){ if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } if (popHold !== null){ popWait[d.pending] = popHold; popHold = null; } return; }
+    if (d.type === 'pop' && d.landed){ var best = -1; for (var pk in popWait){ var pn = +pk; if (pn <= d.landed){ if (pn > best) best = pn; } }
+      if (best >= 0){ var bg = popWait[best]; for (var pk2 in popWait){ if (+pk2 <= d.landed) delete popWait[pk2]; } genomeWrite(bg); } return; }
+    if (d.type === 'pop' && d.seq && popWait[d.seq] !== undefined && popHold === null){ popHold = popWait[d.seq]; delete popWait[d.seq]; }   // the worker could not store it: the old path, with its genome
     if (d.type === 'pop'){ if (typeof d.value === 'string' && typeof indexedDB !== 'undefined'){ var hg = popHold; popHold = null; if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } popPut(d.value, hg); } else popHoldFlush(); return; }   // #368, #409
     if (d.type === 'persist'){
       // #170: the engine only ever names its own key. Redirect that one to this universe's slot;

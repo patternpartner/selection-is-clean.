@@ -161,7 +161,8 @@ const BRIDGE =
   // #368 - THE POPULATION'S ROUTE OUT. The engine encodes its living population beside each autosaved genome only when
   // __popHook is set, and only this bridge sets it: under node and on a standalone page nothing is encoded. The snapshot is
   // megabytes, so it does not go through the localStorage shim; the shell keeps it in IndexedDB under this universe's slot.
-  'try{__popHook=function(s){if(__inst.halted)return;try{__inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
+  // #414: with a store key from the shell, the snapshot is gzipped and stored HERE, so megabytes never cross the page's main thread.
+  'try{__popHook=function(s){if(__inst.halted)return;try{if(__inst.pkey&&__inst.popSave)__inst.popSave(s);else __inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
   '__inst.api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
   // #164: set this universe's PACE live, without touching its hash. The hash route would work — the
   // engine re-reads pace on hashchange — but the hash is the CREATURE's (#cleanart, #turbo, and
@@ -389,6 +390,9 @@ Universe.prototype.buildEnv = function (initHash, dpr) {
 Universe.prototype.boot = async function (d) {
   if (this.started) return;
   this.started = true;
+  // #414: where this universe's population snapshot lives (IndexedDB 'selection_pop', store 'pop'), so the worker writes it itself
+  this.pkey = (typeof d.pkey === 'string' && d.pkey && typeof indexedDB !== 'undefined' && typeof CompressionStream !== 'undefined') ? d.pkey : null;
+  this.popDelay = Math.max(0, Math.min(60000, d.poptest | 0)); this.popSeq = 0; this.popNext = null; this.popBusy = false;
   this.canvas = d.canvas;
   // pre-load the saved genome so the sim's synchronous boot read finds it
   if (d.genome) this.lsStore['selection_genome'] = d.genome;
@@ -413,6 +417,43 @@ Universe.prototype.boot = async function (d) {
     this.post({ type: 'ready' });
   } catch (err) {
     this.post({ type: 'error', message: 'sim load failed: ' + (err && err.message), stack: err && err.stack ? String(err.stack).slice(0, 800) : '' });
+  }
+};
+
+// ═══ #414 — THE SNAPSHOT IS STORED BY THE WORKER ══════════════════════════════════════════════════════════════════════════
+// #413 measured the save path on the page: every autosave posted a multi-megabyte snapshot to the shell, which received, gzipped and
+// stored it on the main thread, for 31 universes every one to two minutes - 13-15% of the thread that answers clicks, growing as the
+// lifetime record inside the snapshot grows. Workers have IndexedDB and CompressionStream, so the worker does it. The shell hears only
+// {pop, pending: n} (in the same turn as the genome, so it holds that genome, #409) and {pop, landed: n} when snapshot n is stored,
+// and writes the genome then. A snapshot that arrives while one is being written replaces the one waiting; only the newest lands.
+// On any failure the snapshot goes to the shell as before, so nothing is lost. The world is untouched.
+let __popDbP = null;
+function popDb() {
+  if (__popDbP) return __popDbP;
+  __popDbP = new Promise((res, rej) => { try { const r = indexedDB.open('selection_pop', 1);
+    r.onupgradeneeded = () => { try { r.result.createObjectStore('pop'); } catch (_) {} };
+    r.onsuccess = () => { const db = r.result; db.onversionchange = () => { try { db.close(); } catch (_) {} __popDbP = null; }; res(db); };   // a field reset deletes the database
+    r.onerror = () => { __popDbP = null; rej(r.error); }; r.onblocked = () => { __popDbP = null; rej(new Error('blocked')); };
+  } catch (e) { __popDbP = null; rej(e); } });
+  return __popDbP;
+}
+Universe.prototype.popSave = function (s) {
+  const seq = ++this.popSeq; this.post({ type: 'pop', pending: seq });
+  this.popNext = { s, seq }; if (!this.popBusy) this.popDrain();
+};
+Universe.prototype.popDrain = async function () {
+  while (this.popNext && !this.halted) {
+    const job = this.popNext; this.popNext = null; this.popBusy = true;
+    try {
+      if (this.popDelay) await new Promise(r => setTimeout(r, this.popDelay));   // a rig's slowed write (pophold-test)
+      const blob = await new Response(new Blob([job.s]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+      const db = await popDb();
+      await new Promise((res, rej) => { try { const tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put(blob, this.pkey); tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); } catch (e) { rej(e); } });
+      if (!this.halted) this.post({ type: 'pop', landed: job.seq });
+    } catch (e) {
+      if (!this.halted) this.post({ type: 'pop', value: job.s, seq: job.seq });   // the old path: the shell stores it
+    }
+    this.popBusy = false;
   }
 };
 
