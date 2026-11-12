@@ -30704,3 +30704,32 @@ every 50 ms across two autosaves:
 - old shell: the first genome was in storage 617 ms before any snapshot existed (120,206 ms against 120,823). FAIL.
 
 **Not measured:** the loss rate in a long field after the fix. #406 saw 3 in 155 before it.
+
+**#408, with its null band.** A field of four IDENTICAL arms (`#arms=NONE:0/1/2/3`, a knob the engine does not read;
+`out-arms/null-a.jsonl`), same 1,500 s alone:
+
+| Arm | Universes | F per universe | size 17+ | depth of new, last 5 min |
+|---|---|---|---|---|
+| NONE=0 | 8 | 9,249 | 12,473 | 13.50 |
+| NONE=1 | 8 | 8,278 | 9,687 | 12.64 |
+| NONE=2 | 8 | 7,925 | 8,091 | 12.64 |
+| NONE=3 | 7 | 8,986 | 8,337 | 13.07 |
+
+- **Identical arms of eight universes differ by up to 14% on count** (7,925 to 9,249) and by half again on deep functions
+  (8,091 to 12,473). That is the noise an arm has to beat.
+- **The first arm was top in both runs** (9,403 and 9,249). The round robin starts at the surface cells, so the first arm gets
+  three of the nine lit, unpaced universes and the others two. A position effect, not a finding. `armoff=k` now rotates the
+  assignment so a second run can put each arm in other cells.
+- **Read against the same position in the null:** arm 1 (not paid for what the place holds) 7,320 against 8,278, 0.88; arm 2
+  (deeper than the place) 7,866 against 7,925, 0.99; arm 3 (double share for building on the place) 3,906 against 8,986, 0.43.
+  So arm 3 is harmful, arm 2 does nothing, and arm 1 is at the edge of the band on the wrong side. None is worth keeping; the
+  arms come out when the ablation runs that are using this engine have finished.
+
+**A fault in my own arms mechanism, caught before it was relied on.** The first version set a universe's knob only around the
+engine's boot. `cosmosOn`, `foundOn` and `motifSelOn` read `globalThis` on every call, so those arms would have run the default
+while reading as ablated: a control that reads like a control. `TASK_GROUND` and `TASK_VAR` are read once, so #407's and #408's
+runs were what they said (every universe reported its setting). Now a universe with a knob is handed its OWN `globalThis` (an
+object whose prototype is the real one), which holds for its whole life, and every universe reports its effective switches
+(`chk`). The engine reaches `globalThis` only for its own names, never for a browser function (checked by listing every use).
+And the first `chk` called `__mindKnob()`, which draws a random number when it mints a seed: the probe-that-draws trap on this
+page. It now reads the mind's latch and calls nothing.
