@@ -30859,3 +30859,26 @@ booted every field run in #408-#411, and was never run through the full acceptan
   page. There it is copied, gzipped and written to IndexedDB, for 31 universes on #384's shared two-minute clock. The snapshot
   carries `world.seen5`, the universe's lifetime record of functions found (#392). That record only grows, so the main thread's work
   per save grows all night. That fits a freeze that took hours to appear.
+
+### #413 — THE FROZEN SCREEN, FIRST READING: the page's main thread carries a save load that grows with the population (one field, 25 minutes)
+`lab/port/field-rate.js JANK=1`, the shipped field alone on the machine, 1,500 s, probe read every 60 s
+(`lab/port/out-jank/ship1.jsonl`).
+
+| Minutes | Long tasks a minute | Main thread in long tasks | Longest task | Longest timer gap | Creatures |
+|---|---|---|---|---|---|
+| 1-2 | 0-1 | 0-0.06 s | 61 ms | 178 ms | 27,600-33,500 |
+| 4-6 | 9-29 | 1.0-3.2 s | 166-264 ms | 181-479 ms | 40,600-46,400 |
+| 10-15 | 26-56 | 3.5-7.5 s | 288-436 ms | 311-752 ms | 51,600-54,000 |
+| 20-25 | 39-63 | 6.4-9.8 s (11-16% of the thread) | 344-513 ms | 390-584 ms | about 54,500 |
+
+- **The long tasks run in the universes' frames, not in the page:** each minute's top frames carried 400-1,100 ms each.
+- **They alternate minute by minute** between the built nine plus the collective and the layer universes, which is the rhythm of
+  the save clocks.
+- **The saved snapshots, at 25 minutes:** 31 in IndexedDB, 68.8 MB gzipped in all, 2.8 MB the largest. The raw string a worker posts
+  to the page at each save is several times that (#392's round trip: 5.6 MB raw for 1,217 creatures).
+- **So every save puts a multi-megabyte string through the main thread**, where the shell receives it, gzips it and writes it. With
+  31 universes saving every one to two minutes, that is hundreds of megabytes a few minutes, on the thread that answers clicks.
+- **Not yet a freeze.** No timer gap reached a second, and the page answered `evaluate` in 1-11 ms (once 273 ms). The load rose with
+  the population and levelled off with it at about 54,000, so 25 minutes cannot say whether it keeps growing overnight.
+- **Running:** one page kept alive for 110 minutes, the probe every 2 minutes, the browser's resident memory beside it
+  (`out-jank/long1.*`).
