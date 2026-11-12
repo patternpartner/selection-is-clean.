@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9]+:[0-9/]+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -349,8 +349,12 @@
   var WORLDQ = (function(){ var m=raw.match(/(?:^|,)world=(\d+)/); var v=m?parseInt(m[1],10):920; return v>0?('&world='+v):''; })();   // SHIPPED default 920 (PREREG-world.md: 8 of 8 pairs, median 1.71x by 25 minutes); #world=0 is the old 1:1 world
   // #407: ARMS INSIDE ONE FIELD. #arms=TASK_GROUND:1/0 gives each universe ONE value of one engine knob, round robin over every
   // universe the field builds, so a single field is a balanced experiment: same machine, same minutes, 15 universes an arm. Unset: none.
-  var ARMS = (function(){ var m=raw.match(/(?:^|,)arms=([A-Z_0-9]+):([0-9/]+)/); if(!m) return null; var v=m[2].split('/').filter(function(x){return x!=='';}); return v.length?{name:m[1],vals:v,n:0}:null; })();
-  function armQ(){ if(!ARMS) return ''; var v=ARMS.vals[ARMS.n++ % ARMS.vals.length]; return '&knob='+ARMS.name+':'+v; }
+  // Two spellings: #arms=NAME:v1/v2/v3 (one knob, several values) and #arms=A:1|B:0|C:0 (a different knob in each arm; a name the
+  // engine does not read, such as NONE:0, is a control arm).
+  var ARMS = (function(){ var m=raw.match(/(?:^|,)arms=([A-Z_0-9:\/|]+)/); if(!m) return null; var list=[];
+    m[1].split('|').forEach(function(part){ var q=part.match(/^([A-Z_0-9]+):([0-9\/]+)$/); if(!q) return; q[2].split('/').forEach(function(v){ if(v!=='') list.push(q[1]+':'+v); }); });
+    return list.length?{list:list,n:0}:null; })();
+  function armQ(){ if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
