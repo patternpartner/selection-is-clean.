@@ -116,7 +116,10 @@ const BRIDGE =
     // #392: at five inputs a slot means nothing outside its universe, so the canonical truth tables of seen functions go instead (4 bytes each)
     'if(in5){var pa=[];for(var n=0;n<tSet5.length;n++){var Fk=tSet5[n];if(Fk)pa.push(String.fromCharCode(Fk&255,(Fk>>>8)&255,(Fk>>>16)&255,(Fk>>>24)&255));}b=pa.join("");}else ' +
     'for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
-    'return {in5:in5,arm:__inst.knobs||null,ground:(typeof TASK_GROUND!=="undefined")?+TASK_GROUND:null,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+    'var chk={ground:(typeof TASK_GROUND!=="undefined")?+TASK_GROUND:null,cosmos:(typeof cosmosOn==="function")?+cosmosOn():null,motif:(typeof motifSelOn==="function")?+motifSelOn():null,' +
+      'found:(typeof foundOn==="function")?+foundOn():null,prey:(typeof REPL_PREY!=="undefined")?+REPL_PREY:null,troph:(typeof TASK_TROPH!=="undefined")?TASK_TROPH:null,' +
+      'mind:(typeof __mindLatch!=="undefined")?(__mindLatch===null?-1:(__mindLatch?1:0)):null,vari:(typeof TASK_VAR!=="undefined")?TASK_VAR:null};' +
+    'return {in5:in5,arm:__inst.knobs||null,chk:chk,ground:chk.ground,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
@@ -395,17 +398,17 @@ Universe.prototype.boot = async function (d) {
   try {
     const src = await engineSource(d.src);
     // Run the sim in a fresh function scope with this universe's shims as its arguments.
-    const fn = new Function(...ENGINE_PARAMS, src + BRIDGE);
-    // #407: per-universe engine knobs. The engine reads its knobs off globalThis ONCE, while it boots, and the boot is synchronous, so
-    // setting them here and putting the old values back straight after gives this universe its own value without touching the
-    // others that share this worker. Names and values are checked; anything else is ignored.
-    const kn = {}, kOld = {}; if (d.knobs && typeof d.knobs === 'object') for (const k in d.knobs) { const v = +d.knobs[k]; if (/^[A-Z_0-9]{1,32}$/.test(k) && Number.isFinite(v)) kn[k] = v; }
+    // #407: per-universe engine knobs. A universe with knobs gets its OWN globalThis: an object whose prototype is the real one, with
+    // the knobs as its own properties, passed to the engine as a parameter named globalThis. The engine reaches globalThis only for
+    // its own __NAMES (checked: no native is called through it), some of them on every call (cosmosOn, foundOn, motifSelOn), so a
+    // value set only around the boot would not hold. Whatever the engine writes there (the TASKS default fill) stays this universe's.
+    // A universe without knobs is handed the real globalThis, exactly as before.
+    const kn = {}; if (d.knobs && typeof d.knobs === 'object') for (const k in d.knobs) { const v = +d.knobs[k]; if (/^[A-Z_0-9]{1,32}$/.test(k) && Number.isFinite(v)) kn[k] = v; }
     this.knobs = Object.keys(kn).length ? kn : null;
-    for (const k in kn) { kOld[k] = globalThis['__' + k]; globalThis['__' + k] = kn[k]; }
-    try {
+    let G = globalThis; if (this.knobs) { G = Object.create(globalThis); for (const k in kn) G['__' + k] = kn[k]; }
+    const fn = new Function(...ENGINE_PARAMS, 'globalThis', src + BRIDGE);
     fn(env.window, env.document, env.localStorage, env.location, env.history,
-       env.raf, env.caf, env.addEventListener, env.removeEventListener, this);
-    } finally { for (const k in kn) { if (kOld[k] === undefined) delete globalThis['__' + k]; else globalThis['__' + k] = kOld[k]; } }
+       env.raf, env.caf, env.addEventListener, env.removeEventListener, this, G);
     delete this.lsStore['selection_pop'];   // #368: boot has read it (init runs inside fn); megabytes need not sit in the shim
     this.post({ type: 'ready' });
   } catch (err) {

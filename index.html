@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -353,7 +353,7 @@
   // engine does not read, such as NONE:0, is a control arm).
   var ARMS = (function(){ var m=raw.match(/(?:^|,)arms=([A-Z_0-9:\/|]+)/); if(!m) return null; var list=[];
     m[1].split('|').forEach(function(part){ var q=part.match(/^([A-Z_0-9]+):([0-9\/]+)$/); if(!q) return; q[2].split('/').forEach(function(v){ if(v!=='') list.push(q[1]+':'+v); }); });
-    return list.length?{list:list,n:0}:null; })();
+    var off=raw.match(/(?:^|,)armoff=(\d+)/); return list.length?{list:list,n:off?parseInt(off[1],10):0}:null; })();   // armoff=k starts the round robin k places on, so a second run puts each arm in other cells
   function armQ(){ if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();

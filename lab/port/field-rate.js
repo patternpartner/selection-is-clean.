@@ -100,7 +100,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
       if (!sw) sw = r.sw;
       // #407: a field built with #arms tells each universe's arm; each arm keeps its own union (what ITS universes found) and depth
       let AK = null; if (r.arm) { const key = Object.entries(r.arm).map(([k, v]) => k + '=' + v).join(','); AK = armSets[key] || (armSets[key] = { set: new Set(), sz: [] });
-        const T = tally[key] || (tally[key] = { U: 0, K: 0, A: 0, ground: {} }); T.U++; T.K += r.totalTicks | 0; T.A += r.alive | 0; T.ground[r.ground] = (T.ground[r.ground] || 0) + 1; }
+        const T = tally[key] || (tally[key] = { U: 0, K: 0, A: 0, ground: {} }); T.U++; T.K += r.totalTicks | 0; T.A += r.alive | 0; T.ground[r.ground] = (T.ground[r.ground] || 0) + 1; if (r.chk) { const c = JSON.stringify(r.chk); T.chk = T.chk || {}; T.chk[c] = (T.chk[c] || 0) + 1; } }
       if (r.pop && r.pop.restored === 0 && r.pop.why) lost.push(s + ':' + r.pop.why);
       const b = Buffer.from(r.b64, 'base64');
       if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; newSz.push(sz5(Fk)); } if (AK && !AK.set.has(Fk)) { AK.set.add(Fk); AK.sz.push(sz5(Fk)); } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]); continue; }   // #392: canonical truth tables
@@ -110,7 +110,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
     }
     for (const s in perSlot) S += perSlot[s].found;
     const arms = {}; for (const key in tally) { const a = armSets[key], z = a.sz.slice().sort((x, y) => x - y); a.sz = [];
-      arms[key] = { F: a.set.size, new: z.length, mean: z.length ? +(z.reduce((x, y) => x + y, 0) / z.length).toFixed(2) : null, ge17: z.filter(v => v >= 17).length, U: tally[key].U, K: tally[key].K, A: tally[key].A, ground: tally[key].ground }; }
+      arms[key] = { F: a.set.size, new: z.length, mean: z.length ? +(z.reduce((x, y) => x + y, 0) / z.length).toFixed(2) : null, ge17: z.filter(v => v >= 17).length, U: tally[key].U, K: tally[key].K, A: tally[key].A, ground: tally[key].ground, chk: tally[key].chk }; }
     emit({ t: T_OFF + at, leg: LEG, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), arms: Object.keys(arms).length ? arms : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
