@@ -30759,3 +30759,7 @@ Against #408's null (identical arms of eight differ by up to 14%; these arms are
 - **The cosmos is not missed**: 1.47 and 0.90, 1.21 over both. That is the one layer here with no sign of earning its place.
 - These are arms that share a field: equal ticks, shared workers, migrants crossing between arms. A layer that costs time
   cannot show it here. So the cosmos goes to a pair of fields, one arm each, where a cheaper tick can count.
+- **The cosmos in a pair of fields, one arm each** (`out-cosmos-off/`, 1,500 s, run together): 83,082 with it off against 79,931
+  (1.04), 35,511 ticks against 33,707 (+5%), functions of size 17+ 9,995 against 10,770 (0.93). No difference a field can see,
+  and a tick about a twentieth cheaper. So the cosmos does nothing measurable for what a TASKS field finds. Not yet switched off:
+  that is a pre-registered "not worse" test of its own, and the saving is small.
