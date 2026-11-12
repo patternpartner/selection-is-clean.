@@ -30807,3 +30807,18 @@ Functions per universe:
 
 **What happens next.** These are arms inside a shared field: a design. The crowd price goes to fields of one arm each, where
 a cheaper tick counts as it does for a viewer, and is pre-registered there if a pair agrees.
+
+### TO REVIEW (the user's report, 12 Nov): the field's screen froze while its universes kept ticking
+The user ran the field overnight. Tick counts kept rising, but the page stopped responding: universes could not be clicked
+open and the harvest button did nothing. They asked for it to be reviewed later, not now. Not reproduced or measured yet.
+- Ticks rising with a dead screen means the workers were fine and the page's MAIN THREAD was blocked or starved.
+- **Two suspects, both from this week, neither tested:**
+  1. **#396's larger worlds.** Every universe now draws into a buffer of at least 920 thousand pixels, scaled into its cell: 31
+     buffers, about 28 million pixels for the page to composite, where it used to be 31 cells' worth. On a phone that may be
+     more than the compositor can do while staying responsive. `#world=0` restores the small buffers and is the first thing to try.
+  2. **Saves arriving together.** Every universe autosaves on the same two-minute clock (#384) and posts its population
+     snapshot (megabytes of JSON) to the page, which compresses and stores it. Thirty-one of those at once is a burst of main
+     thread work every two minutes, and snapshots grow with the population and with the lifetime record of functions found.
+- **How to measure it:** a rig that runs a field and records the page's longest gap between timer callbacks and its long
+  tasks, for the shipped field, for `#world=0`, and with saves staggered. Nothing on this page measures responsiveness; every
+  field rig reads the workers.
