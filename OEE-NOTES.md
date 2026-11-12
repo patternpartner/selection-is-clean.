@@ -30949,3 +30949,24 @@ booted every field run in #408-#411, and was never run through the full acceptan
 - **Also moved, one run each, not a result:** ticks across the field 61,159 against 77,004 (+26%), and distinct functions by 25
   minutes 178,841 against 303,133 (1.70x). Fields vary by about 15%, and I know no mechanism by which a busy page slows workers. A
   pair run together is in progress.
+- **The pair, run together** (half the machine each; `out-jank/pair1-*`; the page-save arm is the tree at e495c7c in a worktree):
+
+  | | Page saves | Worker saves |
+  |---|---|---|
+  | Long-task time in 25 minutes | 171 s | 13 s |
+  | Longest timer gap | **2,018 ms** | 920 ms |
+  | Slowest `evaluate` | 290 ms | 168 ms |
+  | Ticks across the field | 45,472 | 50,201 (+10%) |
+  | Distinct functions | 121,804 | 145,033 (1.19x) |
+  | Snapshots stored | 61.2 MB | 62.0 MB |
+
+  - **With half a machine, the page-save field froze its page for two seconds inside 25 minutes.** That is the user's symptom in
+    small, on a machine twice as busy. The worker-save field's page stayed under a second.
+  - The worker-save arm still had 13 s of long tasks, where it had none alone. With eight busy workers on four cores, the main
+    thread competes for CPU, and the browser's own work (compositing 62 buffers) shows up.
+  - **Ticks and novelty lean the same way in both readings** (+26% and 1.70x alone, +10% and 1.19x in the pair). Two readings with
+    no mechanism are a lean, not a result.
+- **Ships as a fix, not as a novelty claim.** The world is untouched and the save path is shorter. The two readings of F are
+  recorded and not ruled on.
+- **Still open for the freeze:** renderer memory grew about 400 MB over 80 minutes in #413's long page, unexplained, and no run here
+  is a night.
