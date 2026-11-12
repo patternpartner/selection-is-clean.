@@ -178,12 +178,22 @@
       catch(e){ res(null); } }); })
       .then(function(v){ return v ? popUnzip(v) : null; }).catch(function(){ return null; });
   }
-  function popPut(s){   // one write at a time; a snapshot that arrives meanwhile replaces any still waiting
-    if (popBusy){ popNext = s; return; } popBusy = true;
-    popZip(s).then(function(v){ return popDB().then(function(db){ return new Promise(function(res){
+  // #409: THE GENOME WAITS FOR ITS POPULATION. An autosave wrote the genome to localStorage at once and the snapshot to IndexedDB
+  // afterwards (megabytes, gzipped, asynchronous). A tab killed in between left a genome NEWER than its snapshot, the engine
+  // refused the stale snapshot, and the universe came back from founders, its ground gone too (#406: 3 of 155 reloads). Now an
+  // autosaved genome is held (popHold) until the snapshot the engine posts straight after it has landed, and written then. A
+  // kill mid-write leaves the previous genome beside the previous snapshot, which match. If no snapshot follows (an engine that
+  // keeps none), the genome is written after POP_WAIT ms as it always was.
+  var POP_WAIT = 250, popHold = null, popHoldT = 0;   // the snapshot message follows the genome within the same worker turn, so a quarter second is ample
+  function genomeWrite(g){ try { localStorage.setItem(GKEY, g); } catch(ex){} }
+  function popHoldFlush(){ if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } if (popHold !== null){ var g = popHold; popHold = null; genomeWrite(g); } }
+  var POPTEST = (function(){ try { var m=(location.search||'').match(/[?&]poptest=(\d{1,5})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();   // a rig's delay on the snapshot write, in ms
+  function popPut(s, g){   // one write at a time; a snapshot that arrives meanwhile replaces any still waiting (and its genome with it)
+    if (popBusy){ if (popNext && popNext.g !== null && g === null) g = popNext.g; popNext = { s:s, g:g }; return; } popBusy = true;
+    (POPTEST ? new Promise(function(r){ setTimeout(r, POPTEST); }) : Promise.resolve()).then(function(){ return popZip(s); }).then(function(v){ return popDB().then(function(db){ return new Promise(function(res){
       try { var tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put(v, PKEY); tx.oncomplete = res; tx.onerror = res; tx.onabort = res; }
       catch(e){ res(); } }); }); })
-      .catch(function(){}).then(function(){ popBusy = false; if (popNext){ var n = popNext; popNext = null; popPut(n); } });
+      .catch(function(){}).then(function(){ if (g !== null && g !== undefined) genomeWrite(g); popBusy = false; if (popNext){ var n = popNext; popNext = null; popPut(n.s, n.g); } });
   }
   var popFirst = (!(stored && stored.length > 10) || (location.hash || '').slice(1) === 'reset' || typeof indexedDB === 'undefined')
     ? Promise.resolve(null)
@@ -278,11 +288,14 @@
       if (genEl && genEl.textContent === 'booting…') genEl.textContent = '';
       while(readyWaiters.length) readyWaiters.shift()(); return;
     }
-    if (d.type === 'pop'){ if (typeof d.value === 'string' && typeof indexedDB !== 'undefined') popPut(d.value); return; }   // #368
+    if (d.type === 'pop'){ if (typeof d.value === 'string' && typeof indexedDB !== 'undefined'){ var hg = popHold; popHold = null; if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } popPut(d.value, hg); } else popHoldFlush(); return; }   // #368, #409
     if (d.type === 'persist'){
       // #170: the engine only ever names its own key. Redirect that one to this universe's slot;
       // anything else it might store passes through untouched.
       var k = (d.key === 'selection_genome') ? GKEY : (d.key === 'selection_mind') ? MKEY : d.key;
+      // #409: an autosaved genome waits for its snapshot (see popPut). Anything else - a removal, the mind, another key - is written now.
+      if (k === GKEY && typeof d.value === 'string' && typeof indexedDB !== 'undefined'){ popHoldFlush(); popHold = d.value; popHoldT = setTimeout(popHoldFlush, POP_WAIT); return; }
+      if (k === GKEY) popHoldFlush();
       try { if (d.value === null) localStorage.removeItem(k); else localStorage.setItem(k, d.value); } catch(ex){}
       return;
     }

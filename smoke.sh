@@ -22,7 +22,7 @@ RIGS=(oee-meter-test.js verb-test.js attention-test.js draw-attn-test.js worldsi
       harness-atrophy-probe.js harness-coupling.js harness-coupling-asym.js
       harness-alien-ablate.js harness-ablate-reflex.js harness-reflex-leaf.js
       harness-bridge.js harness-attractor.js harness-strata.js harness-orphans.js
-      harness-variance.js bench-pairs.js harness-opexec.js vm-equiv.js harness-novelty.js harness-openup.js harness-sweep.js harness-variant.js harness-nfdsat.js harness-lawedge.js harness-lawtrial.js)
+      harness-variance.js bench-pairs.js harness-opexec.js vm-equiv.js harness-novelty.js harness-openup.js harness-sweep.js harness-variant.js harness-nfdsat.js harness-lawedge.js harness-lawtrial.js lab/port/pophold-test.js)
 
 # Most rigs take their budget from TICKS. A few define their own names and ignore it — pass those
 # too, or the rig runs its real workload and the smoke pass just times out. (harness-coupling-asym
@@ -53,6 +53,7 @@ extra_env_for() {
     # Every assertion is a ratio, so it needs enough wall-clock for the slowest layer (one tick per
     # 800ms) to accumulate something to compare.
     layers-test.js) echo "SECS=30" ;;
+    lab/port/pophold-test.js) echo "SECS=150" ;;   # one autosave on the clock (at 2 minutes) is enough to see the write order
     # slot-test.js must wait for the engine's FIRST autosave, which is at tick 1800 — about 90
     # seconds at ~20 ticks/s. Below that there is nothing saved to restore and the rig would be
     # testing an empty store.
@@ -103,6 +104,7 @@ timeout_for() {
     # creatures, so every step is slower: alone 186s and 49/0, against main's four-input 141s. At the 180s default it was exit 124 inside
     # the suite. 300s is that measurement plus margin, for this rig only.
     layers-test.js) echo 300 ;;
+    lab/port/pophold-test.js) echo 240 ;;
     *) echo 180 ;;
   esac
 }
@@ -123,8 +125,8 @@ for r in "${RIGS[@]}"; do
     # full suite and passed 3/3 standalone with the suite's own env, and there was nothing to read:
     # `out` was captured and thrown away. Keep it.
     mkdir -p .smoke-fail
-    printf '%s\n' "$out" > ".smoke-fail/${r%.js}.log"
-    echo "FAIL ${err:-exit $rc} (output: .smoke-fail/${r%.js}.log)"; fail=$((fail+1)); failed+=("$r")
+    printf '%s\n' "$out" > ".smoke-fail/$(basename "${r%.js}").log"
+    echo "FAIL ${err:-exit $rc} (output: .smoke-fail/$(basename "${r%.js}").log)"; fail=$((fail+1)); failed+=("$r")
   fi
 done
 
