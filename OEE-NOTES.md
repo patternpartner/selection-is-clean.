@@ -30910,3 +30910,42 @@ booted every field run in #408-#411, and was never run through the full acceptan
   - #409's rule, a genome never newer than its saved population, is kept by a small handshake: the worker says a snapshot is
     pending, then that it has landed, with a sequence number.
   - The engine is untouched, so the world is byte-identical. The test is the same probe on the same field, and the persistence rigs.
+
+### #414 — THE SNAPSHOT IS STORED BY THE WORKER: the page's main thread goes from 131 s of long tasks in 25 minutes to none
+**The change** (`sim.worker.js`, `universe.html`; the engine is untouched, so the world is byte-identical).
+- **Before.** At every autosave each worker posted its population snapshot to its shell, about 7 MB raw at 1,600 creatures. The
+  shell received it, gzipped it and wrote it to IndexedDB, all on the page's main thread (#413).
+- **Now.** The shell passes the worker its store key in `init`. The worker gzips the snapshot (`CompressionStream`) and stores it
+  (`indexedDB`, both available in workers).
+  - The shell hears `{pop, pending: n}` in the same turn as the genome, and holds that genome.
+  - It hears `{pop, landed: n}` when snapshot n is stored, and writes the newest held genome whose snapshot has landed. Older held
+    genomes, whose snapshots were replaced before landing, are dropped.
+  - So #409's rule holds: a genome is never stored before its snapshot.
+- **Failures.** A snapshot that arrives while one is being written replaces the one waiting. On any failure the worker posts the
+  snapshot to the shell, which stores it the old way.
+- **Reset.** The worker closes its database connection on `versionchange`, so a field reset's `deleteDatabase` is not blocked.
+
+**Tests.**
+- `pophold-test`: 3 of 3 genomes written after their snapshots, with the write slowed by 3 s (`poptest`, now honoured in the worker).
+- `pop-test` 11/11: a reload restores all 1,599 creatures; a wrong-genome snapshot is refused; reset clears it.
+- `slot-test` 15/0. `persistence-test` passes.
+
+**The field, same probe, same 25 minutes, alone on the machine** (`out-jank/ship1` against `ship2-workersave`):
+
+| Minute | Long tasks, page saves | Long tasks, worker saves |
+|---|---|---|
+| 5 | 2.9 s (max 264 ms) | 0 |
+| 10 | 5.8 s (max 305 ms) | 0 |
+| 15 | 7.0 s (max 436 ms) | 0 |
+| 20 | 6.6 s (max 362 ms) | 0 |
+| 25 | 7.6 s (max 344 ms) | 0 |
+
+- **Total long-task time: 131 s against 0.** No long task at all in 25 minutes, and no timer gap over 150 ms after the first minute.
+- The slowest `evaluate` round trip fell from 273 ms to 14 ms.
+- The snapshots were still stored: 31 in IndexedDB, 66.7 MB.
+- **What this fixes and what it does not.** It removes the save load from the thread that answers clicks, the load #413 found
+  growing with time. Whether it removes the user's overnight freeze is not shown: memory is still a candidate, and no run here is a
+  night.
+- **Also moved, one run each, not a result:** ticks across the field 61,159 against 77,004 (+26%), and distinct functions by 25
+  minutes 178,841 against 303,133 (1.70x). Fields vary by about 15%, and I know no mechanism by which a busy page slows workers. A
+  pair run together is in progress.
