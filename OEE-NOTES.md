@@ -30763,3 +30763,47 @@ Against #408's null (identical arms of eight differ by up to 14%; these arms are
   (1.04), 35,511 ticks against 33,707 (+5%), functions of size 17+ 9,995 against 10,770 (0.93). No difference a field can see,
   and a tick about a twentieth cheaper. So the cosmos does nothing measurable for what a TASKS field finds. Not yet switched off:
   that is a pre-registered "not worse" test of its own, and the saving is small.
+
+### #411 — DOSE-RESPONSE IN ONE FIELD: the crowd price has a steep slope and the shipped value is on the wrong side of it; the drain is best weak (design)
+#390 and #394 swept these two prices on node seeds and saw nothing, which #397 showed is what a node world's draw order does.
+With arms (#407) a sweep is one field, 1,500 s alone on the machine, eight universes a value (`out-arms/`, `lab/port/arms-run.sh`).
+Functions per universe:
+
+**The crowd price** (`REPL_CROWD_K`; a birth costs `BIRTH_ENERGY_COST x living / K`, so a LOWER K is a DEARER birth):
+
+| K | Run `crowd` | Run `crowd-low` (rotated) | alive per universe | ticks per universe | depth of new, last 5 min |
+|---|---|---|---|---|---|
+| 100 | | 13,152 | 786 | 4,794 | 14.86 |
+| 150 | | 11,652 | 1,129 | 3,788 | 12.86 |
+| 250 | 11,299 | 9,614 | 1,490-1,563 | 2,086-2,230 | 13.78, 12.70 |
+| 450 (shipped) | 8,412 | 6,221 | 1,616-1,704 | 1,683-1,926 | 12.25, 11.94 |
+| 700 | 1,918 | | 1,661 | 1,722 | 10.09 |
+| 1,000 | 1,265 | | 1,754 | 2,126 | 9.17 |
+
+- **Monotone over a tenfold range, and steep.** K of 700 or 1,000 (cheap births) finds a quarter and a seventh of the shipped
+  world. K of 250 beat the shipped 450 in both runs (1.34, 1.55). K of 100 found 2.1x the shipped arm beside it, with half the
+  creatures and 4.7x the functions of size 17+ (29,052 against 6,199).
+- **Part of that is time.** A smaller world ticks faster, and in a field it took more ticks (4,794 a universe at K=100 against
+  1,926). Per thousand ticks K=250 is best (4,312-5,416) and K=100 is lower (2,743). A viewer gets functions per hour, so both
+  count; they are different claims.
+- #382 chose 450 in the four-input world on two node seeds, where 300 already looked as good. #394 found "no direction" at five
+  inputs on three node seeds. Both were noise.
+
+**The drain** (`TASK_TROPHP`, percent of a payment taken out of the pools it was built on; 50 ships):
+
+| Percent | Run `troph` | Run `troph-b` (rotated) | Run `troph-low` (rotated) | #410 ablation, both runs |
+|---|---|---|---|---|
+| 0 | | | | 0.67 of control |
+| 5 | | | 7,176 | |
+| 12 | | | 6,109 | |
+| 25 | 6,291 | 12,239 | 5,586 | |
+| 50 (shipped) | 5,505 | 8,651 | 5,139 | 1.00 |
+| 75 | 6,063 | 8,032 | | |
+| 100 | 7,084 | 7,308 | | |
+
+- 25 beat 50 in three runs of three (1.14, 1.41, 1.09), and the low sweep is monotone down to 5 (1.40 against 50). Between 50
+  and 100 nothing changes. But no drain at all was 0.67 in both ablation runs. So the best drain looks weak and not zero, and
+  the shape between 0 and 5 is unmeasured. The differences here are smaller than the crowd price's and nearer the 14% band.
+
+**What happens next.** These are arms inside a shared field: a design. The crowd price goes to fields of one arm each, where
+a cheaper tick counts as it does for a viewer, and is pre-registered there if a pair agrees.
