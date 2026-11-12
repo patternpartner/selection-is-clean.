@@ -30833,3 +30833,29 @@ open and the harvest button did nothing. They asked for it to be reviewed later,
 - **On `main` but not run through the full acceptance:** #409's shell fix passed its own test and `smoke.sh` slice 2. After
   that, `sim.worker.js` changed again (a universe with a knob gets its own `globalThis`; one without is handed the real one)
   and has since booted every field run in #408-#411, but `smoke.sh` and `substrate-test` were not rerun on it.
+
+### #412 — HANDOVER CLOSED: `main` as Fable left it passes acceptance; a freeze probe for the user's frozen screen
+**The gap the handover named.** `sim.worker.js` changed after #409's acceptance (a universe with a knob gets its own `globalThis`),
+booted every field run in #408-#411, and was never run through the full acceptance.
+- `substrate-test` 264/0 at TICKS=900, the default, TICKS=40 and FOUND=0, on `main` at 2db5374.
+- **`smoke.sh` in three slices, nothing else running: 70 ok, 0 failing** (23 + 23 + 24).
+  - No SKIP; `browser-test` and `collective-test` ran.
+  - Every browser field rig passed: `pool-test`, `layers-test` (both #395 timing rows), `slot-test`, `pop-test`, `grown-test`,
+    `persistence-test`.
+  - #409's `pophold-test` is in the suite and passed.
+
+**The freeze probe** (`lab/port/field-rate.js`, `JANK=1`).
+- **The report.** Overnight the universes kept ticking and the page stopped answering. That is the page's MAIN thread blocked,
+  and nothing here measured it: every field rig reads the workers.
+- **What it records**, installed before any frame loads, top window only, read-only:
+  - every long task (over 50 ms), with the frame it came from;
+  - every gap over 150 ms in a 50 ms timer;
+  - every animation-frame gap over 250 ms;
+  - the round trip of a trivial `page.evaluate`;
+  - at the last sample, the size of every saved population snapshot in IndexedDB.
+- In this mode the samples between the first and the last read only small stats. The union reads post every universe's lifetime
+  record to the same main thread and would be the jank they measure.
+- **A third suspect, beside the handover's two, and it is mine.** Every save, a population snapshot travels from each worker to the
+  page. There it is copied, gzipped and written to IndexedDB, for 31 universes on #384's shared two-minute clock. The snapshot
+  carries `world.seen5`, the universe's lifetime record of functions found (#392). That record only grows, so the main thread's work
+  per save grows all night. That fits a freeze that took hours to appear.
