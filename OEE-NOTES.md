@@ -30651,3 +30651,56 @@ loses its ground.
 **Named:**
 - Find out why those three did not restore (log `__popBoot.why` through the rig), and if it is the 4-second race, lengthen it.
 - A second long pair. This is one.
+
+### #407 — ARMS INSIDE ONE FIELD: a field is 31 universes, so one run can be a balanced experiment
+**Why.** Every field test here has been a pair of fields: two arms, 25 minutes, one launch, and about 15% noise between fields.
+The user asked whether I was working at the pace I could or the pace I thought was expected. It was the second, and this was the
+plainest case: a field already holds 31 replicates and I was using it as one.
+
+**The mechanism.** `index.html#arms=NAME:v1/v2/...` gives each universe one value of one engine knob, round robin over every
+universe the field builds (cells, layers, grown). It reaches the frame as `?knob=NAME:value`, the shell passes it in `init`, and
+`sim.worker.js` sets `globalThis.__NAME` around the engine's boot and puts the old value back straight after. The engine reads
+its knobs once, while booting, and the boot is synchronous, so universes sharing a worker do not see each other's values.
+`field-rate.js` keeps a union and a depth reading per arm, and each universe reports the knob it actually booted with.
+
+**Checked:** a three-arm field (`TASK_GROUND` 1/0/2) reported ground settings `{1:10}`, `{0:10}`, `{2:10}`: every universe ran
+its own arm.
+
+**What an arm's number means.** Universes on one worker take turns a tick at a time, so arms get about equal TICKS, not equal
+time; a dearer arm slows everyone. Arms trade migrants. So this compares arms per tick inside a shared field. It is a design
+instrument: fast and balanced. A shipping decision still wants fields of one arm each.
+
+### #408 — THREE WAYS FOR THE GROUND TO SET WHAT IS PAID, in one field: none beats the shipped engine (design, one run; no null band yet)
+`TASK_VAR` 0-3 as four arms of one field alone on the machine, 1,500 s (`out-arms/var-a.jsonl`, `lab/port/analyse-arms.js`):
+
+| Arm | Universes | F per universe | size 17+ | depth of new, last 5 min | ticks per universe |
+|---|---|---|---|---|---|
+| 0 shipped | 8 | 9,403 | 15,486 | 13.13 | 1,944 |
+| 1 not paid for the function the cell's ground already holds | 8 | 7,320 (0.78) | 7,399 | 12.66 | 1,878 |
+| 2 pool share scaled by (size / the size the cell holds), 0.5-2 | 8 | 7,866 (0.84) | 13,762 | 13.18 | 1,985 |
+| 3 double pool share for a word built on the cell's ground | 7 | 3,906 (0.42) | 1,823 | 10.93 | 2,255 |
+
+- Arm 3 is harmful beyond any plausible noise: under half the functions, a ninth of the deep ones.
+- Arms 1 and 2 are behind on count; arm 2 is level on depth. Whether 0.78 and 0.84 are outside the noise between arms of eight
+  universes is not known until a field with identical arms is run.
+- Together with #400 (a royalty: 0.85, 0.86) that is four attempts to pay for the relation between a word and what the world
+  already holds, and all four cost functions. Rewarding the building-on directly seems to feed whoever sits beside rich ground,
+  not whoever makes something new. Untested reading.
+
+### #409 — A SAVED GENOME COULD BE NEWER THAN ITS SAVED POPULATION, and that is what lost three universes in #406. Fixed in the shell.
+**Diagnosis.** An autosave posts the genome and then the population snapshot. The shell wrote the genome to localStorage at
+once and the snapshot (megabytes, gzipped) to IndexedDB asynchronously. A tab killed in between leaves a genome newer than its
+snapshot; at the next boot the engine refuses a snapshot that is not its genome's and starts from founders, ground gone too.
+#406's three lost universes reported `restored 0`, a snapshot found and refused, not the 4-second timeout I first suspected
+(that reports nothing at all).
+
+**The fix (`universe.html`).** An autosaved genome is held until the snapshot posted straight after it has landed, and written
+then. A kill mid-write leaves the previous genome beside the previous snapshot, which match. If no snapshot follows within 250
+ms (an engine that keeps none), the genome is written as before. A snapshot replaced while waiting carries its genome with it.
+
+**The test (`lab/port/pophold-test.js`, in `smoke.sh`).** One universe, the snapshot write slowed by 3 s, both stores polled
+every 50 ms across two autosaves:
+- new shell: both genomes were written in the same poll as their snapshots. PASS.
+- old shell: the first genome was in storage 617 ms before any snapshot existed (120,206 ms against 120,823). FAIL.
+
+**Not measured:** the loss rate in a long field after the fix. #406 saw 3 in 155 before it.
