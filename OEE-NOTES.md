@@ -30733,3 +30733,29 @@ object whose prototype is the real one), which holds for its whole life, and eve
 (`chk`). The engine reaches `globalThis` only for its own names, never for a browser function (checked by listing every use).
 And the first `chk` called `__mindKnob()`, which draws a random number when it mints a seed: the probe-that-draws trap on this
 page. It now reads the mind's latch and calls nothing.
+
+### #410 — WHICH LAYERS DOES A FIELD MISS? Six ablated at once, twice: predation, the drain and motif selection are missed; the cosmos is not (design)
+PORT-PLAN's step 2 has waited since October: re-run retire-or-prove on the big layers in the world where computation pays.
+With arms inside one field (#407) that is one run for six layers. Two runs, the second with the arms rotated three places
+(`out-arms/abl-a.jsonl`, `abl-b.jsonl`), each a field alone on the machine for 1,500 s, every universe reporting its switch off.
+
+| Layer switched off | Run A, F per universe (vs control) | Run B | Both runs, 9 universes | size 17+ per universe vs control |
+|---|---|---|---|---|
+| none (control) | 10,045 | 10,924 | 10,435 | 1.00 |
+| cosmos (`COSMOS=0`) | 14,794 (1.47) | 9,885 (0.90) | 12,612 (1.21) | 1.35 |
+| founding (`FOUND=0`) | 8,084 (0.80) | 9,684 (0.89) | 8,973 (0.86) | 0.81 |
+| motif selection (`MOTIF_SELECT=0`) | 7,958 (0.79) | 7,890 (0.72) | 7,928 (0.76) | 0.58 |
+| the drain (`TASK_TROPHP=0`) | 6,545 (0.65) | 7,403 (0.68) | 7,021 (0.67) | 0.75 |
+| the mind (`MIND=0`) | 8,586 (0.85) | 4,508 (0.41) | 6,547 (0.63) | 0.56 |
+| predation (`REPL_PREY=0`) | 6,116 (0.61) | 6,341 (0.58) | 6,241 (0.60) | 0.44 |
+
+Against #408's null (identical arms of eight differ by up to 14%; these arms are four or five a run, so wider):
+- **Predation and the drain are missed, both runs, well outside the band** (0.61 and 0.58; 0.65 and 0.68). A world without
+  predation finds 40% fewer functions and under half the deep ones, although predator outbreaks are what collapse a third of
+  node worlds (#379). The drain agrees with #348 and #390, which had only node seeds behind them.
+- **Motif selection is missed in both runs** (0.79, 0.72).
+- **The mind is missed in both, unevenly** (0.85, 0.41).
+- **Founding is at the edge** (0.80, 0.89).
+- **The cosmos is not missed**: 1.47 and 0.90, 1.21 over both. That is the one layer here with no sign of earning its place.
+- These are arms that share a field: equal ticks, shared workers, migrants crossing between arms. A layer that costs time
+  cannot show it here. So the cosmos goes to a pair of fields, one arm each, where a cheaper tick can count.
