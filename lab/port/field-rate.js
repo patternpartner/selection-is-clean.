@@ -83,11 +83,35 @@ const readField = (page, ms) => page.evaluate(async ms => {
   const browser = PROFILE ? null : await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const ctx = PROFILE ? await chromium.launchPersistentContext(PROFILE, { executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'], viewport: { width: 412, height: 915 } })
                       : await browser.newContext({ viewport: { width: 412, height: 915 } });
+  // FREEZE PROBE (JANK=1): the user's overnight field kept ticking while its page stopped answering, so the page's MAIN THREAD
+  // was blocked. Installed before any frame loads, top window only: every long task (>50 ms, with the frame it came from), every gap
+  // over 150 ms in a 50 ms timer, every animation-frame gap over 250 ms. Read-only. In this mode the samples between the first and the
+  // last read only small stats, because the union reads themselves post every universe's lifetime record to this same thread.
+  const JANK = !!process.env.JANK;
+  if (JANK) await ctx.addInitScript(() => { if (window.top !== window) return; const J = window.__jank = { lt: [], gaps: [], raf: [] };
+    try { new PerformanceObserver(l => { for (const e of l.getEntries()) { const a = e.attribution && e.attribution[0]; J.lt.push([Math.round(e.startTime), Math.round(e.duration), (a && (a.containerSrc || a.containerName)) || '']); } }).observe({ type: 'longtask', buffered: true }); } catch (e) { J.noLT = String(e); }
+    let last = performance.now(); setInterval(() => { const n = performance.now(), g = n - last; if (g > 150) J.gaps.push([Math.round(last), Math.round(g)]); last = n; }, 50);
+    let lr = performance.now(); const f = () => { const n = performance.now(); if (n - lr > 250) J.raf.push([Math.round(lr), Math.round(n - lr)]); lr = n; requestAnimationFrame(f); }; requestAnimationFrame(f); });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   const t0 = Date.now();
   await page.goto(base + '/' + HASH, { waitUntil: 'load' });
+  const jank = async () => { const q0 = Date.now(); await page.evaluate(() => 0); const lat = Date.now() - q0;
+    const j = await page.evaluate(() => { const J = window.__jank; if (!J) return null; return { lt: J.lt.splice(0), gaps: J.gaps.splice(0), raf: J.raf.splice(0), noLT: J.noLT }; });
+    if (!j) return { lat }; const by = {}; for (const [, d, src] of j.lt) { const k = (src.match(/slot=([^&#]*)/) || [, src ? 'frame' : 'page'])[1]; by[k] = (by[k] || 0) + d; }
+    const top = Object.entries(by).sort((x, y) => y[1] - x[1]).slice(0, 5);
+    return { lat, lt: { n: j.lt.length, sum: j.lt.reduce((x, y) => x + y[1], 0), max: j.lt.reduce((x, y) => Math.max(x, y[1]), 0), top }, gap: { n: j.gaps.length, max: j.gaps.reduce((x, y) => Math.max(x, y[1]), 0), n1s: j.gaps.filter(g => g[1] >= 1000).length }, raf: { n: j.raf.length, max: j.raf.reduce((x, y) => Math.max(x, y[1]), 0) }, noLT: j.noLT }; };
+  const smallRead = () => page.evaluate(async () => { const els = [...document.querySelectorAll('.cell')].map(c => c.firstChild).filter(Boolean).concat([...document.querySelectorAll('#below .deep, #below .grown')]);
+    const rs = await Promise.all(els.map(el => { try { const a = el.contentWindow && el.contentWindow.__field; return a ? Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 30000))]) : null; } catch (e) { return null; } }));
+    let K = 0, A = 0, U = 0; for (const r of rs) if (r) { U++; K += r.totalTicks | 0; A += r.N | 0; } return { K, A, U }; });
   const sample = async (final, at) => {
+    if (JANK && !final) { const J = await jank(); const q = await smallRead(); emit({ t: T_OFF + at, leg: LEG, J, K: q.K, N: q.A, U: q.U, errs: errs.length }); return; }
+    const J0 = JANK ? await jank() : undefined;
+    // JANK: at the last sample, how big the saved population snapshots are (gzipped blobs in IndexedDB, one per universe). The raw
+    // string each worker posts to this page at every save is several times that.
+    if (JANK && final && J0) J0.idb = await page.evaluate(() => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1);
+      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').getAll(); q.onsuccess = () => { const z = q.result.map(v => v && v.size !== undefined ? v.size : (typeof v === 'string' ? v.length : 0)); res({ n: z.length, total: z.reduce((x, y) => x + y, 0), max: z.reduce((x, y) => Math.max(x, y), 0) }); }; q.onerror = () => res(null); } catch (e) { res(null); } };
+      r.onerror = () => res(null); } catch (e) { res(null); } }));
     const rows = await readField(page, final ? 120000 : 60000);
     let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0, n5 = 0, M = 0, MA = 0;
     const slots = [], tally = {}, lost = [];
@@ -111,7 +135,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
     for (const s in perSlot) S += perSlot[s].found;
     const arms = {}; for (const key in tally) { const a = armSets[key], z = a.sz.slice().sort((x, y) => x - y); a.sz = [];
       arms[key] = { F: a.set.size, new: z.length, mean: z.length ? +(z.reduce((x, y) => x + y, 0) / z.length).toFixed(2) : null, ge17: z.filter(v => v >= 17).length, U: tally[key].U, K: tally[key].K, A: tally[key].A, ground: tally[key].ground, chk: tally[key].chk }; }
-    emit({ t: T_OFF + at, leg: LEG, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), arms: Object.keys(arms).length ? arms : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
+    emit({ t: T_OFF + at, leg: LEG, J: J0, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), arms: Object.keys(arms).length ? arms : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;
