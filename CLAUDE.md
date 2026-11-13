@@ -183,7 +183,8 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   overstated it (2.1x arms, 1.68x one pair). `REPL_CROWD_K=450` restores the world before. Not measured: K below 100.
   **`#419`: over 150 minutes the lead GROWS** (one pair, chained legs): 0.91 in the first leg, 2.42 in the sixth, 1.50x in all
   (650,955 against 433,201), 3.6x the size 17+ in the last leg. Per creature-tick the two worlds find about the same; the sparse
-  one runs 2.8x the creature-ticks, because a creature's tick costs more where it has more neighbours. **Density is the lever.**
+  one runs 2.8x the creature-ticks. I credited that to neighbour density; **`#420` tested it and mostly not**: a world twice the
+  area bought 1.2x the creature-ticks and found less (0.79), and K below 100 found less too. Why a K=450 tick is dearer is open.
   **A reload can lose a universe's population (3 of 155 in `#406`'s ground field).** `universe.html` races the IndexedDB read
   against 4 seconds and boots from founders if it is late; a fingerprint mismatch would look the same. Not diagnosed.
   **Diagnosed and fixed by `#418`: it was the fingerprint, and `#414` had made it common.** The genome reached the shell before

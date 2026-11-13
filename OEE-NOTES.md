@@ -31130,8 +31130,13 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
   Per creature-tick the two find about the same (1.8 and 2.1 new functions per ten thousand). The K=450 field's ticks per leg fell
   from 10.7 thousand to 6.4 thousand at a constant population. **A creature's tick costs more where it has more neighbours** (the
   pair loop is 41% of a tick, #417), so cost grows faster than the population, and the dearer birth buys creature-ticks.
+  **CORRECTED by #420: that reason was an inference from tick counts, and the direct test weakens it.** Doubling the world at the
+  same price (half the density, about the same population) bought only about 1.2x the creature-ticks, against the 2.8x here. So
+  neighbour density explains little of it, and the K=450 field's ticks also slowed at a constant population, which density
+  cannot explain at all. What makes a K=450 creature's tick dearer is not yet known; the phase split of the two worlds is the test.
 - **That points at density, not population size.** Density is population over area, and the area is #396's 920 thousand square
   pixels. A lower K and a larger world both thin it; a lower K also shrinks the population. Neither is measured below 100 or above 920.
+  **Both were then measured (#420), and neither helped:** K below 100 found less, and so did a world twice the area.
 - One pair, and the first leg reads 0.91. A different pair could cross later or sooner.
 - **Reloads** brought back 30 or 31 of 31 populations at every boundary in both fields. That is #418's fix holding over five reloads.
 
@@ -31151,3 +31156,18 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
 - **So thinning by shrinking the population has a floor**, somewhere below 100. A world needs enough creatures that reads find
   neighbours and lineages survive; under about 600 a universe, it finds less. #419's density reading still stands for thinning the
   same population over more ground, which is the next question: `#world=1840` against the shipped 920, a pair of fields, running.
+- **A larger world, one pair of fields** (`out-density/b-*`, `#world=1840` against the shipped 920, both K=100, together, 1,500 s;
+  pair a was lost to a container restart at 12 minutes and is kept as void):
+
+  | | 920 (shipped) | 1840 | Ratio |
+  |---|---|---|---|
+  | F at 5 / 10 / 15 / 20 / 25 min | 7,970 / 23,089 / 42,999 / 61,735 / 91,043 | 4,051 / 14,560 / 30,532 / 51,574 / 71,878 | 0.51 / 0.63 / 0.71 / 0.84 / **0.79** |
+  | Size 17+ | 13,045 | 8,294 | 0.64 |
+  | Ticks across the field | 72,606 | 83,973 | 1.16 |
+  | Alive | 27,658 | 23,868 | 0.86 |
+
+  - Behind at every mark. #396's larger world (920 against the old 1:1 cell) was behind at 5 minutes and ahead from 10; doubling
+    again does not repeat that. Not pursued.
+  - **The ticks are the more useful reading.** Equal at 10 minutes at equal populations (41 thousand each); later the larger world
+    ran 1.16x the ticks with 0.86x the creatures, about 1.2x the creature-ticks in the last five minutes. Half the density buys a
+    little speed, not the 2.8x that separated K=100 from K=450 in #419. **So #419's explanation is corrected above.**
