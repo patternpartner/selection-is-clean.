@@ -31213,3 +31213,8 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
   - **This is #417's declined removal tested after all, and the decline stands for a different reason:** #417 said the pass could buy
     little, and that was a young field's reading; the pass costs a lot in a populated field, but removing it bought no ticks here.
     Why is open; that it spreads similar creatures apart and so keeps the pair loop cheap is my guess, not a measurement.
+- **#421 acceptance (the instrument: 26 more wrapped calls in `sim.worker.js`'s phase hook, installed only when a rig asks;
+  `field-phase.js PROFILE`).** `engine.html` and `harness-env.js` are `main`'s. `smoke.sh` slice 2 (the browser rigs): 22 ok, 1 failing,
+  `collective-test`'s `returnPathIsATrickle`. A/B, alone, three runs each, inbound/outbound: this tree 9/0 pass, 4/3 FAIL, 6/2 FAIL;
+  `main` 10/1 pass, 6/2 FAIL, 14/2 pass. The same row fails on `main`, on the same counts, so this is the fragility CLAUDE.md
+  records, not the change. Not retuned. Its inbound count now reads 4-14 (17-28 before #396).
