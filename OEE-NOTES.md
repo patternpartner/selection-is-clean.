@@ -31108,3 +31108,29 @@ restarted from founders, with their ground. That pair is void.
   the encode, the gzip and the write as before. Closing it would mean storing the genome in the same IndexedDB record.
 - **#418 acceptance:** `smoke.sh` in three slices **70 ok, 0 failing** (23, 23, 24; no SKIP), `pophold-test` among them with the
   fingerprint check. The engine is untouched; `substrate-test` passed inside slice 1. Long pair lp3 continues from leg 3.
+
+### #419 — #416 OVER 150 MINUTES: the dearer birth's lead GROWS, to 2.42x in the last leg; and why: a sparse world is cheaper per creature
+`lab/port/long-pair.sh`, the shipped field (K=100) against K=450, two fields together, six chained 25-minute legs, each leg
+reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; `analyse-long-pair.js lp3 k450`). One pair.
+
+| Leg | Minutes | New, K=100 | New, K=450 | Ratio of new | Cumulative | Size 17+, 100 / 450 | Depth of new, 100 / 450 | Ticks this leg, 100 / 450 | Alive, 100 / 450 | Restored |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 0-25 | 72,729 | 79,633 | 0.91 | 0.91 | 8,389 / 9,083 | 11.53 / 11.48 | 78,265 / 33,795 | 28,285 / 50,705 | - |
+| 2 | 25-50 | 96,537 | 74,220 | 1.30 | 1.10 | 16,406 / 10,878 | 13.00 / 12.63 | 29,331 / 10,652 | 30,107 / 52,275 | 30, 31 of 31 |
+| 3 | 50-75 | 89,190 | 70,207 | 1.27 | 1.15 | 18,784 / 12,514 | 13.66 / 13.25 | 19,710 / 7,693 | 30,550 / 51,767 | 30, 30 |
+| 4 | 75-100 | 103,735 | 73,654 | 1.41 | 1.22 | 24,724 / 15,802 | 14.10 / 13.79 | 18,960 / 7,013 | 32,342 / 52,833 | 30, 31 |
+| 5 | 100-125 | 120,490 | 65,958 | 1.83 | 1.33 | 34,249 / 15,262 | 14.62 / 14.05 | 25,653 / 7,247 | 27,570 / 51,824 | 30, 30 |
+| 6 | 125-150 | 168,274 | 69,529 | **2.42** | **1.50** | 62,974 / 17,279 | 15.65 / 14.30 | 32,383 / 6,374 | 29,231 / 52,340 | 31, 30 |
+
+- **In 150 minutes the K=100 field found 650,955 distinct functions and the K=450 field 433,201.** The K=100 field ACCELERATES (73
+  thousand in the first leg, 168 thousand in the last); the K=450 field finds about 70 thousand a leg throughout. Its depth of new rises
+  faster too (11.5 to 15.7 against 11.5 to 14.3), and in the last leg it found 3.6x the functions of size 17+.
+- So the 25-minute verdict (1.26x) understates what a field left running gets. #383's lead shrank with time; this one widens.
+- **Why, from the tick counts.** In the last leg K=100 ran 5.1x the ticks with 0.56x the creatures: about 2.8x the creature-ticks.
+  Per creature-tick the two find about the same (1.8 and 2.1 new functions per ten thousand). The K=450 field's ticks per leg fell
+  from 10.7 thousand to 6.4 thousand at a constant population. **A creature's tick costs more where it has more neighbours** (the
+  pair loop is 41% of a tick, #417), so cost grows faster than the population, and the dearer birth buys creature-ticks.
+- **That points at density, not population size.** Density is population over area, and the area is #396's 920 thousand square
+  pixels. A lower K and a larger world both thin it; a lower K also shrinks the population. Neither is measured below 100 or above 920.
+- One pair, and the first leg reads 0.91. A different pair could cross later or sooner.
+- **Reloads** brought back 30 or 31 of 31 populations at every boundary in both fields. That is #418's fix holding over five reloads.
