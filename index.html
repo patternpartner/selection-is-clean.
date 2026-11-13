@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|tourney|tourp=\\d+|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -355,6 +355,8 @@
     m[1].split('|').forEach(function(part){ var q=part.match(/^([A-Z_0-9]+):([0-9\/]+)$/); if(!q) return; q[2].split('/').forEach(function(v){ if(v!=='') list.push(q[1]+':'+v); }); });
     var off=raw.match(/(?:^|,)armoff=(\d+)/); return list.length?{list:list,n:off?parseInt(off[1],10):0}:null; })();   // armoff=k starts the round robin k places on, so a second run puts each arm in other cells
   function armQ(){ if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
+  // #424: #tourney gives every universe (surface, layers, grown) the tournament (universe.html); #tourp=N sets its period in seconds.
+  var TOURQ = (function(){ if(!/(?:^|,)tourney(?:,|$)/.test(raw)) return ''; var m=raw.match(/(?:^|,)tourp=(\d+)/); return '&tourney=1'+(m?('&tourp='+m[1]):''); })();
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════
@@ -441,7 +443,7 @@
     // (#153 gave it one precisely because the shared key kept overwriting it), which is now just the
     // general case rather than a special one.
     f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
-         +'&slot='+(isColl?'collective':('u'+i))+WORLDQ+armQ()
+         +'&slot='+(isColl?'collective':('u'+i))+WORLDQ+armQ()+TOURQ
          +withMind(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
@@ -471,7 +473,7 @@
         // Two different "slots" meet on this line, so they are named apart: which WORKER this
         // universe shares (#162) and which STORAGE key holds its lineage (#170).
         var poolSlot=(cells.length+(L-1)*total+k)%pool;
-        d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k+WORLDQ+armQ()
+        d.src='universe.html?pool='+POOL_RUN+'x'+poolSlot+'&slot=L'+L+'_'+k+WORLDQ+armQ()+TOURQ
              +withMind('#cleanart,dark,pace='+(DEEPPACE*L));
         d.title='Layer '+L+', universe '+(k+1);
         deepFrag.appendChild(d); deep.push(d);
@@ -585,7 +587,7 @@
     g.style.width = cw+'px'; g.style.height = ch+'px';
     // Parked past the layers, on the same off-screen row.
     g.style.left = ((LAYERS*total) + grown.length) * (cw+4) + 'px';
-    g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot+WORLDQ+armQ()
+    g.src = 'universe.html?pool='+POOL_RUN+'x'+((everything+grown.length)%pool)+'&slot='+slot+WORLDQ+armQ()+TOURQ
           + withMind('#cleanart,dark,pace='+DEEPPACE);
     g.title = 'Grown universe '+slot;
     below.appendChild(g);

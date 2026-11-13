@@ -2514,8 +2514,10 @@ function lawPersistOn(){ return (typeof globalThis==='undefined')||((globalThis.
 // world (#249: no bud in 20k ticks even with GROUP_PROBE's lowered thresholds), and switching either off left the
 // world byte-identical through 10,000 ticks. A switch that cannot bite is a control that reads like one. Each of
 // the seven below was switched off alone on seed 2 and changed the world: six by tick 250, RICH_GRAMMAR by 3,500.
+// #424: four more, the layers #410 switched off in a TASKS field (motif selection, predation on the store, the drain, founding). Each
+// is read at call time through its gate below, and each was switched off alone in node and changed the world (#424's digests).
 const MECH_DECLARED=['RED_QUEEN','NICHE_BUILD','NICHE_LOCAL','FRONTIER_EXPAND','OPCODE_NOVELTY','NOVELTY_ARCHIVE',
-                     'RICH_GRAMMAR'];
+                     'RICH_GRAMMAR','MOTIF_SELECT','REPL_PREY','TASK_DRAIN','FOUND'];
 const __mechOff={};        // name -> true when this universe has switched the mechanism off
 let MECH_RATE=0.0015;      // per-tick chance of a switch proposal while no trial is in flight - the same as LAW_RATE
 let __mechLog=[];          // [tick, mechanism, from, to, verdict] - 1 kept, 0 reverted, 2 undone by an extinction
@@ -2523,6 +2525,11 @@ let __swbLatch=null;
 function __swbRead(){ try{ if(typeof globalThis!=='undefined'&&(globalThis.__SWITCHBOARD|0)===1)return true;
   return /(^|[#,])prune(,|$)/.test((typeof location!=='undefined'&&location.hash)||''); }catch(_){ return false; } }
 function switchboardOn(){ if(__swbLatch===null)__swbLatch=__swbRead(); return __swbLatch; }
+// #424: THE TOURNAMENT (#252 stage 2). Under #tourney a universe's switches change only by the field's tournament, run by the shell
+// (universe.html): a universe finding fewer new functions per tick than another adopts the other's whole switchboard. So the world's own
+// population-floor proposals are off: that judge keeps whatever does not shrink a population, and under the crowd price nearly nothing does.
+let __tourLatch=null;
+function tourneyOn(){ if(__tourLatch===null){ try{ __tourLatch=/(^|[#,])tourney(,|$)/.test((typeof location!=='undefined'&&location.hash)||''); }catch(_){ __tourLatch=false; } } return __tourLatch; }
 try{ if(typeof addEventListener==='function') addEventListener('hashchange',()=>{ __swbLatch=__swbRead(); }); }catch(_){}
 function mechGet(n){ return __mechOff[n]?0:1; }
 function mechSet(n,v){ if(v)delete __mechOff[n]; else __mechOff[n]=true; }
@@ -2572,7 +2579,7 @@ function attemptLawMutation(){
     return;
   }
   if(__lawPop.length<LAW_WINDOW)return;          // no baseline yet - a proposal with nothing to judge it against is not a proposal
-  if(switchboardOn()&&Math.random()<MECH_RATE*mechPace()){ mechPropose(); return; }   // #253: off, this draws nothing
+  if(switchboardOn()&&!tourneyOn()&&Math.random()<MECH_RATE*mechPace()){ mechPropose(); return; }   // #253: off, this draws nothing; #424: nor under #tourney
   if(Math.random()>=LAW_RATE)return;
   // #197: with BRAKES off the table is the pre-#197 three, so a run can be compared against every
   // measurement taken before the prices became evolvable.
@@ -5098,7 +5105,7 @@ let cosmosStats={launches:0,deaths:0,everExported:0,fluxTicksOut:0,merges:0,ageS
 // cosmosMergeOn pattern rather than the __BRAKES one, because both the rigs and the shell need to
 // flip it mid-run. There is deliberately no backing let __FOUND declaration: an unread knob
 // variable is the same trap as a declared-but-unfired liveness name.
-function foundOn(){return (typeof globalThis==='undefined')||((globalThis.__FOUND??1)|0)!==0}
+function foundOn(){return (typeof globalThis==='undefined')||(((globalThis.__FOUND??1)|0)!==0&&!__mechOff.FOUND)}   // #424: a switch
 let FOUND_NEED=8;          // amp a founding cluster must raise. COSMOS_ENDOW_CAP/COSMOS_ENDOW_YIELD is 2.18, so a real peer costs ~4x a shadow one
 let FOUND_COST=0.25;       // fraction of each member's amp collected toward it
 let FOUND_COOLDOWN=2400;   // parent ticks between foundings by this world
@@ -10886,7 +10893,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   tPE[i]=e;   // one payment per epoch
   if(TASK_IN===5)tLastK[i]=T;   // #392: the slot this payment may just have taken
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ const c=sunCell(i); tG[c]=tKey[T]; tGZ[c]=TASK_SZ[T]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
-  if(TASK_TROPH>0){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
+  if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
 // that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between
 // computing a function and being fed for it is cut. Off (default) this is never called and draws nothing.
@@ -17887,7 +17894,7 @@ function instVar(arr,w){
 // eviction -- 13 to 32 times per 12,000 ticks as measured in #213 -- so it is reachable by
 // construction. Whether it is SELECTED is a different question and this comment does not claim it:
 // #208b showed a gene drifts on an unconstrained walk whether or not anything reads it.
-function motifSelOn(){ return (typeof globalThis==='undefined')||((globalThis.__MOTIF_SELECT??1)|0)!==0; }
+function motifSelOn(){ return (typeof globalThis==='undefined')||(((globalThis.__MOTIF_SELECT??1)|0)!==0&&!__mechOff.MOTIF_SELECT); }   // #424: a switch
 function motifEvict(){
   const M=genome.stableMotifs;
   if(!M||M.length===0)return;
@@ -24788,7 +24795,7 @@ case 144:{if(pProg[i]&&localRes[i]>0.3&&pProg[i].length<Math.min(genome.vmMaxIns
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was
         {vmRegs[di]=0;}break;
         }
-        if(REPL_ON){ const _rf=REPL_REFUGE_MODE===2?__refFloor:(REPL_REFUGE?BIRTH_ENERGY_COST:0.05); if(REPL_PREY&&vmRegs[si]>k&&pE[j]>_rf){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2,(REPL_REFUGE&&_rf>0.05)?pE[j]-_rf:Infinity)*(REPL_ARMS?replTake(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
+        if(REPL_ON){ const _rf=REPL_REFUGE_MODE===2?__refFloor:(REPL_REFUGE?BIRTH_ENERGY_COST:0.05); if(REPL_PREY&&!__mechOff.REPL_PREY&&vmRegs[si]>k&&pE[j]>_rf){const _d=Math.min(Math.abs(vmRegs[si])*0.1,pE[j]*0.2,(REPL_REFUGE&&_rf>0.05)?pE[j]-_rf:Infinity)*(REPL_ARMS?replTake(i,j):1);pE[j]-=_d;pE[i]=Math.min(SUN_STORE,pE[i]+_d*0.8);vmRegs[di]=_d;fired('repl.prey');}else{vmRegs[di]=0;} break; }   // #273: predation on the store
         {if(vmRegs[si]>k&&localRes[j]>0.1){const _dr155=Math.min(Math.abs(vmRegs[si])*0.1,localRes[j]*0.2);localRes[j]-=_dr155;localRes[i]=Math.min(2,localRes[i]+_dr155*0.8);vmRegs[di]=_dr155;}else{vmRegs[di]=0;}}break; // ENERGY_DRAIN — steal energy from interaction partner (predation). Capped at 20% of partner's reserves per interaction; 20% metabolic tax on transfer. Creates genuine Lotka-Volterra predator-prey dynamics: prey evolve evasion/defence; predators evolve efficient drain timing. Third trophic level in the food web.
       case 156:
         if(__vmMode===VM_SOLO){ // SOLO copy, kept as it was

@@ -206,7 +206,7 @@
       mind: (storedMind && storedMind.length>10) ? storedMind : null,
       pop: (typeof pop === 'string' && pop.length > 10) ? pop : null,   // #368
       pkey: PKEY, poptest: POPTEST, popenc: POPENC,   // #414: the worker stores the snapshot itself, under this key
-      hash: location.hash || '', src:'engine.html'
+      hash: tourHash(), src:'engine.html'
     }, [off]);
   });
 
@@ -249,6 +249,47 @@
     var r = fieldWaiters[rid]; if (!r) return false;
     delete fieldWaiters[rid]; r(value); return true;
   }
+  // ═══ #424 — THE TOURNAMENT (#252 stage 2): the field decides which of its mechanisms each universe runs ═════════════════════════
+  // ?tourney=1 (the field passes it from index.html#tourney). The engine's switchboard (engine.html, MECH_DECLARED) is turned on with
+  // its own proposals off, and switches change only here. Every TPERIOD (300 s, jittered) this universe reads its new functions per
+  // tick since its last change, tells the others over a BroadcastChannel, and compares itself with one other chosen at random: if
+  // the other found more per tick, it adopts the other's WHOLE switchboard (the bundle is the combining), with one switch flipped half
+  // the time. A universe's first switchboard is random (each switch off with probability 0.3), so there is something to choose
+  // between. Per tick, not per second: universes sharing a worker take turns, so a worker's universes tick at about the same rate
+  // whatever each costs. The collective takes no part (it is fed by everyone). What the field ends up holding is the system's answer to
+  // which of these mechanisms it needs; the check on that answer is #410, which found three of them missed when off.
+  var TOURNEY = /[?&]tourney=1(&|$)/.test(location.search || ''), TOUR_P0 = 0.3, TOUR_MUT = 0.5, TOUR_WMIN = 600;
+  var TPERIOD = (function(){ var m=(location.search||'').match(/[?&]tourp=(\d{1,4})/); return (m ? parseInt(m[1],10) : 300) * 1000; })();
+  var tour = { w0:null, others:{}, adopt:0, decide:0, lastR:null, lastN:0, chan:null, log:[] };
+  function tourHash(){ var h = location.hash || ''; if (!/[?&]tourney=1(&|$)/.test(location.search || '')) return h; return (h ? h + ',' : '#') + 'prune,tourney'; }   // called before TOURNEY is assigned
+  function tourStat(){ return { adopt:tour.adopt, decide:tour.decide, R:tour.lastR, n:tour.lastN, peers:Object.keys(tour.others).length }; }
+  function tourMutate(v){ var o = {}, k; for (k in v) o[k] = v[k]; if (Math.random() < TOUR_MUT){ var ks = Object.keys(o); if (ks.length){ var q = ks[(Math.random()*ks.length)|0]; o[q] = o[q] ? 0 : 1; } } return o; }
+  function tourCycle(){
+    ask('tourney', null).then(function(st){
+      if (!st || st.err || !st.values) return;
+      var IK = 'tourney_init_' + (SLOT || 'genome');
+      if (!tour.w0){ tour.w0 = { total:st.total, seen:st.seen };
+        var done = false; try { done = localStorage.getItem(IK) === '1'; } catch(e){}
+        if (!done){ var v = {}, k; for (k in st.values) v[k] = (Math.random() < TOUR_P0) ? 0 : 1;
+          ask('tourneyset', { values:v }).then(function(){ try { localStorage.setItem(IK, '1'); } catch(e){} }); }
+        return; }
+      var n = st.total - tour.w0.total, R = n > 0 ? (st.seen - tour.w0.seen) / n : 0; tour.lastR = R; tour.lastN = n;
+      if (tour.chan){ try { tour.chan.postMessage({ slot:SLOT, R:R, n:n, values:st.values, t:Date.now() }); } catch(e){} }
+      if (n < TOUR_WMIN) return;
+      var now = Date.now(), cand = [], s;
+      for (s in tour.others){ var o = tour.others[s]; if (o.n >= TOUR_WMIN && now - o.t < 3 * TPERIOD) cand.push(o); }
+      if (!cand.length) return;
+      tour.decide++; var c = cand[(Math.random() * cand.length) | 0];
+      if (c.R > R){ var nv = tourMutate(c.values);
+        ask('tourneyset', { values:nv }).then(function(r){ if (r && !r.err){ tour.adopt++; tour.w0 = { total:st.total, seen:st.seen };
+          tour.log.push([Math.round(now/1000), c.slot, +R.toFixed(3), +c.R.toFixed(3)]); while (tour.log.length > 50) tour.log.shift(); } }); }
+    }).catch(function(){});
+  }
+  if (TOURNEY && SLOT !== 'collective'){
+    try { tour.chan = new BroadcastChannel('selection-tourney'); tour.chan.onmessage = function(e){ var m = e.data; if (m && m.slot && m.slot !== SLOT) tour.others[m.slot] = m; }; } catch(e){}
+    (function next(){ setTimeout(function(){ tourCycle(); next(); }, TPERIOD * (0.8 + 0.4 * Math.random())); })();
+    setTimeout(tourCycle, 15000);   // the first read sets the window (and, the first time ever, the random switchboard)
+  }
   window.__field = {
     ready: function(){ return isReady ? Promise.resolve() : new Promise(function(r){ readyWaiters.push(r); }); },
     save:  function(){ return ask('export', null); },
@@ -267,7 +308,7 @@
     gcForTest:   function(){ return ask('gc', null); },
     censusForTest: function(){ return ask('census', null); },
     // #383: test-only - this universe's lifetime paid-for bitmap and the economy switches, for a field-throughput rig
-    seenForTest: function(){ return ask('seen', null); },
+    seenForTest: function(){ return ask('seen', null).then(function(r){ if (r && TOURNEY) r.tour = tourStat(); return r; }); },   // #424: and the tournament's counts
     phaseForTest: function(){ return ask('phase', null); },   // #396: where this universe's time goes (installs timers on first call)
     // #158: test-only. Lets collective-test.js drive the evolved-silence case directly.
     setGeneForTest: function(gene,value){ return ask('setgene', { gene:String(gene), value:+value }); },
@@ -315,6 +356,7 @@
     if (d.type === 'gc-result'){ settle(d.rid, !!d.ran); return; }
     if (d.type === 'census-result'){ settle(d.rid, d.census || null); return; }
     if (d.type === 'seen-result'){ settle(d.rid, d.seen || null); return; }
+    if (d.type === 'tourney-result'){ settle(d.rid, d.tour || null); return; }   // #424
     if (d.type === 'phase-result'){ settle(d.rid, d.phase || null); return; }
     if (d.type === 'setgene-result'){ settle(d.rid, !!d.ok); return; }
     if (d.type === 'export'){

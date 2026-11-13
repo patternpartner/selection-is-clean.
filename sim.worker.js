@@ -111,6 +111,10 @@ const BRIDGE =
   // #383 - WHAT THIS UNIVERSE HAS EVER BEEN PAID FOR, as the engine's own lifetime bitmap (tSeen, the one #369 saves), so a rig can
   // count new functions across a running field: the union over universes, not a sum that counts a migrant's function twice. Read off
   // arrays, nothing drawn or written. Also the switches a field rig must check are on (STORE_DEATH, REPL_CROWD_K, PROV_BIRTH, AIM).
+  // #424: the tournament's two calls. tourney() reads this universe's lifetime count of new functions, its ticks and its switches (read,
+  // not drawn); tourneySet() installs a switchboard the shell chose. Only meaningful under #tourney; harmless otherwise.
+  '__inst.api.tourney=function(){try{return {on:(typeof tourneyOn==="function")?tourneyOn():false,total:genome.totalTicks|0,tick:tick,seen:(typeof tSeenN!=="undefined")?tSeenN:0,values:mechState().values};}catch(e){return {err:String(e&&e.message)};}};' +
+  '__inst.api.tourneySet=function(v){try{if(!v||typeof v!=="object")return null;for(var q=0;q<MECH_DECLARED.length;q++){var nm=MECH_DECLARED[q];if(v[nm]===0||v[nm]===1)mechSet(nm,v[nm]);}return mechState().values;}catch(e){return {err:String(e&&e.message)};}};' +
   '__inst.api.seen=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON||!tSeen)return {off:true,tick:tick};' +
     'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="",in5=(typeof TASK_IN!=="undefined"&&TASK_IN===5);' +
     // #392: at five inputs a slot means nothing outside its universe, so the canonical truth tables of seen functions go instead (4 bytes each)
@@ -119,7 +123,7 @@ const BRIDGE =
     'var chk={ground:(typeof TASK_GROUND!=="undefined")?+TASK_GROUND:null,cosmos:(typeof cosmosOn==="function")?+cosmosOn():null,motif:(typeof motifSelOn==="function")?+motifSelOn():null,' +
       'found:(typeof foundOn==="function")?+foundOn():null,prey:(typeof REPL_PREY!=="undefined")?+REPL_PREY:null,troph:(typeof TASK_TROPH!=="undefined")?TASK_TROPH:null,' +
       'mind:(typeof __mindLatch!=="undefined")?(__mindLatch===null?-1:(__mindLatch?1:0)):null,vari:(typeof TASK_VAR!=="undefined")?TASK_VAR:null};' +
-    'return {in5:in5,arm:__inst.knobs||null,chk:chk,ground:chk.ground,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+    'return {in5:in5,arm:__inst.knobs||null,chk:chk,swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState().values:null,ground:chk.ground,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
@@ -614,6 +618,16 @@ Universe.prototype.handle = function (d) {
   if (d.type === 'phase') {
     let r = null; try { r = api() && api().phase ? api().phase() : null; } catch (e) { r = { err:String(e&&e.message) }; }
     this.post({ type: 'phase-result', rid: d.rid, phase: r });
+    return;
+  }
+  if (d.type === 'tourney') {   // #424
+    let r = null; try { r = api() && api().tourney ? api().tourney() : null; } catch (e) { r = { err:String(e&&e.message) }; }
+    this.post({ type: 'tourney-result', rid: d.rid, tour: r });
+    return;
+  }
+  if (d.type === 'tourneyset') {   // #424
+    let r = null; try { r = api() && api().tourneySet ? api().tourneySet(d.values) : null; } catch (e) { r = { err:String(e&&e.message) }; }
+    this.post({ type: 'tourney-result', rid: d.rid, tour: r });
     return;
   }
   if (d.type === 'seen') {
