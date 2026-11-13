@@ -31322,3 +31322,27 @@ does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under 
   ticks to have seen parents, and a grown universe sometimes barely reproduces. Not retuned. Why a grown universe sometimes barely
   reproduces is not diagnosed; the crowd price is not it (a small world's births are cheap under it).
   Slice 3 24/0. **In all, 69 ok and 1 failing** (the `mind-test` row above, failing on `main` too). `main` fast-forwarded.
+
+### #423 — VERDICT: INCONCLUSIVE, the cosmos stays on. Not worse on the count, but the depth guard fails (0.88 against 0.90)
+`lab/port/PREREG-cosmos-off.md`, six new pairs (the shipped field against `LIVE __COSMOS:0`, together, 1,500 s; `out-cosmos-decide/`,
+`analyse-cosmos-off.js`), paused after pair 1 for #424 and resumed with an amendment written before pair 2. All six complete.
+
+| Pair | F, on | F, off | Ratio | Ratio at 5 / 10 / 15 / 20 min | Size 17+, on / off | Ticks, on / off | Alive, on / off |
+|---|---|---|---|---|---|---|---|
+| p1 | 110,899 | 110,431 | 1.00 | 0.78 / 1.22 / 1.24 / 1.00 | 16,345 / 15,501 | 80,022 / 74,540 | 30,561 / 32,266 |
+| p2 | 65,172 | 98,851 | 1.52 | 0.74 / 1.33 / 1.45 / 1.55 | 9,126 / 15,791 | 88,007 / 89,566 | 25,858 / 25,211 |
+| p3 | 102,950 | 107,833 | 1.05 | 0.48 / 0.68 / 0.88 / 1.04 | 14,706 / 20,324 | 81,695 / 83,079 | 28,652 / 30,418 |
+| p4 | 75,742 | 77,796 | 1.03 | 0.88 / 0.91 / 0.86 / 0.91 | 11,087 / 9,074 | 71,837 / 82,924 | 30,234 / 26,501 |
+| p5 | 153,105 | 98,061 | 0.64 | 0.28 / 0.53 / 0.63 / 0.66 | 36,154 / 19,380 | 115,035 / 88,368 | 15,909 / 30,233 |
+| p6 | 135,939 | 109,786 | 0.81 | 0.41 / 0.67 / 0.66 / 0.79 | 29,105 / 17,859 | 82,438 / 95,388 | 27,692 / 26,132 |
+
+- **Primary:** W+ 10 of 21, p(off less) 0.50, p(off greater) 0.58; off ahead in 3 of 6. Not WORSE.
+- **Guards:** median F ratio 1.011 (needs 0.95, passes); **median size-17+ ratio 0.883 (needs 0.90, fails)**. So INCONCLUSIVE, and
+  the cosmos stays on, as written. A weak test does not remove a layer, and this is the case the guard was written for: the pairs
+  swing from 0.64 to 1.52, so six of them cannot tell "no effect" from a 10% harm.
+- **One reading is consistent: without the cosmos a field starts slower.** Off was behind at 5 minutes in all six pairs (median
+  0.61) and at 10 minutes in four (median 0.79), and caught up by 25. #410's pair (1.04 at 25 minutes) did not report early marks.
+  What the cosmos does in a field's first minutes is not traced; daughter worlds founded early are the obvious candidate.
+- **Prediction** (not worse, neither direction, median about 1.03, size 17+ about 0.95, so it switches off): wrong on the guard.
+  6 for 13.
+- **What would decide it:** more pairs, or a longer horizon. Given the early cost and the spread, it is not first in line.
