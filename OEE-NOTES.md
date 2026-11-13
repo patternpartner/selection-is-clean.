@@ -31250,7 +31250,12 @@ does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under 
   `FOUND`, each read at its gate at call time. Without `#tourney` or `#prune` every world is byte-identical (`b07a4474`, `6cbe0c0d`).
   Switched off alone at tick 0 in node: `MOTIF_SELECT` `3052d349`, `TASK_DRAIN` `f7236673`, `FOUND` `c10b7a47`, each a changed world.
   **`REPL_PREY` changed nothing by 4,000 ticks on seed 3, because predation never fires there** (the engine's own counter: 0 events
-  with the switch on); #410 found a field misses it, so it fires in fields. Seeds 1-2 at 8,000 ticks are being checked.
+  with the switch on); #410 found a field misses it, so it fires in fields. **Checked on seeds 1-2 at 8,000 ticks: it bites.**
+  With the switch on, 540,842 and 843,802 predation events; off, none, and the worlds differ (`794c4c71` against `9de15497`,
+  `c54545b3` against `24709b25`).
+- **Mechanics rerun with the fix** (`mech2`): 30 of 30 universes report their switchboard at every sample; 16 adoptions in 31
+  decisions in six minutes. Every switch's on-count rose over those six minutes (each by 1-5), which is a first hint that worlds with
+  more mechanisms on find more per tick. Six minutes is far too short to read.
 - **Mechanics, a field with 30-second rounds for six minutes** (`out-tourney/mech1.jsonl`): first switchboards random (each switch
   on in 15-24 of 27 universes), 20 adoptions in 40 decisions, no errors. **One defect found:** at the last sample only 11 of 29
   universes still reported a switchboard. A relit face writes a new hash into its frame, the shell passed it on without
