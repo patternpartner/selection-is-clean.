@@ -31211,5 +31211,5 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
     the rule #415 followed, the losing design arm comes out again: `AMP_NEIGH` is removed, and `engine.html` and `harness-env.js`
     are `main`'s byte for byte. The phase instrument (`PROFILE`, the 26 wrapped calls) stays.
   - **This is #417's declined removal tested after all, and the decline stands for a different reason:** #417 said the pass could buy
-    little, and that was a young field's reading; the pass costs a lot in a populated field, but removing it buys nothing, because
-    what it does (spreading similar creatures apart) is part of what keeps the rest of the tick cheap.
+    little, and that was a young field's reading; the pass costs a lot in a populated field, but removing it bought no ticks here.
+    Why is open; that it spreads similar creatures apart and so keeps the pair loop cheap is my guess, not a measurement.
