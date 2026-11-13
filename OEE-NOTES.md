@@ -31021,3 +31021,36 @@ handover asked for pairs of whole fields. Two pairs were run (`out-crowd-field/`
 - **Pre-registered as `lab/port/PREREG-crowd100.md`** (eight new pairs, `crowd100-batch.sh`, `analyse-crowd100.js`): one-sided
   Wilcoxon on log(F_k100/F_ship) at 25 minutes, floor 6 pairs. BETTER ships only if K=100 also found more functions of size 17+ in
   more than half the pairs. My prediction: BETTER, about 6 of 8, median about 1.4.
+
+### #416 — VERDICT: BETTER, SHIPPED. A dearer birth (`REPL_CROWD_K` 100, was 450): 7 of 8 fields ahead by 25 minutes, median 1.26x, p 0.0078; deeper too
+`lab/port/PREREG-crowd100.md`, eight new pairs, each a shipped field and a K=100 field run together for 1,500 s
+(`out-crowd100/`, `crowd100-batch.sh`, `analyse-crowd100.js`). Every run complete, every sample's switches as registered.
+
+| Pair | F, 450 | F, 100 | Ratio | Ratio at 5 / 10 / 15 / 20 min | Size 17+, 450 / 100 | Ticks, 450 / 100 | Alive, 450 / 100 |
+|---|---|---|---|---|---|---|---|
+| p1 | 89,973 | 108,436 | 1.21 | 0.45 / 0.60 / 0.85 / 1.12 | 10,901 / 26,350 | 34,258 / 94,347 | 51,141 / 26,659 |
+| p2 | 96,017 | 115,089 | 1.20 | 0.93 / 1.02 / 1.05 / 1.12 | 14,591 / 19,208 | 36,468 / 80,466 | 51,306 / 30,211 |
+| p3 | 87,863 | 112,809 | 1.28 | 1.06 / 0.91 / 0.99 / 1.17 | 9,599 / 16,817 | 33,800 / 88,399 | 52,347 / 27,437 |
+| p4 | 76,979 | 128,715 | 1.67 | 0.60 / 0.78 / 1.11 / 1.39 | 8,954 / 19,474 | 34,876 / 92,952 | 51,061 / 30,362 |
+| p5 | 102,739 | 149,248 | 1.45 | 1.50 / 1.00 / 0.91 / 1.21 | 15,299 / 26,926 | 36,224 / 111,848 | 51,372 / 18,188 |
+| p6 | 96,236 | 118,206 | 1.23 | 0.75 / 0.83 / 0.96 / 1.20 | 11,822 / 15,531 | 36,806 / 91,878 | 50,148 / 32,233 |
+| p7 | 94,369 | 186,107 | 1.97 | 1.32 / 1.08 / 1.33 / 1.62 | 12,190 / 42,263 | 37,083 / 123,167 | 51,277 / 18,769 |
+| p8 | 114,065 | 105,996 | **0.93** | 0.54 / 0.64 / 0.73 / 0.86 | 16,809 / 12,514 | 37,015 / 94,985 | 51,584 / 28,795 |
+
+- **Primary:** W+ 35 of 36, **p 0.0078**, ahead in 7 of 8, median ratio 1.26. **BETTER.**
+- **Depth guard holds:** more functions of size 17+ in 7 of 8, median 1.76x (reported Wilcoxon p 0.0195). The mean depth of what was
+  new in the last five minutes was higher in 7 of 8 (13.1-14.6 against 12.1-13.0). So the gain is not more of the same.
+- **The price of it is the first quarter of an hour.** The median ratio is 0.84 at 5 minutes, 0.87 at 10, 0.98 at 15, then 1.18 at
+  20 and 1.26 at 25. Pair d (design) read the same shape. **A viewer who watches for less than about fifteen minutes now sees fewer
+  new functions than before.** The ship is judged at 25 minutes as registered; the early cost is recorded as a cost, not argued away.
+- **What changes in the universe:** about half the creatures (median 0.54x; 18-32 thousand across the field against 50-52
+  thousand) running about 2.6x the ticks. No universe in either arm fell under 20 creatures. In the two fields with the
+  fewest creatures (p5, p7: about 18,500) K=100 did best (1.45, 1.97).
+- **Design pairs overstated it.** Pair d read 1.68x, Fable's arms 2.1x; the decision median is 1.26x. That is what selecting a
+  candidate on its best reading does.
+- **Prediction** (BETTER, about 6 of 8, median about 1.4): direction held, 7 of 8, median lower. 6 for 12.
+- **Shipped:** the TASKS default fill sets `REPL_CROWD_K` 100. `REPL_CROWD_K=450` restores the world before: seed 3 at 1,500 ticks
+  is `cc369661` on the previous engine (its default and with the knob set) and on this one with the knob; TASKS off `b07a4474`
+  unchanged; the new default `6cbe0c0d`.
+- **What this cannot say:** anything past 25 minutes (the named follow-up is a 150-minute pair, `long-pair.sh`); whether K below 100
+  is better still (both the arms and this suggest the slope has not flattened at 100); a phone.
