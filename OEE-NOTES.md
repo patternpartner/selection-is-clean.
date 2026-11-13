@@ -31314,3 +31314,10 @@ does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under 
     3. Compare a universe only with others of its own kind (built, layer, grown), and only adopt on a margin over a long window.
   - A randomized factorial field (random fixed switchboards, no tournament, several fields) is the better instrument for which of
     these mechanisms matter; this run had one leg of it and 17 universes.
+- **#424 acceptance.** `substrate-test` 264/0 at `TICKS=40`, `TICKS=900`, the default and `FOUND=0`. `smoke.sh` slice 1 23/0; slice 2
+  22 ok, 1 failing: **`mind-test`**, on one grown universe (`g0`) that past tick 1,000 had seen almost no parents (3 against 1,250-1,730
+  in the others, and 0 in the failing case). Alone, three runs each: this tree 2 of 3 failing, `main` (dee73a2, before #424) 1 of 3,
+  every failure the same `g0` with almost no births. Without `#tourney` nothing #424 added runs (the engine is byte-identical by
+  digest and the shell passes the same hash), so this is not the change. **It is a fragile row:** it asks every universe past 1,000
+  ticks to have seen parents, and a grown universe sometimes barely reproduces. Not retuned. Why a grown universe sometimes barely
+  reproduces is not diagnosed; the crowd price is not it (a small world's births are cheap under it).
