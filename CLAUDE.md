@@ -183,6 +183,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   overstated it (2.1x arms, 1.68x one pair). `REPL_CROWD_K=450` restores the world before. Not measured: past 25 minutes, K below 100.
   **A reload can lose a universe's population (3 of 155 in `#406`'s ground field).** `universe.html` races the IndexedDB read
   against 4 seconds and boots from founders if it is late; a fingerprint mismatch would look the same. Not diagnosed.
+  **Diagnosed and fixed by `#418`: it was the fingerprint, and `#414` had made it common.** The genome reached the shell before
+  its snapshot (the population is encoded in between), the shell's 250 ms wait ran out, and a reload refused the snapshot: 23 and
+  30 of 31 universes in two fields. The worker now holds the genome until its snapshot is on its way. **`lab/port/field-fpcheck.js`
+  reads a saved field and says how many universes a reload would restore**; read that, not the order of writes, which passed the bug.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

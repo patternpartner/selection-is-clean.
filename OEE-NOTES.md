@@ -31106,3 +31106,5 @@ restarted from founders, with their ground. That pair is void.
   same universes. The one miss (L2_2) is the window that remains: a snapshot stored and its 'landed' not yet answered when the browser
   closed (most likely; not traced). That window runs from the write's completion to the shell's answer to 'landed', not through
   the encode, the gzip and the write as before. Closing it would mean storing the genome in the same IndexedDB record.
+- **#418 acceptance:** `smoke.sh` in three slices **70 ok, 0 failing** (23, 23, 24; no SKIP), `pophold-test` among them with the
+  fingerprint check. The engine is untouched; `substrate-test` passed inside slice 1. Long pair lp3 continues from leg 3.
