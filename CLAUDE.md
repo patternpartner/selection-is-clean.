@@ -185,6 +185,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   (650,955 against 433,201), 3.6x the size 17+ in the last leg. Per creature-tick the two worlds find about the same; the sparse
   one runs 2.8x the creature-ticks. I credited that to neighbour density; **`#420` tested it and mostly not**: a world twice the
   area bought 1.2x the creature-ticks and found less (0.79), and K below 100 found less too. Why a K=450 tick is dearer is open.
+  **`#424`: THE TOURNAMENT, "let the system decide" (`index.html#tourney`, opt-in).** Universes compare new functions per tick and
+  the worse adopts the better's whole switchboard (eleven mechanisms). Over 150 minutes it did not see the three #410 found missed
+  (they ended level with the rest), switches swung by ten universes a leg, and the field fell to 0.65x the shipped one in the last
+  leg (0.86x in all): random subsets of these mechanisms find less than all of them, and the rule does not recover. A second version
+  would start all-on, adopt one switch at a time, and compare universes only with their own kind.
   **A reload can lose a universe's population (3 of 155 in `#406`'s ground field).** `universe.html` races the IndexedDB read
   against 4 seconds and boots from founders if it is late; a fingerprint mismatch would look the same. Not diagnosed.
   **Diagnosed and fixed by `#418`: it was the fingerprint, and `#414` had made it common.** The genome reached the shell before

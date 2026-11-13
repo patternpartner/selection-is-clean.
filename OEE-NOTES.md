@@ -31273,3 +31273,44 @@ does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under 
    random), adoptions per leg, and how the switch frequencies move leg by leg.
 - **The caveat before any number:** about 30 decisions per universe in 150 minutes, and neutral switches random-walk. Only large
   effects can show.
+- **THE LONG RUN** (`out-tourney/tl1-*`, a tournament field beside a shipped one, together, six chained 25-minute legs, every reload
+  restoring 30-31 of 31 populations; `analyse-tourney.js tl1`):
+
+  | Leg | Shipped, new | Tournament, new | Ratio | Cumulative | Adoptions |
+  |---|---|---|---|---|---|
+  | 1 | 103,231 | 96,447 | 0.93 | 0.93 | 30 |
+  | 2 | 111,376 | 152,616 | 1.37 | 1.16 | 28 |
+  | 3 | 146,936 | 140,618 | 0.96 | 1.08 | 21 |
+  | 4 | 152,255 | 128,287 | 0.84 | 1.01 | 15 |
+  | 5 | 195,026 | 137,261 | 0.70 | 0.92 | 17 |
+  | 6 | 209,772 | 135,728 | **0.65** | **0.86** | 16 |
+
+  Switches ON at each leg's end, of 31 (start: random, about 70% on):
+
+  | | Red Queen | Niche build | Niche local | Frontier expand | Opcode novelty | Novelty archive | Rich grammar | **Motif select** | **Prey** | **Drain** | Found |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | 25 min | 16 | 21 | 14 | 26 | 26 | 18 | 16 | 19 | 24 | 25 | 22 |
+  | 75 min | 11 | 24 | 22 | 30 | 20 | 16 | 13 | 12 | 26 | 29 | 22 |
+  | 150 min | 19 | 25 | 16 | 23 | 25 | 20 | 13 | 18 | 21 | 24 | 23 |
+
+  - **Readout 1 fails: the judge does not see the three #410 found missed.** They lean the right way for five legs (median 25 against
+    21 after leg 5), then end level (21 against 21.5). Single switches swing by ten universes in one leg (niche local 10 to 22, motif
+    selection 22 to 12): with the whole bundle adopted, every switch rides on whichever world wins, and the rate it is judged by is
+    dominated by what kind of universe it is (built, layer, grown), not by its switches.
+  - **Readout 2: it nominates almost nothing.** Rich grammar ends lowest (13 of 31), frontier expand highest (23-30, never 90% at the
+    end). Neither is outside what drift does in 16-30 adoptions a leg.
+  - **And the field pays for it.** The shipped field accelerates (103 to 210 thousand a leg, as in #419); the tournament field does
+    not (130-150 thousand from leg 2 on), and ends 0.65x in the last leg. A field whose universes run random subsets of these
+    mechanisms finds less than one running all of them, and the tournament does not get it back. **So the full set we ship beats the
+    subsets this rule wanders through**, which is weak evidence that the eleven are, together, not dead weight.
+  - **The per-switch reading** (leg 6 only, from the new slot [7]; 17 universes whose switchboard held for the leg): rate off over on,
+    prey 0.85 and drain 0.88 (the way #410 found), motif selection 1.14 (the other way), the rest 0.88-1.30. With 2-8 universes on one
+    side and universes that differ severalfold for other reasons, this reads nothing.
+- **Verdict on this rule: it does not work at this scale, and it costs a field.** The system cannot yet decide by it.
+  - Nothing changes by default. `#tourney` stays an opt-in instrument, the four new switches stay (byte-identical without it).
+  - **What a second version would change, from what this one showed:**
+    1. Start every universe with everything ON and propose single flips, so the field is not handicapped while it searches.
+    2. Adopt ONE differing switch from a better world, not the bundle, so a switch is judged on its own and does not hitchhike.
+    3. Compare a universe only with others of its own kind (built, layer, grown), and only adopt on a margin over a long window.
+  - A randomized factorial field (random fixed switchboards, no tournament, several fields) is the better instrument for which of
+    these mechanisms matter; this run had one leg of it and 17 universes.

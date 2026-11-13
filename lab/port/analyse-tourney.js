@@ -23,7 +23,7 @@ const z = T[T.length - 1]; if (z && z.SWB) { const v = k => z.SWB[k]; const know
 const rows = T.filter(r => r.slots && r.slots.some(s => typeof s[7] === 'string'));
 if (rows.length > 1) { const per = {};
   for (let i = 1; i < rows.length; i++) { const a = rows[i - 1], b = rows[i]; if (a.leg !== b.leg) continue; const A = {}; for (const s of a.slots) A[s[0]] = s;
-    for (const s of b.slots) { const p = A[s[0]]; if (!p || typeof s[7] !== 'string' || s[7] !== p[7] || s[0] === 'collective') continue; const dk = s[1] - p[1], dn = s[3] - p[3]; if (dk < 50) continue;
+    for (const s of b.slots) { const p = A[s[0]]; if (!p || typeof s[7] !== 'string' || s[7] !== p[7] || s[0] === 'collective') continue; const dk = s[1] - p[1], dn = s[3] - p[3]; if (dk < 5) continue;   // a field universe ticks about 46 times between one-minute samples
       const q = per[s[0]] || (per[s[0]] = { sw: s[7], k: 0, n: 0 }); if (q.sw !== s[7]) { q.sw = s[7]; q.k = 0; q.n = 0; } q.k += dk; q.n += dn; } }
   const U = Object.entries(per).filter(([, q]) => q.k >= 300).map(([s, q]) => ({ s, sw: q.sw, r: q.n / q.k }));
   console.log('\nper switch, ' + U.length + ' universes with a steady switchboard (rate = new functions per tick; median of universes ON / OFF):');
