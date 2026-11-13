@@ -31057,3 +31057,17 @@ handover asked for pairs of whole fields. Two pairs were run (`out-crowd-field/`
 - **#415 + #416 acceptance**, on the shipped engine (ac2d377), nothing else running: `substrate-test` 264/0 at `TICKS=40`, `TICKS=900`,
   the default and `FOUND=0`; `smoke.sh` in three slices **70 ok, 0 failing** (23, 23, 24), with `browser-test` and `collective-test`
   run (no SKIP). `layers-test`'s two timing rows passed this time; #395 records them as flaky alone.
+
+### #417 — WHERE TODAY'S FIELD SPENDS ITS TICK, and a removal declined
+`lab/port/field-phase.js` on the shipped field (K=100), alone, 300 s warm then 180 s timed (`out-phase/field-416.json`):
+31 universes, 22,047 creatures, 19,045 ticks in the 180 s. **A tick costs 31.7 ms** (119 ms in #396's small worlds). Of it:
+`processGrid` (the pair loop, where programs run against each other) 41%, `applyEntropy` 10%, `updateParticles` 3%,
+`applyNicheEconomy` 2%; the other 44% is in loop but outside the wrapped functions. Each worker thread is 83-86% inside loop.
+- **Declined: removing the old amplitude pass.** `applyEntropy` opens with an uncapped neighbour loop that charges amplitude for
+  crowding and runs amplitude predation, and under one currency amplitude no longer kills. That looked like dead weight. Two
+  readings say no:
+  - **It cannot buy much.** The whole of `applyEntropy` is a tenth of the tick, so the most it could return is about 10% more
+    ticks, inside one field's variance.
+  - **It is not dead.** Amplitude reaches every program as a sense: register 3 in the solo program and the pair's energy
+    context. Removing the pass changes what creatures perceive, so it is a world change and would need its own pairs.
+- **Not explained:** the 44% of the tick outside the five wrapped functions. A finer phase split is the instrument for that.
