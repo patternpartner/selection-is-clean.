@@ -31218,3 +31218,17 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
   `collective-test`'s `returnPathIsATrickle`. A/B, alone, three runs each, inbound/outbound: this tree 9/0 pass, 4/3 FAIL, 6/2 FAIL;
   `main` 10/1 pass, 6/2 FAIL, 14/2 pass. The same row fails on `main`, on the same counts, so this is the fragility CLAUDE.md
   records, not the change. Not retuned. Its inbound count now reads 4-14 (17-28 before #396).
+
+### #422 — A WEAKER DRAIN IN A WHOLE FIELD: no (design)
+#411's arms had the drain best weak (`TASK_TROPHP` 25 over 50 in three runs of three, 5 at 1.40x). One pair of whole fields at K=100,
+the shipped 50 against 10 (`out-drain-field/a-*`, together, 1,500 s):
+
+| | 50 (shipped) | 10 | Ratio |
+|---|---|---|---|
+| F at 5 / 10 / 15 / 20 / 25 min | 7,583 / 24,013 / 44,860 / 73,308 / 99,869 | 7,360 / 19,819 / 34,939 / 55,365 / 80,447 | 0.97 / 0.83 / 0.78 / 0.76 / **0.81** |
+| Size 17+ | 15,996 | 9,975 | 0.62 |
+| Ticks across the field | 79,732 | 79,834 | 1.00 |
+
+- Behind from ten minutes on, and on depth by more than on count. Ticks level, so this is the drain itself, not speed.
+- **The arms reading does not carry to whole fields.** The arms ran at K=450 and shared a field. Here the world is K=100. Which of the
+  two differences matters is not known. Not pursued; the drain stays at 50, which #410 found is missed when it is off (0.67).
