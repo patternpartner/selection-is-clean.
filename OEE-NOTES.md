@@ -31101,3 +31101,8 @@ restarted from founders, with their ground. That pair is void.
   | the fix | 0 | PASS | **PASS, 8 of 8** |
 
 - **#406's "3 of 155" was probably this, at smaller populations.**
+- **In a field** (`out-long/lp3-*`, the same pair restarted on the fixed shell): after leg 1, `field-fpcheck` read 30 of 31 matching
+  (K=100) and 31 of 31 (K=450), against 8 and 1 before. **The leg-2 reload brought back 30 of 31 and 31 of 31 populations**, the
+  same universes. The one miss (L2_2) is the window that remains: a snapshot stored and its 'landed' not yet answered when the browser
+  closed (most likely; not traced). That window runs from the write's completion to the shell's answer to 'landed', not through
+  the encode, the gzip and the write as before. Closing it would mean storing the genome in the same IndexedDB record.
