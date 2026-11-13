@@ -173,6 +173,14 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   functions a leg; without it the rate falls by a third after the first leg and then HOLDS at about half (39-44 thousand, creeping
   up). Cumulative 1.79x; functions of size 17+ 2.24x. So the ground is a steady doubling, not a widening gap, and a field without
   it runs at half speed, it does not stop. One pair.
+  **`#414`: the snapshot is stored by the WORKER**, not the page. The user's field froze overnight with its universes still
+  ticking; `#413`'s probe (`field-rate.js JANK=1`) found every autosave putting a multi-megabyte string through the page's main
+  thread. Now the worker gzips and stores it: 131 s of long tasks in 25 minutes became none. Renderer memory still crept about
+  400 MB in 80 minutes (`#413`), unexplained, and no run has been a night.
+  **`#416`: A DEARER BIRTH, SHIPPED (`REPL_CROWD_K` 100, was 450).** In eight pairs of fields K=100 found more distinct
+  functions by 25 minutes in 7 of 8 (median 1.26x, p 0.0078) and more of size 17+ in 7 of 8 (1.76x): half the creatures, 2.6x the
+  ticks. **It is BEHIND for the first fifteen minutes** (0.84 at 5): a short look at a field now shows less. Design readings
+  overstated it (2.1x arms, 1.68x one pair). `REPL_CROWD_K=450` restores the world before. Not measured: past 25 minutes, K below 100.
   **A reload can lose a universe's population (3 of 155 in `#406`'s ground field).** `universe.html` races the IndexedDB read
   against 4 seconds and boots from founders if it is late; a fingerprint mismatch would look the same. Not diagnosed.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
