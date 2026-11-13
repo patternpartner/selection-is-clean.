@@ -30992,6 +30992,9 @@ booted every field run in #408-#411, and was never run through the full acceptan
 - Removed from `engine.html` (the comment block, the constant, the check in the pay path) and from `harness-env.js`'s `KNOBS`.
 - **Check:** `git diff 8a9d61f^ -- engine.html` is empty, so the engine is the one before #408. Digests: `b07a4474` (TASKS off),
   `b513b085` (seed 10401, 800 ticks), `3ec5f521` (seed 3, 1,500 ticks) all match `main`.
+  **Corrected at #416: `3ec5f521` is #393's digest, from before the ground (#397) changed the TASKS world, and I carried it
+  without recomputing it.** Computed on `main` and on #415's engine with the same script: seed 3 at 1,500 ticks is `cc369661` on
+  both, and seed 10401 at 800 ticks `b513b085` on both. So the claim holds; the number written beside it was stale.
 - Acceptance is folded into #416's: whatever that decides, `substrate-test` at four budgets and `smoke.sh` run on the engine that
   goes to `main`.
 
