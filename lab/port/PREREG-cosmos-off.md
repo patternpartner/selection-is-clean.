@@ -53,3 +53,10 @@ depth: #410's pair read 0.93 on size 17+, close to the line.
 ## Saved worlds (rule 6)
 If it switches off, a reloaded TASKS universe stops founding daughter worlds. Any daughter worlds already in its save stay as
 stored data. Said here; it does not block.
+
+## Amendment, made after pair 1 and before pair 2 (the rule is unchanged)
+- **The test paused after pair 1 for #424** (the tournament, the user's "let the system decide"), and resumes with pairs 2-6.
+- **The engine changed in between, and the world did not.** #424 added four opt-in switches (`MOTIF_SELECT`, `REPL_PREY`,
+  `TASK_DRAIN`, `FOUND` read `!__mechOff.X` at their gates) and a `tourney` latch. Without `#tourney` or `#prune` nothing sets a
+  switch: the TASKS default digest is `6cbe0c0d` and TASKS off `b07a4474`, as before. So SHIP and OFF are the arms registered.
+- **Pair 1 has been seen only as complete** (its `.done` and that both runs ended final); its numbers have not been read.
