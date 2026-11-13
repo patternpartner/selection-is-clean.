@@ -31195,3 +31195,21 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
 - **Reopened as a design arm:** `AMP_NEIGH=0` skips the pass (default 1, byte-identical: `b07a4474`, `6cbe0c0d`; with 0, `dfe3bce1`).
   The pass charges amplitude for crowding by similar neighbours and runs amplitude predation. Under one currency amplitude no longer
   kills, but programs still sense it, so switching it off changes the world. One design pair running (`out-ampneigh/`).
+- **The design pair** (`out-ampneigh/a-*`, shipped against `AMP_NEIGH=0`, together, 1,500 s):
+
+  | | Shipped | `AMP_NEIGH=0` | Ratio |
+  |---|---|---|---|
+  | F at 5 / 10 / 15 / 20 / 25 min | 13,820 / 32,384 / 54,382 / 83,935 / 110,835 | 9,665 / 28,197 / 47,921 / 66,503 / 90,366 | 0.70 / 0.87 / 0.88 / 0.79 / **0.82** |
+  | Size 17+ | 19,831 | 13,586 | 0.69 |
+  | Ticks across the field | 83,235 | 84,287 | 1.01 |
+  | Alive | 30,690 | 28,142 | 0.92 |
+
+  - **The field misses it, and it bought no ticks.** Behind at every mark. The ticks are level, though the phase timer put the pass at
+    15-25% of a tick. My guess is that without the crowding charge similar creatures pack tighter, and the pair loop pays what the
+    pass saved, which fits the clumping reading above; not measured.
+  - **So the pass earns its place** (one pair, design, outside the 15% band on count and depth), and it is not a speed lever. Under
+    the rule #415 followed, the losing design arm comes out again: `AMP_NEIGH` is removed, and `engine.html` and `harness-env.js`
+    are `main`'s byte for byte. The phase instrument (`PROFILE`, the 26 wrapped calls) stays.
+  - **This is #417's declined removal tested after all, and the decline stands for a different reason:** #417 said the pass could buy
+    little, and that was a young field's reading; the pass costs a lot in a populated field, but removing it buys nothing, because
+    what it does (spreading similar creatures apart) is part of what keeps the rest of the tick cheap.
