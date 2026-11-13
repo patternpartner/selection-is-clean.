@@ -31134,3 +31134,20 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
   pixels. A lower K and a larger world both thin it; a lower K also shrinks the population. Neither is measured below 100 or above 920.
 - One pair, and the first leg reads 0.91. A different pair could cross later or sooner.
 - **Reloads** brought back 30 or 31 of 31 populations at every boundary in both fields. That is #418's fix holding over five reloads.
+
+### #420 — DENSITY, FIRST SCREEN: a dearer birth than 100 finds less; a larger world is next (design)
+**Below K=100, in arms** (one field alone, 1,500 s, eight universes a value; `out-arms/crowd-dense.jsonl`):
+
+| K | Functions per universe | Ticks per universe | Alive per universe | Size 17+ | Depth of new, last 5 min |
+|---|---|---|---|---|---|
+| 35 | 5,329 | 7,409 | 336 | 11,690 | 13.71 |
+| 50 | 8,652 | 6,860 | 386 | 11,201 | 12.81 |
+| 70 | 6,297 | 4,824 | 599 | 6,470 | 12.14 |
+| 100 (shipped) | **12,293** | 4,888 | 718 | 14,841 | 13.41 |
+
+- K=100 led from the first five minutes (659 a universe against 275-462). Below it the worlds are smaller and do tick faster (35
+  and 50 ran about 1.5x the ticks), and that did not make up for it. With #411's sweep above, 100 is the best value measured on
+  either side, at 25 minutes. 70 below 50 is the noise of one run with eight universes an arm.
+- **So thinning by shrinking the population has a floor**, somewhere below 100. A world needs enough creatures that reads find
+  neighbours and lineages survive; under about 600 a universe, it finds less. #419's density reading still stands for thinning the
+  same population over more ground, which is the next question: `#world=1840` against the shipped 920, a pair of fields, running.
