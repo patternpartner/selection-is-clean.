@@ -31054,3 +31054,6 @@ handover asked for pairs of whole fields. Two pairs were run (`out-crowd-field/`
   unchanged; the new default `6cbe0c0d`.
 - **What this cannot say:** anything past 25 minutes (the named follow-up is a 150-minute pair, `long-pair.sh`); whether K below 100
   is better still (both the arms and this suggest the slope has not flattened at 100); a phone.
+- **#415 + #416 acceptance**, on the shipped engine (ac2d377), nothing else running: `substrate-test` 264/0 at `TICKS=40`, `TICKS=900`,
+  the default and `FOUND=0`; `smoke.sh` in three slices **70 ok, 0 failing** (23, 23, 24), with `browser-test` and `collective-test`
+  run (no SKIP). `layers-test`'s two timing rows passed this time; #395 records them as flaky alone.
