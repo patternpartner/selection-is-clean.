@@ -31071,3 +31071,33 @@ handover asked for pairs of whole fields. Two pairs were run (`out-crowd-field/`
   - **It is not dead.** Amplitude reaches every program as a sense: register 3 in the solo program and the pair's energy
     context. Removing the pass changes what creatures perceive, so it is a world change and would need its own pairs.
 - **Not explained:** the 44% of the tick outside the five wrapped functions. A finer phase split is the instrument for that.
+
+### #418 — A RELOAD LOST MOST OF A FIELD'S POPULATIONS: the genome was written ahead of its snapshot. Fixed in the worker (`sim.worker.js`)
+**Found by the long pair that was to check #416's horizon** (`out-long/void-lp2-*`, K=100 against 450, chained 25-minute legs).
+At the first reload the K=100 field brought back 30 of its 31 universes' populations and the K=450 field **1 of 31**; the other 30
+restarted from founders, with their ground. That pair is void.
+- **Not the 4-second read race.** Every snapshot in both saved profiles read and gunzipped in about a second, all 31 at once.
+- **The saved pairs did not match.** Reading each profile (`lab/port/field-fpcheck.js`, new): 1 of 31 K=450 universes and **8 of
+  31 K=100 universes** held a snapshot carrying the fingerprint of the genome stored beside it. The engine restores a population
+  only beside the exact genome it was saved with, so a reload at that moment would have lost 23 and 30 of 31.
+- **The cause is mine (#414).** The engine writes the genome, then ENCODES THE WHOLE POPULATION (160-200 ms for 1,500-1,700
+  creatures in node; more in a worker that shares its core with seven other universes), then hands the snapshot to the hook. The
+  worker posted the genome at once and 'pending' only after the encode. The shell waits 250 ms for 'pending'; when the encode took
+  longer, it wrote the genome straight away, and the snapshot carrying it landed seconds later (gzip and the write, on a busy
+  thread). A reload in that gap refused the snapshot. Worse, the later 'landed' could then write an OLDER held genome over the new
+  one. #409 had the same 250 ms race on the page-save path; it was rarer there.
+- **The fix, in the worker only.** The localStorage shim holds the genome. The snapshot hook posts it immediately before
+  'pending', so the two reach the shell back to back. A microtask posts it alone if no snapshot follows in the same turn (an
+  extinction, a loaded file). The engine and the world are untouched.
+- **Its test, run against both sides.** `pophold-test` gains `ENC=ms` (a busy wait in the snapshot hook, standing in for a slow
+  encode) and `WORKER_FILE`. **Its old check was too weak:** it passed a genome written ahead of its own snapshot whenever the
+  previous snapshot had landed after the previous genome, and caught 1 of 4 such writes. It now checks the invariant itself, that the
+  stored snapshot carries the stored genome's fingerprint at every genome change:
+
+  | Worker | `ENC` | Order check | Fingerprint at every genome change |
+  |---|---|---|---|
+  | the fix with the hold switched off (control) | 600 | FAIL, 7 in order, 1 out | **FAIL, 0 of 8** |
+  | the fix | 600 | PASS | **PASS, 6 of 6** |
+  | the fix | 0 | PASS | **PASS, 8 of 8** |
+
+- **#406's "3 of 155" was probably this, at smaller populations.**
