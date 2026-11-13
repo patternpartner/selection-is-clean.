@@ -1,0 +1,60 @@
+{
+ "warm": 120,
+ "secs": 180,
+ "installedOn": 31,
+ "universes": 31,
+ "ticks": 5847,
+ "alive": 51001,
+ "meanLoopMs": 120.1,
+ "threadSecondsInLoop": 702,
+ "phaseShareOfLoop": {
+  "render": 0,
+  "processGrid": 0.452,
+  "applyEntropy": 0.154,
+  "updateParticles": 0.019,
+  "applyNicheEconomy": 0.012,
+  "executeSoloVM": 0.096,
+  "taskTick": 0.001,
+  "detectClusters": 0.001,
+  "updateField": 0.001,
+  "updateChannels": 0.003,
+  "networkReceive": 0,
+  "networkBroadcast": 0,
+  "specComputeAgg": 0,
+  "nicheOccupancy": 0,
+  "levelCensus": 0,
+  "trackClusterPersistence": 0,
+  "updateCosmos": 0,
+  "attemptFound": 0,
+  "updateAttentionField": 0,
+  "allocateWithinClusters": 0,
+  "rebuildFieldLineageCache": 0,
+  "decayNeighborModels": 0,
+  "updateParticleReflex": 0.001,
+  "updateClusterReflex": 0,
+  "updateClusterCredit": 0,
+  "updateHomeostatStack": 0,
+  "updateBridges": 0,
+  "applyRootForces": 0,
+  "crowdTick": 0,
+  "clusterDiversity": 0
+ },
+ "workerBusyShare": {
+  "0": {
+   "universes": 8,
+   "inLoop": 0.967
+  },
+  "1": {
+   "universes": 8,
+   "inLoop": 0.965
+  },
+  "2": {
+   "universes": 8,
+   "inLoop": 0.977
+  },
+  "3": {
+   "universes": 7,
+   "inLoop": 0.963
+  }
+ }
+}

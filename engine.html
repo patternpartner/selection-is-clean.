@@ -10734,6 +10734,11 @@ const TASK_TRICKLE=__tk('__TASK_TRICKLE',0)|0;
 // #366: REPL_PREY=0 switches predation (op 155's take from a neighbour's store, #273) off; the op then answers 0. Default 1, on.
 // #365: the two TASKS crashes examined were predator outbreaks - stores held at the 0.05 prey floor until nobody could breed.
 const REPL_PREY=(__tk('__REPL_PREY',1)|0)!==0;
+// #421: AMP_NEIGH=0 (design arm, default 1 = today's world byte for byte) skips applyEntropy's opening neighbour pass: amplitude
+// charged for crowding by similar neighbours (LEAP 12) and amplitude predation between distant lineages (LEAP 14). Under one
+// currency (STORE_DEATH) amplitude no longer kills, though programs still sense it. The pass scans every neighbour in a 3x3 block
+// of cells with no cap, and in a populated field it is 15-25% of the tick (#421's phase readings), against 10% in a young one.
+const AMP_NEIGH=(__tk('__AMP_NEIGH',1)|0)!==0;
 // #373: REPL_REFUGE=1 - a PREY REFUGE. A take may not bring the prey's store below the price of a birth (BIRTH_ENERGY_COST, a law, so the
 // refuge follows it), and a prey at or below that price is not taken from at all. #372's census: in 4 of 10 collapses of the default
 // TASKS world the whole population was held near the 0.05 floor op 155 stops at - predators too, since everyone drains everyone and a
@@ -22131,7 +22136,7 @@ function applyEntropy(){
   //       what lets unlike ones coexist, and densityCost (a global N term) could never express it.
   //   14: lineages far apart in trait space EAT each other. The Red Queen was built against a population
   //       that could not die, so it never bit. Dominance now makes you the most abundant prey.
-  {
+  if(AMP_NEIGH){   // #421: AMP_NEIGH=0 skips this pass (see its definition)
     for(let i=0;i<N;i++){
       if(!palive[i])continue;
       const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
