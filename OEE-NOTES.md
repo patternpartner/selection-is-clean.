@@ -31171,3 +31171,27 @@ reloading the field the last one left (`out-long/lp3-*`, on #418's fixed shell; 
   - **The ticks are the more useful reading.** Equal at 10 minutes at equal populations (41 thousand each); later the larger world
     ran 1.16x the ticks with 0.86x the creatures, about 1.2x the creature-ticks in the last five minutes. Half the density buys a
     little speed, not the 2.8x that separated K=100 from K=450 in #419. **So #419's explanation is corrected above.**
+
+### #421 — WHERE AN OLD FIELD'S TICK GOES, and the amplitude pass reopened
+`lab/port/field-phase.js` now boots a SAVED field (`PROFILE`, `PORT`), and the phase timer wraps 26 more of `loop`'s calls. Each of
+#419's two fields was restored from its save after leg 1 (25 minutes) and after leg 6 (150 minutes) and timed alone for 180 s
+(`out-phase/age-*.json`):
+
+| Field | Alive | ms a tick | Pair loop | `applyEntropy` | Solo VM | Ticks in 180 s |
+|---|---|---|---|---|---|---|
+| K=100 at 25 min | 29,937 | 85.1 | 44% | **25%** | 11% | 8,072 |
+| K=100 at 150 min | 27,470 | 51.6 | 40% | 18% | 14% | 12,751 |
+| K=450 at 25 min | 51,001 | 120.1 | 45% | 15% | 10% | 5,847 |
+| K=450 at 150 min | 51,806 | 126.5 | 49% | 16% | 11% | 5,641 |
+
+- **No age cost in K=450:** 120 and 126 ms a tick, 25 and 150 minutes old. The slowing of its legs in #419 (10.7 to 6.4 thousand
+  ticks) does not reproduce alone; a pair shares the machine, and how evenly is not measured. Not explained.
+- **The same K=100 field ticked 1.65x dearer at 25 minutes than at 150**, at about the same population. So a tick's cost follows
+  something other than how many creatures there are. My guess is how clumped they are (a child is placed within six pixels of its
+  parent), which would also explain why twice the area bought only 1.2x (#420). Not measured.
+- **`applyEntropy` is 15-25% of a populated field's tick**, against the 10% #417 read at five minutes into a young field. Most of
+  it is its opening neighbour pass, which scans a 3x3 block of cells around every creature with no cap. So #417's reason for
+  declining the pass's removal ("at most a tenth of the tick") was a reading of a young, sparse field.
+- **Reopened as a design arm:** `AMP_NEIGH=0` skips the pass (default 1, byte-identical: `b07a4474`, `6cbe0c0d`; with 0, `dfe3bce1`).
+  The pass charges amplitude for crowding by similar neighbours and runs amplitude predation. Under one currency amplitude no longer
+  kills, but programs still sense it, so switching it off changes the world. One design pair running (`out-ampneigh/`).
