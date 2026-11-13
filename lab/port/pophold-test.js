@@ -25,14 +25,26 @@ const server = http.createServer((req, res) => { const u = req.url.split('?')[0]
     const snap = () => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1); r.onupgradeneeded = () => { try { r.result.createObjectStore('pop'); } catch (e) {} };
       r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').get('pop_t1'); q.onsuccess = () => { const v = q.result; r.result.close(); res(v ? (typeof v === 'string' ? 's' + v.length : 'b' + v.size) : null); }; q.onerror = () => { r.result.close(); res(null); }; } catch (e) { res(null); } };
       r.onerror = () => res(null); } catch (e) { res(null); } });
+    // #418: the fingerprint the stored snapshot carries (the engine's popHash of the genome it was saved beside)
+    const snapFp = () => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1);
+      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').get('pop_t1'); q.onsuccess = async () => { const v = q.result; r.result.close();
+        try { const t = !v ? null : typeof v === 'string' ? v : await new Response(v.stream().pipeThrough(new DecompressionStream('gzip'))).text(); res(t ? JSON.parse(t).fp : null); } catch (e) { res('unreadable'); } };
+        q.onerror = () => { r.result.close(); res(null); }; } catch (e) { res(null); } }; r.onerror = () => res(null); } catch (e) { res(null); } });
     const ev = []; let g0 = null, p0 = null; const t0 = performance.now();
     while (performance.now() - t0 < SECS * 1000) { const g = localStorage.getItem('selection_t1'), gh = g ? hash(g) : null, p = await snap(), t = Math.round(performance.now() - t0);
-      if (p !== p0) { ev.push({ t, what: 'snapshot', v: p }); p0 = p; } if (gh !== g0) { ev.push({ t, what: 'genome', v: gh }); g0 = gh; }
+      if (p !== p0) { ev.push({ t, what: 'snapshot', v: p }); p0 = p; }
+      if (gh !== g0) { const fp = gh ? await snapFp() : null; ev.push({ t, what: 'genome', v: gh, match: !!gh && fp === gh }); g0 = gh; }
       await new Promise(r => setTimeout(r, 50)); }
     return ev; }, { SECS });
   await browser.close(); server.close();
   let ok = 0, bad = 0, lastSnap = -1, lastGenome = -1; const lines = [];
   for (const e of events) { if (e.what === 'snapshot') lastSnap = e.t; else { const fresh = lastSnap > lastGenome; if (fresh) ok++; else bad++; lines.push('genome written at ' + e.t + ' ms; last snapshot write at ' + lastSnap + ' ms -> ' + (fresh ? 'after its snapshot' : 'BEFORE its snapshot')); lastGenome = e.t; } }
   console.log(lines.join('\n')); console.log('snapshot writes seen: ' + events.filter(e => e.what === 'snapshot').length + '; genome writes: ' + (ok + bad));
-  console.log((bad === 0 && ok > 0 ? 'PASS' : 'FAIL') + '  every stored genome followed its snapshot   ' + ok + ' in order, ' + bad + ' out of order'); process.exit(bad === 0 && ok > 0 ? 0 : 1);
+  console.log((bad === 0 && ok > 0 ? 'PASS' : 'FAIL') + '  every stored genome followed its snapshot   ' + ok + ' in order, ' + bad + ' out of order');
+  // #418: THE INVARIANT ITSELF. The order check above passes a genome written ahead of its OWN snapshot whenever the previous snapshot
+  // landed after the previous genome (it caught 1 of 4 such writes in #418's control). Each time the stored genome changes, the stored
+  // snapshot must already carry its fingerprint, or a reload at that moment refuses it.
+  const G = events.filter(e => e.what === 'genome' && e.v), gm = G.filter(e => e.match).length;
+  console.log((gm === G.length && gm > 0 ? 'PASS' : 'FAIL') + '  the stored snapshot carries the stored genome\'s fingerprint at every genome change   ' + gm + ' of ' + G.length);
+  process.exit(bad === 0 && ok > 0 && gm === G.length && gm > 0 ? 0 : 1);
 })().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });
