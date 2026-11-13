@@ -31232,3 +31232,39 @@ the shipped 50 against 10 (`out-drain-field/a-*`, together, 1,500 s):
 - Behind from ten minutes on, and on depth by more than on count. Ticks level, so this is the drain itself, not speed.
 - **The arms reading does not carry to whole fields.** The arms ran at K=450 and shared a field. Here the world is K=100. Which of the
   two differences matters is not known. Not pursued; the drain stays at 50, which #410 found is missed when it is off (0.67).
+
+### #424 — THE TOURNAMENT: the field decides which of its mechanisms each universe runs (#252 stage 2, built)
+The user: "Try the switchboard, let the system decide." #253 gave each world a switchboard judged by its own population, and
+#252 had already said why that judge is blind (it keeps whatever does not shrink a population, and under the crowd price nothing
+does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under TASKS it can use the artwork's own number.
+- **`index.html#tourney`** (`tourp=N` sets the period in seconds; default 300). Every universe (surface, layers, grown) gets the
+  switchboard with its own proposals off, so its switches change only by the tournament, which the shells run
+  (`universe.html`, over a `BroadcastChannel`):
+  - Every period (jittered) a universe reads its new functions per tick since its last change and tells the others.
+  - It compares itself with one other, chosen at random. If the other found more per tick, it adopts the other's WHOLE
+    switchboard (the bundle is the combining), with one switch flipped half the time, and its window restarts.
+  - A universe's first switchboard is random, each switch off with probability 0.3, so there is something to choose between.
+  - Per tick, not per second: universes sharing a worker take turns, so they tick at about the same rate whatever each costs.
+  - The collective takes no part.
+- **Eleven switches:** #253's seven, plus the four #410 switched off in a TASKS field: `MOTIF_SELECT`, `REPL_PREY`, `TASK_DRAIN`,
+  `FOUND`, each read at its gate at call time. Without `#tourney` or `#prune` every world is byte-identical (`b07a4474`, `6cbe0c0d`).
+  Switched off alone at tick 0 in node: `MOTIF_SELECT` `3052d349`, `TASK_DRAIN` `f7236673`, `FOUND` `c10b7a47`, each a changed world.
+  **`REPL_PREY` changed nothing by 4,000 ticks on seed 3, because predation never fires there** (the engine's own counter: 0 events
+  with the switch on); #410 found a field misses it, so it fires in fields. Seeds 1-2 at 8,000 ticks are being checked.
+- **Mechanics, a field with 30-second rounds for six minutes** (`out-tourney/mech1.jsonl`): first switchboards random (each switch
+  on in 15-24 of 27 universes), 20 adoptions in 40 decisions, no errors. **One defect found:** at the last sample only 11 of 29
+  universes still reported a switchboard. A relit face writes a new hash into its frame, the shell passed it on without
+  `prune,tourney`, and the engine re-reads its switchboard on every hash change. The switches stayed set but would not have been
+  saved. Fixed (the forwarded hash goes through the same `tourHash()`), rerun as `mech2`.
+
+**What the long run will be read for, written before it starts.** A tournament field beside a shipped one, chained 25-minute legs
+(`lab/port/tourney-long.sh`). It is one field, read as design, not a decision:
+1. **Does the judge see anything?** The three switches #410 found missed when off (`REPL_PREY`, `TASK_DRAIN`, `MOTIF_SELECT`) should
+   end ON in more universes than the median of the other eight. All start near 70%. If they do not, the tournament is judging
+   noise at this scale, and its other choices mean nothing either.
+2. **What it nominates.** A switch that ends below 50% (from about 70%) is the field's nomination to remove; near 100%, to keep. A
+   nomination goes to the template (pairs of fields) before any code goes, as #252 planned.
+3. **Reported:** the tournament field's F against the shipped field's (it starts handicapped: about 30% of its switches are off at
+   random), adoptions per leg, and how the switch frequencies move leg by leg.
+- **The caveat before any number:** about 30 decisions per universe in 150 minutes, and neutral switches random-walk. Only large
+  effects can show.

@@ -137,7 +137,7 @@
   // boot; the metabolism panel (which runs out here on the main thread) would honour a change while
   // the HUD inside the worker would not, so the two would disagree about whether they are hidden.
   addEventListener('hashchange', function(){
-    try { worker.postMessage({ type:'hash', hash: location.hash || '' }); } catch(e){}
+    try { worker.postMessage({ type:'hash', hash: tourHash() }); } catch(e){}   // #424: a relit face's new hash keeps prune,tourney
   });
   // The SharedWorker outlives this frame. Its BroadcastChannel does not need the port, so a
   // frame that has gone keeps founding and saving into the next page on this origin — #reset
