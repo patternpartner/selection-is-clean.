@@ -30985,3 +30985,36 @@ booted every field run in #408-#411, and was never run through the full acceptan
     Not retuned.
   - `substrate-test` was not rerun: `engine.html` and `harness-env.js` are `main`'s byte for byte, and it reads neither shell file.
     It passed inside slice 1 at TICKS=40.
+
+### #415 — `TASK_VAR` REMOVED: #408's design arms did not earn their place, and the engine is the one before #408 byte for byte
+- #408 added `TASK_VAR` (payment scaled by a function's variance across the field) as design arms. None found more than the shipped
+  world, and its default (0) was byte-identical. Fable's handover queued the removal.
+- Removed from `engine.html` (the comment block, the constant, the check in the pay path) and from `harness-env.js`'s `KNOBS`.
+- **Check:** `git diff 8a9d61f^ -- engine.html` is empty, so the engine is the one before #408. Digests: `b07a4474` (TASKS off),
+  `b513b085` (seed 10401, 800 ticks), `3ec5f521` (seed 3, 1,500 ticks) all match `main`.
+- Acceptance is folded into #416's: whatever that decides, `substrate-test` at four budgets and `smoke.sh` run on the engine that
+  goes to `main`.
+
+### #416 — THE CROWD PRICE IN FIELDS OF ONE VALUE EACH: two design pairs, then a pre-registration at K=100
+Fable's #411 found the crowd price steep inside one shared field (K=100 at 2.1x the shipped 450). Arms share a machine, so the
+handover asked for pairs of whole fields. Two pairs were run (`out-crowd-field/`, `field-pair.sh`, 1,500 s each, together):
+
+| Pair | Arm | F by 25 min | Size 17+ | Ticks across the field | Alive |
+|---|---|---|---|---|---|
+| b | 450 | 148,678 | 21,750 | 48,111 | 52,019 |
+| b | 150 | 161,065 (1.08x) | 30,929 (1.42x) | 80,485 | 37,625 |
+| d | 450 | 62,840 | 6,981 | 31,316 | 50,268 |
+| d | 100 | 105,744 (1.68x) | 21,303 (3.05x) | 71,785 | 30,419 |
+
+- **Both lean the way the arms did, and the depth gain is larger than the count gain in both.** A dearer birth gives a smaller
+  world (0.6-0.7x the creatures) that runs 1.7-2.3x the ticks.
+- **K=100 was behind early in pair d** (0.62 at 5 minutes, level at 10, ahead from 15). Pair b's K=150 was ahead at 5 (1.53) and
+  then level.
+- **The two shipped fields differ 2.4-fold** (62,840 against 148,678), on the same engine on the same machine. That is far
+  outside the 15% this page has quoted for one engine's fields. Pair d's base being the lowest is the first risk the
+  pre-registration names.
+- Pair a (Fable's K=150) ended with the allowance and pair c (K=100) with a container restart at about 10 minutes; both are kept
+  as void.
+- **Pre-registered as `lab/port/PREREG-crowd100.md`** (eight new pairs, `crowd100-batch.sh`, `analyse-crowd100.js`): one-sided
+  Wilcoxon on log(F_k100/F_ship) at 25 minutes, floor 6 pairs. BETTER ships only if K=100 also found more functions of size 17+ in
+  more than half the pairs. My prediction: BETTER, about 6 of 8, median about 1.4.
