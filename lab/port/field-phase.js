@@ -3,12 +3,13 @@
 // (__field.phaseForTest(), sim.worker.js: performance.now() around loop and its largest phases, and the wall time between loops),
 // and SECS later reads the totals. Per universe: ticks, ms inside loop per tick, the phases' shares, and gap - the time between one
 // tick ending and the next starting, which is the wait for the worker thread (its other universes, pace delays, messages).
-//   OUT=x.json WARM=120 SECS=120 [ENGINE=path] [HASH=#...] [SHOT=end.png] node lab/port/field-phase.js
+//   OUT=x.json WARM=120 SECS=120 [ENGINE=path] [HASH=#...] [SHOT=end.png] [PROFILE=dir PORT=n] node lab/port/field-phase.js
 const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = path.resolve(__dirname, '..', '..');
 const ENGINE = process.env.ENGINE ? path.resolve(process.env.ENGINE) : path.join(ROOT, 'engine.html');
 const WARM = +(process.env.WARM || 120), SECS = +(process.env.SECS || 120), HASH = process.env.HASH || '', OUT = process.env.OUT || '';
+const PROFILE = process.env.PROFILE || '', PORT = +(process.env.PORT || 0);
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
 const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>fs.existsSync(p)) || '/opt/pw-browsers/chromium';
 const server = http.createServer((req, res) => { const u0 = req.url.split('?')[0], u = (u0 === '/' ? '/index.html' : u0);
@@ -26,9 +27,12 @@ const readField = (page, ms) => page.evaluate(async ms => {
   return Promise.all(els.map(one));
 }, ms);
 (async () => {
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
-  const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-  const page = await (await browser.newContext({ viewport: { width: 412, height: 915 } })).newPage();
+  await new Promise(r => server.listen(PORT, '127.0.0.1', r));
+  // #421: PROFILE=dir (with the PORT the field ran on: storage is per origin) boots a SAVED field, so an old field's tick can be
+  // read against a young one's. Use a copy: the field keeps saving into it.
+  const ctx = PROFILE ? await chromium.launchPersistentContext(PROFILE, { executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'], viewport: { width: 412, height: 915 } }) : null;
+  const browser = PROFILE ? null : await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  const page = PROFILE ? (ctx.pages()[0] || await ctx.newPage()) : await (await browser.newContext({ viewport: { width: 412, height: 915 } })).newPage();
   await page.goto('http://127.0.0.1:' + server.address().port + '/' + HASH, { waitUntil: 'load' });
   await new Promise(r => setTimeout(r, WARM * 1000));
   const inst = await readField(page, 60000);
@@ -45,5 +49,5 @@ const readField = (page, ms) => page.evaluate(async ms => {
     workerBusyShare: Object.fromEntries(Object.entries(pools).map(([k, v]) => [k, { universes: v.universes, inLoop: +v.busy.toFixed(3) }])), rows };
   const s = JSON.stringify(out); if (OUT) fs.writeFileSync(OUT, s + '\n'); console.log(JSON.stringify({ ...out, rows: undefined }, null, 1));
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });   // SHOT=file.png: what the field looks like at the end
-  await browser.close(); server.close();
+  if (ctx) await ctx.close(); else await browser.close(); server.close();
 })().catch(e => { console.error(String(e && e.stack || e)); process.exit(1); });

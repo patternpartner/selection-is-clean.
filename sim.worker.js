@@ -133,6 +133,33 @@ const BRIDGE =
     'WR("applyEntropy",function(){return applyEntropy;},function(w){applyEntropy=w;});' +
     'WR("updateParticles",function(){return updateParticles;},function(w){updateParticles=w;});' +
     'WR("applyNicheEconomy",function(){return applyNicheEconomy;},function(w){applyNicheEconomy=w;});' +
+    // #421: the rest of loop's direct calls, so 'other' is no longer 44% of the tick. A name the engine lacks is skipped.
+    'try{WR("executeSoloVM",function(){return executeSoloVM;},function(w){executeSoloVM=w;});}catch(_e){}' +
+    'try{WR("taskTick",function(){return taskTick;},function(w){taskTick=w;});}catch(_e){}' +
+    'try{WR("detectClusters",function(){return detectClusters;},function(w){detectClusters=w;});}catch(_e){}' +
+    'try{WR("updateField",function(){return updateField;},function(w){updateField=w;});}catch(_e){}' +
+    'try{WR("updateChannels",function(){return updateChannels;},function(w){updateChannels=w;});}catch(_e){}' +
+    'try{WR("networkReceive",function(){return networkReceive;},function(w){networkReceive=w;});}catch(_e){}' +
+    'try{WR("networkBroadcast",function(){return networkBroadcast;},function(w){networkBroadcast=w;});}catch(_e){}' +
+    'try{WR("specComputeAgg",function(){return specComputeAgg;},function(w){specComputeAgg=w;});}catch(_e){}' +
+    'try{WR("nicheOccupancy",function(){return nicheOccupancy;},function(w){nicheOccupancy=w;});}catch(_e){}' +
+    'try{WR("levelCensus",function(){return levelCensus;},function(w){levelCensus=w;});}catch(_e){}' +
+    'try{WR("trackClusterPersistence",function(){return trackClusterPersistence;},function(w){trackClusterPersistence=w;});}catch(_e){}' +
+    'try{WR("updateCosmos",function(){return updateCosmos;},function(w){updateCosmos=w;});}catch(_e){}' +
+    'try{WR("attemptFound",function(){return attemptFound;},function(w){attemptFound=w;});}catch(_e){}' +
+    'try{WR("train",function(){return train;},function(w){train=w;});}catch(_e){}' +
+    'try{WR("updateAttentionField",function(){return updateAttentionField;},function(w){updateAttentionField=w;});}catch(_e){}' +
+    'try{WR("allocateWithinClusters",function(){return allocateWithinClusters;},function(w){allocateWithinClusters=w;});}catch(_e){}' +
+    'try{WR("rebuildFieldLineageCache",function(){return rebuildFieldLineageCache;},function(w){rebuildFieldLineageCache=w;});}catch(_e){}' +
+    'try{WR("decayNeighborModels",function(){return decayNeighborModels;},function(w){decayNeighborModels=w;});}catch(_e){}' +
+    'try{WR("updateParticleReflex",function(){return updateParticleReflex;},function(w){updateParticleReflex=w;});}catch(_e){}' +
+    'try{WR("updateClusterReflex",function(){return updateClusterReflex;},function(w){updateClusterReflex=w;});}catch(_e){}' +
+    'try{WR("updateClusterCredit",function(){return updateClusterCredit;},function(w){updateClusterCredit=w;});}catch(_e){}' +
+    'try{WR("updateHomeostatStack",function(){return updateHomeostatStack;},function(w){updateHomeostatStack=w;});}catch(_e){}' +
+    'try{WR("updateBridges",function(){return updateBridges;},function(w){updateBridges=w;});}catch(_e){}' +
+    'try{WR("applyRootForces",function(){return applyRootForces;},function(w){applyRootForces=w;});}catch(_e){}' +
+    'try{WR("crowdTick",function(){return crowdTick;},function(w){crowdTick=w;});}catch(_e){}' +
+    'try{WR("clusterDiversity",function(){return clusterDiversity;},function(w){clusterDiversity=w;});}catch(_e){}' +
     'var L=loop;loop=function(){var a=performance.now();if(P.last)P.gap+=a-P.last;try{return L.apply(this,arguments);}finally{var b=performance.now();P.loop+=b-a;P.n++;P.last=b;}};' +
     'return {installed:true,tick:tick};}' +
     'var P=__inst.ph,al=0;for(var i=0;i<N;i++)if(palive[i])al++;var o={ms:performance.now()-P.t0,n:P.n,loop:P.loop,gap:P.gap,alive:al,tick:tick,W:W,H:H,pace:(typeof __paceMs!=="undefined")?__paceMs:null,f:{}};for(var k in P.f)o.f[k]=P.f[k];return o;' +
