@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|tourney|tourp=\\d+|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|tourney|tourp=\\d+|tourv=\\d|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -356,7 +356,7 @@
     var off=raw.match(/(?:^|,)armoff=(\d+)/); return list.length?{list:list,n:off?parseInt(off[1],10):0}:null; })();   // armoff=k starts the round robin k places on, so a second run puts each arm in other cells
   function armQ(){ if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
   // #424: #tourney gives every universe (surface, layers, grown) the tournament (universe.html); #tourp=N sets its period in seconds.
-  var TOURQ = (function(){ if(!/(?:^|,)tourney(?:,|$)/.test(raw)) return ''; var m=raw.match(/(?:^|,)tourp=(\d+)/); return '&tourney=1'+(m?('&tourp='+m[1]):''); })();
+  var TOURQ = (function(){ if(!/(?:^|,)tourney(?:,|$)/.test(raw)) return ''; var m=raw.match(/(?:^|,)tourp=(\d+)/), v=raw.match(/(?:^|,)tourv=(\d)/); return '&tourney=1'+(m?('&tourp='+m[1]):'')+(v?('&tourv='+v[1]):''); })();
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
                             return Math.max(0,Math.min(5000,isFinite(v)?v:1000)); })();
   // ═══ #165 — LAYERS ═════════════════════════════════════════════════════════════════════════

@@ -259,10 +259,16 @@
   // whatever each costs. The collective takes no part (it is fed by everyone). What the field ends up holding is the system's answer to
   // which of these mechanisms it needs; the check on that answer is #410, which found three of them missed when off.
   var TOURNEY = /[?&]tourney=1(&|$)/.test(location.search || ''), TOUR_P0 = 0.3, TOUR_MUT = 0.5, TOUR_WMIN = 600;
+  // #425: tourv=2, from what #424's run showed. (1) Every universe starts with everything ON, so the field is not handicapped while it
+  // searches; a switch changes by a PROPOSAL (one flip, TOUR2_PROP of the cycles) or by COPYING. (2) Copying takes ONE switch where the
+  // two switchboards differ, not the bundle, so a switch is not carried by whatever made the other world win. (3) A universe is compared
+  // only with others of its own kind (built, first layer, second layer, grown), and copies only if the other is ahead by TOUR2_MARGIN.
+  var TOURV = (function(){ var m=(location.search||'').match(/[?&]tourv=(\d)/); return m ? parseInt(m[1],10) : 1; })(), TOUR2_PROP = 0.25, TOUR2_MARGIN = 1.1;
+  function tourKind(s){ s = String(s || ''); return /^u\d/.test(s) ? 'u' : /^L1_/.test(s) ? 'L1' : /^L2_/.test(s) ? 'L2' : /^g\d/.test(s) ? 'g' : s; }
   var TPERIOD = (function(){ var m=(location.search||'').match(/[?&]tourp=(\d{1,4})/); return (m ? parseInt(m[1],10) : 300) * 1000; })();
   var tour = { w0:null, others:{}, adopt:0, decide:0, lastR:null, lastN:0, chan:null, log:[] };
   function tourHash(){ var h = location.hash || ''; if (!/[?&]tourney=1(&|$)/.test(location.search || '')) return h; return (h ? h + ',' : '#') + 'prune,tourney'; }   // called before TOURNEY is assigned
-  function tourStat(){ return { adopt:tour.adopt, decide:tour.decide, R:tour.lastR, n:tour.lastN, peers:Object.keys(tour.others).length }; }
+  function tourStat(){ return { v:TOURV, prop:tour.prop | 0, adopt:tour.adopt, decide:tour.decide, R:tour.lastR, n:tour.lastN, peers:Object.keys(tour.others).length }; }
   function tourMutate(v){ var o = {}, k; for (k in v) o[k] = v[k]; if (Math.random() < TOUR_MUT){ var ks = Object.keys(o); if (ks.length){ var q = ks[(Math.random()*ks.length)|0]; o[q] = o[q] ? 0 : 1; } } return o; }
   function tourCycle(){
     ask('tourney', null).then(function(st){
@@ -270,12 +276,13 @@
       var IK = 'tourney_init_' + (SLOT || 'genome');
       if (!tour.w0){ tour.w0 = { total:st.total, seen:st.seen };
         var done = false; try { done = localStorage.getItem(IK) === '1'; } catch(e){}
-        if (!done){ var v = {}, k; for (k in st.values) v[k] = (Math.random() < TOUR_P0) ? 0 : 1;
+        if (!done && TOURV < 2){ var v = {}, k; for (k in st.values) v[k] = (Math.random() < TOUR_P0) ? 0 : 1;
           ask('tourneyset', { values:v }).then(function(){ try { localStorage.setItem(IK, '1'); } catch(e){} }); }
         return; }
       var n = st.total - tour.w0.total, R = n > 0 ? (st.seen - tour.w0.seen) / n : 0; tour.lastR = R; tour.lastN = n;
       if (tour.chan){ try { tour.chan.postMessage({ slot:SLOT, R:R, n:n, values:st.values, t:Date.now() }); } catch(e){} }
       if (n < TOUR_WMIN) return;
+      if (TOURV >= 2){ tourCycle2(st, n, R); return; }
       var now = Date.now(), cand = [], s;
       for (s in tour.others){ var o = tour.others[s]; if (o.n >= TOUR_WMIN && now - o.t < 3 * TPERIOD) cand.push(o); }
       if (!cand.length) return;
@@ -284,6 +291,21 @@
         ask('tourneyset', { values:nv }).then(function(r){ if (r && !r.err){ tour.adopt++; tour.w0 = { total:st.total, seen:st.seen };
           tour.log.push([Math.round(now/1000), c.slot, +R.toFixed(3), +c.R.toFixed(3)]); while (tour.log.length > 50) tour.log.shift(); } }); }
     }).catch(function(){});
+  }
+  function tourCycle2(st, n, R){   // #425
+    var now = Date.now(), ks = Object.keys(st.values);
+    if (Math.random() < TOUR2_PROP){ var q = ks[(Math.random() * ks.length) | 0], nv = {}, k; for (k in st.values) nv[k] = st.values[k]; nv[q] = nv[q] ? 0 : 1;
+      ask('tourneyset', { values:nv }).then(function(r){ if (r && !r.err){ tour.prop = (tour.prop | 0) + 1; tour.w0 = { total:st.total, seen:st.seen };
+        tour.log.push([Math.round(now/1000), 'propose', q, nv[q]]); while (tour.log.length > 50) tour.log.shift(); } }); return; }
+    var cand = [], s, my = tourKind(SLOT);
+    for (s in tour.others){ var o = tour.others[s]; if (tourKind(s) === my && o.n >= TOUR_WMIN && now - o.t < 3 * TPERIOD) cand.push(o); }
+    if (!cand.length) return;
+    tour.decide++; var c = cand[(Math.random() * cand.length) | 0];
+    if (!(c.R > R * TOUR2_MARGIN)) return;
+    var diff = ks.filter(function(k){ return c.values[k] !== undefined && c.values[k] !== st.values[k]; }); if (!diff.length) return;
+    var d = diff[(Math.random() * diff.length) | 0], nv2 = {}, k2; for (k2 in st.values) nv2[k2] = st.values[k2]; nv2[d] = c.values[d];
+    ask('tourneyset', { values:nv2 }).then(function(r){ if (r && !r.err){ tour.adopt++; tour.w0 = { total:st.total, seen:st.seen };
+      tour.log.push([Math.round(now/1000), c.slot, d, nv2[d], +R.toFixed(3), +c.R.toFixed(3)]); while (tour.log.length > 50) tour.log.shift(); } });
   }
   if (TOURNEY && SLOT !== 'collective'){
     try { tour.chan = new BroadcastChannel('selection-tourney'); tour.chan.onmessage = function(e){ var m = e.data; if (m && m.slot && m.slot !== SLOT) tour.others[m.slot] = m; }; } catch(e){}

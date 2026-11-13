@@ -31346,3 +31346,23 @@ does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under 
 - **Prediction** (not worse, neither direction, median about 1.03, size 17+ about 0.95, so it switches off): wrong on the guard.
   6 for 13.
 - **What would decide it:** more pairs, or a longer horizon. Given the early cost and the spread, it is not first in line.
+
+### #425 — THE TOURNAMENT, SECOND VERSION (`#tourney,tourv=2`), from what #424 showed (design)
+`universe.html` only; v1 is unchanged and stays the default under `#tourney`.
+1. **Every universe starts with everything ON**, so the field is the shipped field until it changes something. A switch changes by a
+   PROPOSAL (one random flip, in a quarter of the cycles) or by COPYING.
+2. **Copying takes ONE switch** where the two switchboards differ, not the whole bundle, so a switch is not carried along by whatever
+   made the other world win.
+3. **A universe is compared only with others of its own kind** (built, first layer, second layer, grown), and copies only if the other
+   finds at least 1.1x as many new functions per tick.
+
+**What its long run will be read for, written before it starts** (a v2 field beside a shipped one, chained 25-minute legs, one pair,
+design):
+- **It must not cost the field:** cumulative F at the end at least 0.85 of the shipped field's (one field's band). v1 ended at 0.86
+  with a widening gap.
+- **It must keep what is known to matter:** the three #410 found missed (`REPL_PREY`, `TASK_DRAIN`, `MOTIF_SELECT`) ON in at least 90%
+  of universes at the end. They start at 100%; a proposal that switches one off should lose, and be copied back.
+- **Its nominations:** a switch OFF in at least a third of universes at the end, having started ON everywhere, is the field's
+  nomination to remove, for the template to test.
+- If the first two fail, the rule cannot decide at this scale either, and the honest conclusion is that a field's own noise is
+  larger than these mechanisms' effects on it.

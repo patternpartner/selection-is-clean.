@@ -124,7 +124,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
       ps.found = Math.max(ps.found, (r.n | 0) - (r.boot | 0)); ps.ticks = r.totalTicks | 0;
       if (!sw) sw = r.sw;
       if (r.swb) { SWBN++; for (const k in r.swb) SWB[k] = (SWB[k] || 0) + (r.swb[k] ? 1 : 0); }
-      if (r.tour) { TOUR.U++; TOUR.adopt += r.tour.adopt | 0; TOUR.decide += r.tour.decide | 0; }
+      if (r.tour) { TOUR.U++; TOUR.adopt += r.tour.adopt | 0; TOUR.decide += r.tour.decide | 0; TOUR.prop = (TOUR.prop | 0) + (r.tour.prop | 0); }
       // #407: a field built with #arms tells each universe's arm; each arm keeps its own union (what ITS universes found) and depth
       let AK = null; if (r.arm) { const key = Object.entries(r.arm).map(([k, v]) => k + '=' + v).join(','); AK = armSets[key] || (armSets[key] = { set: new Set(), sz: [] });
         const T = tally[key] || (tally[key] = { U: 0, K: 0, A: 0, ground: {} }); T.U++; T.K += r.totalTicks | 0; T.A += r.alive | 0; T.ground[r.ground] = (T.ground[r.ground] || 0) + 1; if (r.chk) { const c = JSON.stringify(r.chk); T.chk = T.chk || {}; T.chk[c] = (T.chk[c] || 0) + 1; } }
