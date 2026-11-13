@@ -2,20 +2,24 @@
 // at once and the population snapshot to IndexedDB afterwards; a tab killed in between came back from founders (#406). The shell
 // now holds the genome until the snapshot has landed. This opens ONE universe with the snapshot write slowed (?poptest=ms), polls
 // both stores every 50 ms through SECS, and for every change of the stored genome checks that the snapshot changed FIRST.
-//   SECS=270 DELAY=3000 [SHELL=path/to/universe.html to test another shell] node lab/port/pophold-test.js
+//   SECS=270 DELAY=3000 [ENC=600] [SHELL_FILE=path/to/universe.html] [WORKER_FILE=path/to/sim.worker.js] node lab/port/pophold-test.js
+// #418: ENC=ms also slows the ENCODE (a busy wait inside the worker's snapshot hook, ?popenc=ms). A field universe of 1,600 creatures
+// takes 200 ms or more to encode, and the shell's wait for 'pending' is 250 ms: a genome posted before the encode was written ahead of
+// its snapshot. ENC=600 reproduces that against a worker that does not hold the genome (WORKER_FILE), and must pass on today's.
 const { chromium } = (function(){ try{ return require('playwright-core'); }catch(e){ return require('playwright'); } })();
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = path.resolve(__dirname, '..', '..'), SHELL = process.env.SHELL_FILE ? path.resolve(process.env.SHELL_FILE) : path.join(ROOT, 'universe.html');
-const SECS = +(process.env.SECS || 270), DELAY = +(process.env.DELAY || 3000);
+const SECS = +(process.env.SECS || 270), DELAY = +(process.env.DELAY || 3000), ENC = +(process.env.ENC || 0);
+const WORKER = process.env.WORKER_FILE ? path.resolve(process.env.WORKER_FILE) : path.join(ROOT, 'sim.worker.js');
 const TYPES = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json' };
 const CHROME = process.env.CHROME_PATH || ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome','/opt/pw-browsers/chromium'].find(p=>fs.existsSync(p)) || '/opt/pw-browsers/chromium';
-const server = http.createServer((req, res) => { const u = req.url.split('?')[0]; fs.readFile(u === '/universe.html' ? SHELL : path.join(ROOT, u), (e, b) => { if (e) { res.writeHead(404); res.end(); return; }
+const server = http.createServer((req, res) => { const u = req.url.split('?')[0]; fs.readFile(u === '/universe.html' ? SHELL : u === '/sim.worker.js' ? WORKER : path.join(ROOT, u), (e, b) => { if (e) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(u)] || 'application/octet-stream' }); res.end(b); }); });
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await (await browser.newContext({ viewport: { width: 640, height: 480 } })).newPage();
-  await page.goto('http://127.0.0.1:' + server.address().port + '/universe.html?slot=t1&poptest=' + DELAY + '#cleanart', { waitUntil: 'load' });
+  await page.goto('http://127.0.0.1:' + server.address().port + '/universe.html?slot=t1&poptest=' + DELAY + (ENC ? '&popenc=' + ENC : '') + '#cleanart', { waitUntil: 'load' });
   const events = await page.evaluate(async ({ SECS }) => {
     const hash = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + ':' + s.length; };
     const snap = () => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1); r.onupgradeneeded = () => { try { r.result.createObjectStore('pop'); } catch (e) {} };

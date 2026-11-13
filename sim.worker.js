@@ -162,7 +162,7 @@ const BRIDGE =
   // __popHook is set, and only this bridge sets it: under node and on a standalone page nothing is encoded. The snapshot is
   // megabytes, so it does not go through the localStorage shim; the shell keeps it in IndexedDB under this universe's slot.
   // #414: with a store key from the shell, the snapshot is gzipped and stored HERE, so megabytes never cross the page's main thread.
-  'try{__popHook=function(s){if(__inst.halted)return;try{if(__inst.pkey&&__inst.popSave)__inst.popSave(s);else __inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
+  'try{__popHook=function(s){if(__inst.halted)return;try{if(__inst.popEnc){var _t=Date.now()+__inst.popEnc;while(Date.now()<_t){}}__inst.genomeFlush();if(__inst.pkey&&__inst.popSave)__inst.popSave(s);else __inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
   '__inst.api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
   // #164: set this universe's PACE live, without touching its hash. The hash route would work — the
   // engine re-reads pace on hashchange — but the hash is the CREATURE's (#cleanart, #turbo, and
@@ -343,8 +343,16 @@ Universe.prototype.buildEnv = function (initHash, dpr) {
   // Writes are forwarded to the shell that owns this universe, which owns the real localStorage.
   const localStorageShim = {
     getItem(k) { return k in inst.lsStore ? inst.lsStore[k] : null; },
-    setItem(k, v) { inst.lsStore[k] = String(v); if (inst.halted) return; try { inst.post({ type: 'persist', key: k, value: String(v) }); } catch (_) {} },
-    removeItem(k) { delete inst.lsStore[k]; try { inst.post({ type: 'persist', key: k, value: null }); } catch (_) {} },
+    // #418: THE GENOME IS HELD HERE UNTIL ITS SNAPSHOT IS ON ITS WAY. The engine writes the genome, then encodes the whole
+    // population (200 ms for 1,600 creatures in node, more on a worker shared by eight universes) and only then hands the snapshot
+    // to the hook. Posted at once, the genome reached the shell before the snapshot's 'pending', the shell's 250 ms wait ran out,
+    // and the genome was written ahead of its snapshot; a reload then refused the snapshot (#418: 23 of 31 and 30 of 31 universes
+    // in two fields). So the genome waits in the worker: the snapshot hook posts it immediately before 'pending', and a microtask
+    // posts it alone if no snapshot follows in the same turn (an extinction, a loaded file).
+    setItem(k, v) { inst.lsStore[k] = String(v); if (inst.halted) return;
+      if (k === 'selection_genome') { inst.gHeld = String(v); if (!inst.gHeldQ) { inst.gHeldQ = true; Promise.resolve().then(() => { inst.gHeldQ = false; inst.genomeFlush(); }); } return; }
+      try { inst.post({ type: 'persist', key: k, value: String(v) }); } catch (_) {} },
+    removeItem(k) { delete inst.lsStore[k]; if (k === 'selection_genome') inst.genomeFlush(); try { inst.post({ type: 'persist', key: k, value: null }); } catch (_) {} },
   };
 
   // location.hash carries options (e.g. #turbo=N). Mirror the shell's hash. A plain mutable
@@ -393,6 +401,7 @@ Universe.prototype.boot = async function (d) {
   // #414: where this universe's population snapshot lives (IndexedDB 'selection_pop', store 'pop'), so the worker writes it itself
   this.pkey = (typeof d.pkey === 'string' && d.pkey && typeof indexedDB !== 'undefined' && typeof CompressionStream !== 'undefined') ? d.pkey : null;
   this.popDelay = Math.max(0, Math.min(60000, d.poptest | 0)); this.popSeq = 0; this.popNext = null; this.popBusy = false;
+  this.popEnc = Math.max(0, Math.min(5000, d.popenc | 0));   // #418: a rig's slowed encode (pophold-test ENC): a busy wait inside the snapshot hook
   this.canvas = d.canvas;
   // pre-load the saved genome so the sim's synchronous boot read finds it
   if (d.genome) this.lsStore['selection_genome'] = d.genome;
@@ -437,6 +446,9 @@ function popDb() {
   } catch (e) { __popDbP = null; rej(e); } });
   return __popDbP;
 }
+// #418: post the genome the engine wrote in this turn (held by the localStorage shim), if any.
+Universe.prototype.genomeFlush = function () { if (this.gHeld === null || this.gHeld === undefined) return; const v = this.gHeld; this.gHeld = null;
+  if (this.halted) return; try { this.post({ type: 'persist', key: 'selection_genome', value: v }); } catch (_) {} };
 Universe.prototype.popSave = function (s) {
   const seq = ++this.popSeq; this.post({ type: 'pop', pending: seq });
   this.popNext = { s, seq }; if (!this.popBusy) this.popDrain();

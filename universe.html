@@ -187,6 +187,7 @@
   var POP_WAIT = 250, popHold = null, popHoldT = 0, popWait = {};   // #414: popWait[n] is the genome waiting for worker-stored snapshot n   // the snapshot message follows the genome within the same worker turn, so a quarter second is ample
   function genomeWrite(g){ try { localStorage.setItem(GKEY, g); } catch(ex){} }
   function popHoldFlush(){ if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } if (popHold !== null){ var g = popHold; popHold = null; genomeWrite(g); } }
+  var POPENC = (function(){ try { var m=(location.search||'').match(/[?&]popenc=(\d{1,4})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();   // #418: a rig's slowed encode, in ms
   var POPTEST = (function(){ try { var m=(location.search||'').match(/[?&]poptest=(\d{1,5})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();   // a rig's delay on the snapshot write, in ms
   function popPut(s, g){   // one write at a time; a snapshot that arrives meanwhile replaces any still waiting (and its genome with it)
     if (popBusy){ if (popNext && popNext.g !== null && g === null) g = popNext.g; popNext = { s:s, g:g }; return; } popBusy = true;
@@ -204,7 +205,7 @@
       genome: (stored && stored.length>10) ? stored : null,
       mind: (storedMind && storedMind.length>10) ? storedMind : null,
       pop: (typeof pop === 'string' && pop.length > 10) ? pop : null,   // #368
-      pkey: PKEY, poptest: POPTEST,   // #414: the worker stores the snapshot itself, under this key
+      pkey: PKEY, poptest: POPTEST, popenc: POPENC,   // #414: the worker stores the snapshot itself, under this key
       hash: location.hash || '', src:'engine.html'
     }, [off]);
   });
