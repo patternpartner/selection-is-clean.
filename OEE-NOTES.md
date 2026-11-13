@@ -31321,3 +31321,4 @@ does). Its stage 2, a judge BETWEEN worlds, was designed and never built. Under 
   digest and the shell passes the same hash), so this is not the change. **It is a fragile row:** it asks every universe past 1,000
   ticks to have seen parents, and a grown universe sometimes barely reproduces. Not retuned. Why a grown universe sometimes barely
   reproduces is not diagnosed; the crowd price is not it (a small world's births are cheap under it).
+  Slice 3 24/0. **In all, 69 ok and 1 failing** (the `mind-test` row above, failing on `main` too). `main` fast-forwarded.
