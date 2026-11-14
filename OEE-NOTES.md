@@ -31540,7 +31540,7 @@ each universe's set in `field-rate.js` slot [8], `lab/port/factorial-batch.sh`, 
 - **My prediction was wrong** (the check would pass for predation and the drain): 7 for 15.
 
 
-### #431 — IS THE MIND'S VALUE ITS LEARNING? (running) The learning mind against the same writes drawn without a model
+### #431 — THE MIND'S VALUE IS NOT ITS LEARNING: the same writes drawn without a model find MORE (SHIPPED: under TASKS the mind no longer learns)
 Pre-registered as `lab/port/PREREG-mind-learn.md` before any decision run. The mind is the one layer #430 could see (0.43) and #410
 missed (0.63), but a universe without it loses two things: the model, and one extra instruction rewrite in a fifth of births. The
 DRAW arm keeps the rewrites (same 20%, same one instruction) and drops the model: the operation is drawn as a TASKS mutation draws
@@ -31554,3 +31554,38 @@ asked, no universe missed, no errors.
   `sim.worker.js`'s `sw.mindMode`; `engine.html` is `main`'s, so `substrate-test` is not re-run): `smoke.sh` slice 1 23/0, slice 3
   24/0, slice 2 22 ok and 1 failing, `mind-test`, on the grown-universe row #424 recorded failing on `main` too (`g0` 3 parents seen,
   0 written). Alone straight after, 10/0. `browser-test` checked running, not skipping. `main` fast-forwarded.
+- **Result** (`node lab/port/analyse-mind-learn.js`, `out-mind/p1-p6`): 6 complete pairs of 6, no switch-check failure (every run's
+  first-read universe reported `learn` or `uniform` as asked, and the shipped switches).
+
+  | pair | learn F | draw F | ratio | 5 / 10 / 15 / 20 min | size 17+ learn / draw | ticks learn / draw |
+  |---|---|---|---|---|---|---|
+  | p1 | 83,171 | 108,949 | 1.31 | 1.67 / 1.12 / 1.07 / 1.24 | 12,829 / 31,682 | 76,461 / 91,781 |
+  | p2 | 90,671 | 109,149 | 1.20 | 1.95 / 1.54 / 1.33 / 1.24 | 18,349 / 19,224 | 92,098 / 83,318 |
+  | p3 | 53,117 | 106,204 | 2.00 | 3.30 / 3.02 / 2.35 / 2.17 | 6,214 / 22,207 | 88,559 / 87,810 |
+  | p4 | 95,767 | 89,449 | 0.93 | 0.34 / 0.86 / 0.86 / 0.87 | 14,113 / 18,340 | 77,603 / 85,084 |
+  | p5 | 70,634 | 92,676 | 1.31 | 0.91 / 1.54 / 1.56 / 1.54 | 10,226 / 18,012 | 76,112 / 93,302 |
+  | p6 | 100,706 | 127,979 | 1.27 | 1.93 / 1.30 / 1.07 / 1.28 | 15,310 / 33,676 | 78,855 / 98,196 |
+
+  - Primary: Wilcoxon on `log(F_draw/F_learn)`, W+ 20 of 21, p(draw less) 0.98, **p(draw greater) 0.031**; draw ahead in 5 of 6.
+  - Guards: median F ratio **1.29** (needs 0.95), median size-17+ ratio **1.98** (needs 0.90). Draw ahead at every five-minute mark
+    (medians 1.80, 1.42, 1.20, 1.26). Ticks 1.15x (draw does not train), creatures 0.95x, no universe under 20 at the end in either.
+  - The mean depth of what was new in the last five minutes is higher under draw in **6 of 6** (13.4-14.6 against 12.4-13.5).
+  - **VERDICT (the rule written before the run): NOT WORSE, guards hold, and BETTER. The learning goes DORMANT under TASKS.**
+- **Shipped.** `EngineMind` gains a mode `draw` (3): the operation drawn as `taskDrawOp` draws it, from the mind's own stream, the
+  registers uniform; it sees parents and does not train. `__mindKnob` takes `MIND_MODE` (0 learn, 1 frozen, 2 uniform, 3 draw) or
+  `#mindmode=learn|frozen|uniform|draw`; with neither, a TASKS world's mind is `draw`. **`MIND_MODE=0` or `#mindmode=learn` restores
+  the learning mind**; a world without TASKS still learns. Byte-identical with the mind off (`6cbe0c0d`, TASKS off `b07a4474`);
+  `MIND=20` under TASKS gives the tested DRAW arm exactly (`d9bfc096`, the copy's digest) and `MIND=20 MIND_MODE=0` the old engine
+  (`c171d594`). The HUD says `mind (draw, not learning): saw N`. `index.html` forwards `learn` and `draw`. `mind-test`'s default row
+  now expects `draw` (and that it never trains), with a `#mindmode=learn` row for the learner; `grown-test` expects `draw`.
+- **Why, as far as the data goes (none of this tested):** speed is not all of it. In p2 and p3 the drawn field ran the same or fewer
+  ticks and was ahead (1.20, 2.00). A model trained on parents' programs writes what parents already hold, so its children look more
+  like the population; a draw writes what nobody holds yet. That fits draw's new functions being deeper in 6 of 6. #308 saw no
+  difference under REPL, where there was nothing to find.
+- **What this says about #430 and #410.** A universe without the mind finds 0.43 (#430) and a field arm 0.63 (#410): what earns
+  that is one extra instruction rewrite in a fifth of births, and the model was COSTING the world on top of it. So the TASKS world's
+  ordinary mutation may be writing too little, and the next question is the rate (more drawn writes, or the mutation rate itself), in
+  pairs of fields.
+- **What it cannot say:** 25 minutes; one rate (20%). A learner might pay over hours. The long pair is not run.
+- **My prediction** (draw level, median about 1.0; "INCONCLUSIVE or not worse"; the value is the writes, not the model): the verdict
+  held and the size did not (1.29, and BETTER). 8 for 16.
