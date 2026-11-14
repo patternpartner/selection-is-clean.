@@ -3,7 +3,7 @@
 // Unit: a universe at its field's final sample (the collective excluded). y = log(1 + n), n = functions new to it since boot.
 // OLS: y ~ field + kind + sum_f beta_f * off_f. beta_f < 0 means a universe without layer f found less.
 const fs = require('fs'), path = require('path'); const D = process.argv[2] || path.join(__dirname, 'out-factorial');
-const FIELDS = (process.argv[3] || 'f1,f2,f3,f4,f5,f6').split(',');
+const FIELDS = (process.argv[3] || 'f1,f2,f3,f4,f5,f6,f7,f8').split(',');   // #430 amendment: f2 void, f7-f8 added
 const LIST = ['NICHE_FRONTIER','NICHE_NDIM','NICHE_LOCAL','SPECIATE','COLO_SURV','COLO_PIONEER','DRAW_VM','GROUP_ROLES','SPATIAL_NICHE','NICHE_BUILD',
   'RED_QUEEN','FRONTIER_EXPAND','OPCODE_NOVELTY','NOVELTY_ARCHIVE','RICH_GRAMMAR','DECIDE_REAL','DECIDE','FORAGE_EYES','ATOM_DURABLE','REACH','REACH_MAIN',
   'REACH_NOK','ATOM_CREDIT','EXPR_CREDIT','EXPR_CREDIT_POP','ATOM_CREDIT_VERT','ATOM_NOVELTY_CREDIT','ATOM_REPRO','ATOM_ELIGIBILITY','ATOM_RECOMB',

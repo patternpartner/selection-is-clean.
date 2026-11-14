@@ -48,3 +48,11 @@ Written and committed before any decision run. Browser fields are unseeded, so e
 ## Prediction (mine, before any run; I am 7 for 14)
 The check passes for `REPL_PREY` and `TASK_TROPHP` (t < -2), not for `MOTIF_SELECT`. Two to five other layers earn their place, and
 fifteen to twenty-five are removal candidates, mostly the atom-credit layers.
+
+## Amendment, made after launch 1 and before launch 2's results (the rule is unchanged)
+- **Field f2 is void: a rig bug, mine.** `field-rate.js`'s arm tally gained a `//` comment in the middle of a one-line statement, which
+  commented out `const key = ...`; any field holding a universe with exactly ONE knob then failed every sample (`key is not defined`).
+  At 20% of 44 layers that is about 2% of fields; f2 had one from boot and produced no sample. f1 had none and is complete. Fixed
+  (an inline `/* */` comment). Launch 2 (f3, f4) started on the broken rig and carries the same 2% risk; a field that fails it is void too.
+- **An extra launch (f7, f8)** keeps the design at six or more complete fields. The analysis takes every complete field among f1-f8;
+  nothing else changes. No field's numbers have been read.
