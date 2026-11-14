@@ -31409,3 +31409,12 @@ graceful reload this session restored 30-31. A phone killing a background tab is
   someone chose since. The field's load and reset already delete the whole database.
 - **After the fix, the same test twice:** **31 of 31** restored (killed at 397 s) and **29 of 31** (at 359 s; the two had no snapshot
   yet). Every reader of the record (`pop-test`, `pophold-test`, `field-fpcheck`, `field-rate`'s JANK sizes) takes `{g, b}`.
+- **#426 acceptance so far.** `pop-test` 11/11, `pophold-test` (plain and `ENC=600`) pass with the fingerprint check, `persistence-test`
+  passes. `smoke.sh` slice 2: 21 ok, 2 failing, `mind-test` (the grown-universe row #424 recorded, failing on `main` too) and
+  **`pop-test`'s "functions ever paid carry across the reload"**: before 1,802 at tick 1,893, first row after 1,699 at tick 1,857.
+  - **That row races the save clock.** It compares the last history row before a reload with the first after it, and a reload
+    comes back from the last SAVE, which can be earlier than the last history row. Then the count after is lower although nothing
+    restarted (a restart would read near 0, not 1,699). Alone, three runs each, this tree and `main` (cc97963) pass 6 of 6, and one
+    of `main`'s shows the same configuration (reloaded at tick 1,880 after a row at 1,911) passing only because its count still rose.
+  - Not retuned. The assertion does not test its stated claim (carry, not restart) when a reload rewinds; a later session can
+    rewrite it as "after is at least half of before", with this note beside it.
