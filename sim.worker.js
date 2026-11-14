@@ -125,7 +125,9 @@ const BRIDGE =
       'mind:(typeof __mindLatch!=="undefined")?(__mindLatch===null?-1:(__mindLatch?1:0)):null,vari:(typeof TASK_VAR!=="undefined")?TASK_VAR:null};' +
     'return {in5:in5,arm:__inst.knobs||null,chk:chk,swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState().values:null,ground:chk.ground,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
-        'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null}};' +
+        'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null,' +
+        // #431: which mind this universe runs (learn, frozen, uniform; null before its first birth or with none), read from the object, never by calling the latch
+        'mindMode:(typeof __mind!=="undefined"&&__mind)?__mind.MODE:null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
   // #396 - WHERE A FIELD UNIVERSE'S TIME GOES. Nothing is installed until a rig first asks; from then on loop and its largest
   // phases are timed with performance.now(), and the wall time between one loop ending and the next starting (the wait for this
