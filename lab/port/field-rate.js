@@ -110,7 +110,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
     // JANK: at the last sample, how big the saved population snapshots are (gzipped blobs in IndexedDB, one per universe). The raw
     // string each worker posts to this page at every save is several times that.
     if (JANK && final && J0) J0.idb = await page.evaluate(() => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1);
-      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').getAll(); q.onsuccess = () => { const z = q.result.map(v => v && v.size !== undefined ? v.size : (typeof v === 'string' ? v.length : 0)); res({ n: z.length, total: z.reduce((x, y) => x + y, 0), max: z.reduce((x, y) => Math.max(x, y), 0) }); }; q.onerror = () => res(null); } catch (e) { res(null); } };
+      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').getAll(); q.onsuccess = () => { const z = q.result.map(v0 => { const v = (v0 && v0.b) ? v0.b : v0; return v && v.size !== undefined ? v.size : (typeof v === 'string' ? v.length : 0); }); /* #426: a record may be {g, b} */ res({ n: z.length, total: z.reduce((x, y) => x + y, 0), max: z.reduce((x, y) => Math.max(x, y), 0) }); }; q.onerror = () => res(null); } catch (e) { res(null); } };
       r.onerror = () => res(null); } catch (e) { res(null); } }));
     const rows = await readField(page, final ? 120000 : 60000);
     let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0, n5 = 0, M = 0, MA = 0;

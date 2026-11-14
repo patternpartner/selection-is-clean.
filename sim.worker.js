@@ -193,7 +193,7 @@ const BRIDGE =
   // __popHook is set, and only this bridge sets it: under node and on a standalone page nothing is encoded. The snapshot is
   // megabytes, so it does not go through the localStorage shim; the shell keeps it in IndexedDB under this universe's slot.
   // #414: with a store key from the shell, the snapshot is gzipped and stored HERE, so megabytes never cross the page's main thread.
-  'try{__popHook=function(s){if(__inst.halted)return;try{if(__inst.popEnc){var _t=Date.now()+__inst.popEnc;while(Date.now()<_t){}}__inst.genomeFlush();if(__inst.pkey&&__inst.popSave)__inst.popSave(s);else __inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
+  'try{__popHook=function(s){if(__inst.halted)return;try{if(__inst.popEnc){var _t=Date.now()+__inst.popEnc;while(Date.now()<_t){}}var _g=__inst.genomeFlush();if(__inst.pkey&&__inst.popSave)__inst.popSave(s,_g);else __inst.post({type:"pop",value:s});}catch(_e){}};}catch(_e){}' +
   '__inst.api.setGene=function(k,v){try{if(typeof genome[k]!=="number"||typeof v!=="number")return false;genome[k]=v;return true;}catch(e){return false;}};' +
   // #164: set this universe's PACE live, without touching its hash. The hash route would work — the
   // engine re-reads pace on hashchange — but the hash is the CREATURE's (#cleanart, #turbo, and
@@ -478,11 +478,11 @@ function popDb() {
   return __popDbP;
 }
 // #418: post the genome the engine wrote in this turn (held by the localStorage shim), if any.
-Universe.prototype.genomeFlush = function () { if (this.gHeld === null || this.gHeld === undefined) return; const v = this.gHeld; this.gHeld = null;
-  if (this.halted) return; try { this.post({ type: 'persist', key: 'selection_genome', value: v }); } catch (_) {} };
-Universe.prototype.popSave = function (s) {
+Universe.prototype.genomeFlush = function () { if (this.gHeld === null || this.gHeld === undefined) return null; const v = this.gHeld; this.gHeld = null;
+  if (this.halted) return v; try { this.post({ type: 'persist', key: 'selection_genome', value: v }); } catch (_) {} return v; };   // #426: and returns it
+Universe.prototype.popSave = function (s, g) {   // #426: g is the genome this snapshot was taken beside
   const seq = ++this.popSeq; this.post({ type: 'pop', pending: seq });
-  this.popNext = { s, seq }; if (!this.popBusy) this.popDrain();
+  this.popNext = { s, seq, g: (typeof g === 'string') ? g : null }; if (!this.popBusy) this.popDrain();
 };
 Universe.prototype.popDrain = async function () {
   while (this.popNext && !this.halted) {
@@ -491,7 +491,7 @@ Universe.prototype.popDrain = async function () {
       if (this.popDelay) await new Promise(r => setTimeout(r, this.popDelay));   // a rig's slowed write (pophold-test)
       const blob = await new Response(new Blob([job.s]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
       const db = await popDb();
-      await new Promise((res, rej) => { try { const tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put(blob, this.pkey); tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); } catch (e) { rej(e); } });
+      await new Promise((res, rej) => { try { const tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put(job.g ? { g: job.g, b: blob } : blob, this.pkey);   /* #426: one record, one write: a hard kill keeps both or neither */ tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); } catch (e) { rej(e); } });
       if (!this.halted) this.post({ type: 'pop', landed: job.seq });
     } catch (e) {
       if (!this.halted) this.post({ type: 'pop', value: job.s, seq: job.seq });   // the old path: the shell stores it

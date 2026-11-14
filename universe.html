@@ -176,8 +176,13 @@
     return popDB().then(function(db){ return new Promise(function(res){
       try { var q = db.transaction('pop', 'readonly').objectStore('pop').get(PKEY); q.onsuccess = function(){ res(q.result || null); }; q.onerror = function(){ res(null); }; }
       catch(e){ res(null); } }); })
-      .then(function(v){ return v ? popUnzip(v) : null; }).catch(function(){ return null; });
+      .then(function(v){ if (!v) return null;
+        // #426: a record is {g, b} (the genome and the gzipped snapshot it was taken beside, one write) or, from before, the snapshot alone
+        var paired = (typeof v === 'object' && !(typeof Blob !== 'undefined' && v instanceof Blob) && typeof v.g === 'string');
+        return popUnzip(paired ? v.b : v).then(function(t){ return t ? { text:t, g: paired ? v.g : null } : null; }); })
+      .catch(function(){ return null; });
   }
+  function popDel(){ try { popDB().then(function(db){ try { db.transaction('pop', 'readwrite').objectStore('pop').delete(PKEY); } catch(e){} }).catch(function(){}); } catch(e){} }
   // #409: THE GENOME WAITS FOR ITS POPULATION. An autosave wrote the genome to localStorage at once and the snapshot to IndexedDB
   // afterwards (megabytes, gzipped, asynchronous). A tab killed in between left a genome NEWER than its snapshot, the engine
   // refused the stale snapshot, and the universe came back from founders, its ground gone too (#406: 3 of 155 reloads). Now an
@@ -186,23 +191,33 @@
   // keeps none), the genome is written after POP_WAIT ms as it always was.
   var POP_WAIT = 250, popHold = null, popHoldT = 0, popWait = {};   // #414: popWait[n] is the genome waiting for worker-stored snapshot n   // the snapshot message follows the genome within the same worker turn, so a quarter second is ample
   function genomeWrite(g){ try { localStorage.setItem(GKEY, g); } catch(ex){} }
-  function popHoldFlush(){ if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } if (popHold !== null){ var g = popHold; popHold = null; genomeWrite(g); } }
+  // #426: a genome written WITHOUT a snapshot (no 'pending' followed: an extinction, a loaded file) also drops this universe's stored pair,
+  // so a reload can never prefer an older genome-and-population over a genome someone chose since.
+  function popHoldFlush(){ if (popHoldT){ clearTimeout(popHoldT); popHoldT = 0; } if (popHold !== null){ var g = popHold; popHold = null; genomeWrite(g); popDel(); } }
   var POPENC = (function(){ try { var m=(location.search||'').match(/[?&]popenc=(\d{1,4})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();   // #418: a rig's slowed encode, in ms
   var POPTEST = (function(){ try { var m=(location.search||'').match(/[?&]poptest=(\d{1,5})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();   // a rig's delay on the snapshot write, in ms
   function popPut(s, g){   // one write at a time; a snapshot that arrives meanwhile replaces any still waiting (and its genome with it)
     if (popBusy){ if (popNext && popNext.g !== null && g === null) g = popNext.g; popNext = { s:s, g:g }; return; } popBusy = true;
     (POPTEST ? new Promise(function(r){ setTimeout(r, POPTEST); }) : Promise.resolve()).then(function(){ return popZip(s); }).then(function(v){ return popDB().then(function(db){ return new Promise(function(res){
-      try { var tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put(v, PKEY); tx.oncomplete = res; tx.onerror = res; tx.onabort = res; }
+      try { var tx = db.transaction('pop', 'readwrite'); tx.objectStore('pop').put((g !== null && g !== undefined) ? { g:g, b:v } : v, PKEY); tx.oncomplete = res; tx.onerror = res; tx.onabort = res; }   // #426
       catch(e){ res(); } }); }); })
       .catch(function(){}).then(function(){ if (g !== null && g !== undefined) genomeWrite(g); popBusy = false; if (popNext){ var n = popNext; popNext = null; popPut(n.s, n.g); } });
   }
-  var popFirst = (!(stored && stored.length > 10) || (location.hash || '').slice(1) === 'reset' || typeof indexedDB === 'undefined')
+  // #426: read even when localStorage holds no genome - a hard kill can lose that write and keep the record that carries one
+  var popFirst = ((location.hash || '').slice(1) === 'reset' || typeof indexedDB === 'undefined')
     ? Promise.resolve(null)
     : Promise.race([popGet(), new Promise(function(res){ setTimeout(function(){ res(null); }, 4000); })]);
-  popFirst.then(function(pop){
+  popFirst.then(function(rec){
+    // #426: A HARD KILL (a tab the phone killed, a crashed browser) can keep one store's latest write and lose the other's: #425's
+    // container restart left 0 and 2 of 31 universes restorable, where a graceful close leaves 30-31. localStorage and IndexedDB are
+    // flushed independently, so ordering the writes (#418) cannot make them land together. The record carries its own genome, so when
+    // it disagrees with localStorage the PAIR wins: the population comes back with the genome it was saved beside, and at most the
+    // last save's change to the germline is lost. A genome chosen since (a loaded file, an extinction) deleted the record (popHoldFlush).
+    var gBoot = (stored && stored.length > 10) ? stored : null, pop = rec ? rec.text : null;
+    if (rec && typeof rec.g === 'string' && rec.g.length > 10 && rec.g !== gBoot){ gBoot = rec.g; genomeWrite(rec.g); }
     worker.postMessage({
       type:'init', canvas:off, w:bufW(), h:bufH(), dpr:1, knobs:KNOBS,
-      genome: (stored && stored.length>10) ? stored : null,
+      genome: gBoot,
       mind: (storedMind && storedMind.length>10) ? storedMind : null,
       pop: (typeof pop === 'string' && pop.length > 10) ? pop : null,   // #368
       pkey: PKEY, poptest: POPTEST, popenc: POPENC,   // #414: the worker stores the snapshot itself, under this key

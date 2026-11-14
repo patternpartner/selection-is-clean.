@@ -19,7 +19,8 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
   r.onerror = () => res(null);
   r.onsuccess = () => { const db = r.result; const q = db.transaction('pop', 'readonly').objectStore('pop').get('pop_genome');
     q.onerror = () => { db.close(); res(null); };
-    q.onsuccess = async () => { const v = q.result; if (!v) { db.close(); return res(null); }
+    q.onsuccess = async () => { const v0 = q.result; if (!v0) { db.close(); return res(null); }
+      const v = (typeof v0 === 'object' && !(v0 instanceof Blob) && v0.b) ? v0.b : v0;   // #426: a record may be {g, b}
       const kind = (v instanceof Blob) ? 'gzip' : typeof v; const bytes = (v instanceof Blob) ? v.size : v.length;
       const txt = (v instanceof Blob) ? await new Response(v.stream().pipeThrough(new DecompressionStream('gzip'))).text() : v;
       const P = JSON.parse(txt);

@@ -23,11 +23,11 @@ const server = http.createServer((req, res) => { const u = req.url.split('?')[0]
   const events = await page.evaluate(async ({ SECS }) => {
     const hash = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + ':' + s.length; };
     const snap = () => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1); r.onupgradeneeded = () => { try { r.result.createObjectStore('pop'); } catch (e) {} };
-      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').get('pop_t1'); q.onsuccess = () => { const v = q.result; r.result.close(); res(v ? (typeof v === 'string' ? 's' + v.length : 'b' + v.size) : null); }; q.onerror = () => { r.result.close(); res(null); }; } catch (e) { res(null); } };
+      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').get('pop_t1'); q.onsuccess = () => { const v0 = q.result, v = (v0 && typeof v0 === 'object' && !(v0 instanceof Blob) && v0.b) ? v0.b : v0; r.result.close(); res(v ? (typeof v === 'string' ? 's' + v.length : 'b' + v.size) : null); }; q.onerror = () => { r.result.close(); res(null); }; } catch (e) { res(null); } };
       r.onerror = () => res(null); } catch (e) { res(null); } });
     // #418: the fingerprint the stored snapshot carries (the engine's popHash of the genome it was saved beside)
     const snapFp = () => new Promise(res => { try { const r = indexedDB.open('selection_pop', 1);
-      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').get('pop_t1'); q.onsuccess = async () => { const v = q.result; r.result.close();
+      r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').get('pop_t1'); q.onsuccess = async () => { const v0 = q.result, v = (v0 && typeof v0 === 'object' && !(v0 instanceof Blob) && v0.b) ? v0.b : v0; r.result.close();
         try { const t = !v ? null : typeof v === 'string' ? v : await new Response(v.stream().pipeThrough(new DecompressionStream('gzip'))).text(); res(t ? JSON.parse(t).fp : null); } catch (e) { res('unreadable'); } };
         q.onerror = () => { r.result.close(); res(null); }; } catch (e) { res(null); } }; r.onerror = () => res(null); } catch (e) { res(null); } });
     const ev = []; let g0 = null, p0 = null; const t0 = performance.now();

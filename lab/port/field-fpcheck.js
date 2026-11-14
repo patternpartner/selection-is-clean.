@@ -14,12 +14,14 @@ const server=http.createServer((q,r)=>{ r.writeHead(200,{'Content-Type':'text/ht
     const db=await new Promise((res,rej)=>{ const r=indexedDB.open('selection_pop',1); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
     const keys=await new Promise(res=>{ const q=db.transaction('pop','readonly').objectStore('pop').getAllKeys(); q.onsuccess=()=>res(q.result); });
     const rows=[];
-    for(const k of keys){ const v=await new Promise(res=>{ const q=db.transaction('pop','readonly').objectStore('pop').get(k); q.onsuccess=()=>res(q.result); });
+    for(const k of keys){ const v0=await new Promise(res=>{ const q=db.transaction('pop','readonly').objectStore('pop').get(k); q.onsuccess=()=>res(q.result); });
+      const recG=(v0&&typeof v0==='object'&&!(v0 instanceof Blob)&&typeof v0.g==='string')?v0.g:null, v=recG!==null?v0.b:v0;   // #426: a record may carry its genome
       const t=v instanceof Blob?await new Response(v.stream().pipeThrough(new DecompressionStream('gzip'))).text():String(v||'');
       let fp=null, ticks=null; try{ const o=JSON.parse(t); fp=o.fp; ticks=o.ticks; }catch(e){ fp='unparsable'; }
       const slot=k.replace(/^pop_/,''), gk=slot==='genome'?'selection_genome':'selection_'+slot, g=localStorage.getItem(gk);
       let gt=null; try{ gt=g?JSON.parse(g).totalTicks:null; }catch(e){}
-      rows.push({slot, snapFp:fp, snapTicks:ticks, genome:g?g.length:0, genomeTicks:gt, genomeFp:g?popHash(g):null, match:!!g&&fp===popHash(g)}); }
+      const recMatch=recG!==null&&fp===popHash(recG);   // #426: the shell boots from the record's own genome when localStorage's differs
+      rows.push({slot, snapFp:fp, snapTicks:ticks, genome:g?g.length:0, genomeTicks:gt, genomeFp:g?popHash(g):null, lsMatch:!!g&&fp===popHash(g), recMatch, match:(!!g&&fp===popHash(g))||recMatch}); }
     const ls=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^selection_/.test(k)) ls.push(k); }
     return {rows, lsGenomeKeys:ls.length}; });
   console.log('localStorage selection_* keys:',out.lsGenomeKeys,' snapshots:',out.rows.length,' fingerprint matches:',out.rows.filter(r=>r.match).length);
