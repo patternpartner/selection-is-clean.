@@ -31597,3 +31597,19 @@ asked, no universe missed, no errors.
   inherited"). The row waits 120 s for the first HUD write, which comes every 600 ticks, and a restored universe of 1,668 creatures
   inside the suite did not tick 600 in that time. Alone twice straight after: 10/0 and 10/0. **A throughput-sensitive row**, recorded
   beside `collective-test`'s and not retuned. `main` fast-forwarded.
+
+### #432 — THE DRAWN MIND'S RATE: 20% looks near the top (design, one pair a rate; nothing changes)
+After #431 the mind's value is one drawn instruction rewrite in a fifth of births, which raised the question of whether the TASKS
+world's ordinary mutation writes too little. `lab/port/mindrate-pair.sh` runs the shipped field (20%) beside `#mind=RATE` (the same
+drawn writes, at another rate), together, 1,500 s. Design only: one pair a rate, no rule, no decision. `out-mindrate/d1`, `d2`.
+
+| rate against 20% | F ratio at 25 min | 5 / 10 / 15 / 20 min | size 17+ | ticks | creatures |
+|---|---|---|---|---|---|
+| 40% (d1) | 0.80 (74,244 / 93,263) | 2.44 / 0.97 / 0.88 / 0.77 | 0.65 | 0.77 | 1.10 |
+| 10% (d2) | 0.75 (63,225 / 84,143) | 0.61 / 0.56 / 0.60 / 0.76 | 0.59 | 1.18 | 0.80 |
+
+- **Both sides of 20% are behind**, on count and more on depth, and the mind switched off was 0.63 (#410's field arms). One pair each
+  cannot rule (pairs of today's fields swing 0.93-2.00, #431), but nothing here points away from 20%, so the rate stays and no
+  decision run is owed. The 40% field ran FEWER ticks with more creatures; the 10% field more ticks with fewer.
+- So "ordinary mutation writes too little" is not what this says. Doubling the drawn writes costs; halving them costs. What #431 found
+  is that a model choosing those writes was worse than chance, not that the world wants more of them.
