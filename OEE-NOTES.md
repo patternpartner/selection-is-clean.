@@ -31446,3 +31446,16 @@ together against the shipped field in six new pairs (`out-nominated-off/`, `anal
 - **Prediction** (INCONCLUSIVE, they stay): held. 7 for 14.
 - **What a tournament would need** to nominate well here: windows of 25 minutes or more, or a judge on a universe's rate of finds
   relative to its own age. Not built.
+
+### #428 — THE FROZEN SCREEN, CHECKED OVER THREE HOURS OF ONE PAGE (running)
+The user's report (12 Nov): a field left overnight kept ticking while its page stopped answering. Since then #414 moved the saves
+off the page's main thread, and #418 and #426 made reloads restore. No run has been one long page on today's code.
+- **The run:** the shipped field, one page, alone, `field-rate.js JANK=1 SECS=10800 EVERY=300` (`out-jank/night1.jsonl`), detached so it
+  outlives a harness job; `lab/port/jank-watch.sh` (new) logs the largest renderer's memory and chrome's total every 2 minutes
+  (`out-jank/night1.mem`), relaunched every 25 minutes, which also keeps the session alive.
+- **Read for, written before the first sample:**
+  1. **Responsive:** the page's longest timer gap stays under a second in every five-minute window, and `evaluate` answers in under
+     a second. #413's page-save field (110 minutes) had gaps to 0.75 s; #414's pair reached 2.0 s with page saves and 0.92 s without.
+  2. **Memory:** whether the largest renderer's memory keeps climbing after the population levels off (#413: about 400 MB in 80
+     minutes, unexplained). Climbing steadily for three hours would point at a leak that a night would turn into the freeze.
+  3. **Novelty:** F keeps rising (the field is alone on the machine, so not comparable with paired fields).
