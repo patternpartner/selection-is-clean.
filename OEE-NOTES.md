@@ -31393,3 +31393,19 @@ design):
     rebuilding from founders, this reads nothing; it is reported because it disagrees.
   - **So v2 does better than v1 on every readout and decides nothing alone.** It does not cost the field, it holds what is known to
     matter more often than the rest, and it names candidates. Whether a field's own tournament can find a real improvement is still open.
+
+### #426 — A FIELD SURVIVES A HARD KILL: the genome travels in the same IndexedDB record as its snapshot
+**Found by #425's container restart:** the reload that followed it restored 0 and 2 of 31 universes' populations, where every
+graceful reload this session restored 30-31. A phone killing a background tab is the same event, so this is what a viewer meets.
+- **Reproduced on purpose** (`lab/port/hardkill-test.js`, new: a field in its own profile, SIGKILLed at a random point of its save
+  cycle, reopened, universes restored counted): **0 of 31 restored** after a kill at 319 s; 21 "not this genome", 10 no snapshot.
+- **Why #418 did not cover it.** #418 ordered the writes: the genome is written to localStorage only after its snapshot has landed in
+  IndexedDB. But the two stores are flushed to disk independently, and a hard kill can keep the newer write of one and lose the
+  other's. Ordering cannot make two stores durable together.
+- **The fix: one record, one write.** The worker stores `{g, b}`: the genome beside the gzipped snapshot it was taken with. At boot
+  the shell reads the record even when localStorage has no genome, and if the record's genome differs from localStorage's, the pair
+  wins: the population comes back with the genome it was saved beside, losing at most the germline's change since the last save. A
+  genome written WITHOUT a snapshot (an extinction, a loaded file) deletes the record, so a stale pair can never override a genome
+  someone chose since. The field's load and reset already delete the whole database.
+- **After the fix, the same test twice:** **31 of 31** restored (killed at 397 s) and **29 of 31** (at 359 s; the two had no snapshot
+  yet). Every reader of the record (`pop-test`, `pophold-test`, `field-fpcheck`, `field-rate`'s JANK sizes) takes `{g, b}`.
