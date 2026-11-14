@@ -31481,3 +31481,20 @@ off the page's main thread, and #418 and #426 made reloads restore. No run has b
   - **So the frozen screen the user saw is not reproduced on today's code in three hours.** #414 took the save load off the thread that
     answers clicks, and a hard kill (#426) no longer costs a field its populations. A phone is slower and has less memory than this
     server, and no run here is a night: those are the limits of the claim.
+
+### #429 — A CHEAP START FOR THE DEARER BIRTH: no. The crowd K ramped from 450 to 100 over a world's first 1,500 ticks (design)
+#416's K=100 is behind for a field's first fifteen minutes. The idea: start at the old price (K=450) and move to 100 as a world ages
+(`REPL_CROWD_RAMP=R`, by `genome.totalTicks`), keeping the early speed and the late gain. One design pair, R=1,500 (`out-ramp/a-*`,
+together, 1,500 s):
+
+| | Shipped (K=100) | Ramp 450 -> 100 over 1,500 ticks | Ratio |
+|---|---|---|---|
+| F at 5 / 10 / 15 / 20 / 25 min | 13,301 / 36,185 / 67,398 / 102,432 / 132,424 | 10,595 / 25,248 / 46,770 / 76,611 / 109,317 | 0.80 / 0.70 / 0.69 / 0.75 / **0.83** |
+| Size 17+ | 25,078 | 17,591 | 0.70 |
+| Ticks across the field | 82,585 | 47,643 | **0.58** |
+
+- **Behind at every mark, early ones included.** A cheap start makes larger worlds early, larger worlds tick slower (0.58x the ticks
+  here), and a slower world finds less from its first minutes. So #416's early deficit is not bought back by a cheaper start; it is
+  what a field's first minutes cost at any price, made visible by K=100's later lead. This agrees with #419 and #420.
+- One pair, outside the 15% band at every mark. Not pursued. Under #415's rule the losing design arm comes out again: `engine.html`
+  and `harness-env.js` are `main`'s byte for byte.

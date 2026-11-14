@@ -10770,13 +10770,7 @@ const STORE_DEATH=REPL_ON&&(__tk('__STORE_DEATH',0)|0)!==0;
 // return and the refuges keep the base price. Unset: birthPrice() is BIRTH_ENERGY_COST itself, byte-identical.
 const REPL_CROWD_K=REPL_ON?(__tk('__REPL_CROWD_K',0)|0):0; let __crowd=1;
 function birthPrice(){ return REPL_CROWD_K>0?BIRTH_ENERGY_COST*__crowd:BIRTH_ENERGY_COST; }
-// #429: REPL_CROWD_RAMP=R (design arm, default 0 = today's world byte for byte): a universe's crowd K moves from REPL_CROWD_K0 (450,
-// the price before #416) down to REPL_CROWD_K over its first R lifetime ticks (genome.totalTicks, so a reloaded old world stays at K).
-// #416's dearer birth is behind for a field's first fifteen minutes (0.84 at 5) and ahead from twenty; a cheap start may keep both.
-const REPL_CROWD_RAMP=REPL_ON?(__tk('__REPL_CROWD_RAMP',0)|0):0, REPL_CROWD_K0=__tk('__REPL_CROWD_K0',450);
-function crowdTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++;
-  let K=REPL_CROWD_K; if(REPL_CROWD_RAMP>0){ const f=Math.max(0,1-(genome.totalTicks|0)/REPL_CROWD_RAMP); K=K+(REPL_CROWD_K0-K)*f; }
-  __crowd=n/K; }
+function crowdTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; __crowd=n/REPL_CROWD_K; }
 const TASK_SHUFFLE=(__tk('__TASK_SHUFFLE',0)|0)!==0;   // #376: see taskShuffleTo. A control, default 0.
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
