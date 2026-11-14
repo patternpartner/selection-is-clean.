@@ -62,7 +62,9 @@
   // pair loops. ?world=K gives the buffer at least K thousand square pixels at the frame's own aspect; CSS draws it scaled down, and
   // pointers are scaled up to match. Unset or 0 is the old 1:1 buffer, exactly.
   // #407: ?knob=NAME:VALUE sets one engine knob for THIS universe only (the field's #arms). The worker sets it around the engine's boot.
-  var KNOBS = (function(){ try { var m=(location.search||'').match(/[?&]knob=([A-Z_0-9]{1,32}):(\d{1,6})/); if(!m) return null; var o={}; o[m[1]]=parseInt(m[2],10); return o; } catch(e){ return null; } })();
+  // #430: knob= may carry several, comma-separated (A:0,B:0): the field's #factorial hands each universe its own random set
+  var KNOBS = (function(){ try { var m=(location.search||'').match(/[?&]knob=([A-Z_0-9:,]{1,2000})/); if(!m) return null; var o={}, n=0;
+    m[1].split(',').forEach(function(p){ var q=p.match(/^([A-Z_0-9]{1,32}):(\d{1,6})$/); if(q){ o[q[1]]=parseInt(q[2],10); n++; } }); return n?o:null; } catch(e){ return null; } })();
   var WORLD = (function(){ try { var m=(location.search||'').match(/[?&]world=(\d{1,5})/); return m?parseInt(m[1],10):0; } catch(e){ return 0; } })();
   function wscale(){ if(!(WORLD>0)) return 1; var a=Math.max(1,(window.innerWidth|0)*(window.innerHeight|0)); return Math.max(1, Math.sqrt(WORLD*1000/a)); }
   function bufW(){ return Math.max(1, Math.round((window.innerWidth|0)*wscale())); }

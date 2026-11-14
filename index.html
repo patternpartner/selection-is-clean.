@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|tourney|tourp=\\d+|tourv=\\d|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=frozen|mindmode=uniform|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -354,7 +354,19 @@
   var ARMS = (function(){ var m=raw.match(/(?:^|,)arms=([A-Z_0-9:\/|]+)/); if(!m) return null; var list=[];
     m[1].split('|').forEach(function(part){ var q=part.match(/^([A-Z_0-9]+):([0-9\/]+)$/); if(!q) return; q[2].split('/').forEach(function(v){ if(v!=='') list.push(q[1]+':'+v); }); });
     var off=raw.match(/(?:^|,)armoff=(\d+)/); return list.length?{list:list,n:off?parseInt(off[1],10):0}:null; })();   // armoff=k starts the round robin k places on, so a second run puts each arm in other cells
-  function armQ(){ if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
+  // #430: #factorial=P - A RANDOMIZED SCREEN. Each universe, independently, gets each of these layers switched OFF with probability P%,
+  // at boot, through its own knobs (sim.worker.js gives a knobbed universe its own globalThis). Across several fields, the universes that
+  // ran without a layer and those that ran with it estimate what that layer is worth to a universe's novelty, all layers at once.
+  // The list is the LIVE table's switches (less COSMOS and COSMOS_LAW, tested in #423; DIMS_SAT, a level; OEE_METER, an instrument) and
+  // five others a TASKS field runs. A field rig reads each universe's set back from seen().arm.
+  var FACT_LIST = ['NICHE_FRONTIER','NICHE_NDIM','NICHE_LOCAL','SPECIATE','COLO_SURV','COLO_PIONEER','DRAW_VM','GROUP_ROLES','SPATIAL_NICHE','NICHE_BUILD',
+    'RED_QUEEN','FRONTIER_EXPAND','OPCODE_NOVELTY','NOVELTY_ARCHIVE','RICH_GRAMMAR','DECIDE_REAL','DECIDE','FORAGE_EYES','ATOM_DURABLE','REACH','REACH_MAIN',
+    'REACH_NOK','ATOM_CREDIT','EXPR_CREDIT','EXPR_CREDIT_POP','ATOM_CREDIT_VERT','ATOM_NOVELTY_CREDIT','ATOM_REPRO','ATOM_ELIGIBILITY','ATOM_RECOMB',
+    'ATOM_WRSENSE','DIMS_ATOM','UA_INHERIT','ATOM_NFD','ATOM_OBJ','ATOM_FRSENSE','REACH_GAIN','GROUP_COMMONS','MEME_TRANSFER',
+    'MIND','MOTIF_SELECT','FOUND','REPL_PREY','TASK_TROPHP'];
+  var FACT = (function(){ var m=raw.match(/(?:^|,)factorial=(\d+)/); var p=m?parseInt(m[1],10):0; return p>0?Math.min(100,p)/100:0; })();
+  function factQ(){ var off=FACT_LIST.filter(function(){ return Math.random() < FACT; }); return off.length ? '&knob='+off.map(function(n){ return n+':0'; }).join(',') : ''; }
+  function armQ(){ if(FACT) return factQ(); if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
   // #424: #tourney gives every universe (surface, layers, grown) the tournament (universe.html); #tourp=N sets its period in seconds.
   var TOURQ = (function(){ if(!/(?:^|,)tourney(?:,|$)/.test(raw)) return ''; var m=raw.match(/(?:^|,)tourp=(\d+)/), v=raw.match(/(?:^|,)tourv=(\d)/); return '&tourney=1'+(m?('&tourp='+m[1]):'')+(v?('&tourv='+v[1]):''); })();
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
