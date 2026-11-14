@@ -31459,3 +31459,25 @@ off the page's main thread, and #418 and #426 made reloads restore. No run has b
   2. **Memory:** whether the largest renderer's memory keeps climbing after the population levels off (#413: about 400 MB in 80
      minutes, unexplained). Climbing steadily for three hours would point at a leak that a night would turn into the freeze.
   3. **Novelty:** F keeps rising (the field is alone on the machine, so not comparable with paired fields).
+- **THE RESULT: three hours of one page, and it never stalled** (the shipped field alone, `out-jank/night1.*`):
+
+  | Minutes | Largest renderer (median) | Chrome total (median) | Long tasks | Longest timer gap |
+  |---|---|---|---|---|
+  | 0-30 | 2,835 MB | 4,044 MB | 0 | 166 ms (first window) |
+  | 30-60 | 2,938 MB | 4,139 MB | one of 50 ms | 0 |
+  | 60-90 | 3,255 MB | 4,477 MB | one of 50 ms | 0 |
+  | 90-120 | 3,369 MB | 4,599 MB | 0 | 0 |
+  | 120-150 | 3,487 MB | 4,731 MB | 0 | 0 |
+  | 150-180 | 3,535 MB | 4,774 MB | 0 | 0 |
+
+  - **Readout 1, responsive: passes, by far.** In three hours the page spent 100 ms in long tasks, its longest timer gap was 166 ms (in
+    the first five minutes), and `evaluate` never took more than 15 ms. #413's page-save field spent 131 s in long tasks in 25 minutes.
+  - **Readout 2, memory: it rises and it is slowing.** The largest renderer grew by 103, 317, 114, 118 and then 48 MB a half hour at a
+    flat population (34-38 thousand creatures); one sample spiked to 4.25 GB and the next was back at 3.5. Chrome's total ends at 4.8 GB.
+    Nothing here climbs without bound by three hours. Whether it plateaus over a night is not measured; at the last half hour's rate a
+    night would add a few hundred MB more, not gigabytes.
+  - **Readout 3, novelty:** 4,840,520 distinct functions in 180 minutes, alone on the machine (#404's lone field found 1.46 million in 150,
+    at K=450). Not comparable with a paired field. 31 snapshots stored, 80.5 MB gzipped, the largest 4.3 MB.
+  - **So the frozen screen the user saw is not reproduced on today's code in three hours.** #414 took the save load off the thread that
+    answers clicks, and a hard kill (#426) no longer costs a field its populations. A phone is slower and has less memory than this
+    server, and no run here is a night: those are the limits of the claim.
