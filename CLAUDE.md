@@ -206,6 +206,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **`#425`: the tournament, second version (`#tourney,tourv=2`)**: all-on start, one switch copied, same-kind peers. No cost to the
   field (1.16x), the three #410 found missed lean ON (median 26 against 21.5) but end under 90%; it nominates Red Queen and rich
   grammar (each OFF in 17 of 31). Nominations, not verdicts: the next step is a pairs test of switching them off.
+  **`#427`: the template declined the tournament's nominations.** Red Queen and rich grammar off together, six pairs: not worse
+  (p 0.34) but the count guard failed (median 0.94, needs 0.95), so they stay. Without them a field is AHEAD early (1.49x at 5
+  minutes) and level-to-behind by 25: the tournament judged over five-minute windows, so it rewarded early speed. **A tournament's
+  judge must look at the horizon the claim is about**; five minutes is not the artwork's horizon.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

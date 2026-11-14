@@ -31420,3 +31420,29 @@ graceful reload this session restored 30-31. A phone killing a background tab is
     rewrite it as "after is at least half of before", with this note beside it.
   Slices 1 and 3: 23/0 and 24/0 (`pophold-test` among them). **In all 68 ok, 2 failing**, both rows A/B'd above as failing the same way
   on `main`. The engine is untouched by #426 (it is the worker and the shell), so `substrate-test` was not rerun. `main` fast-forwarded.
+
+### #427 — VERDICT: INCONCLUSIVE, Red Queen and rich grammar stay on. And why the tournament nominated them: they cost a field its first ten minutes, not its twenty-fifth
+`lab/port/PREREG-nominated-off.md`: the two mechanisms #425's tournament switched off most (each OFF in 17 of 31), tested off
+together against the shipped field in six new pairs (`out-nominated-off/`, `analyse-nominated-off.js`, #423's rule). All complete.
+
+| Pair | F, on | F, off | Ratio | Ratio at 5 / 10 / 15 / 20 min | Size 17+, on / off | Ticks, on / off |
+|---|---|---|---|---|---|---|
+| p1 | 113,679 | 94,590 | 0.83 | 2.01 / 1.47 / 1.01 / 0.87 | 16,816 / 16,793 | 87,546 / 83,109 |
+| p2 | 124,245 | 103,161 | 0.83 | 0.91 / 0.96 / 0.95 / 0.87 | 17,855 / 14,577 | 87,990 / 80,340 |
+| p3 | 97,271 | 127,778 | 1.31 | 0.96 / 1.07 / 1.04 / 1.16 | 15,044 / 28,147 | 86,282 / 99,889 |
+| p4 | 123,372 | 81,606 | 0.66 | 0.46 / 0.53 / 0.67 / 0.65 | 22,594 / 11,107 | 90,273 / 83,335 |
+| p5 | 75,704 | 79,759 | 1.05 | 2.97 / 2.30 / 1.50 / 1.17 | 10,710 / 8,864 | 101,689 / 87,289 |
+| p6 | 119,823 | 142,942 | 1.19 | 2.12 / 1.64 / 1.57 / 1.38 | 16,293 / 24,027 | 87,865 / 77,597 |
+
+- **Primary:** W+ 8 of 21, p(off less) 0.34; off ahead in 3 of 6. Not WORSE.
+- **Guards:** **median F ratio 0.943 (needs 0.95, fails)**; median size-17+ ratio 0.913 (passes). INCONCLUSIVE, so they stay on, as written.
+- **The finding is the timing.** Without them a field is AHEAD early: median 1.49x at 5 minutes and 1.27x at 10 (in four pairs 1.5-3x
+  at 5), level by 15-20, and a little behind by 25. #423's cosmos was the mirror image (behind early, level later).
+- **That explains the nomination.** The tournament judges a universe by its new functions per tick over windows of about five
+  minutes, so it rewards whatever makes a world fast EARLY, and these two cost a world its first minutes. A short window cannot see what
+  a mechanism is worth later. **The tournament's judge measures the wrong horizon**, and #424/#425's drift is partly that, not only noise.
+- **So the loop #252 planned ran end to end, and the template declined the system's nomination.** That is the loop working, not
+  failing: a field nominated from what it could see, and a measured test of what it could not see said no.
+- **Prediction** (INCONCLUSIVE, they stay): held. 7 for 14.
+- **What a tournament would need** to nominate well here: windows of 25 minutes or more, or a judge on a universe's rate of finds
+  relative to its own age. Not built.
