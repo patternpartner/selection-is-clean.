@@ -31642,3 +31642,13 @@ Read with `lab/port/analyse-mind-long.js`. 31 universes in each field in every l
   field is still ahead. **But "the learning does not earn its place" is NOT established at the artwork's horizon**, which is hours.
   The question this leaves: is a learner worth more late than it costs early? The next step is this pair carried further (legs 7-12),
   then more long pairs if it holds. One pair.
+- **Carried to 200 minutes (legs 7-8):**
+
+  | leg | cumulative draw / learn | ratio | new this leg | ratio | size 17+ this leg | ticks this leg | new per tick |
+  |---|---|---|---|---|---|---|---|
+  | 7 | 2,467,761 / 2,065,682 | 1.19 | 374,323 / 452,790 | 0.83 | 0.80 | 56,606 / 59,980 | 6.61 / 7.55 |
+  | 8 | 2,841,398 / 2,496,719 | 1.14 | 373,637 / 431,037 | 0.87 | 0.85 | 55,776 / 56,224 | 6.70 / 7.67 |
+
+  The learner is ahead in each of the last three legs, by 13-19%, and in leg 8 on EQUAL ticks: about 15% more found per tick. So
+  late on it is the model, not the speed. In all, draw still leads (1.14x); at these rates the learner draws level around six hours.
+  Stopped here: three steady legs read the pattern, and the next question is a mind that has both (#434).
