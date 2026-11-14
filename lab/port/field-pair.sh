@@ -5,7 +5,9 @@
 # FROM must occur exactly once in engine.html (asserted). Set EDIR, never TMPDIR: Chromium aborts at launch with TMPDIR redirected.
 cd "$(dirname "$0")/../.."; OUT=${OUT:?}; mkdir -p $OUT; SECS=${SECS:-1500}; TAG=${TAG:-a}; NAME=${NAME:?}; E=${EDIR:-/tmp}/engine-$NAME.html
 [ "$(grep -cF "$FROM" engine.html)" = 1 ] || { echo "pattern count for: $FROM"; exit 1; }
-node -e 'const fs=require("fs");const [,f,t,o]=process.argv;const s=fs.readFileSync("engine.html","utf8");fs.writeFileSync(o,s.split(f).join(t));' "$FROM" "$TO" "$E"
+# #427: an optional second change (FROM2/TO2), asserted the same way
+[ -z "$FROM2" ] || [ "$(grep -cF "$FROM2" engine.html)" = 1 ] || { echo "pattern count for: $FROM2"; exit 1; }
+node -e 'const fs=require("fs");const [,f,t,o,f2,t2]=process.argv;let s=fs.readFileSync("engine.html","utf8").split(f).join(t);if(f2)s=s.split(f2).join(t2);fs.writeFileSync(o,s);' "$FROM" "$TO" "$E" "$FROM2" "$TO2"
 cmp -s engine.html $E && { echo "copy is identical"; exit 1; }
 SECS=$SECS EVERY=60 OUT=$OUT/$TAG-base.jsonl node lab/port/field-rate.js > $OUT/$TAG-base.log 2>&1 & a=$!
 SECS=$SECS EVERY=60 ENGINE=$E OUT=$OUT/$TAG-$NAME.jsonl node lab/port/field-rate.js > $OUT/$TAG-$NAME.log 2>&1 & b=$!
