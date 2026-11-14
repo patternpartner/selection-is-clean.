@@ -41,7 +41,7 @@ const first = (page, what) => page.evaluate(async (what) => {
     ck('and small enough for a field of eighteen', keys.every(([, n]) => n < 120000), keys.map(([k, n]) => k + ' ' + Math.round(n / 1000) + 'k').join(' '));
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mind_u0') || 'null'));
     const fieldLine = await page.evaluate(() => { const e = document.getElementById('minds'); return e && e.style.display !== 'none' ? e.textContent : ''; });
-    ck('the field shows what its minds are doing', /minds? · learned from .* parents · wrote .* children/.test(fieldLine), fieldLine);
+    ck('the field shows what its minds are doing', /minds? \(not learning\) · saw .* parents · wrote .* children/.test(fieldLine)   /* #431: the TASKS default draws, it does not learn */, fieldLine);
     const file = await first(page, 'save'); let fj = null; try { fj = JSON.parse(file); } catch (e) {}
     ck('a universe\'s save file carries its mind', !!(fj && fj.genome && fj.mind && JSON.parse(fj.mind).v === 1), fj ? Object.keys(fj).join(',') : 'no file');
 
@@ -56,7 +56,7 @@ const first = (page, what) => page.evaluate(async (what) => {
     // (the HUD is written every 600 ticks, so this waits for it)
     const up = await ctx.newPage(); await up.goto(base + '/universe.html?slot=u0'); let hud = '';
     for (let w = 0; w < 24 && !/^mind/.test(hud); w++) { await up.waitForTimeout(5000); hud = await up.evaluate(() => (document.getElementById('gen') || {}).textContent || ''); }
-    ck('an opened universe\'s HUD shows its mind, first', /^mind: learned from \d+ · wrote \d+ children/.test(hud), (hud.match(/^mind:[^|]*/) || [hud.slice(0, 80)])[0]);
+    ck('an opened universe\'s HUD shows its mind, first', /^mind \(draw, not learning\): saw \d+ · wrote \d+ children/.test(hud)   /* #431 */, (hud.match(/^mind[^|]*/) || [hud.slice(0, 80)])[0]);
     await up.close();
 
     // a harvest loaded back: every universe gets its own mind back (the field's load button, #230)

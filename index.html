@@ -861,12 +861,13 @@
     var round=async function(){
       var fr=[]; for(var i=0;i<cells.length;i++)fr.push(cells[i].firstChild);
       var bl=document.querySelectorAll('#below .deep, #below .grown'); for(var j=0;j<bl.length;j++)fr.push(bl[j]);
-      var ms=await Promise.all(fr.map(ask)), n=0, seen=0, wrote=0, b0=0, b1=0, k0=0, k1=0;
-      for(var q=0;q<ms.length;q++){ var m=ms[q]; if(!m)continue; n++; seen+=m.seen|0; wrote+=m.uses|0;
+      var ms=await Promise.all(fr.map(ask)), n=0, nl=0, seen=0, wrote=0, b0=0, b1=0, k0=0, k1=0;
+      for(var q=0;q<ms.length;q++){ var m=ms[q]; if(!m)continue; n++; if(m.mode==='learn')nl++; seen+=m.seen|0; wrote+=m.uses|0;
         if(m.born){ b0+=m.born[0]|0; b1+=m.born[1]|0; } if(m.kids){ k0+=m.kids[0]|0; k1+=m.kids[1]|0; } }
       if(!n){ el.style.display='none'; return; }
       var sc=(b0>=50&&b1>=20&&k0>0)?(k1/b1)/(k0/b0):null;
-      el.innerHTML='<b>'+n+'</b> mind'+(n===1?'':'s')+' · learned from <b>'+k(seen)+'</b> parents · wrote <b>'+k(wrote)+'</b> children'
+      // #431: under TASKS a mind draws its writes and does not learn, and the line says so
+      el.innerHTML='<b>'+n+'</b> mind'+(n===1?'':'s')+(nl===n?' · learned from <b>':(nl?' ('+nl+' learning) · saw <b>':' (not learning) · saw <b>'))+k(seen)+'</b> parents · wrote <b>'+k(wrote)+'</b> children'
         +(sc===null?'':' · their children have <b>'+sc.toFixed(2)+'x</b> the children of ordinary ones');
       el.style.display='block';
     };
