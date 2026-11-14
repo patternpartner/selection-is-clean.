@@ -31550,3 +31550,7 @@ control draws over all operations, which a TASKS world mostly does not use, so a
 `d9bfc096`, the old uniform `9cff7c93`). Each field now reports its mind's mode (`sw.mindMode` in `sim.worker.js`'s `seen()`,
 read off the object, never by calling the latch, which draws). Mechanics pair (`out-mind/mech-*`, 180 s): learn and uniform as
 asked, no universe missed, no errors.
+- **Acceptance for #430's build and #431's report** (`universe.html` knob lists, `index.html#factorial`, `field-rate.js` slot [8],
+  `sim.worker.js`'s `sw.mindMode`; `engine.html` is `main`'s, so `substrate-test` is not re-run): `smoke.sh` slice 1 23/0, slice 3
+  24/0, slice 2 22 ok and 1 failing, `mind-test`, on the grown-universe row #424 recorded failing on `main` too (`g0` 3 parents seen,
+  0 written). Alone straight after, 10/0. `browser-test` checked running, not skipping. `main` fast-forwarded.
