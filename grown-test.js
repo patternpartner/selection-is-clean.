@@ -48,7 +48,7 @@ const grownNow = page => page.evaluate(async () => {
     console.log('  ' + JSON.stringify(g));
     ck('the newest grown universes come back after a reload, up to the cap', g.frames.map(f => f.slot).join(',') === 'g7,g3', g.frames.map(f => f.slot).join(','));
     ck('and they are running', g.frames.every(f => f.ticks > 0), g.frames.map(f => f.slot + ' t' + f.ticks).join(' '));
-    ck('each with its own mind, the saved one', g.frames.every(f => f.mind === 'learn' && f.restored), g.frames.map(f => f.slot + ' ' + f.mind + (f.restored ? ' (restored)' : '')).join(' '));
+    ck('each with its own mind, the saved one', g.frames.every(f => f.mind === 'draw' && f.restored)   /* #431: the TASKS default */, g.frames.map(f => f.slot + ' ' + f.mind + (f.restored ? ' (restored)' : '')).join(' '));
     ck('the field says so', /^2 grown/.test(g.readout), g.readout);
     ck('nothing new was grown into a new slot, and the older one is left as it was', g.slots.join(',') === 'selection_g0,selection_g3,selection_g7', g.slots.join(','));
 

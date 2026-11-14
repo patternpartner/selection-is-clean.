@@ -69,6 +69,7 @@ console.error=()=>{};console.warn=()=>{};};
 // since #183 and no line here read it, so every rig that set it ran with laws mutating - the FOUND trap again.
 // #296: MIND=<percent> puts the primitive mind (#293) into the real engine: it learns from every parent and writes one
 // instruction of a child with those odds. MIND_MODE 1 frozen, 2 uniform (the controls); MIND_SEED its own random stream.
+// #431: MIND_MODE 3 draws its writes as a TASKS mutation does and is the default under TASKS; MIND_MODE=0 restores the learning mind there.
 // #376: TASK_SHUFFLE=1 - every task payment feeds a random living creature, not the one that computed (the control for selection).
 // #392: TASK_IN=5 - five-input functions (2^32, held in slots of a 131,072-slot table); default 4, byte-identical.
 // #384: SAVE_WALL_MS=ms - save (genome, population, mind; no archive, no trim) after ms of the clock without one; browser 120000, node 0.

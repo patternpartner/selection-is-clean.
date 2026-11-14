@@ -10969,6 +10969,8 @@ function cloneProg(p){
 // #mind=<percent> sets the rate. OFF BY DEFAULT UNDER NODE, so every rig keeps measuring the world it always measured;
 // a rig asks for it with MIND=<percent> (harness-env KNOBS), and MIND=0 is off either way. MIND_MODE=1 or #mindmode=frozen keeps its random weights and never learns;
 // MIND_MODE=2 or #mindmode=uniform writes uniformly random instructions with no model at all: the two controls, at the
+// [#431: and MIND_MODE=3 or #mindmode=draw writes them as a TASKS mutation draws its operation, the DEFAULT under TASKS;
+// MIND_MODE=0 or #mindmode=learn restores the learning mind there]
 // same rate. MIND_SEED seeds its own random stream; without it, a mind that is switched on takes ONE Math.random draw
 // for its seed when it is born (so the universes of a field do not share one stream). Otherwise it never calls
 // Math.random: with the mind off this file runs exactly as it did, and a rig that gives MIND_SEED moves the world's
@@ -10979,7 +10981,7 @@ function cloneProg(p){
 // random positions of the last 1,024 parents. Not saved with the universe: a reload starts a newborn mind.
 function __mindRng(a){ const f=function(){ f.s|=0; f.s=f.s+0x6D2B79F5|0; let t=Math.imul(f.s^f.s>>>15,1|f.s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; f.s=a|0; return f; }
 class EngineMind{
-  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
+  constructor(o){ this.P=o.P; this.MODE=['learn','frozen','uniform','draw'][o.mode]||'learn'; this.NOPS=Math.max(1,OPCODE_DRAW); this.NREG=144;
     this.K=6; this.D=16; this.H=64; this.LR=0.05; this.BUF=1024; this.EVERY=50; this.STEPS=100; this.V=this.NOPS+this.NREG+1; this.BOS=this.V-1;
     this.rnd=__mindRng(((o.seed>>>0)||1)^0x6d696e64);
     const K=this.K, D=this.D, H=this.H, r=this.rnd, init=(n,sc)=>{ const a=new Float32Array(n); for(let i=0;i<n;i++)a[i]=(r()*2-1)*sc; return a; };
@@ -11023,6 +11025,8 @@ class EngineMind{
     const t=prog.map(x=>this.tok(x||[0,0,0,0])), i=(this.rnd()*prog.length)|0, o0=t[i][0], r0=t[i][1]; let op=o0, rg=r0;
     for(let k=0;k<16&&op===o0&&rg===r0;k++){
       if(this.MODE==='uniform'){ op=(this.rnd()*this.NOPS)|0; rg=(this.rnd()*this.NREG)|0; }
+      // #431: 'draw' writes the operation as a TASKS mutation draws it (taskDrawOp's mix, from the mind's own stream), registers uniform
+      else if(this.MODE==='draw'){ op=(TASKS_ON&&this.rnd()<TASK_DRAWP)?TASK_OP0+((this.rnd()*5)|0):(this.rnd()*this.NOPS)|0; rg=(this.rnd()*this.NREG)|0; }
       else { this.forward(this.ctx(t,2*i),false); op=this.sample(false); this.forward(this.ctx(t,2*i,op),true); rg=this.sample(true); } }
     if(op===o0&&rg===r0)rg=(rg+1+((this.rnd()*(this.NREG-1))|0))%this.NREG;
     if(op<0)op=(this.rnd()*this.NOPS)|0;
@@ -11059,7 +11063,10 @@ function __mindKnob(){ try{ const g=(typeof globalThis!=='undefined')?globalThis
   const h=(typeof location!=='undefined'&&location.hash)||''; const m=h.match(/(^|[#,])mind(=(\d+))?(,|$)/); if(m&&!p)p=m[3]?parseInt(m[3],10):20;
   const node=(typeof process!=='undefined')&&!!(process.versions&&process.versions.node);   // a rig, not a page
   if(/(^|[#,])nomind(,|$)/.test(h)||g.__MIND===0||(m&&m[3]==='0'))p=0; else if(!m&&g.__MIND===undefined&&!node)p=20;   // the browser default
-  const mm=h.match(/(^|[#,])mindmode=(frozen|uniform)(,|$)/); if(mm&&!mode)mode=mm[2]==='frozen'?1:2;
+  // #431: a mode is SET by MIND_MODE (0 learn, 1 frozen, 2 uniform, 3 draw) or #mindmode=learn|frozen|uniform|draw. Unset, a TASKS
+  // world's mind writes drawn instructions and does not learn: six pairs of fields found more without the model (PREREG-mind-learn.md).
+  const mm=h.match(/(^|[#,])mindmode=(learn|frozen|uniform|draw)(,|$)/), mset=(g.__MIND_MODE!==undefined);
+  if(mm&&!mset)mode=({learn:0,frozen:1,uniform:2,draw:3})[mm[2]]; else if(!mm&&!mset&&TASKS_ON)mode=3;
   return p>0?{P:Math.min(100,p)/100,mode,seed:seed||(((Math.random()*4294967296)>>>0)||1)}:null; }catch(_){ return null; } }
 function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false;
     if(__mindLatch){ let sv=null; try{ sv=localStorage.getItem('selection_mind'); }catch(_){}   // this universe's own mind, saved beside its genome
@@ -11072,7 +11079,7 @@ function mindSerialize(){ const M=mindOn(); return M?M.serialize():null; }
 function mindImport(txt){ if(!txt||!__mindLatch)return false; const m=EngineMind.restore(txt,__mindLatch); if(!m)return false; __mind=m; mindPersist(); return true; }
 // one line for the HUD: what the mind has done, and whether its children do better or worse than ordinary ones
 function mindHud(){ const M=__mind; if(!M)return ''; const sc=M.success();
-  return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+')')+': learned from '+M.seen+' · wrote '+M.uses+' children'+
+  return ' | mind'+(M.MODE==='learn'?'':' ('+M.MODE+', not learning)')+': '+(M.MODE==='learn'?'learned from ':'saw ')+M.seen+' · wrote '+M.uses+' children'+   /* #431 */
     (M.MODE==='learn'&&M.nTrain>0?' · knows '+Math.max(0,Math.round(100*(1-M.lossO/Math.log(M.NOPS))))+'%':'')+
     (sc===null?'':' · its children have '+sc.toFixed(2)+'x the children of ordinary ones'); }
 const pMindW=new Uint8Array(CAP);   // 2: born carrying an instruction the mind wrote; 1: born ordinary while the mind watched; 0: a founder (not compared). Moves with it in compact

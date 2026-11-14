@@ -38,13 +38,15 @@ const minds = page => page.evaluate(async () => {
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   try {
     // the mind is the browser default (#296): a field opened with no token at all must have it; #nomind must not
-    for (const [hash, want] of [['#n=2,layers=1', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2,nomind', 'off']]) {
+    // #431: under TASKS (every browser universe's world) the default mind writes drawn instructions and does not learn; learning is asked for
+    for (const [hash, want] of [['#n=2,layers=1', 'draw'], ['#n=2,mindmode=learn', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2,nomind', 'off']]) {
       const ctx = await browser.newContext(), page = await ctx.newPage();
       await page.goto(base + '/index.html' + hash);
       await page.waitForTimeout(WARM * 1000);
       const ms = await minds(page);
       console.log('  ' + hash + ': ' + ms.map(([s, m, t]) => s + ' t' + t + ' ' + (m ? JSON.stringify({ mode: m.mode, p: m.p, seen: m.seen, wrote: m.uses, trained: m.trained }) : 'no report')).join(' | '));
       ck(hash + ': every universe answered', ms.length >= (hash.includes('layers=1') ? 6 : 3) && ms.every(([, m]) => m), ms.length + ' universes');
+      if (want === 'draw') ck(hash + ': and it does not train', ms.every(([, m]) => m && (m.trained | 0) === 0));
       if (want === 'off') ck(hash + ': no universe has a mind', ms.every(([, m]) => m && m.mode === 'off'));
       else {
         ck(hash + ': every universe has a ' + want + ' mind', ms.every(([, m]) => m && m.mode === want));
