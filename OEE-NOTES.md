@@ -31498,3 +31498,19 @@ together, 1,500 s):
   what a field's first minutes cost at any price, made visible by K=100's later lead. This agrees with #419 and #420.
 - One pair, outside the 15% band at every mark. Not pursued. Under #415's rule the losing design arm comes out again: `engine.html`
   and `harness-env.js` are `main`'s byte for byte.
+
+### #430 — A RANDOMIZED SCREEN OF 44 LAYERS (running): the user's question, "do those 30,000 lines still serve a purpose?"
+Pre-registered as `lab/port/PREREG-factorial.md` (six fields at `index.html#factorial=20`, each universe running each of 44 layers
+OFF with probability 20% through its own knobs; OLS per layer with field and kind; a check that it can see #410's three; readings
+for "earns its place" and "removal candidate"). Built: `knob=` takes a list (`universe.html`), `#factorial=P` (`index.html`),
+each universe's set in `field-rate.js` slot [8], `lab/port/factorial-batch.sh`, `lab/port/analyse-factorial.js`.
+- **Mechanics** (`out-factorial/mech1.jsonl`, six minutes): 30 of 30 universes carried a set, 3-13 layers off (mean 8.6), none died.
+- **Node pre-screen, before any field** (each layer off ALONE in a TASKS world; `digest-knob.js` sets `__X=0` before the engine compiles):
+  - Seed 3, 3,000 ticks: no crash in 44; 31 change the world; 13 leave it byte-identical. Two of the 13 say nothing: `MIND` is off by
+    default under node, and predation does not fire on seed 3 by 4,000.
+  - **Seeds 1 and 2, 6,000 ticks, for the other eleven** (15 of 22 runs finished inside the harness's half-hour; the rest are queued):
+    **byte-identical on both seeds: `COLO_SURV`, `DRAW_VM`, `GROUP_ROLES`, `ATOM_CREDIT_VERT`, `ATOM_WRSENSE`, `DIMS_ATOM`**;
+    `ATOM_NFD` identical on seed 1; `EXPR_CREDIT_POP` changes seed 1.
+  - Those six are rung 1 of the ladder failing outright in node: switched off, they change nothing a TASKS world does by tick 6,000 on
+    three seeds. That is "not by tick 6,000", not "never" (rich grammar first bit at about 3,500), and node is not the field. The
+    screen reads them in fields beside the rest.
