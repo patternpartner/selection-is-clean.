@@ -31418,3 +31418,5 @@ graceful reload this session restored 30-31. A phone killing a background tab is
     of `main`'s shows the same configuration (reloaded at tick 1,880 after a row at 1,911) passing only because its count still rose.
   - Not retuned. The assertion does not test its stated claim (carry, not restart) when a reload rewinds; a later session can
     rewrite it as "after is at least half of before", with this note beside it.
+  Slices 1 and 3: 23/0 and 24/0 (`pophold-test` among them). **In all 68 ok, 2 failing**, both rows A/B'd above as failing the same way
+  on `main`. The engine is untouched by #426 (it is the worker and the shell), so `substrate-test` was not rerun. `main` fast-forwarded.

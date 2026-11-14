@@ -199,6 +199,13 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   its snapshot (the population is encoded in between), the shell's 250 ms wait ran out, and a reload refused the snapshot: 23 and
   30 of 31 universes in two fields. The worker now holds the genome until its snapshot is on its way. **`lab/port/field-fpcheck.js`
   reads a saved field and says how many universes a reload would restore**; read that, not the order of writes, which passed the bug.
+  **`#426`: a field now survives a HARD kill** (a phone killing the tab; #425's container restart). localStorage and IndexedDB are
+  flushed independently, so a kill left genome and snapshot out of step and a reload restored 0 of 31. The genome now travels in the
+  snapshot's own IndexedDB record (`{g, b}`) and the pair wins at boot; a genome written without a snapshot deletes the record.
+  **`lab/port/hardkill-test.js`** SIGKILLs a running field and counts what comes back: 0/31 before, 31/31 and 29/31 after.
+  **`#425`: the tournament, second version (`#tourney,tourv=2`)**: all-on start, one switch copied, same-kind peers. No cost to the
+  field (1.16x), the three #410 found missed lean ON (median 26 against 21.5) but end under 90%; it nominates Red Queen and rich
+  grammar (each OFF in 17 of 31). Nominations, not verdicts: the next step is a pairs test of switching them off.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
