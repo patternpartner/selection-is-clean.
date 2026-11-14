@@ -31499,7 +31499,7 @@ together, 1,500 s):
 - One pair, outside the 15% band at every mark. Not pursued. Under #415's rule the losing design arm comes out again: `engine.html`
   and `harness-env.js` are `main`'s byte for byte.
 
-### #430 — A RANDOMIZED SCREEN OF 44 LAYERS (running): the user's question, "do those 30,000 lines still serve a purpose?"
+### #430 — A RANDOMIZED SCREEN OF 44 LAYERS: TOO WEAK, it nominates nothing (its own check failed). The mind is the one layer it sees. The user's question: "do those 30,000 lines still serve a purpose?"
 Pre-registered as `lab/port/PREREG-factorial.md` (six fields at `index.html#factorial=20`, each universe running each of 44 layers
 OFF with probability 20% through its own knobs; OLS per layer with field and kind; a check that it can see #410's three; readings
 for "earns its place" and "removal candidate"). Built: `knob=` takes a list (`universe.html`), `#factorial=P` (`index.html`),
@@ -31514,3 +31514,28 @@ each universe's set in `field-rate.js` slot [8], `lab/port/factorial-batch.sh`, 
   - Those six are rung 1 of the ladder failing outright in node: switched off, they change nothing a TASKS world does by tick 6,000 on
     three seeds. That is "not by tick 6,000", not "never" (rich grammar first bit at about 3,500), and node is not the field. The
     screen reads them in fields beside the rest.
+- **Result** (`node lab/port/analyse-factorial.js`; fields f1 f3 f4 f5 f6 f7 f8, f2 void as amended; 210 universes, 54 parameters,
+  residual sd 0.859 in log units, df 156). The floor is met (7 fields, 210 universes).
+  - **The check fails.** Of the three layers #410 found a field misses, none has `beta < 0` with t < -2: `TASK_TROPHP` -0.22
+    (t -1.40), `REPL_PREY` -0.07 (t -0.39), `MOTIF_SELECT` +0.13 (t +0.72). By the rule written before the run, **the screen is too
+    weak at this size and nominates nothing**: no layer is ruled to earn its place, and no removal candidate goes forward from it.
+  - **The mind (`MIND`) is the one layer it sees**: -0.855 (t -4.56), a universe without it finds 0.43 of what one with it finds.
+    That is beyond any multiple-testing worry at 44 layers, and agrees with #410 (0.63, uneven: 0.85 and 0.41). It is not a ruling
+    (the check failed), and there is nothing to act on: the mind is on in every browser universe. **It is OFF by default under node**
+    (`__mindKnob`: `p=20` only when not node), so every node experiment on this page runs without the layer this screen ranks first.
+  - Next strongest, none past t -2: `DIMS_ATOM` -0.29 (t -1.79; byte-identical in node by 6,000), `TASK_TROPHP` -0.22, `FORAGE_EYES`
+    -0.19, `NICHE_NDIM` -0.21.
+  - **Positive at t > 2: `DECIDE` +0.36 (t 2.17), `ATOM_OBJ` +0.34 (t 2.06)**; `ATOM_ELIGIBILITY` +0.29 (t 1.89). Two of 44 past +2
+    is about what chance gives (one expected each side at |t| > 2). Not a finding without a test of its own.
+  - Kind effects: first layer -0.41, second layer -0.86, grown -1.58 against a built universe; between-field spread about 0.4.
+  - The numeric "removal candidate" reading (`t > -1`, lower bound above -0.30) marks 20 layers, and the rule voids it with the rest.
+- **Why it could not see #410's three**, as far as the design says (none of this tested): an SE of 0.15-0.20 per layer resolves a
+  log effect of about 0.4 (a factor 1.5), and #410's three were 0.60-0.76 for a WHOLE ARM of universes off together. One universe
+  with a layer off sits among neighbours that have it, and migration and the collective carry their programs in; the pre-registration
+  named that bias toward 0. The mind writes its own universe's children, which neighbours cannot supply, and it is the one that shows.
+  To halve the SE the screen needs about four times the universes (28 fields, 14 launches, seven hours).
+- **What this answers about the 30,000 lines: not much, and honestly so.** The screen cannot tell a layer worth 20% from nothing.
+  What stands is #410's whole-field arms (predation, the drain, motif selection and the mind missed; the cosmos not), the mind here,
+  and node's six byte-identical layers. A layer's worth to a field is a pairs test of whole fields, as #423 and #427 were.
+- **My prediction was wrong** (the check would pass for predation and the drain): 7 for 15.
+
