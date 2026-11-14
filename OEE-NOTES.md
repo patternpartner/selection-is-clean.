@@ -31613,3 +31613,32 @@ drawn writes, at another rate), together, 1,500 s. Design only: one pair a rate,
   decision run is owed. The 40% field ran FEWER ticks with more creatures; the 10% field more ticks with fewer.
 - So "ordinary mutation writes too little" is not what this says. Doubling the drawn writes costs; halving them costs. What #431 found
   is that a model choosing those writes was worse than chance, not that the world wants more of them.
+
+### #433 — THE MIND OVER 150 MINUTES: the learner catches up and passes in the last leg (one pair; the shipped default stays)
+The follow-up #431's pre-registration named: one pair of chained fields (`lab/port/mind-long.sh`, `long-pair.sh` underneath), the
+engine as shipped (draw) beside a copy whose TASKS default is the learning mind again (it reproduces the old engine, `c171d594`).
+Six legs of 1,500 s; every leg reloads both fields from their profiles, and a learner's trained weights come back with its universe.
+Read with `lab/port/analyse-mind-long.js`. 31 universes in each field in every leg, none lost, no bad reads.
+
+| leg | cumulative draw / learn | ratio | new this leg draw / learn | ratio | size 17+ this leg | ticks this leg | new per tick |
+|---|---|---|---|---|---|---|---|
+| 1 | 168,810 / 84,003 | 2.01 | 168,810 / 84,003 | 2.01 | 5.72 | 120,521 / 93,715 | 1.40 / 0.90 |
+| 2 | 542,775 / 260,511 | 2.08 | 373,965 / 176,508 | 2.12 | 4.16 | 74,168 / 43,371 | 5.04 / 4.07 |
+| 3 | 967,415 / 501,270 | 1.93 | 424,640 / 240,759 | 1.76 | 2.68 | 66,959 / 40,124 | 6.34 / 6.00 |
+| 4 | 1,369,832 / 820,128 | 1.67 | 402,417 / 318,858 | 1.26 | 1.60 | 61,159 / 48,275 | 6.58 / 6.61 |
+| 5 | 1,756,619 / 1,198,732 | 1.47 | 386,787 / 378,604 | 1.02 | 1.17 | 59,283 / 64,561 | 6.52 / 5.86 |
+| 6 | 2,093,438 / 1,612,892 | 1.30 | 336,819 / 414,160 | **0.81** | **0.79** | 53,295 / 61,031 | 6.32 / 6.79 |
+
+- **The drawn mind is ahead in all at 150 minutes** (1.30x; size 17+ summed over the run 1.54x, 1.33 million against 0.86 million),
+  **and its lead shrinks every leg after the second; in the sixth the learner finds more** (0.81, deep 0.79), per tick too for the
+  first time (6.79 against 6.32).
+- Most of the catching up through leg 5 is ticks, not finds per tick: the learning field ran 0.58x the ticks in leg 2 and its sample
+  reads took 29 s on average (its universes were busy; 1.7 s in the draw field), then its creatures fell from 31,657 to 26,379 and its
+  tick rate rose while the draw field's fell every leg (120k to 53k). Finds per tick were draw's or level until leg 6.
+- **What it says: the #431 verdict is a 25-minute verdict, as the pre-registration said, and the 150-minute picture is not the same
+  picture.** A viewer at two and a half hours has seen more under draw; a viewer at the sixth leg sees the learner finding more. At
+  the sixth leg's rates the learner would draw level in all after roughly six more legs, if the trend held, which one pair cannot say.
+- **The default stays** (draw): six pre-registered pairs decided it, one long pair does not overturn them, and in all the shipped
+  field is still ahead. **But "the learning does not earn its place" is NOT established at the artwork's horizon**, which is hours.
+  The question this leaves: is a learner worth more late than it costs early? The next step is this pair carried further (legs 7-12),
+  then more long pairs if it holds. One pair.
