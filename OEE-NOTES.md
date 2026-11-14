@@ -31539,3 +31539,14 @@ each universe's set in `field-rate.js` slot [8], `lab/port/factorial-batch.sh`, 
   and node's six byte-identical layers. A layer's worth to a field is a pairs test of whole fields, as #423 and #427 were.
 - **My prediction was wrong** (the check would pass for predation and the drain): 7 for 15.
 
+
+### #431 — IS THE MIND'S VALUE ITS LEARNING? (running) The learning mind against the same writes drawn without a model
+Pre-registered as `lab/port/PREREG-mind-learn.md` before any decision run. The mind is the one layer #430 could see (0.43) and #410
+missed (0.63), but a universe without it loses two things: the model, and one extra instruction rewrite in a fifth of births. The
+DRAW arm keeps the rewrites (same 20%, same one instruction) and drops the model: the operation is drawn as a TASKS mutation draws
+it (`taskDrawOp`'s mix), the registers uniform, from the mind's own random stream, and nothing trains. The built-in `uniform`
+control draws over all operations, which a TASKS world mostly does not use, so a learner would beat it for that reason alone.
+`lab/port/mind-pair.sh` builds the copy (byte-identical with the mind off, `6cbe0c0d`; with it on, learn `c171d594`, this draw
+`d9bfc096`, the old uniform `9cff7c93`). Each field now reports its mind's mode (`sw.mindMode` in `sim.worker.js`'s `seen()`,
+read off the object, never by calling the latch, which draws). Mechanics pair (`out-mind/mech-*`, 180 s): learn and uniform as
+asked, no universe missed, no errors.
