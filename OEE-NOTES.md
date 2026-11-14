@@ -31366,3 +31366,30 @@ design):
   nomination to remove, for the template to test.
 - If the first two fail, the rule cannot decide at this scale either, and the honest conclusion is that a field's own noise is
   larger than these mechanisms' effects on it.
+- **THE LONG RUN** (`out-tourney/tl2-*`, a v2 field beside a shipped one, together, six chained legs; `analyse-tourney.js tl2`).
+  **Legs 5-6 are confounded:** the container restarted 17 minutes into leg 5 (a hard kill), leg 5 was rerun from the saved profiles,
+  and that reload restored **0 of 31 (shipped) and 2 of 31 (v2) populations** where every graceful reload restored 30-31. Both fields
+  restarted mostly from founders, which is why leg 5 reads 101-145 thousand after 400-476 thousand in leg 4 (#426 follows).
+
+  | Leg | Shipped, new | v2, new | Ratio | Cumulative | Copies |
+  |---|---|---|---|---|---|
+  | 1 | 117,552 | 145,496 | 1.24 | 1.24 | 3 |
+  | 2 | 219,049 | 356,159 | 1.63 | 1.49 | 19 |
+  | 3 | 390,264 | 456,587 | 1.17 | 1.32 | 25 |
+  | 4 | 476,003 | 398,429 | 0.84 | 1.13 | 17 |
+  | 5* | 100,985 | 144,831 | 1.43 | 1.15 | 30 |
+  | 6* | 212,190 | 261,987 | 1.23 | **1.16** | 14 |
+
+  Switches ON at the end, of 31 (all started ON): Red Queen 14, niche build 25, niche local 23, frontier expand 25, opcode novelty 20,
+  novelty archive 18, rich grammar 14, **motif selection 26, prey 22, drain 26**, founding 26.
+  - **Readout 1, no cost: passes.** 1.16x the shipped field cumulatively (v1: 0.86x). Leg 1 already read 1.24 with almost every switch
+    ON, so part of that is the two fields' own difference.
+  - **Readout 2, keep what matters: fails as written** (they end at 71-84%, under 90%), **but leans the right way**: their median is 26
+    against 21.5 for the other eight, at every leg's end from leg 3 on.
+  - **Readout 3, nominations** (OFF in a third or more): **Red Queen and rich grammar** (each OFF in 17 of 31), then novelty archive
+    (13) and opcode novelty (11). These go to a pre-registered pairs test, as #252 planned: the system nominates, the template decides.
+  - **The per-switch reading contradicts them** (leg 6, 21 universes with a steady switchboard): rate OFF over ON, Red Queen 0.77 and
+    rich grammar 0.68 (worse off), prey 1.62, drain 1.56, founding 1.60 (better off). With 3-12 universes on one side and a field
+    rebuilding from founders, this reads nothing; it is reported because it disagrees.
+  - **So v2 does better than v1 on every readout and decides nothing alone.** It does not cost the field, it holds what is known to
+    matter more often than the rest, and it names candidates. Whether a field's own tournament can find a real improvement is still open.
