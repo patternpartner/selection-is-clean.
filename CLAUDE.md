@@ -214,6 +214,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   and keeping the session alive): 100 ms of long tasks in all, longest timer gap 166 ms, `evaluate` at most 15 ms. The largest
   renderer rose 2.8 to 3.5 GB and was slowing (48 MB in the last half hour). The user's frozen screen is not reproduced on today's
   code; a phone and a whole night are not measured.
+  **`#430`: a randomized screen of 44 layers (`index.html#factorial=20`, each universe drops each layer with chance 20%) is TOO
+  WEAK.** 7 fields, 210 universes: none of #410's three missed layers reached t < -2, so by its own rule it nominates nothing. A
+  universe with a layer off sits among neighbours that have it, and the screen resolves only about a factor 1.5. **The one layer it
+  sees is the mind** (0.43, t -4.56), and **the mind is OFF by default under node**: every node world on this page runs without it.
+  A layer's worth to a field is a pairs test of whole fields.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
