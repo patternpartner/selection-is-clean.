@@ -31589,3 +31589,11 @@ asked, no universe missed, no errors.
 - **What it cannot say:** 25 minutes; one rate (20%). A learner might pay over hours. The long pair is not run.
 - **My prediction** (draw level, median about 1.0; "INCONCLUSIVE or not worse"; the value is the writes, not the model): the verdict
   held and the size did not (1.29, and BETTER). 8 for 16.
+- **Acceptance for the #431 ship.** `substrate-test` 264/0 at `TICKS=40`, `TICKS=900`, the default and `FOUND=0`. `smoke.sh` slice 1
+  23/0, slice 3 24/0. Slice 2, first pass, 21 ok and 2 failing: `mind-persist-test` on MY wording (its field-line and HUD rows looked
+  for "learned from"; the field's line now says `N minds (not learning) · saw`, fixed in `index.html` and the test) and `mind-test` on
+  the grown-universe row (`g0` 0 births, the row #424 found failing on `main`). Both alone after the fix: 10/0 and 14/0. Slice 2 again
+  on the final page: 22 ok and 1 failing, `mind-persist-test`'s HUD row, whose opened universe still showed its boot text ("1687 ticks
+  inherited"). The row waits 120 s for the first HUD write, which comes every 600 ticks, and a restored universe of 1,668 creatures
+  inside the suite did not tick 600 in that time. Alone twice straight after: 10/0 and 10/0. **A throughput-sensitive row**, recorded
+  beside `collective-test`'s and not retuned. `main` fast-forwarded.
