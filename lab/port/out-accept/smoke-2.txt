@@ -1,3 +1,27 @@
   slice 2/3: rigs 24-46 of 70
   browser-test.js            ok
-  collective-test.js         
+  collective-test.js         ok
+  pool-test.js               ok
+  pace-test.js               ok
+  layers-test.js             ok
+  slot-test.js               ok
+  mind-test.js               ok
+  sound-test.js              FAIL exit 1 (output: .smoke-fail/sound-test.log)
+  history-test.js            ok
+  pop-test.js                ok
+  mind-persist-test.js       ok
+  grown-test.js              ok
+  persistence-test.js        ok
+  diary.js                   ok
+  liveness-report.js         ok
+  harness.js                 ok
+  harness-ab.js              ok
+  harness-oee.js             ok
+  harness-strip.js           ok
+  harness-clamp.js           ok
+  harness-stream.js          ok
+  harness-tie.js             ok
+  harness-gates.js           ok
+
+  22 ok, 1 failing
+  failing: sound-test.js

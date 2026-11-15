@@ -10983,7 +10983,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
     for(let x=0;x<WD;x++){ oJ[D+x]=nz?oLJ[b+x]:0; oD[D+x]=nz?oLD[b+x]:0; } tK.fill(-1,kD*4,kD*4+4); if(nz&&tLastK[a]>=0)tK[kD*4]=tLastK[a];
     const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; }
   // T_OUTPUT: published first, then judged
-  tEv.outs++; let dirty=0; { const b=i*OWM; for(let x=0;x<WD;x++){ oL[b+x]=oW[D+x]; oLJ[b+x]=oJ[D+x]; oLD[b+x]=oD[D+x]; dirty|=oJ[D+x]; } } tLastE[i]=e;
+  tEv.outs++; let dirty=0; { const b=i*OWM; for(let x=0;x<WD;x++){ oL[b+x]=oW[D+x]; oLJ[b+x]=oJ[D+x]; oLD[b+x]=oD[D+x]; dirty|=oJ[D+x]; } } tLastE[i]=e; tLast[i]=oW[D];   // the first 32 rows, for the sound and the display only: the open world never reads tLast
   let m=0, key=0; if(dirty===0){ m=oCanon(oW,D); key=(m===5&&(oF[0]===0||oF[0]===0xFFFFFFFF))?0:oKey(m); } tLastK[i]=key!==0?taskFind5(key):-1;
   { const hv=oHash(oW,D,false), hn=oHash(oW,D,true); for(let q=o;q<o+4;q++){ if(tRdE[q]!==e)continue; const w=tRd[q]; if(hv===w||hn===w){ tEv.refused++; return; } } }   // a copy or a complement of a word read this epoch
   if(dirty!==0){ tEv.dirty++; return; }
