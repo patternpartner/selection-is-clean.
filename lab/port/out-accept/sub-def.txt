@@ -1,0 +1,266 @@
+  ok    #181 every compiler fold is finite for every input   80 evaluations across 4 modes x 4 parameters, 0 non-finite
+  ok    #181 and still inside uaCall’s ±8   0 out of band
+  ok    #181 mode 0 emits no wrapper at all — the pre-#181 compiler
+  ok    #181 the other three modes emit distinct wrappers   "r=Math.round(r/8.0000)*8.0000;"
+  ok    #181 the compile cache is keyed by the FOLD, not just the text
+  ok    #181 and the same expression gives different answers under different folds   (a)+(b) at 3,3: plain 6, quantised-to-4 8, plain again 6
+  ok    #182 allocation mode 0 conserves amplitude to float32 precision   drift 1.04e-7 on a sum of ~5 (amp is a Float32Array; eps is ~6e-8 relative), spread 1.1 -> 0.88
+  ok    #182 allocation mode 1 conserves amplitude to float32 precision   drift 4.47e-8 on a sum of ~5 (amp is a Float32Array; eps is ~6e-8 relative), spread 1.1 -> 1.32
+  ok    #182 allocation mode 2 conserves amplitude to float32 precision   drift 4.47e-8 on a sum of ~5 (amp is a Float32Array; eps is ~6e-8 relative), spread 1.1 -> 0.66
+  ok    #182 mode 0 narrows the spread and mode 1 widens it   even 0.88 vs strongest 1.32 from 1.1
+  ok    #182 all three reproduction modes are reachable at cluster birth   modes seen: 3
+  ok    #182 all three allocation rules are reachable
+  ok    #182 the mode takes a STEP under mutation rather than being redrawn   96/400 births changed mode
+  ok    #182 a collective’s credit halves across a generation
+  ok    #183 every declared law is actually settable   FIELD_DECAY, FIELD_DIFFUSE, ATTENTION_GAIN, CHANNEL_RENT, CHANNEL_TAP_RENT, EMIT_TAP_RENT, MET_RENT, REACH_RENT, UA_OP_RENT, PROBE_RENT, CHANXFER_COST, COMPLEXITY_TOLL, LAW_VIABLE, LAW_PROBATION, LAW_COST, LAW_RATE, CHANNEL_WARP_RENT, SELFWRITE_COST, LEVEL_BRIDGE_MIN, LEVEL_GROUP_MIN, LEVEL_TOWER_REG, LEVEL_FOREST_REG, LEVEL_COHERE_RATE, FOUND_NEED, FOUND_COST, FOUND_COOLDOWN, FOUND_RATE, FOUND_MAX, BIRTH_ENERGY_COST, WORLD_ENERGY_MAX, WORLD_ENERGY_REGEN, DEATH_ENERGY_RETURN, INHERIT_SD, PROV_BIRTH_COST, PROV_BIRTH_ENDOW, AMP_SOFT, PROVISION_CAP, PROVISION_YIELD, SENESCENCE_ONSET, SENESCENCE_SCALE, METABOLIC_ENERGY_DRAW, STARVE_DRAIN, SPECIATE_DIST, BIRTH_SHRINK, CONTACT_BLEND, BIRTH_LOTTERY, RARE_BIRTH, OUTLIER_BIRTH
+  ok    #183 the physics genes are clamped on load   {"cs":1,"rs":0,"rc":0.6}
+  ok    #184 an UNPROMOTED probe is never offered to the generator   0/300 - a symbol that always reads zero is a dead letter
+  ok    #184 a promoted probe becomes a live grammar symbol   22/400 expressions now name it
+  ok    #184 and an atom reads its value   pa = 2.5
+  ok    #184 an atom naming pa with nothing promoted still compiles and reads 0   read 0
+  ok    #184 a promoted probe pays rent   PROBE_RENT = >0
+  ok    #184 the open-endedness bonus is ZERO at the seeded weights
+  ok    #184 and bounded above however the weights evolve   max 0.00830 <= cap 0.08
+  ok    #185 one deme never blocks anything
+  ok    #185 two demes at zero flow block cross-deme gene flow   200/200 blocked
+  ok    #185 and never block within a deme   200/200 allowed
+  ok    #185 the wire accepts a well-formed universe plasmid
+  ok    #185 and rejects a bad one: lawIndex
+  ok    #185 and rejects a bad one: opIndex
+  ok    #185 and rejects a bad one: foldMode
+  ok    #185 and rejects a bad one: foldK
+  ok    #185 and rejects a bad one: tooMany
+  ok    #188 an evolved chemistry actually runs over the lattice   4 lattice passes in 4 cadences
+  ok    #188 and a rule that expresses the Laplacian diffuses a spike   a single spike of 3 reached 25 cells, peak now 1.109
+  ok    #188 every cell stays finite   0 non-finite
+  ok    #188 an EXPLOSIVE rule is still bounded by CHANNEL_CLAMP   (a)*(8.00) run 6 cadences from a full lattice: 0 cells outside ±3
+  ok    #188 the chemistry is saved and the chemicals are not   the rule is in the genome; the lattice is world state
+  ok    #188 a verb writes into a medium at its own cell   moved 0.7, lattice now 0.7
+  ok    #188 and ka reads it back   ka = 0.7
+  ok    #188 a write into an unallocated slot is a no-op   so EFFECT_TARGETS can grow without invalidating any existing verb
+  ok    #188 an atom naming ka with nothing allocated still compiles and reads 0   read 0
+  ok    #188 the ALLOCATION GATE never offers an unallocated channel   0/300 — a dead letter is #179 wearing a new name
+  ok    #112 the credit pool CAN name a channel a lineage no longer holds   76/400 draws named one with an empty bank — a spliced building block carries the vocabulary of the lineage that proved it, and filtering that by the inheritor's bank would break what #112 is for
+  ok    #112 and every one of them still compiles and reads finite   0 of 76 failed — an unallocated symbol is a constant zero the lineage pays rent on, which selection can remove; broken syntax it could not
+  ok    #188 an allocated one is   26/400
+  ok    #188 four effect targets index the bank
+  ok    #188 an allocated channel pays the dearest rent in the file   CHANNEL_RENT = 0.6 instruction-equivalents per allocated channel
+  ok    #188 the lattice probe owns the medium it measures   same fix as #189's: carriers cleared every tick and the germline asserted as the governing rule, so the diffusion and boundedness numbers above are about the chemistry this block set
+  ok    #189 the probe owns the medium it measures   with the carriers cleared every tick, the germline must be the rule that governed -- otherwise every number below is about a medium this block never set
+  ok    #189 the seeded form diffuses and does NOT transport   a symmetric mean leaves the centroid at 20
+  ok    #189 an OFFSET stencil advects — the medium moves   centroid 20 -> 26 under the same chemistry: directed transport, which no symmetric kernel produces
+  ok    #189 wrap=1 makes it a torus   after 30 updates the mass is at 10 — 20+30 = 50, mod 40 = 10: it left one edge and arrived at the other [lattice {"max":3,"nonFinite":0,"livecells":1}; THIS block's centroid returns null when no cell exceeds 0.001, so null means the lattice is EMPTY — the mass is gone, not exploded. Confirmed by max/nonFinite above. max|L| every 5th step: [4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3] — a ramp down is a leak, a cliff is a wipe. RULE AT END {"expr":"(b)+(0.00)","st":"[[-1,0,1]]","wrap":1,"cad":1} vs INSTALLED {"expr":"(b)+(0.00)","st":"[[-1,0,1]]","wrap":1,"cad":1} — a pure single-tap shift cannot empty a lattice, so a mismatch here means the rule was rewritten mid-measurement. #216h/#216i]
+  ok    #189 a signed stencil is a DERIVATIVE, not an average   on a linear ramp the answer is flat at -0.1 — a mean would have reproduced the ramp
+  ok    #189 cadence is per channel   base 0.8 against a 4x channel at 0.2
+  ok    #189 and every form stays bounded   six taps at max weight, explosive rule, on a torus: 0 out of bound, 0 non-finite
+  ok    #189 the form takes a small step rather than being redrawn   597/600 steps moved something, 0 illegal
+  ok    #189 and reaches every stencil size   sizes reached: 1,2,3,4,5,6
+  ok    #189 the manifold and the timescale are both reachable
+  ok    #189 the seeded form reads as UNMOVED and a changed one as moved   or the census reports adoption for a bank nothing has selected on
+  ok    #189 a bigger neighbourhood costs more   CHANNEL_TAP_RENT = 0.08 per tap beyond the seeded four — which is what makes SHRINKING a stencil profitable
+  ok    #191 the dedup fires EXACTLY ONCE per pair, over every reach combination   275 combinations: 0 double-counted, 0 lost — sum 2 is double physics, sum 0 is a lost partner, and neither announces itself
+  ok    #191 and whether a pair happens does not depend on allocation order   80 combinations, 0 differ — #58 named this artifact one level down
+  ok    #191 the ring cap is DERIVED from the gene, not chosen   the gene evolves to 120, ceil(120/55) = 3 rings, cap is 3 — the substrate reaches exactly as far as the gene was always allowed to ask
+  ok    #191 a default-reach pair 1.6 cells apart is NOT found — as before
+  ok    #191 and a long-reach pair at the same distance IS   reach 120: 1 pair(s) past one ring, 2 interactions (inherited tickRates 1/1, pinned to 1) — the gene working for the first time since it was written
+  ok    #191 REACH_SWEEP=0 restores the germline read   off reads the self's 99; on reads the carrier's 20
+  ok    #191 and on reads the CARRIER
+  ok    #190 the seeded metric IS Math.hypot, bit for bit   0/400 differed — the fast path is the exactness guarantee, not an optimisation
+  ok    #190 Euclidean is a circle
+  ok    #190 p=1 is a DIAMOND — diagonals become farther   axis 1, diagonal 0.707
+  ok    #190 p=4 bulges toward a SQUARE   axis 1, diagonal 1.189
+  ok    #190 anisotropy is an ELLIPSE and preserves area   axis 0.5 x perp 2 = 1 — reach is reshaped, not inflated (cellScale is the reach gene)
+  ok    #190 and rotation TURNS it   the same ellipse at 90 degrees: axis 2, perp 0.5
+  ok    #190 every legal metric is finite, non-negative and sign-symmetric   0 bad, 0 asymmetric across 35 cases
+  ok    #190 and zero at zero   or the self-distance gate breaks
+  ok    #190 METRIC=0 is a true revert   the same genes give 5 off and 20.04 on
+  ok    #190 two lineages can share a region and stop perceiving each other   same anisotropy, orthogonal orientation: each admits ~1239/4000 pairs and only 411 are admitted by BOTH — 33.2% overlap, against Euclidean's 3130
+  ok    #192 a rate-k lineage beats exactly 1/k of the time   over 600 ticks: 600, 300, 200, 100
+  ok    #192 same rate, different phase: they NEVER meet   co-active ticks out of 600: 0 at rate 2, 0 at rate 3 — temporal isolation with no spatial cost, which is the entire point of the layer
+  ok    #192 and a rate-1 generalist still meets everyone   a generalist catches all 200 of a rate-3 lineage's beats — specialisation in time has a real cost on the other side
+  ok    #192 the ENGINE agrees with the arithmetic for real genomes   particleActive over 400 ticks: 200 and 200 active, 0 co-active — #179 was a capability true in principle and false in the code
+  ok    #192 slowing scales the LEDGER too — rate 4 pays a quarter of the upkeep   fast 0.0004 against slow 0.0001, ratio 4 — this is the line that stops tickRate being "go slow, live forever"
+  ok    #192 the phase is REDUCED into the rate, not just clamped   phase 5 under rate 2 stored as 1 — 5 and 1 are the same behaviour and must compare equal
+  ok    #192 and the rate is capped   rate 9 -> 6, phase -3 -> 3
+  ok    #192 the clock takes a small step and the phase is always legal for it   664/800 moved, 0 jumped more than one, 0 left the phase out of range
+  ok    #192 and every rate is reachable   rates reached: 1,2,3,4,5,6
+  ok    #192 STIME=0 is a true revert   off: always active. on: sometimes not.
+  ok    #193 an emission stencil DIVIDES an act, it never multiplies one   24 shape/amount combinations, worst magnitude error 0 — four taps each writing the full amount would be a free 4x on every act, and a gene that routes around #132 and #133 at once
+  ok    #193 an UNSHAPED verb is the original single write   wrote 1 cell(s), magnitude 0.5
+  ok    #193 a DIPOLE is expressible: full magnitude paid, net zero moved   magnitude 0.6, signed 0 — deposit in front and withdraw behind, which signed normalisation would have made unreachable
+  ok    #193 the SELF FRAME turns the stencil with the actor   travelling one way it writes at cell 822, the other way at 818 — two cells either side, from ONE stencil. This is what "lay a trail ahead of me" needs
+  ok    #193 a standing particle has no "ahead" and keeps the world frame   a stencil's meaning depends on whether its carrier is going anywhere, and that is a real boundary rather than a fallback
+  ok    #193 the space is a box, so offsets clamp — and the magnitude still balances   two taps into the same wall cell: 1 cell, magnitude 0.5
+  ok    #193 the shape takes a small step and never leaves its bounds   900 steps, 0 illegal
+  ok    #193 and reaches every tap count   tap counts reached: 1,2,3,4
+  ok    #193 the mechanism can turn ITSELF off   29 steps shrank a stencil back to writing underfoot — a shape that cannot be undone is a ratchet, and the rent makes undoing it profitable
+  ok    #193 and the frame is reachable   117 frame flips
+  ok    #193 a shaped bank pays rent per extra tap, an unshaped one pays nothing   three taps bills 2 beyond the free one, unshaped bills 0 (EMIT_TAP_RENT = 0.3 instruction-equivalents each)
+  ok    #193 a shape on a POSSESSION is inert, uncounted and unbilled   a two-tap stencil on a mem verb counts 0 and bills 0 — a census row that reports adoption for a geometry that cannot act is the failure every row since #188 was written to avoid
+  ok    #193 EMIT=0 is a true revert   off writes underfoot, on writes two cells away
+  ok    #193 both halves of the mechanism actually bit   emit.spread and emit.selfFrame both fired — a geometry that never reaches a write is #179 again
+  ok    #193 save -> load: the shape travels with the act   a reload that restores a verb emitting in a different place has restored a different verb
+  ok    #193 cloneGenome deep-copies to the TAP   {"bank":false,"verb":false,"st":false,"tap":false} — #155, #180 and #189 were all this same shallow copy
+  ok    #193 parent -> child: the shape diverges   10/300 (world mutationRate was 0.06, pinned to >=0.08 for the trials)
+  ok    #193 germline -> population: the shape crosses with the verb   1 of 1 living particles carry it after one seeding — #133b stripped the successor on this exact path. THE DENOMINATOR IS THE POINT (#216q): this counts the LIVING population, and out.emit collapses the world to one particle for its own measurement without putting it back, so every crossing row from there on is ceilinged by that collapse rather than by the crossing. The row asserts reachability, which is satisfied; it is the reported count that was reading like a property of the mechanism.
+  ok    #193 the wire carries it, validates it, and still accepts a pre-#193 peer   good true, rejects garbage true, absent-is-legal true
+  ok    #193 and it has a census row
+  ok    #194 every grain divides the lattice exactly   blocks per side: 8,5,4,2,1 — a value that does not divide leaves a remainder row, which is an off-by-one rather than a coarser medium
+  ok    #194 the seeded grain is the ORIGINAL fine path, bit for bit   0 cells of 1600 differed between GRAIN=1 at res=40 and GRAIN=0 — this is the exactness guarantee every A/B in this repo rests on
+  ok    #194 a coarse medium is BLOCK-UNIFORM   0 cells disagreed with their block — this is the property that lets chanRead and #193's emission stencil work completely unchanged
+  ok    #194 a write reaches the whole medium cell   64/64 fine cells carry it, and a reader at the far corner of the block reads 0.9 — splitting the amount instead would have made the gene read as "become deaf"
+  ok    #194 the stencil is read in BLOCKS, so one step advects a whole block   one advection update displaces the centroid by 1 cell at grain 40 and 4.5 at grain 5, on 1.998 and 1.998 of mass — no fine kernel reaches that in one update however it is shaped
+  ok    #194 and the block governed its OWN medium while measuring it   chanGoverning went to the population 0 time(s) during this block — #196 draws the governing rule from the living carriers, so one survivor holding a k=0 rule makes every setRule() here write a genome nothing reads (#216l)
+  ok    #194 the grain SNAPS to the legal set rather than clamping   {"s7":8,"s6":5,"s39":40,"sBig":40,"sNeg":5,"sNaN":40,"sAbsent":40}
+  ok    #194 the grain takes one step at a time and never leaves the set   468 steps, 0 outside the set, 0 jumped more than one index
+  ok    #194 and every grain is reachable   grains reached: 5,8,10,20,40
+  ok    #194 rent FALLS with the grain, floored   grain 40 0.6, grain 20 0.15, grain 5 0.09 — coarse/fine = 0.150000000 against a floor of 0.15, asserted as a ratio against this run's own fine measurement rather than against a remembered 0.6 (#216k) — the only rent in this file a lineage can reduce by changing a gene, because coarsening genuinely costs less CPU
+  ok    #194 a coarse medium stays bounded under an explosive rule   0 out of bound, 0 non-finite, six taps at weight 2 on a x3 rule
+  ok    #194 and the coarse pass actually RAN   a grain that never reaches a lattice pass is #179 again — and on SEED=5 it did not, because the rule that ran was a carrier's at res 40 rather than the res-5 rule this block had just written (#216l)
+  ok    #194 save -> load: the grain travels with the chemistry
+  ok    #194 a pre-#194 row reads as the lattice's own grain   five elements, no grain, so it means what it meant
+  ok    #194 cloneGenome carries it and shares nothing   clone reads grain 8
+  ok    #194 parent -> child: the grain diverges   10/400 — and this same child route is what repairs #189, whose stencil could only ever be reshaped on the germline
+  ok    #194 germline -> population: the grain crosses with the medium   1 of 1 living particles carry it after one seeding — dropping res from that one rebuild made channel.grain STRANDED at germline 2 / population 0 on a live run while every other crossing passed. Denominator per #216q — this is also exactly why #216l was seed-sensitive: out.grain ran with ONE particle alive, so whether the lone survivor held a k=0 rule was a coin flip across seeds
+  ok    #194 and it has a census row
+  ok    #195 at rate 0 nothing transfers and nothing is even declined   over 600 interactions: 0 transfers, 0 declines — a decline would mean the gate ran, and the gate running means a draw was consumed
+  ok    #195 at a real rate the chemistry travels sideways   1 transfer(s) in 600 interactions — a route that does not go through descent, and the gate is the rate gene ALONE: the first version reused the plasmid bond gate and the live run read 390 firings with zero transfers, because sim is genetic similarity and near-relatives hold the same slots
+  ok    #195 and the WHOLE medium moves: chemistry, form, manifold, timescale, grain   a medium that arrives computing the same thing in a different space at a different rate is a different medium
+  ok    #195 the record resets on arrival   age and uses are facts about how long this rule has sat HERE — a freshly infected carrier has not been judged yet
+  ok    #195 deep-copied to the tap   or donor and recipient share one neighbourhood and neither can diverge it — #155, #180, #189, #193 and #194 were all this
+  ok    #195 the donor pays   CHANXFER_COST = 0.004 amplitude per transfer — without it "be infectious" has no downside and the gene drifts up unopposed
+  ok    #195 slot identity is preserved: donor slot 2 lands in recipient slot 2   ka..kd are bound by slot index and the lattice is world state per slot, so a shifted slot is #141's stranger reading our dictionary, with the dictionary being the chemistry
+  ok    #195 receiving NEVER destroys an evolved chemistry   600 declines, 0 transfers, the recipient's own rule intact — a lineage cannot be made worse off by being infected in a slot it was using
+  ok    #195 a transfer into a lineage that can SEE the medium is counted apart from one that cannot   seeing 1/1, blind 0/1 — xfer>0 with xferSensed==0 is a chemistry spreading as pure rent, which is a real outcome and should be visible rather than inferred
+  ok    #195 a particle that has NEVER held a channel can receive one   1 transfer(s) into an undefined bank, 2961 decline(s), 0 sensed, over 3,000 interactions at the clamped rate ceiling 0.01 (P(zero) = 9e-14; at the old 600 it was 0.24% and SEED=1 FOUND=0 landed there deterministically) — the first implementation required Array.isArray on both sides and so excluded exactly the particles a chemistry most needs to reach
+  ok    #195 and a quiet interaction allocates nothing on the way past   the bank is materialised at the moment of transfer, not at the moment of looking
+  ok    #195 CHANXFER=0 is a true revert
+  ok    #195 the ELEMENT's rate is bounded, absent reads 0, and it survives a save   clamped to [0, 0.01], absent reads 0 (which is what every pre-#195 save meant), round-trip true
+  ok    #195 and it takes a small step that can reach both ends   4000 steps, 0 outside [0, 0.01], reached zero true and the top true — reaching zero is the element being able to give up spreading, which is the only way a rule can stop being a parasite without being deleted
+  ok    #196 with no carrier the germline governs   200/200 — a universe whose population has not received a chemistry still runs the one it authored
+  ok    #196 with carriers, the germline is NEVER drawn   0 draws returned the self out of 4000 — for eight swings this number was all of them
+  ok    #196 and numerosity is the selective quantity   three carriers of one rule against one of another governs 75.0% of updates — which is what makes descent and #195's transfer change what the world computes rather than only who carries what
+  ok    #196 THE LATTICE AGREES: the population's rule is what ran   the germline says decay to zero and every carrier says hold at 0.9; the lattice reads 0.9 — this is the check that would have failed for eight swings
+  ok    #196 and with no carrier holding it, the germline's does   the same lattice under the germline's decay rule reads 0
+  ok    #196 CHANGOV=0 restores the germline-only rule exactly   200/200 — off is the pre-#196 engine, and it takes no draw
+  ok    #197 every law round-trips through its own setter   0 of 48 failed to take — a price that cannot move reads exactly like a price nothing wants to move
+  ok    #197 and none escapes its own bounds   0 out of band
+  ok    #197 a price REACHES THE BILLING LINE   CHANNEL_RENT at 0 bills 0 and at 2.0 bills 2 — read off the engine's own sum rather than trusting that a name in a table is a name in a sum
+  ok    #197 the prices and the probation are all in the table   48 laws: FIELD_DECAY FIELD_DIFFUSE ATTENTION_GAIN CHANNEL_RENT CHANNEL_TAP_RENT EMIT_TAP_RENT MET_RENT REACH_RENT UA_OP_RENT PROBE_RENT CHANXFER_COST COMPLEXITY_TOLL LAW_VIABLE LAW_PROBATION LAW_COST LAW_RATE CHANNEL_WARP_RENT SELFWRITE_COST LEVEL_BRIDGE_MIN LEVEL_GROUP_MIN LEVEL_TOWER_REG LEVEL_FOREST_REG LEVEL_COHERE_RATE FOUND_NEED FOUND_COST FOUND_COOLDOWN FOUND_RATE FOUND_MAX BIRTH_ENERGY_COST WORLD_ENERGY_MAX WORLD_ENERGY_REGEN DEATH_ENERGY_RETURN INHERIT_SD PROV_BIRTH_COST PROV_BIRTH_ENDOW AMP_SOFT PROVISION_CAP PROVISION_YIELD SENESCENCE_ONSET SENESCENCE_SCALE METABOLIC_ENERGY_DRAW STARVE_DRAIN SPECIATE_DIST BIRTH_SHRINK CONTACT_BLEND BIRTH_LOTTERY RARE_BIRTH OUTLIER_BIRTH
+  ok    #197 THE SELF-REFERENCE IS CLOSED: a proposal to stop reverting is judged by the old threshold   a world holding 10 of a baseline 100 under a freshly installed LAW_VIABLE=0 is still reverted — judged by the new value it would pass by construction, and the mechanism would have a one-step way to disable itself with no verdict at all
+  ok    #197 the proposal rate moved with the table   48 laws (was 3), ~18 proposals per 12,000 ticks, at most 3 verdicts — the binding constraint is the probation, not the rate, because one law is on trial at a time
+  ok    #197 BRAKES=0 pins the table back to the original three   so every measurement taken before the prices became evolvable is still comparable
+  ok    #198 the probe measures the medium it set   #196 draws the governing rule from the living carriers, so a block that sets genome.channels and does not clear them is measuring somebody else's medium — four checks here failed on that and one passed spuriously
+  ok    #198 no warp is the ORIGINAL tap arithmetic, cell for cell   0 of 1600 cells differed between WARP=1 with no expression and WARP=0 — and a zero-offset tap samples its own cell, which is the measurement everything below rests on
+  ok    #198 a constant warp displaces the whole neighbourhood   two cells in different rows and columns both sample 2 and 2 cells over — a uniform shift, which is all a stencil could ever have expressed
+  ok    #198 A POSITION-DEPENDENT WARP GIVES TWO CELLS DIFFERENT NEIGHBOURHOODS   row 2 samples 0 cells over and row 34 samples 5 — no list of offsets can do this however long the list, and that is the whole difference between a lattice and a graph
+  ok    #198 and adjacency can depend on what is IN the medium   two cells in the same column holding different values sample columns 0 and 2 — the geometry of the space is a function of its own contents
+  ok    #198 a warp cannot reach past the tap bound   an expression asking for 1000 cells away gets 7 (CHANNEL_OFFSET_MAX = 7) — an adjacency that can reach anywhere is not a warped neighbourhood, it is a random one
+  ok    #198 and a warped medium stays bounded under an explosive rule   0 out of bound, 0 non-finite
+  ok    #198 NO RECURRENCE ACROSS CELLS — the warp reads s as 0 every time   uaCall writes its output back to atom.state, so without zeroing it a cell's neighbourhood would depend on the cell evaluated before it and the whole medium would be order-dependent — #175 in a new pass, where it would have been invisible
+  ok    #198 the warp authors, drifts and can DROP itself   94 authored, 413 drifted, 93 dropped — dropping is the mechanism turning itself off, and the rent is what makes dropping pay
+  ok    #198 a warped medium pays rent, an unwarped one does not, and a coarse one pays less   warped 0.85, plain 0.6, coarse+warped 0.1275 — two expression evaluations per cell, scaled by the same cell count #194 scales the base rent by
+  ok    #198 save -> load: the adjacency travels with the medium
+  ok    #198 a pre-#198 row reads as translation-invariant
+  ok    #198 cloneGenome carries the expressions and shares no compiled holder   the holders are created on demand off the serialised record, so the six rebuild sites drop them automatically — sharing one would compile one medium's warp into another
+  ok    #198 parent -> child: the adjacency diverges   7/400
+  ok    #198 germline -> population: it crosses with the medium   1 of 4 living particles carry it after one seeding — the seventh place a channel rule is rebuilt (denominator per #216q)
+  ok    #198 the wire carries it, rejects garbage, and still accepts a pre-#198 peer   good true, rejects true, absent-is-legal true
+  ok    #198 and it has a census row
+  ok    #199 the opcode is 429 and has not drifted into a live one   OP_SELFWRITE = 429, CORE_OPCODES+MAX_BOUND_OPCODES = 429, netMaxOpcode = 429 — written as literals so a moved constant is a red build rather than a silent slide onto a live opcode, because incrementing CORE_OPCODES would re-aim every bound slot in every saved genome (#137)
+  ok    #199 each instruction field is writable   op -> [32,2,3,-0.5], src -> [11,7,3,-0.5], dst -> [11,2,10,-0.5], k -> [11,2,3,1.4]
+  ok    #199 NOTHING ILLEGAL CAN BE CONSTRUCTED   4000 writes from 4,000 fuzzed calls (NaN, +/-Infinity, +/-1e9, absurd indices and fields) and 0 rows failed validInstruction — the guarantee has to be the WIRE's guarantee, or a program writes itself into a state the VM cannot run and the failure surfaces somewhere unrelated
+  ok    #199 a write touches exactly one instruction   0 calls touched more than one row, 0 changed the length
+  ok    #199 and it never grows the program   500 writes leave the length at 4 — op144 is the extender and its cap is the evolved vmMaxInstructions; two mechanisms growing one array by different rules is how a cap stops meaning anything
+  ok    #199 the write is paid for, and an exhausted particle is refused   SELFWRITE_COST = 0.012 amplitude, charged 0.01200002 (compared raw, |paid-cost| = 2.43e-8), and a particle below it is refused — the price is a LAW since #203, so it drifts to arbitrary decimals and a rounded comparison fails structurally (#216j)
+  ok    #199 END TO END: the opcode is actually wired to the helper   the unit checks prove the helper; this proves the dispatch — which is the half #179 found missing for EFFECT_EMIT across 1,424 live instructions
+  ok    #199 SELFWRITE=0 is a true revert   off, opcode 429 is the inert no-op it was before this commit — which it has been for every program ever run, because nothing dispatched it
+  ok    #199 and its price is a LAW, not a constant   the second layer built after #197, so the world can propose what self-revision costs
+  ok    #199 the address is REACHED: seeded into the germline and into the population   germline 1, 4 population carrier(s) — 429 is one address in 430, and #179 measured opcode 236 in ZERO of 1,424 live instructions when left to the draw
+  ok    #199 THE SEEDER CANNOT add a second copy — the guard and the liveness call are one branch   the germline program is scanned for OP_SELFWRITE, and both the splice and fired(vm.selfWriteSeed) sit inside the !_has branch — so a firing with a copy already present is impossible by construction. OBSERVED at runtime, asserted on neither because cnt() cannot tell an inserted copy from a drifted opcode in either direction: seedWhileHeld 0, seedWhileHeldNoXfer 0, rose without the seeder firing 1 time(s)
+  ok    #199 and the runtime counts stay in the range the guard implies   the seeder fired with a copy already present 0 times with the transfer paths live and 0 times with them silenced, over 1 firings in the silenced arm. OBSERVED, NOT ASSERTED: with both transfer genes zeroed the count still peaks at 2 and rose without the seeder firing 1 time(s) — mutateGenome can walk an EXISTING row's opcode field onto 429, so a count above one is not an insertion. The previous version of this row asserted maxNoXfer===1 and was red at TICKS=40 and green at the default for exactly that reason; it was filed as budget sensitivity twice and it was an unsound invariant both times. THE OLD ROW blamed the seeder for copies it did not insert: it read the program's TOTAL count, which also counts a SELFWRITE arriving by dissolution motif injection — horizontal instruction transfer, doing exactly what it is for — and it counted ITERATIONS IN A DUPLICATED STATE rather than insertions, so one transfer at call 13 read as "46 programs took a second copy"
+  ok    #199 and the copies do not ACCUMULATE with run length   peak 1 copies after 150 mutateGenome calls and 1 after 600 (program length 5 at the peak) — #179's worry was convergence, "every program converges on nothing but the new opcode", which predicts copies PILING UP with run length. Tested as accumulation rather than against a share threshold: the first version of this row used 25%, which is exactly 1 copy in a 4-instruction program, so it sat on its own edge — the same uncalibrated-absolute mistake this block exists to correct
+  ok    #200a the mask BITES: a narrow file aliases its source fields   at regCount 3 the 24 source fields reach 3 registers, at 12 they reach 12, at 24 24 — a tight file forces a program to reuse state, which is compression, not weakness
+  ok    #200a bounded both ways, and absent reads as the twelve this file was written with   clamped to [2, 24], absent reads 12
+  ok    #200a the array is allocated at the max, so a wide file has somewhere to live   vmRegs.length = 24
+  ok    #200a regCount is in CHILD_DISCRETE and steps by one   in the discrete list: true, 2957 steps, 0 jumps, 0 out of bounds — #192 cost a whole swing to an integer gene walked continuously
+  ok    #200a and every count is reachable   23 distinct counts of 23 possible
+  ok    #200a a program on a 3-register file runs and leaves nothing non-finite   ok, 0 non-finite registers — the clamp loop covers the whole allocation, not just the addressed part
+  ok    #200a it survives a save, and REGS=0 pins it to twelve   round-trip true, off reads 12
+  ok    #200b the five level thresholds are laws   48 laws in the table
+  ok    #200b LEVEL_GROUP_MIN changes what counts as a cluster   at minimum 2 the census counts 19 clusters, at minimum 8 it counts 6
+  ok    #200b and the tower and forest thresholds change what counts as one   tower at 0.5 -> 1, at 0.9 -> 0; forest at 0.4 -> 1, at 0.9 -> 0 — driven with synthetic registries rather than waited for, because towers read 0-2 and forests 0 in a live run
+  ok    #200b LEVELS=0 pins every gate to the literal it was   with the knob off, a raised LEVEL_GROUP_MIN has no effect — so every level measurement taken before #200 is comparable
+  ok    save -> load: fold
+  ok    save -> load: cede
+  ok    save -> load: phys
+  ok    save -> load: deme
+  ok    save -> load: net
+  ok    save -> load: oeeW
+  ok    save -> load: probe
+  ok    save -> load: claimCleared
+  ok    save -> load: chan
+  ok    save -> load: form
+  ok    save -> load: metric
+  ok    save -> load: stime
+  ok    cloneGenome shares none of it   {"oeeW":false,"probes":false,"probe0":false,"chan":false,"chan0":false,"chanSt":false,"chanTap":false}
+  ok    parent -> child: the proxy weights diverge   48/200
+  ok    germline -> population: the substrate actually crosses   1 of 4 living particles carry it after one seeding - the bug the crossing rows caught seven times (denominator per #216q)
+  ok    every new gene has a census row   all thirteen present
+  ok    #187 probe.promoted is NOT a crossing row   an earned outcome cannot be stranded — probe.bank already answers the crossing question
+  ok    uaSwapVar TERMINATES when the pool cannot offer anything else   returned unchanged in 0ms. On every engine before this one the same call NEVER RETURNS: while(to===from) is a rejection sampler with no exit, and #188 calls it with a one-element pool, so an atom already naming that channel freezes the germline author. Found by #201 (four hours in substrate-test, 39% of profiler samples here), caused by #188
+  ok    uaSwapVar still swaps when the pool CAN offer something   (ka)+(1.5), and 200/200 default-pool draws moved — the guard draws exactly as before whenever a different value exists, so every run that used to work is bit-identical
+  ok    #201 foundDrive is seeded on every cluster and drifts in a daughter   200/200 mutated children moved it — a CLUSTER trait like launchDrive, so it has no crossing row: crossingCensus compares a germline against particle genomes and this has neither side
+  ok    #201 A UNIVERSE ACTUALLY FOUNDS ONE — the packet is built and sent   1 packet(s). THE CHECK THIS SWING TURNS ON: the obvious hook (cosmosMerge) fires 1-3 times per 12,000 ticks and 0 times across 20,000 on the pre-#201 engine, so #201 built on it would have passed every other check here and founded a handful of times at best
+  ok    #201 and the wire accepts what the engine sends
+  ok    #201 what crosses is THIS WORLD’S OWN GERMLINE, byte for byte   19416 bytes, identical to what the autosaver would write this tick and parsing back to a z:2 genome — the claim that makes a daughter a daughter rather than a fresh universe with a nice comment over it
+  ok    #201 the founders pay   FOUND_NEED 3 against 6 members holding 4 each, the field lost 3 of live amplitude — charged only up to what was needed, which is #61’s lesson about a cost that annihilates the surplus
+  ok    #201 AND NOTHING IS CHARGED WHEN THE PACKET CANNOT GO   with no channel the founders lost 0 — the first version charged and then sent, so every headless attempt destroyed FOUND_NEED of amplitude and founded nothing
+  ok    #201 the cooldown holds
+  ok    #201 the lifetime cap holds
+  ok    #201 FOUND=0 is an exact revert — not one random draw   0 draws with the knob off, so the RNG stream is restored and not merely the behaviour
+  ok    #201 a founding arriving from a peer is COUNTED AND NOT INSTALLED   counted, and 0 genome keys changed besides the liveness snapshot — the whole trust model of this packet: a world that adopted a stranger’s whole germline on arrival would be overwritten rather than joined, so the engine counts and the field shell — which owns the slot namespace — is the only thing that acts on the blob
+  ok    #201 the validator refuses what it must, stated as BYTES   {"nonPrintable":true,"tooLong":true,"empty":true,"notString":true,"badTick":true,"badDrive":true,"plainOk":true}
+  ok    #201 every brake on founding is a LAW, not a gene   FOUND_NEED FOUND_COST FOUND_COOLDOWN FOUND_RATE FOUND_MAX — a price the payer sets is an off switch (#197), and the payer here is the founding cluster
+  ok    #201 all three liveness names are declared   found / foundRefused / foundSeen — never-fired, priced-out and heard-from-a-peer are three different findings
+  ok    #201 the epoch log carries net_found
+  ok    #203 the four numbers that gate 99% of reproduction are LAWS   BIRTH_ENERGY_COST, WORLD_ENERGY_MAX, WORLD_ENERGY_REGEN, DEATH_ENERGY_RETURN — #197 made the rents evolvable and left the economy fixed; measured, the economy is what actually decides who reproduces
+  ok    #203 THE BIRTH PATH BILLS WHAT THE LAW SAYS   a birth drew 0.25 at BIRTH_ENERGY_COST 0.25 and 8 at 8 — read off the pool, not off the table, because a settable row is not the same as a row anything reads
+  ok    #203 and an empty pool refuses the birth   pool 0.5 against a cost of 1: no particle made, nothing drawn
+  ok    #203 the engine can finally SEE its own birth economy   birth.paid fires on the one that went through and birth.refused on the one that did not. Ninety-nine percent of this world's reproductive attempts fail at that line and no census row, epoch log or liveness name said so — the largest silent quantity in the file
+  ok    RATION the birth lottery sits in front of the pool and refuses on its own   RATION off: pool 10, cost 1, pass probability 0 -> made true, drew 1, rationed 0 -- a lottery that cannot refuse is not a lottery, and one that bills the pool on refusal is a leak
+  ok    PROV_BIRTH a parent pays for its child from its own bank   empty bank: made false, pool drew 0; bank 3: made true, parent left with 2, child starts with 0.5 -- what a creature gathered now decides whether it breeds
+  ok    #203 all four birth names are declared   
+  ok    #202 the cosine means what the gate thinks it means   our own mean scores 1, its negation -1, a zero vector 0 — an undefined direction is not a preference either way, which matters because a migrant CAN arrive with an all-zero tendency
+  ok    #202 AN ASSORTATIVE WORLD AND A DISASSORTATIVE ONE TAKE DIFFERENT HALVES OF THE SAME TRAFFIC   identical 400-packet corpus: assort +1 takes 200 like / 0 unlike, assort -1 takes 0 / 200 — this is the check that says the gene redistributes rather than decorates
+  ok    #202 BELOW SATURATION it redistributes rather than throttling   at the seeded receptivity 0.5 nothing clamps: neutral takes 200, +1 takes 200, -1 takes 200 — so a run can tell "this world became choosy" from "this world stopped listening", and netReceptivity remains the volume
+  ok    #202 AND AT SATURATION A PREFERENCE NECESSARILY COSTS VOLUME   at receptivity 1: neutral 400, +1 200, -1 200. A probability cannot exceed 1, so the preferred half cannot gain to offset the dispreferred half reaching 0 — arithmetic, not a design choice, and no functional form avoids it. The first version of the engine note claimed redistribution unconditionally and this check is what refuted it. Selection on netAssort is therefore CONFOUNDED with selection on inflow in any world that has evolved netReceptivity near 1
+  ok    #202 netAssort=0 is the pre-#202 gate exactly   at receptivity 1 every one of 400 arrivals is taken, both halves, and the multiplier is exactly 1 — one random draw, the same one that was always there
+  ok    #202 the gene clamps and survives a save   clamped to [-1,1]; round-trips under its OWN save key rather than a sixth element of n, which would decode short into every older save
+  ok    #202 ASSORT=0 forces the neutral gate
+  ok    #202 the liveness name is declared   net.assortBiased fires only where the threshold actually MOVED off netReceptivity — not merely where the gene is non-zero
+  ok    a live rate moves children, and says so   103/200 children moved at rate 0.06, child.varied fired 200 times and child.frozen 0
+  ok    A NEGATIVE RATE FREEZES THE WHOLE CHILD PATH   0/200 moved at rate -0.4086 — every gate in mutateChildGenome is a Math.random()<rate test, so below zero nothing moves and every child is an exact clone. The meta walk reaches this on its own: 0.0601 -> -0.4086 over 1,500 germline mutations
+  ok    and child.frozen is the only thing in the file that can SAY so   the crossing census asks whether structure REACHES the population; nothing asked whether the route could still MOVE anything, so a lineage producing only clones read as healthy everywhere
+  ok    zero is NOT frozen — the default-or coerces it back   94/200 moved at rate 0, because rate = mutationRate || 0.06 turns 0 into 0.06. A lineage cannot switch variation off by reaching zero; only the interval BELOW zero does it, which nothing in the engine treats as meaningful and the walk reaches by accident. That asymmetry is the finding
+  ok    both names are declared   
+  ok    #204 THE GUARD DOES NOT REFUSE WHAT THE GRAMMAR AUTHORS   4204 expressions drawn from the generator at every depth to UA_DEPTH_CAP, on both channels, with the operator bank, probes and channels populated — 0 refused. This is the arm that would hurt: a guard that rejects real atoms stops migration and nothing else in the file would say so
+  ok    #204 and it refuses every shape the grammar cannot produce   24/24 refused — function, arrow, assignment, statement, member access, string, index, the bitwise and logical operators, and both comment openers. The comment openers are the ones that matter: a comment lets the text the compiler sees differ from the text the guard checked
+  ok    #204 A LOOP-SHAPED EXPRESSION IS REFUSED ON THE WIRE   validNetworkPayload refuses the migrant. The 24 characters of an immediately-invoked for(;;) pass UA_EXPR_SAFE and compile, so the byte filter was never what was stopping this — nothing was
+  ok    #204 and an authored vocabulary is still admitted   the same packet shape carrying an expression this generator wrote — without this arm the row above passes by refusing everything
+  ok    #204 AND AGAIN ON ARRIVAL, PAST THE WIRE CHECK   injected straight into incomingMigrants: 0 genomes carry the loop, 1 carry the authored atom from the same packet. #193 rule — a packet from an older or hostile peer is not the thing the write path should be discovering
+  ok    #204 a refused slot tombstones rather than shifting   228 genomes hold -1 in slot 0 — the sender's slot k must keep meaning our slot k, or the surviving half of its vocabulary means something else here than it did there
+  ok    UA_FOLD=0 forces the default compiler
+  ok    DEME=0 removes the barrier
+  ok    OEE_BONUS=0 zeroes the bonus
+  ok    PROBE=0 reports no promoted probes
+  ok    the loop runs with all five layers live   1500 ticks, 220 alive
+  ok    and a save still round-trips   ok
+  ok    the level census reports the levels present   particle:220 cluster:7 tower:0 forest:0  |  220 alive after the 1,500-tick block
+  ok    every new mechanism has a declared liveness name   28 declared
+  ok    #216q the rig reports the world each block measured   41 blocks traced; the population collapses at out.emit (346 -> 1) and every crossing row now reports its denominator — a carrier count is ceilinged by how many particles an earlier block left alive, which is what made #216l seed-dependent
+  ok    #251 every vmStep case sits in the chunk its opcode dispatches to   239 cases in 16 chunks, table of 27
+  ok    #253 every switchboard mechanism has its per-universe gate, and no gate is off the board   11 switches, 12 gates
+  ok    no errors thrown anywhere   
+
+  264 passed, 0 failed

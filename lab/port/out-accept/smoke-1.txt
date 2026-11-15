@@ -1,0 +1,14 @@
+  slice 1/3: rigs 1-23 of 70
+  oee-meter-test.js          ok
+  verb-test.js               ok
+  attention-test.js          ok
+  draw-attn-test.js          ok
+  worldsignal-test.js        ok
+  crossing-test.js           ok
+  crossing-report.js         ok
+  sense-test.js              ok
+  roundtrip-test.js          ok
+  inherit-test.js            ok
+  migrant-test.js            ok
+  noerror-test.js            ok
+  rarepath-test.js           
