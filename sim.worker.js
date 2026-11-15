@@ -120,12 +120,14 @@ const BRIDGE =
   '__inst.api.seen=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON||!tSeen)return {off:true,tick:tick};' +
     'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="",in5=(typeof TASK_IN!=="undefined"&&TASK_IN===5);' +
     // #392: at five inputs a slot means nothing outside its universe, so the canonical truth tables of seen functions go instead (4 bytes each)
-    'if(in5){var pa=[];for(var n=0;n<tSet5.length;n++){var Fk=tSet5[n];if(Fk)pa.push(String.fromCharCode(Fk&255,(Fk>>>8)&255,(Fk>>>16)&255,(Fk>>>24)&255));}b=pa.join("");}else ' +
+    // #438: an open world (TASK_OPEN) sends its record in order of first payment, with each function's grade and span beside it
+    'var ox=(in5&&typeof TASK_OPEN!=="undefined"&&TASK_OPEN)?oExport():null;' +
+    'if(ox){b=ox.k;}else if(in5){var pa=[];for(var n=0;n<tSet5.length;n++){var Fk=tSet5[n];if(Fk)pa.push(String.fromCharCode(Fk&255,(Fk>>>8)&255,(Fk>>>16)&255,(Fk>>>24)&255));}b=pa.join("");}else ' +
     'for(var T=0;T<TASK_NF;T+=8){var x=0;for(var k=0;k<8;k++)if(tSeen[T+k])x|=1<<k;b+=String.fromCharCode(x);}' +
     'var chk={ground:(typeof TASK_GROUND!=="undefined")?+TASK_GROUND:null,cosmos:(typeof cosmosOn==="function")?+cosmosOn():null,motif:(typeof motifSelOn==="function")?+motifSelOn():null,' +
       'found:(typeof foundOn==="function")?+foundOn():null,prey:(typeof REPL_PREY!=="undefined")?+REPL_PREY:null,troph:(typeof TASK_TROPH!=="undefined")?TASK_TROPH:null,' +
       'mind:(typeof __mindLatch!=="undefined")?(__mindLatch===null?-1:(__mindLatch?1:0)):null,vari:(typeof TASK_VAR!=="undefined")?TASK_VAR:null};' +
-    'return {in5:in5,arm:__inst.knobs||null,chk:chk,swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState().values:null,ground:chk.ground,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
+    'return {open:ox?{n:ox.n,at:ox.at,z:btoa(ox.z),m:btoa(ox.m),win:ox.win}:null,in5:in5,arm:__inst.knobs||null,chk:chk,swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState().values:null,ground:chk.ground,mig:(netStats.accepted|0),migA:(typeof __liveness!=="undefined"?(__liveness["network.migrantAccepted"]|0):-1),tick:tick,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,pop:(typeof __popBoot!=="undefined")?__popBoot:null,alive:al,n:tSeenN,boot:tSeenBoot,b64:btoa(b),' +
       'sw:{gdir:(typeof TASK_GDIR!=="undefined")?+TASK_GDIR:null,storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null,' +
         // #431: which mind this universe runs (learn, frozen, uniform; null before its first birth or with none), read from the object, never by calling the latch
