@@ -10867,16 +10867,14 @@ function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floo
 // written in the current epoch. Same cells, same reads, no memory past 50 ticks; it separates "the place remembers" from "more reads succeed".
 const TASK_GROUND=TASKS_ON?(__tk('__TASK_GROUND',0)|0):0;
 const tGZ=(TASK_GROUND&&TASK_IN===5)?new Float32Array(FIELD_W*FIELD_H):null;   // #401: for the renderer only
-// #436 design knobs: TASK_GL=L - a cell of the ground holds L functions, not one (default 1: byte-identical). TASK_GW says where a
-// payment is written: 1 = the cell keeps the last L DISTINCT functions paid there (a function it already holds is not written again);
-// 2 = the slot is the OUTPUT instruction's src field, so where a lineage writes is heritable. A READ of sector s that finds no live
-// word reads slot s mod L, or the next slot that holds something. Draws nothing.
-const TASK_GL=Math.max(1,Math.min(8,__tk('__TASK_GL',1)|0)), TASK_GW=__tk('__TASK_GW',1)|0;
-const tG=(TASK_GROUND&&TASK_IN===5)?new Uint32Array(FIELD_W*FIELD_H*TASK_GL):null, tGE=(tG&&TASK_GROUND===2)?new Int32Array(FIELD_W*FIELD_H*TASK_GL).fill(-1):null;
-const tGP=(tG&&TASK_GL>1)?new Uint8Array(FIELD_W*FIELD_H):null;
-function groundRead(c,s,e){ if(TASK_GL===1)return (tGE===null||tGE[c]===e)?tG[c]:0; for(let q=0;q<TASK_GL;q++){ const x=c*TASK_GL+(s+q)%TASK_GL; if(tG[x]!==0&&(tGE===null||tGE[x]===e))return tG[x]; } return 0; }
-function groundWrite(c,F,z,src,e){ let x=c; if(TASK_GL>1){ const b=c*TASK_GL; if(TASK_GW===2)x=b+(Math.abs(src|0)&7)%TASK_GL; else { for(let q=0;q<TASK_GL;q++) if(tG[b+q]===F){ if(tGE!==null)tGE[b+q]=e; return; } x=b+tGP[c]; tGP[c]=(tGP[c]+1)%TASK_GL; } }
-  tG[x]=F; tGZ[c]=z; if(tGE!==null)tGE[x]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
+const tG=(TASK_GROUND&&TASK_IN===5)?new Uint32Array(FIELD_W*FIELD_H):null, tGE=(tG&&TASK_GROUND===2)?new Int32Array(FIELD_W*FIELD_H).fill(-1):null;
+// #437 design knob: TASK_GDIR=1 - THE GROUND HAS DIRECTIONS. Today a READ that finds no live word reads its own cell whatever sector it
+// asked for, so two READs in one program get the same word. With the knob, a miss in sector s reads the ground of the adjacent cell
+// in that direction (one function a cell, the latest paid there, as shipped), and its own cell only when that one is empty or off the
+// world. Default 0: byte-identical. Draws nothing.
+const TASK_GDIR=(__tk('__TASK_GDIR',0)|0)!==0, TASK_GDX=[-1,-1,0,1,1,1,0,-1], TASK_GDY=[0,-1,-1,-1,0,1,1,1];
+function groundCell(i,s){ const c=sunCell(i); if(!TASK_GDIR)return c; const x=(c%FIELD_W)+TASK_GDX[s], y=((c/FIELD_W)|0)+TASK_GDY[s]; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)return c;
+  const n=y*FIELD_W+x; return (tG[n]!==0&&(tGE===null||tGE[n]===tEpoch))?n:c; }
 function taskExpr5(F){ const I=tWin; let v=0; for(let q=0;q<32;q++){ const k=(((I[0]>>>q)&1)<<4)|(((I[1]>>>q)&1)<<3)|(((I[2]>>>q)&1)<<2)|(((I[3]>>>q)&1)<<1)|((I[4]>>>q)&1); if((F>>>k)&1)v|=1<<q; } return v>>>0; }   // the inverse of taskTT5
 function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, D=o+d, S=o+s, e=tEpoch;
   if(t===0){ tW[D]=tWin[tIc[i]]; tIc[i]=(TASK_IN===5)?((tIc[i]+1)%5):((tIc[i]+1)&3); tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); return; }   // T_INPUT
@@ -10886,7 +10884,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
     return; }
   if(t===2){ tW[D]=tW[S]; tJ[D]=tJ[S]; tDm[D]=tDm[S]; for(let q=0;q<4;q++)tK[D*4+q]=tK[S*4+q]; return; }   // T_COPY
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e, v=hit?tLast[a]:0; tEv.reads++;
-    if(!hit&&tG!==null){ const c=sunCell(i), F=groundRead(c,Math.abs(src|0)&7,e); if(F!==0){ const w=taskExpr5(F), k=taskFind5(F); tEv.gReads=(tEv.gReads|0)+1; tW[D]=w; tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); if(k>=0)tK[D*4]=k;
+    if(!hit&&tG!==null){ const c=groundCell(i,Math.abs(src|0)&7), F=(tGE===null||tGE[c]===e)?tG[c]:0; if(F!==0){ const w=taskExpr5(F), k=taskFind5(F); tEv.gReads=(tEv.gReads|0)+1; tW[D]=w; tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); if(k>=0)tK[D*4]=k;
         const q=o+tRdI[i]; tRd[q]=w; tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; } }   // #397: no live word in that sector - read the ground
     if(TASK_FOUNDER&&!hit)return;   // #353: a miss leaves the word alone
     tW[D]=v; if(v)tEv.readHits++;   // T_READ
@@ -10901,7 +10899,7 @@ function taskOp(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=
   else { T=taskFn(v); if(T<0||T===0||T===0xFFFF||T===0xFF00||T===0xF0F0||T===0xCCCC||T===0xAAAA){ tEv.trivial++; return; } if(tPE[i]===e)return; }
   tPE[i]=e;   // one payment per epoch
   if(TASK_IN===5)tLastK[i]=T;   // #392: the slot this payment may just have taken
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null)groundWrite(sunCell(i),tKey[T],TASK_SZ[T],src,e); if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; if(TASK_IN===5){ tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(tKey[T]))tSeenN++; } else if(!tSeen[T]){ tSeen[T]=1; tSeenN++; } tEv.paid++; if(tG!==null){ const c=sunCell(i); tG[c]=tKey[T]; tGZ[c]=TASK_SZ[T]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; } if(__taskOnPay!==null)__taskOnPay(i,T,D);   /* #356: a rig's read-only hook; the word's read keys are tK[D*4..D*4+3] */  tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let m=0; for(let q=0;q<4;q++) if(tK[D*4+q]>=0)m++; if(m){ const tx=TASK_TROPH*g/m; for(let q=0;q<4;q++){ const k=tK[D*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // #376: TASK_SHUFFLE=1 - the CONTROL for "selected": every payment's energy goes to a uniformly random living creature instead of the one
 // that computed the function. Pools, the drain, one-payment-per-epoch and every counter are unchanged; only the link between
@@ -14656,7 +14654,7 @@ function decodePopulation(s){   // replaces the founders with the saved creature
   if(TASKS_ON&&TASK_IN===5&&typeof Wd.seen5==='string'){ try{ const b=atob(Wd.seen5); tSeenN=0; for(let q=0;q+3<b.length;q+=4){ const F=(b.charCodeAt(q)|(b.charCodeAt(q+1)<<8)|(b.charCodeAt(q+2)<<16)|(b.charCodeAt(q+3)<<24))>>>0; if(seen5Add(F))tSeenN++; } tSeenBoot=tSeenN; }catch(_){} }   // #392
   else if(TASKS_ON&&TASK_IN!==5&&typeof Wd.seen==='string'){ try{ const b=atob(Wd.seen); if(b.length===TASK_NF/8){ tSeenN=0;
     for(let T=0;T<TASK_NF;T++){ tSeen[T]=(b.charCodeAt(T>>3)>>(T&7))&1; tSeenN+=tSeen[T]; } tSeenBoot=tSeenN; } }catch(_){} }
-  if(tG!==null&&tGE===null&&typeof Wd.ground==='string'){ try{ const b=atob(Wd.ground); if(b.length===tG.byteLength){ const u=new Uint8Array(tG.buffer,tG.byteOffset,tG.byteLength); for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q)&255; for(let c=0;c<tGZ.length;c++){ let z=0; for(let q=0;q<TASK_GL;q++){ const F=tG[c*TASK_GL+q]; if(F){ const y=taskSz5(F); if(y>z)z=y; } } tGZ[c]=z; } } }catch(_){} }   // #399: a snapshot of another size, or none, leaves the ground empty
+  if(tG!==null&&tGE===null&&typeof Wd.ground==='string'){ try{ const b=atob(Wd.ground); if(b.length===tG.byteLength){ const u=new Uint8Array(tG.buffer,tG.byteOffset,tG.byteLength); for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q)&255; for(let c=0;c<tG.length;c++)tGZ[c]=tG[c]?taskSz5(tG[c]):0; } }catch(_){} }   // #399: a snapshot of another size, or none, leaves the ground empty
   return N;
 }
 function popRestore(){   // at boot, after the genome: the saved population, if it is this genome's
