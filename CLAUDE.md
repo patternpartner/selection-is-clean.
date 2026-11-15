@@ -231,6 +231,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **`#434`: a mind that drew until 8,000 ticks and then learned was level for two hours and then BEHIND** (1.52x to draw in its
   last leg), so the two long pairs DISAGREE about a learner late. **One long pair cannot carry a long-horizon claim**; both have the
   drawn mind ahead in all at 200 minutes (1.14x, 1.11x). The knob is removed again; #431's default stands.
+  **`#435`: the liveness census finds nothing dead** (`lab/port/field-liveness.js` reads every universe's counters at once; run on a
+  200-minute field). 38 of 158 never fire in node or the field, and all are off by design under TASKS, opt-in, the viewer's (the
+  attention field and the render VM fire only while someone watches), diagnostics, or rare branches of running mechanisms.
+  **Sixteen silent in node fire in the field**: never delete on a node census.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

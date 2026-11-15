@@ -1,0 +1,3 @@
+universes read 31; universe age (totalTicks) min 15506, median 21263, max 29722; counters 158; never in any universe 41
+NEVER: aim.drift aim.grow aim.pull aim.reaim aim.shrink aim.tol atom.chain atom.cull.idle atom.evict atom.opCarry attention.field birth.rationed birth.unprovisioned cell.chemExec cell.inscribeNet child.frozen cosmos.lawRelax cosmos.lawRevert cosmos.lawUndo draw.keep draw.propose draw.revert gene.author gene.cull gene.read genome.trim law.capacityRefused mech.kept mech.propose mech.revert mech.undo mind.train motif.evictAge motif.evictQuality probe.author repl.atomNew repl.atomStep repl.sex task.trickle xion.bud xion.fission
+exit 0

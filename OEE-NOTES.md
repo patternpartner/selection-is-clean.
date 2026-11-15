@@ -31682,3 +31682,33 @@ pair against the shipped engine (`lab/port/mind-late-long.sh`, `out-long/lm2-*`)
   than the default and fell behind late. #431's default stands. Settling the learner over hours would take several long pairs at
   three hours each; not started.
 - My expectation before the run (that `late` would be level early and ahead late) was half right.
+
+### #435 — WHAT RUNS IN TODAY'S WORLD: the liveness census finds nothing to delete
+The user's question ("do the 30,000 lines still serve a purpose?") at the EXECUTED rung, decided before running: a counted
+mechanism that never fires in the default world, in node AND in an old field, and is not off by design, opt-in or a viewer's, is
+deleted with a byte-identical check; one that fires stays. Two instruments, both drawing nothing:
+- `liveness-report.js` under node, `TASKS=1 MIND=20` (the field's world, mind on), seeds 1-3, 6,000 ticks (`out-liveness/node-seed*`).
+- **`lab/port/field-liveness.js`** (new): every universe's `__liveness` read at once through a new read-only `livenessForTest()`
+  (`sim.worker.js` `api.liveness`, `universe.html`). Run on a COPY of #434's shipped field after 200 minutes, reloaded on its own
+  port, for 25 minutes: 31 universes aged 15,506-29,722 ticks (median 21,263), five to ten times a 25-minute universe
+  (`out-liveness/old-field.json`).
+
+Of 158 counted mechanisms, 54 never fired on all three node seeds, 41 never fired in the old field, **38 in both**. Sixteen silent in
+node fired in the field (the network, plasmids, channel warping 5.7 million times, verb senses 1.8 million): **a node census alone
+would have deleted live code.** The 38:
+- **Off by design in the TASKS default (10):** AIM's six (`aim.*`, #383), provisioned births (`birth.rationed`, `birth.unprovisioned`,
+  #381), the mind's training (`mind.train`, #431), `task.trickle` (a knob, 0 by default). The older world uses them; its restore knobs
+  bring them back.
+- **Opt-in (10):** the switchboard (`mech.*`, `#prune`), gene opcodes (`gene.*`, `GENE_DRAW`), REPL's options (`repl.sex`,
+  `repl.atomNew`, `repl.atomStep`).
+- **The viewer's (4):** `attention.field` deposits only where a pointer rests, and the render VM (`draw.propose/keep/revert`) proposes
+  a form only while the world is watched. A headless rig has no one watching.
+- **Diagnostics and refusals (3):** `child.frozen` (fires only if a child is born with zero mutation), `genome.trim` (only if a save
+  outgrows its budget), `law.capacityRefused` (a refusal). Their silence is the good outcome.
+- **Rare branches of mechanisms that run (11):** atom eviction and chaining (`atom.chain`, `atom.evict`, `atom.cull.idle`; the atom
+  system itself runs), cosmos law relax/revert/undo (the law process runs), xion bud and fission (xion runs), `motif.evictQuality`
+  (`motif.evictAge` runs), the substrate's chemistry and peer inscription (`cell.chemExec`, `cell.inscribeNet`; #217's late-and-sparse
+  layer).
+- **Verdict: none qualifies.** By this measure the engine's counted mechanisms do execute in the artwork as it runs, or are its
+  viewer's, its older world's, or its experiments'. Deleting code from here would take pairs tests of what RUNS (#423, #427, #431),
+  not a census. The census covers declared mechanisms only, not genes or opcodes.
