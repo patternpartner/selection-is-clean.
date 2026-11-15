@@ -26,7 +26,9 @@ const minds = page => page.evaluate(async () => {
   const one = async el => { const m = (el.getAttribute('src') || '').match(/[?&]slot=([^&#]*)/), s = m ? m[1] : '?';
     try { const a = el.contentWindow && el.contentWindow.__field; if (!a) return [s, null];
       const r = await Promise.race([a.stat(), new Promise(z => setTimeout(() => z(null), 8000))]);
-      return [s, r ? (r.mind || null) : null, r ? (r.totalTicks | 0) : -1]; } catch (e) { return [s, null, -1]; } };
+      // #435: ticks THIS universe has run since its boot (stat().tick), not totalTicks: a grown universe INHERITS its parent's
+      // totalTicks ("1687 ticks inherited"), so a newborn read as past 1,000 and failed the row below with one parent seen (#424's g0)
+      return [s, r ? (r.mind || null) : null, r ? (r.tick | 0) : -1]; } catch (e) { return [s, null, -1]; } };
   const o = []; for (const c of document.querySelectorAll('.cell')) o.push(await one(c.firstChild));
   for (const d of document.querySelectorAll('#below .deep, #below .grown')) o.push(await one(d));   // the layers below and any grown universe
   return o;

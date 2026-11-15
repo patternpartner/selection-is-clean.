@@ -31712,3 +31712,9 @@ would have deleted live code.** The 38:
 - **Verdict: none qualifies.** By this measure the engine's counted mechanisms do execute in the artwork as it runs, or are its
   viewer's, its older world's, or its experiments'. Deleting code from here would take pairs tests of what RUNS (#423, #427, #431),
   not a census. The census covers declared mechanisms only, not genes or opcodes.
+- **Acceptance, and #424's fragile `mind-test` row diagnosed.** `smoke.sh` slice 2 with the liveness read: 22 ok and 1 failing,
+  `mind-test`, on the grown universe `g0` (1 parent seen, 0 written), as at #424, #430 and #431, and alone once more. The row counts
+  a universe as having run once it is past 1,000 ticks, read as `totalTicks`, and **a grown universe INHERITS its parent's
+  `totalTicks`** (its HUD says "1687 ticks inherited"), so a newborn read as old. It now reads `stat().tick`, the ticks this universe
+  ran since its boot; the grown ones read 8-49 and drop out of the row, and the test is 14/0. The row's condition is unchanged; what
+  it counts is fixed. `main` fast-forwarded.
