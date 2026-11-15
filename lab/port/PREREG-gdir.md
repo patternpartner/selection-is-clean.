@@ -48,3 +48,12 @@ Anything past 25 minutes; the shuffle control (whether the gain is selected); a 
 
 ## Saved worlds (rule 6)
 Nothing saved changes: the ground is read differently, not stored differently.
+
+## AMENDMENT (before decision pair 2; after pair 1 only)
+#438 shipped between pair 1 and pair 2: under TASKS a universe now opens its own inputs. The registered SHIP arm (commit 5e43da6)
+is no longer the world a viewer gets, so a verdict against it would decide a default for a world that is gone.
+- **Both arms move to commit 909e672** (today's `main`): SHIP is its `engine.html`, GDIR the same file with `TASK_GDIR`'s default 1.
+- **Pair 1 (1.66x, size 17+ 2.76x, against the old world) is reported and NOT counted.** Eight fresh pairs, tags p2-p9, decide.
+- The rule, floor, guard and verdicts are unchanged. The depth guard's size is the engine's own grade as each field reports it; past
+  five inputs it is a loose bound, the same in both arms.
+- Reason for the change is the ship, not pair 1's number, which favoured the arm.

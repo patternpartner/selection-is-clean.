@@ -19,7 +19,7 @@ function load(tag,arm){ const f=path.join(D,tag+'-'+(arm==='ship'?'base':arm)+'.
   const low=(z.slots||[]).filter(s=>(s[2]|0)<20).length;
   return {L, z, swOk, g17, depthLast:lm, at, low, complete:z.t>=SECS&&!!z.final&&!(z.bad|0)}; }
 const P=[], miss=[], badSw=[];
-for(let i=1;i<=PAIRS;i++){ const tag='p'+i, s=load(tag,'ship'), k=load(tag,'gdir');
+for(let i=2;i<=PAIRS+1;i++){ const tag='p'+i, s=load(tag,'ship'), k=load(tag,'gdir');
   if(!s||!k||!fs.existsSync(path.join(D,tag+'.done'))){ miss.push(tag); continue; }
   if(!s.swOk) badSw.push(tag+'-ship'); if(!k.swOk) badSw.push(tag+'-gdir');
   if(!s.complete||!k.complete){ miss.push(tag+'(incomplete)'); continue; }
