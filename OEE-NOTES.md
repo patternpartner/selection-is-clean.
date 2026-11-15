@@ -31777,3 +31777,56 @@ grow; a long run with no hand on it).
   machine's limit has only moved the wall.
 - **Second rule (EVERY input):** opening is now something a world has to do. Two node seeds, 6,000 ticks: one opened its sixth
   input at 6,000, the other had not (5-30% of a window's payments used all five). Three 30,000-tick worlds are running.
+- **Third reading, still under the EVERY rule alone** (`out-open-node/s11-s13`, mind on, stopped by the job limit at 22-24 thousand
+  ticks): all three worlds at ten inputs by tick 10-12 thousand, populations 1,400-1,600 against an array of 1,800. Once a sixth
+  input opens the rest follow a window apart: dependence on every input is contagious (one NAND of the new input onto a word that
+  depends on all the others). So the EVERY rule is hardly stricter after the first step, and a word that doubles per input cannot
+  be opened every thousand ticks.
+- **Two laws added, and the rule as shipped:**
+  - **The window doubles with each input** (1,000 ticks to open the sixth, 2,000 the seventh, ...): a wider world is earned over as
+    much more time as it costs.
+  - **Pay is indexed to the world's own mean grade** (`TASK_ZREF` 12): a pool's cap is scaled by 12 over the running mean grade of
+    what is being paid, never above 1. Deeper than the world's average still pays more; income a head does not grow with the grade.
+  - Both leave `TASK_OPEN=1 TASK_NMAX=5` at `6a2b51ae` on seed 3.
+- **Node, the rule as shipped** (`out-open-node/b11-b13`, `base11`; mind on, 16,000 ticks):
+
+  | Seed | Inputs at 16,000 | Functions | Of them on all eight inputs | Alive along the run |
+  |---|---|---|---|---|
+  | 11 open | 8 (6 by 6,000, 7 by 8,000, 8 by 12,000) | 118,054 | 25,564 | 593-1,467 |
+  | 11 shipped | 5 | 120,377 | | 337-1,432 |
+  | 12 open | 8 | 243,155 | 107,771 | 528-1,564 |
+  | 13 open | 8 | 111,826 | 15,283 | 578-1,456 |
+
+  Seed 11 is the shipped world tick for tick until its sixth input opens (identical at 2,000 and 4,000). The count is about the
+  shipped world's; what differs is what is found.
+- **THE CONTROL: with payments shuffled no world opens** (`out-open-node/sh11-sh13`, `TASK_SHUFFLE=1`, the same seeds and ticks):
+  five inputs throughout, 965, 751 and 836 functions, populations 90-330. **Opening is selected, 3 of 3.**
+- **The field test** (`lab/port/PREREG-open.md`, committed before any field ran this rule; `out-long/op1-*`, `analyse-open.js`): one
+  pair of fields chained over six legs of 25 minutes, each leg reloading the last.
+
+  | Leg | Shipped F | Open F | Ratio | Ticks, open / shipped, this leg | Universes holding 5 / 6 / 7 / 8 / 9 inputs | Most of the leg's new functions depend on |
+  |---|---|---|---|---|---|---|
+  | 1 | 108,111 | 142,385 | 1.32 | 1.01 | 24 / 6 / 1 / 0 / 0 | 5 |
+  | 2 | 304,812 | 492,528 | 1.62 | 1.21 | 11 / 8 / 12 / 0 / 0 | 6 |
+  | 3 | 623,997 | 872,768 | 1.40 | 0.89 | 6 / 8 / 11 / 6 / 0 | 7 |
+  | 4 | 1,001,459 | 1,311,614 | 1.31 | 0.88 | 3 / 6 / 12 / 10 / 0 | 7 |
+  | 5 | 1,382,620 | 1,770,669 | 1.28 | 0.93 | 2 / 4 / 10 / 15 / 0 | 8 |
+  | 6 | 1,777,755 | 2,262,658 | **1.27** | 0.94 | 1 / 2 / 7 / 20 / 1 | 8 |
+
+  - **Rule 1 (count not worse, 0.90):** 1.27. **Rule 2 (it opens):** 28 of 31 universes at seven inputs or more; 470,840 of the last
+    leg's 491,989 new functions depend on six or more. **Rule 3 (reload):** the histogram of inputs held was the same before and
+    after four of the five reloads; once one universe came back at six that had held seven (it had opened after its last
+    two-minute autosave); no universe lost. **Rule 4 (ticks, 0.60):** 0.94. **All four hold: SHIPPED.**
+  - My prediction: ratio 0.9-1.2 (it was 1.27), median universe at seven inputs (it is eight), ticks 0.7-0.9 (0.94).
+  - The mean grade of what was new, per leg: shipped 12.8, 16.0, 17.9, 18.5, 19.0, 19.2; open 17.3, 33.7, 49.0, 63.9, 76.5, 89.3. The
+    shipped field's is flattening. The open field's is NOT comparable (the bound past five inputs is a top-input Shannon split and
+    loosens with every input), so it is not a depth claim.
+- **What this does and does not change about the answer to the user's question.**
+  - **Changed:** the space is no longer fixed from outside. A universe widens it by its own rule, the widening is selected, and the
+    only ceiling is the machine's (`TASK_NMAX` 10: at the doubling window a universe needs at least 31,000 ticks to reach it).
+  - **Not changed:** every function is still a Boolean function graded by a table this project wrote; the opening rule (half the
+    payments, a doubling window) and the pay index are mine; a creature still has four word registers and rebuilds everything
+    every epoch. One kind of novelty, without a fixed ceiling. That is closer, and it is not open-ended evolution.
+  - **Not measured:** past 150 minutes; what a field does when its universes reach ten inputs; a second long pair; a phone
+    (a universe allocates about 4 MB more).
+- Saved worlds (rule 6): a saved universe reloads open at five inputs with its creatures and record; its old 32-bit ground is not read.

@@ -235,6 +235,25 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   200-minute field). 38 of 158 never fire in node or the field, and all are off by design under TASKS, opt-in, the viewer's (the
   attention field and the render VM fire only while someone watches), diagnostics, or rare branches of running mechanisms.
   **Sixteen silent in node fire in the field**: never delete on a node census.
+  **`#436`: more than one function a ground cell: no.** A cell that keeps its last eight distinct functions found 0.71 of the
+  shipped field; a heritable slot was level. With #397's and #403's selecting variants, four ways of keeping something other than
+  the latest payment, none better. Removed. **`lab/port/digest.js` is the world digest** (the notes' `digest-knob.js` was never
+  committed). **Never restore the engine with `git checkout main --`: a container's local `main` can be months stale.** Use a hash.
+  **`#437`: the ground has directions (`TASK_GDIR`, default 0, pre-registered, UNDECIDED).** A miss in sector s reads the adjacent
+  cell's ground in that direction. Design pair 1.42x, decision pair 1 of 8 1.66x; `lab/port/gdir-batch.sh` runs the rest against
+  frozen copies of commit 5e43da6 (the world BEFORE #438). If it passes, its interplay with the open world is still untested.
+  **`#438`: THE WORLD OPENS ITS OWN INPUTS, SHIPPED (`TASK_OPEN`).** The user asked whether this system has a chance of open-ended
+  evolution; my answer was no (a closed 2^32 space widened once by a session, creatures that do not grow, sessions tuning a rate).
+  Now a universe starts at five inputs and opens the next itself when half a window's payments are for functions that depend on
+  EVERY input it has. The window doubles with each input (the word does: 2^n bits), and pay is indexed to the world's running mean
+  grade (`TASK_ZREF`), or income inflates and the world fills its array. With opening disabled the wide-word code IS the shipped
+  world (`TASK_OPEN=1 TASK_NMAX=5`, same digest). **With payments shuffled no node world opened a sixth input in 16,000 ticks
+  (3 of 3): opening is selected.** One 150-minute pair of fields: 1.27x the functions on 0.94x the ticks, 28 of 31 universes at
+  seven inputs or more, reloads exact. `TASK_OPEN=0` restores the world before. **A count across spaces of different size is not
+  comparable, and neither is the grade past five inputs** (a top-input Shannon split, looser with each input): read the inputs
+  held (`OPEN.n` in a field sample) and what the new functions depend on (`OPEN.m`). `TASK_NMAX` 10 is the machine's ceiling, not
+  a rule. Still mine: the grade, the opening rule, four word registers a creature. Next named steps: organisms that grow (the
+  word file is fixed at four), and a second long pair.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
