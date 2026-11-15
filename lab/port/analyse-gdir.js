@@ -38,4 +38,4 @@ console.log('reported: median F ratio at 5, 10, 15, 20 min: '+T.map(t=>med(P.map
 console.log('reported: median ticks ratio '+med(P.map(p=>p.k.z.K/p.s.z.K)).toFixed(2)+', median alive ratio '+med(P.map(p=>p.k.z.A/p.s.z.A)).toFixed(2)+
   ', universes under 20 creatures at the end, summed: ship '+P.reduce((x,p)=>x+p.s.low,0)+', gdir '+P.reduce((x,p)=>x+p.k.low,0));
 console.log('VERDICT: '+(badSw.length?'INCONCLUSIVE (switch check failed)':P.length<FLOOR?'INCONCLUSIVE (fewer than '+FLOOR+' complete pairs)':
-  W.pGreater<0.05?(guard?'BETTER, depth guard holds: ship REPL_CROWD_K 100':'BETTER but the depth guard fails: held'):W.pLess<0.05?'WORSE: no change':'neither: no change'));
+  W.pGreater<0.05?(guard?'BETTER, depth guard holds: ship TASK_GDIR 1':'BETTER but the depth guard fails: held'):W.pLess<0.05?'WORSE: no change':'neither: no change'));
