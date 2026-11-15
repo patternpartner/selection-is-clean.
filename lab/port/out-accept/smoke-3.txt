@@ -1,0 +1,8 @@
+  slice 3/3: rigs 47-70 of 70
+  harness-meta-ablate.js     ok
+  harness-saturation.js      ok
+  harness-atrophy-probe.js   ok
+  harness-coupling.js        ok
+  harness-coupling-asym.js   ok
+  harness-alien-ablate.js    ok
+  harness-ablate-reflex.js   
