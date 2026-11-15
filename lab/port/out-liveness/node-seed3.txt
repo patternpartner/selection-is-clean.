@@ -1,0 +1,178 @@
+LIVENESS CENSUS  —  6000 ticks, seed 3
+  declared 156   live 73   rare 16   NEVER 67
+
+  RAN
+    alien.predict:30
+    atom.author:13
+    atom.credit:100
+    atom.opAuthor:6
+    atom.opCarry:56
+    atom.opFire:59196
+    atom.opWire:6
+    atom.seedIntoParticle:21
+    birth.paid:12805
+    birth.refused:13595
+    cell.inscribe:3973
+    channel.formStep:10
+    channel.govSelf:21492
+    channel.update:46
+    channel.write:1082
+    channel.xferStep:7
+    child.varied:13134
+    cluster.cgEvict:1749
+    cluster.detect:100
+    cluster.persist:100
+    cluster.reflex:100
+    compiler.fold:21
+    cosmos.foundRefused:520
+    cosmos.launch:12
+    deme.countStep:505
+    deme.gate:66
+    dims.grow:5
+    emit.formStep:10
+    gene.drift:2322
+    gene.intStep:4812
+    genome.mutate:18
+    level.appeared:14
+    level.vanished:12
+    meme.transfer:9179
+    metric.applied:11185921
+    mind.propose:2520
+    mind.see:12805
+    motif.evictAge:18
+    mutmag.author:379
+    mutmag.drift:5118
+    network.broadcast:6001
+    network.receive:6001
+    niche.economy:6001
+    oee.bonus:80
+    phys.reaction:349780
+    probe.claim:280
+    probe.promote:25
+    prog.inherit:13134
+    reach.beyondRing:125788
+    repl.birth:12789
+    repl.gift:1729
+    repl.prey:2186128
+    repl.scavenge:43833
+    self.learn:10
+    shadow.decide:10
+    shadow.sim:47
+    substrate.seed:18
+    tick.phaseStep:220
+    tick.rateStep:530
+    tick.skipped:1653915
+    ua.foldModeStep:814
+    uplasmid.send:17
+    verb.compose:6
+    verb.conserved:1082
+    verb.fire:27354
+    verb.seedIntoParticle:13
+    verb.wire:567
+    vm.regStep:761
+    vm.selfWrite:3838
+    vm.selfWriteRefused:11025
+    xion.allocate:2060
+    xion.credit:353
+    xion.fuse:7
+
+  BARELY RAN (<5 times in the whole run)
+    atom.cull:3
+    atom.opDrift:1
+    channel.alloc:1
+    channel.grainStep:4
+    channel.warpStep:3
+    channel.wire:2
+    compiler.foldStep:1
+    cosmos.brake:1
+    cosmos.found:1
+    cosmos.law:1
+    cosmos.lawKept:1
+    deme.blocked:4
+    oee.flush:1
+    probe.author:4
+    verb.author:4
+    verb.senseBind:3
+
+  NEVER RAN
+    aim.drift                     <- decorative in this condition
+    aim.grow                      <- decorative in this condition
+    aim.pull                      <- decorative in this condition
+    aim.reaim                     <- decorative in this condition
+    aim.shrink                    <- decorative in this condition
+    aim.tol                       <- decorative in this condition
+    atom.chain                    <- decorative in this condition
+    atom.cull.idle                <- decorative in this condition
+    atom.evict                    <- decorative in this condition
+    atom.opCull                   <- decorative in this condition
+    atom.opFallback               <- decorative in this condition
+    attention.field               <- decorative in this condition
+    birth.rationed                <- decorative in this condition
+    birth.unprovisioned           <- decorative in this condition
+    cell.chemExec                 <- decorative in this condition
+    cell.inscribeNet              <- decorative in this condition
+    channel.coarse                <- decorative in this condition
+    channel.drift                 <- decorative in this condition
+    channel.govPop                <- decorative in this condition
+    channel.release               <- decorative in this condition
+    channel.shed                  <- decorative in this condition
+    channel.warped                <- decorative in this condition
+    channel.wireLand              <- decorative in this condition
+    channel.xfer                  <- decorative in this condition
+    channel.xferDeclined          <- decorative in this condition
+    channel.xferSensed            <- decorative in this condition
+    child.frozen                  <- decorative in this condition
+    cosmos.foundSeen              <- decorative in this condition
+    cosmos.lawRelax               <- decorative in this condition
+    cosmos.lawRevert              <- decorative in this condition
+    cosmos.lawUndo                <- decorative in this condition
+    cosmos.merge                  <- decorative in this condition
+    draw.keep                     <- decorative in this condition
+    draw.propose                  <- decorative in this condition
+    draw.revert                   <- decorative in this condition
+    emit.selfFrame                <- decorative in this condition
+    emit.spread                   <- decorative in this condition
+    expr.recombine                <- decorative in this condition
+    gene.author                   <- decorative in this condition
+    gene.cull                     <- decorative in this condition
+    gene.read                     <- decorative in this condition
+    genome.trim                   <- decorative in this condition
+    law.capacityRefused           <- decorative in this condition
+    mech.kept                     <- decorative in this condition
+    mech.propose                  <- decorative in this condition
+    mech.revert                   <- decorative in this condition
+    mech.undo                     <- decorative in this condition
+    mind.train                    <- decorative in this condition
+    motif.evictQuality            <- decorative in this condition
+    net.assortBiased              <- decorative in this condition
+    network.migrantAccepted       <- decorative in this condition
+    probe.drift                   <- decorative in this condition
+    prog.crossover                <- decorative in this condition
+    repl.atomNew                  <- decorative in this condition
+    repl.atomStep                 <- decorative in this condition
+    repl.headRestored             <- decorative in this condition
+    repl.sex                      <- decorative in this condition
+    task.trickle                  <- decorative in this condition
+    uplasmid.grammar              <- decorative in this condition
+    uplasmid.law                  <- decorative in this condition
+    uplasmid.refused              <- decorative in this condition
+    verb.chainLink                <- decorative in this condition
+    verb.senseFired               <- decorative in this condition
+    vm.selfWriteSeed              <- decorative in this condition
+    world.signal                  <- decorative in this condition
+    xion.bud                      <- decorative in this condition
+    xion.fission                  <- decorative in this condition
+
+  "never" is a fact about THIS RUN, not proof the code is dead. Four honest reasons a
+  mechanism can read zero here:
+    - it needs PEERS      network.migrantAccepted, alien.predict — one process has none
+    - it needs a PERSON   attention.field (#135) only fires when someone is actually looking,
+                          so headless it is correctly zero and attention-test.js proves it works
+    - it needs a REAL     world.signal (#136) reads the actual wall clock, and a seeded
+      CLOCK               replay must not depend on the time of day it ran — so every
+                          harness deliberately silences it. Zero here is the guard working;
+                          worldsignal-test.js lifts it and proves the term is live
+    - it needs TIME       a mature atom bank, or more ticks than this run had
+  Anything left over after those is the interesting kind of zero. It is the question, not
+  the verdict — but nothing was even asking before.
+exit 0
