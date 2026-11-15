@@ -31652,3 +31652,33 @@ Read with `lab/port/analyse-mind-long.js`. 31 universes in each field in every l
   The learner is ahead in each of the last three legs, by 13-19%, and in leg 8 on EQUAL ticks: about 15% more found per tick. So
   late on it is the model, not the speed. In all, draw still leads (1.14x); at these rates the learner draws level around six hours.
   Stopped here: three steady legs read the pattern, and the next question is a mind that has both (#434).
+
+### #434 — A MIND THAT DRAWS EARLY AND LEARNS LATE: level for two hours, then BEHIND (one long pair; the knob is removed again)
+#433's long pair had the drawn mind ahead early and the learner ahead after about two hours. `MIND_MODE` 4 (`late`, commit
+`5f3fce7`) learned from birth and wrote drawn instructions until its universe was 8,000 ticks old, then wrote from its model.
+Default byte-identical (draw `d9bfc096`, learner `c171d594`, off `6cbe0c0d`); at `MIND_LATE=0` it was the learner exactly. One long
+pair against the shipped engine (`lab/port/mind-late-long.sh`, `out-long/lm2-*`), eight legs, 31 universes a field throughout.
+
+| leg | cumulative draw / late | ratio | new this leg | ratio | size 17+ this leg | new per tick | late universes past 8,000 |
+|---|---|---|---|---|---|---|---|
+| 1 | 99,301 / 113,671 | 0.87 | 99,301 / 113,671 | 0.87 | 0.81 | 1.21 / 1.23 | |
+| 2 | 243,655 / 293,982 | 0.83 | 144,354 / 180,311 | 0.80 | 0.76 | 2.65 / 3.13 | |
+| 3 | 489,164 / 525,996 | 0.93 | 245,509 / 232,014 | 1.06 | 1.13 | 3.92 / 4.73 | 8 of 31 |
+| 4 | 847,147 / 887,234 | 0.95 | 357,983 / 361,238 | 0.99 | 1.03 | 5.33 / 5.23 | 21 |
+| 5 | 1,301,860 / 1,356,189 | 0.96 | 454,713 / 468,955 | 0.97 | 0.97 | 6.37 / 6.19 | 27 |
+| 6 | 1,773,904 / 1,803,055 | 0.98 | 472,044 / 446,866 | 1.06 | 1.05 | 6.95 / 6.66 | |
+| 7 | 2,301,788 / 2,211,378 | 1.04 | 527,884 / 408,323 | 1.29 | 1.38 | 7.50 / 6.54 | |
+| 8 | 2,862,823 / 2,579,955 | **1.11** | 561,035 / 368,577 | **1.52** | **1.60** | 7.94 / 6.11 | |
+
+- Before the switch the two are the same mind, and `late` led (0.80-0.87): that is what two fields differ by. After the switch, as
+  its universes aged, `late` fell behind every leg, on equal ticks, its finds per tick falling (6.66, 6.54, 6.11) while draw's rose.
+  Size 17+ over the run: draw 1.17x.
+- **The two long pairs disagree about the learner late.** #433's learner gained on draw from leg 3 and led from leg 6 (finds per
+  tick 6.79-7.67 against 6.3-6.7); here a learner that started late lost from leg 6 (6.1-6.7 against 7.0-7.9). The draw arms differ
+  as much between the two pairs (per tick at leg 8: 6.70 and 7.94) as the arms within either. **One long pair cannot carry a
+  long-horizon claim about the mind in either direction**; what both agree on is that at 200 minutes the drawn mind is ahead in all
+  (1.14x and 1.11x) and in depth (1.23x and 1.17x).
+- **The knob is removed again** (`engine.html`, `index.html`, `harness-env.js` back to `main`'s, digests as before): it did no better
+  than the default and fell behind late. #431's default stands. Settling the learner over hours would take several long pairs at
+  three hours each; not started.
+- My expectation before the run (that `late` would be level early and ahead late) was half right.

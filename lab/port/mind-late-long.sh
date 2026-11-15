@@ -1,4 +1,6 @@
 #!/bin/bash
+# REMOVED AGAIN by #434 (the knob did no better and fell behind late); this script records how the run was made, and needs the
+# knob from commit 5f3fce7 to run again.
 # #434 design (one long pair, not a decision): the mind that learns from birth and writes drawn instructions until its universe is
 # MIND_LATE (8,000) ticks old, then from its model (MIND_MODE 4, 'late'), against the engine as shipped (draw). #433 had draw ahead
 # for two hours and the learner ahead after; this asks whether one mind can have both. One leg of long-pair.sh per launch.
