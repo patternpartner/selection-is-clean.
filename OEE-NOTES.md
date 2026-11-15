@@ -31830,3 +31830,9 @@ grow; a long run with no hand on it).
   - **Not measured:** past 150 minutes; what a field does when its universes reach ten inputs; a second long pair; a phone
     (a universe allocates about 4 MB more).
 - Saved worlds (rule 6): a saved universe reloads open at five inputs with its creatures and record; its old 32-bit ground is not read.
+- **#438 acceptance.** `substrate-test` 264/0 at `TICKS=900`, the default, `TICKS=40` and `FOUND=0`. `smoke.sh` in three slices, nothing
+  else running: 23/0, 22 ok and 1 failing, 24/0. **The failure was real and mine:** `sound-test`, "8 voices 0 notes". The score reads
+  each paid creature's published word from the 32-bit `tLast`, which the open world did not write. It now writes the word's first
+  32 rows there (read by the sound and the display only; digests unchanged), and `sound-test` is 7/0. The other 22 rigs of that
+  slice ran before the fix, on a world with the same digest. Digests on seed 3: default TASKS `6a2b51ae` at 2,000 ticks (it has not
+  opened by then), `TASK_OPEN=0` `6a2b51ae`, TASKS off `f3f1292f`. `main` fast-forwarded.

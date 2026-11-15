@@ -5,4 +5,23 @@
   harness-coupling.js        ok
   harness-coupling-asym.js   ok
   harness-alien-ablate.js    ok
-  harness-ablate-reflex.js   
+  harness-ablate-reflex.js   ok
+  harness-reflex-leaf.js     ok
+  harness-bridge.js          ok
+  harness-attractor.js       ok
+  harness-strata.js          ok
+  harness-orphans.js         ok
+  harness-variance.js        ok
+  bench-pairs.js             ok
+  harness-opexec.js          ok
+  vm-equiv.js                ok
+  harness-novelty.js         ok
+  harness-openup.js          ok
+  harness-sweep.js           ok
+  harness-variant.js         ok
+  harness-nfdsat.js          ok
+  harness-lawedge.js         ok
+  harness-lawtrial.js        ok
+  lab/port/pophold-test.js   ok
+
+  24 ok, 0 failing
