@@ -10827,9 +10827,9 @@ function seen5Add(F){ if(tSet5N*2>=tSet5.length){ const o=tSet5; tSet5=new Uint3
 const tLastPaid=(TASK_IN===5)?new Int32Array(TASK_NF):null;
 function taskRebuild5(){ const keep=[]; for(let n=0;n<tSlotN;n++){ const T=tSlots[n]; if(tick-tLastPaid[T]<1000)keep.push(T); }
   keep.sort((a,b)=>tLastPaid[b]-tLastPaid[a]); if(keep.length>(TASK_NF>>1))keep.length=TASK_NF>>1;
-  const K=keep.map(T=>[tKey[T],TASK_SZ[T],tCap[T],tRes[T],tE[T],tN[T],tSeen[T],tLastPaid[T],TASK_OPEN?oM[T]:0]);
-  tKey.fill(0); TASK_SZ.fill(0); tCap.fill(0); tRes.fill(0); tE.fill(0); tN.fill(0); tSeen.fill(0); tLastPaid.fill(0); tSlotN=0; if(TASK_OPEN)oM.fill(0);
-  for(const r of K){ let h=Math.imul(r[0],2654435761)>>>15; while(tKey[h]!==0)h=(h+1)&(TASK_NF-1); tKey[h]=r[0]; TASK_SZ[h]=r[1]; tCap[h]=r[2]; tRes[h]=r[3]; tE[h]=r[4]; tN[h]=r[5]; tSeen[h]=r[6]; tLastPaid[h]=r[7]; if(TASK_OPEN)oM[h]=r[8]; tSlots[tSlotN++]=h; }
+  const K=keep.map(T=>[tKey[T],TASK_SZ[T],tCap[T],tRes[T],tE[T],tN[T],tSeen[T],tLastPaid[T],TASK_OPEN?oM[T]:0,TASK_OPEN?oC[T]:0]);
+  tKey.fill(0); TASK_SZ.fill(0); tCap.fill(0); tRes.fill(0); tE.fill(0); tN.fill(0); tSeen.fill(0); tLastPaid.fill(0); tSlotN=0; if(TASK_OPEN){ oM.fill(0); oC.fill(0); }
+  for(const r of K){ let h=Math.imul(r[0],2654435761)>>>15; while(tKey[h]!==0)h=(h+1)&(TASK_NF-1); tKey[h]=r[0]; TASK_SZ[h]=r[1]; tCap[h]=r[2]; tRes[h]=r[3]; tE[h]=r[4]; tN[h]=r[5]; tSeen[h]=r[6]; tLastPaid[h]=r[7]; if(TASK_OPEN){ oM[h]=r[8]; oC[h]=r[9]; } tSlots[tSlotN++]=h; }
   tLastK.fill(-1); tRT.fill(-1); tEv.rebuilds=(tEv.rebuilds|0)+1; }
 function taskFind5(F){ if(F===0||F===0xFFFFFFFF)return -1; let h=Math.imul(F,2654435761)>>>15; for(let n=0;n<TASK_NF;n++,h=(h+1)&(TASK_NF-1)){ const k=tKey[h]; if(k===F)return h; if(k===0)return -1; } return -1; }
 function taskDrawInputs(){ if(TASK_IN===5)return taskDrawInputs5(); const rows=new Uint8Array(32); for(let q=0;q<32;q++)rows[q]=q&15;
@@ -10910,7 +10910,7 @@ function taskDrawOp(){ return Math.random()<TASK_DRAWP?TASK_OP0+((Math.random()*
 // #438 - TASK_OPEN=1 (five-input TASKS only; default 0, byte-identical): THE WORLD OPENS ITS OWN INPUTS. Until now the space a world
 // searches was fixed from outside: four inputs, then five when a session widened it (#392). With the knob a universe starts at five
 // inputs and adds the next one itself, at an epoch boundary, when over a window of TASK_OPENW ticks at least TASK_OPENP percent of its
-// payments went to functions that depend on its NEWEST input (and at least TASK_OPENMIN payments were made). A word is then 2^n bits
+// payments went to functions that depend on EVERY input it has (and at least TASK_OPENMIN payments were made). A word is then 2^n bits
 // (2^(n-5) 32-bit words), one bit per row of the full truth table in a random row order per epoch, so the clean-word rule is the
 // same rule on a longer word. A function is its truth table with the inputs it does not reach stripped from the top: a function of
 // the first five inputs keeps today's 32-bit table as its key (same pools, same grade); one that reaches further is keyed by a 32-bit
@@ -10923,8 +10923,13 @@ const oW=TASK_OPEN?new Uint32Array(CAP*4*OWM):null, oJ=TASK_OPEN?new Uint32Array
 const oL=TASK_OPEN?new Uint32Array(CAP*OWM):null, oLJ=TASK_OPEN?new Uint32Array(CAP*OWM):null, oLD=TASK_OPEN?new Uint32Array(CAP*OWM):null;   // the published word
 const oG=TASK_OPEN?new Uint32Array(FIELD_W*FIELD_H*OWM):null;   // the ground's tables, each repeated out to the widest word
 const oIn=TASK_OPEN?new Uint32Array(TASK_NMAX*OWM):null, oRow=TASK_OPEN?new Uint16Array(32*OWM):null, oF=TASK_OPEN?new Uint32Array(OWM):null;
+const oC=TASK_OPEN?new Uint8Array(TASK_NF):null;   // per pool: how many inputs its function depends on
+const OMASK=[0x55555555,0x33333333,0x0F0F0F0F,0x00FF00FF,0x0000FFFF];
+// how many of its first m inputs the function in oF depends on
+function oDeps(m){ const w=1<<(m-5); let c=0; for(let p=0;p<5;p++){ const sh=1<<p, mk=OMASK[p]; for(let x=0;x<w;x++){ const v=oF[x]; if(((v^(v>>>sh))&mk)!==0){ c++; break; } } }
+  for(let p=5;p<m;p++){ const st=1<<(p-5); for(let x=0;x<w;x++){ if(!(x&st)&&oF[x]!==oF[x|st]){ c++; break; } } } return c; }
 const oM=TASK_OPEN?new Uint8Array(TASK_NF):null;   // per pool: how many inputs its function spans (the highest it depends on, plus one)
-let oLogK=TASK_OPEN?new Uint32Array(1<<14):null, oLogZ=TASK_OPEN?new Uint8Array(1<<14):null, oLogM=TASK_OPEN?new Uint8Array(1<<14):null, oLogN=0;   // the lifetime record in order of first payment: key, grade, span
+let oLogK=TASK_OPEN?new Uint32Array(1<<14):null, oLogZ=TASK_OPEN?new Uint8Array(1<<14):null, oLogM=TASK_OPEN?new Uint8Array(1<<14):null, oLogN=0;   // the lifetime record in order of first payment: key, grade, inputs depended on
 const oWin={paid:0,top:0,at:0}, oOpenAt=[];   // the opening window; the tick each input opened at (a readout)
 function oLog(k,z,m){ if(oLogN>=oLogK.length){ const a=new Uint32Array(oLogN*2), b=new Uint8Array(oLogN*2), c=new Uint8Array(oLogN*2); a.set(oLogK); b.set(oLogZ); c.set(oLogM); oLogK=a; oLogZ=b; oLogM=c; } oLogK[oLogN]=k; oLogZ[oLogN]=z; oLogM[oLogN]=m; oLogN++; }
 function oDrawInputs(){ const R=32*oWD; for(let q=0;q<R;q++)oRow[q]=q; for(let q=R-1;q>0;q--){ const j=(Math.random()*(q+1))|0, t=oRow[q]; oRow[q]=oRow[j]; oRow[j]=t; }
@@ -10942,7 +10947,7 @@ function oSz(off,m,neg){ if(m===5){ let x=oF[off]; if(neg)x=~x; x>>>=0; return x
   if(a===-1)return b+4; if(b===-1)return a+5; if(a===-2)return 1+oSz(off+h,m-1,!neg); if(b===-2)return 2+oSz(off,m-1,!neg); return a+b+4; }
 function oSlot(key,m){ let h=Math.imul(key,2654435761)>>>15;
   for(let n=0;n<TASK_NF;n++,h=(h+1)&(TASK_NF-1)){ const k=tKey[h]; if(k===key)return h; if(k===0){ if(tSlotN>=TASK_NF*0.9){ tEv.full=(tEv.full|0)+1; return -1; }
-      const z=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); tKey[h]=key; TASK_SZ[h]=z; oM[h]=m; tCap[h]=TASK_CAP*z; tRes[h]=tCap[h]; tSlots[tSlotN++]=h; return h; } } return -1; }
+      const z=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); tKey[h]=key; TASK_SZ[h]=z; oM[h]=m; oC[h]=oDeps(m); tCap[h]=TASK_CAP*z; tRes[h]=tCap[h]; tSlots[tSlotN++]=h; return h; } } return -1; }
 function oHash(arr,off,neg){ let h=2166136261; for(let x=0;x<oWD;x++){ const v=neg?~arr[off+x]:arr[off+x]; h=Math.imul(h^v,16777619); h^=h>>>13; } return h>>>0; }
 function oEpoch(){   // at an epoch boundary: perhaps open an input, then draw the rows, and last epoch's input bits become junk
   if(tick-oWin.at>=TASK_OPENW){ if(tNin<TASK_NMAX&&oWin.paid>=TASK_OPENMIN&&oWin.top>=TASK_OPENP*oWin.paid){ const w=oWD; tNin++; oWD=w<<1; oOpenAt.push(tick);
@@ -10975,8 +10980,8 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(key===0||(m===5&&TASK_TRIV5.indexOf(key)>=0)){ tEv.trivial++; return; }
   if(m>5){ const h=1<<(m-6); let lo=0, hi=0xFFFFFFFF; for(let x=0;x<h;x++){ lo|=oF[x]; hi&=oF[h+x]; } if(lo===0&&hi===0xFFFFFFFF){ tEv.trivial++; return; } }   // a bare input past the fifth
   if(tPE[i]===e)return; const T=oSlot(key,m); if(T<0)return;
-  tPE[i]=e; tLastK[i]=T; oWin.paid++; if(oM[T]===tNin)oWin.top++;
-  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oM[T]); } tEv.paid++;
+  tPE[i]=e; tLastK[i]=T; oWin.paid++; if(oC[T]===tNin)oWin.top++;
+  const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); } tEv.paid++;
   if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
   if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let n=0; for(let q=0;q<4;q++) if(tK[kD*4+q]>=0)n++; if(n){ const tx=TASK_TROPH*g/n; for(let q=0;q<4;q++){ const k=tK[kD*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
