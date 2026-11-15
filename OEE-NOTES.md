@@ -31718,3 +31718,28 @@ would have deleted live code.** The 38:
   `totalTicks`** (its HUD says "1687 ticks inherited"), so a newborn read as old. It now reads `stat().tick`, the ticks this universe
   ran since its boot; the grown ones read 8-49 and drop out of the row, and the test is 14/0. The row's condition is unchanged; what
   it counts is fixed. `main` fast-forwarded.
+
+### #436 — MORE THAN ONE FUNCTION A CELL: no. A ground that keeps its last eight finds LESS (0.71); the knob is removed (design)
+#397 left "the ground is one function per cell" as its next step. Two design pairs of whole fields, each the shipped engine beside
+a copy, together, 1,500 s (`lab/port/field-pair.sh`, `out-gl-design/`). Decided before the first: ahead by more than 15% goes to a
+pre-registration; level or behind gets one pair of the other write rule, then the knob comes out.
+`TASK_GL=8`: a cell holds eight functions; a READ of sector s that finds no live word reads slot s, or the next that holds something.
+
+| Pair | Write rule | F at 5 / 10 / 15 / 20 / 25 min, shipped | The arm | Ratio at 25 | Size 17+ | Ticks |
+|---|---|---|---|---|---|---|
+| a | the last 8 DISTINCT functions paid in the cell | 10,634 / 30,372 / 44,820 / 79,811 / 113,948 | 7,319 / 19,899 / 37,185 / 57,661 / 80,955 | **0.71** | 0.62 | 0.97 |
+| b | the slot is the OUTPUT instruction's src (heritable) | 6,215 / 21,125 / 48,147 / 78,609 / 106,771 | 5,089 / 21,944 / 50,019 / 83,601 / 117,557 | 1.10 | 1.01 | 1.13 |
+
+- **Pair a is behind at every mark and by more on depth, on level ticks.** A read that may return any of a cell's last eight
+  payments finds less than a read that returns the latest. With #397's two selecting variants and #403 ("the deepest stays",
+  level), that is four ways of keeping something other than the latest payment, none better. **What the ground gives seems to be the
+  newest word of a place, not a store of words.** Untested reading; one pair.
+- **Pair b is level** (inside the 15% two identical fields differ by). Every founder writes slot 0, so it starts as the shipped
+  ground and spreads only as src fields mutate; it did not hurt and did not help.
+- **Removed:** `TASK_GL` and `TASK_GW` are out of `engine.html` and `harness-env.js` (the engine is #435's; digests `6a2b51ae` TASKS,
+  `f3f1292f` off, seed 3). One node seed had read 3,386 against 846 for pair a's arm before any field ran: the fourfold "hint" was
+  draw order (#397's warning), and the field said the opposite.
+- **Kept: `lab/port/digest.js`**, a world's digest under node (positions, stores, amplitudes, the ground, the next draw). The
+  notes name a `digest-knob.js` that was never committed.
+- **A slip, caught by a digest:** I restored the engine with `git checkout main --`, and this container's local `main` sat at #393.
+  The digest run showed zero ground reads. Restore from a commit hash, or fetch first.
