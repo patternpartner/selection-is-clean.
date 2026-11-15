@@ -3,3 +3,6 @@
 {"t":4000,"alive":769,"len":16,"maxLen":18,"cap":16.4,"taskOps":5.1,"seen":25391,"paid":65289,"n":5,"ms":956657}
 {"t":6000,"alive":878,"len":16,"maxLen":17,"cap":17.1,"taskOps":5.4,"seen":46240,"paid":101425,"n":5,"ms":1344234}
 {"t":8000,"alive":337,"len":16,"maxLen":17,"cap":16.9,"taskOps":5.3,"seen":54966,"paid":120506,"n":5,"ms":1529115}
+{"t":10000,"alive":567,"len":15.6,"maxLen":17,"cap":15.9,"taskOps":5.3,"seen":63627,"paid":138514,"n":5,"ms":1611303}
+{"t":12000,"alive":827,"len":15.6,"maxLen":17,"cap":16.1,"taskOps":5.7,"seen":76157,"paid":167041,"n":5,"ms":1680552}
+{"t":14000,"alive":1156,"len":14.6,"maxLen":18,"cap":14.8,"taskOps":6.2,"seen":96893,"paid":206130,"n":5,"ms":1758222}
