@@ -342,6 +342,10 @@ git checkout main && git merge --ff-only <branch> && git push -u origin main
   (45-50 ticks against 32-36). Run it alone three times and A/B against the previous engine before believing either colour.
 - **A field launch of 1,800 s does not fit the 30-minute job limit; 1,500 s does (`#396`).** One pair of fields per launch.
 - A single run is not a measurement. Three seeds, or say out loud that it is one seed.
+- **Before launching anything over about 30 minutes, write down which decision each outcome leads to.** If every outcome leads
+  to the same decision, do not run it, or cut it until one outcome would change something. `#433`-`#434` spent seven hours on
+  two single long pairs, each declared beforehand unable to move the default whatever it showed; "the result will be
+  interesting" kept extending them. They bought a caveat and a knob added and removed, and the universe did not move.
 - **The rig takes minutes and long runs get reaped.** `substrate-test` runs several minutes per
   budget and `smoke.sh` longer; in the hosted sessions this project is developed in, shell jobs
   backgrounded with `setsid nohup ... &` were repeatedly killed mid-flight, leaving zero-byte
