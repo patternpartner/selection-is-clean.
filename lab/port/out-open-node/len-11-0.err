@@ -1,0 +1,5 @@
+
+{"t":2000,"alive":1432,"len":15.9,"maxLen":18,"cap":16,"taskOps":6.5,"seen":8281,"paid":23854,"n":5,"ms":319323}
+{"t":4000,"alive":769,"len":16,"maxLen":18,"cap":16.4,"taskOps":5.1,"seen":25391,"paid":65289,"n":5,"ms":956657}
+{"t":6000,"alive":878,"len":16,"maxLen":17,"cap":17.1,"taskOps":5.4,"seen":46240,"paid":101425,"n":5,"ms":1344234}
+{"t":8000,"alive":337,"len":16,"maxLen":17,"cap":16.9,"taskOps":5.3,"seen":54966,"paid":120506,"n":5,"ms":1529115}
