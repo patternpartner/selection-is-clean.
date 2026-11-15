@@ -51,6 +51,9 @@ const { sz5 } = require('./sz5.js'); let newSz = []; const armSets = {};   // #4
 // What a leg loses: whatever each universe did after its last autosave (on the clock every 2 minutes, #384).
 const PORT = +(process.env.PORT || 0), PROFILE = process.env.PROFILE || '', CHAIN = process.env.CHAIN || '';
 let T_OFF = 0, LEG = 1;
+// #438: an open world (TASK_OPEN) sends each function's grade and span itself; newM is the span (inputs reached) of what joined F
+let newM = [], openN = {};
+const spans = () => { const h = {}; for (const m of newM) h[m] = (h[m] || 0) + 1; newM = []; return h; };
 const depth = () => { const a = newSz.slice().sort((x, y) => x - y); newSz = []; if (!a.length) return { n: 0 };
   return { n: a.length, mean: +(a.reduce((x, y) => x + y, 0) / a.length).toFixed(2), p50: a[a.length >> 1], p90: a[Math.min(a.length - 1, Math.floor(a.length * 0.9))], max: a[a.length - 1],
     ge13: a.filter(z => z >= 13).length, ge17: a.filter(z => z >= 17).length }; };
@@ -130,7 +133,8 @@ const readField = (page, ms) => page.evaluate(async ms => {
         const T = tally[key] || (tally[key] = { U: 0, K: 0, A: 0, ground: {} }); T.U++; T.K += r.totalTicks | 0; T.A += r.alive | 0; T.ground[r.ground] = (T.ground[r.ground] || 0) + 1; if (r.chk) { const c = JSON.stringify(r.chk); T.chk = T.chk || {}; T.chk[c] = (T.chk[c] || 0) + 1; } }
       if (r.pop && r.pop.restored === 0 && r.pop.why) lost.push(s + ':' + r.pop.why);
       const b = Buffer.from(r.b64, 'base64');
-      if (r.in5) { for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j); if (!union5.has(Fk)) { union5.add(Fk); F++; newSz.push(sz5(Fk)); } if (AK && !AK.set.has(Fk)) { AK.set.add(Fk); AK.sz.push(sz5(Fk)); } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null, r.swb ? Object.values(r.swb).join('') : null, r.arm ? Object.keys(r.arm).join('+') : null]); continue; }   // #392: canonical truth tables; #424: [7] this universe's switches, in MECH_DECLARED order
+      if (r.in5) { const oz = r.open ? Buffer.from(r.open.z, 'base64') : null, om = r.open ? Buffer.from(r.open.m, 'base64') : null; if (r.open) openN[r.open.n] = (openN[r.open.n] || 0) + 1;
+        for (let j = 0; j + 3 < b.length; j += 4) { const Fk = b.readUInt32LE(j), zz = oz ? oz[j >> 2] : sz5(Fk); if (!union5.has(Fk)) { union5.add(Fk); F++; newSz.push(zz); if (om) newM.push(om[j >> 2]); } if (AK && !AK.set.has(Fk)) { AK.set.add(Fk); AK.sz.push(zz); } } slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null, r.swb ? Object.values(r.swb).join('') : null, r.arm ? Object.keys(r.arm).join('+') : null]); continue; }   // #392: canonical truth tables; #424: [7] this universe's switches, in MECH_DECLARED order
       for (let j = 0; j < b.length; j++) { const x = b[j]; if (!x) continue;
         for (let k = 0; k < 8; k++) if ((x >> k) & 1) { const T = j * 8 + k; if (!union[T]) { union[T] = 1; F++; } } }
       slots.push([s, r.totalTicks | 0, r.alive | 0, r.n | 0, r.boot | 0, r.bootT === undefined ? null : r.bootT, r.pop && r.pop.restored !== undefined ? r.pop.restored : null]);
@@ -138,7 +142,8 @@ const readField = (page, ms) => page.evaluate(async ms => {
     for (const s in perSlot) S += perSlot[s].found;
     const arms = {}; for (const key in tally) { const a = armSets[key], z = a.sz.slice().sort((x, y) => x - y); a.sz = [];
       arms[key] = { F: a.set.size, new: z.length, mean: z.length ? +(z.reduce((x, y) => x + y, 0) / z.length).toFixed(2) : null, ge17: z.filter(v => v >= 17).length, U: tally[key].U, K: tally[key].K, A: tally[key].A, ground: tally[key].ground, chk: tally[key].chk }; }
-    emit({ t: T_OFF + at, leg: LEG, J: J0, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), arms: Object.keys(arms).length ? arms : undefined, SWB: SWBN ? SWB : undefined, SWBN: SWBN || undefined, TOUR: TOUR.U ? TOUR : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
+    const OPEN = Object.keys(openN).length ? { n: openN, m: spans() } : undefined; openN = {};
+    emit({ t: T_OFF + at, leg: LEG, J: J0, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), OPEN, arms: Object.keys(arms).length ? arms : undefined, SWB: SWBN ? SWB : undefined, SWBN: SWBN || undefined, TOUR: TOUR.U ? TOUR : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;
