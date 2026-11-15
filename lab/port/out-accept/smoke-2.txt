@@ -1,0 +1,3 @@
+  slice 2/3: rigs 24-46 of 70
+  browser-test.js            ok
+  collective-test.js         

@@ -11,4 +11,16 @@
   inherit-test.js            ok
   migrant-test.js            ok
   noerror-test.js            ok
-  rarepath-test.js           
+  rarepath-test.js           ok
+  chain-test.js              ok
+  voice-test.js              ok
+  grammar-test.js            ok
+  substrate-test.js          ok
+  reach-test.js              ok
+  idle-test.js               ok
+  wire-test.js               ok
+  meter-test.js              ok
+  autosave-test.js           ok
+  codec-test.js              ok
+
+  23 ok, 0 failing
