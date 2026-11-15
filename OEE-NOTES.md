@@ -31743,3 +31743,37 @@ pre-registration; level or behind gets one pair of the other write rule, then th
   notes name a `digest-knob.js` that was never committed.
 - **A slip, caught by a digest:** I restored the engine with `git checkout main --`, and this container's local `main` sat at #393.
   The digest run showed zero ground reads. Restore from a commit hash, or fetch first.
+
+### #437 — THE GROUND HAS DIRECTIONS (`TASK_GDIR`): design pair 1.42x, pre-registered, decision pairs running
+From #436's reading (the ground's value is the newest word of a place): keep one function a cell, and let a READ in sector s that
+finds no live word read the ADJACENT cell in that direction (its own when that is empty or off the world). Today all eight sectors
+return the creature's own cell, so two READs in a program get the same word.
+- **Design pair** (`out-gdir-design/a-*`, together, 1,500 s): 134,776 against 94,765 (**1.42x**), ahead at every five-minute mark
+  (1.27 / 1.44 / 1.40 / 1.47), size 17+ 27,805 against 20,223 (1.37x), ticks 0.96x. Outside the 15% band, so it was pre-registered:
+  `lab/port/PREREG-gdir.md` (8 pairs, Wilcoxon on the count at 25 minutes, a depth guard), `analyse-gdir.js`, `gdir-batch.sh`.
+  Both arms run frozen copies of commit 5e43da6, so the engine can be worked on meanwhile; the registration says the machine is
+  not idle during these pairs.
+- **Decision pair 1:** 104,551 against 63,170 (1.66x), size 17+ 2.76x, on 0.86x the ticks. Seven to go.
+
+### #438 — THE WORLD OPENS ITS OWN INPUTS (`TASK_OPEN`, design; default off and byte-identical)
+The user asked whether the system as it sits has a chance of open-ended evolution. My answer was no: the space is closed (2^32
+functions of five inputs) and was widened once from outside (#392) when the four-input space thinned; the creatures do not grow;
+recent sessions tune a rate. They said to go after it. This is the first of three steps (what is paid comes from inside; organisms
+grow; a long run with no hand on it).
+- **What it is.** A universe starts at five inputs. A word is 2^n bits, one per row of the full truth table in a random row order
+  per epoch, so the bit-exact clean rule is the same rule on a longer word. At an epoch boundary, once per `TASK_OPENW` (1,000)
+  ticks, the next input opens if at least `TASK_OPENP` (50) percent of the window's payments (200 at least) went to functions that
+  depend on EVERY input the world has. A function of the first five inputs keeps its 32-bit table as its key, pool and grade; one
+  that reaches further is keyed by a 32-bit hash of its table and graded by the Shannon split on the top input down to the
+  five-input grade (an upper bound, looser with each input). `TASK_NMAX` (10, a 1,024-bit word) is the machine's limit, not a rule.
+- **It is the same world until it opens.** `TASK_OPEN=1 TASK_NMAX=5` gives the shipped world's digest exactly (`6a2b51ae`, seed 3,
+  2,000 ticks): the wide-word code, the hash keys, the ground's tables and the record reproduce the 32-bit implementation.
+  Default `6a2b51ae`, TASKS off `f3f1292f`.
+- **First rule, too easy** (opens when half the payments reach the NEWEST input): two node worlds were at ten inputs by tick 6,000
+  and found 119,513 and 90,689 functions in 8,000 ticks against 28,002; populations near the array's ceiling (1,491, 1,607 against
+  592), because the grade and so the pay grows with every input. One pair of fields (`out-open-design/a-*`): 160,553 against 97,561
+  (1.65x) on 0.74x the ticks and 1.4x the creatures; 17 universes at six inputs, 12 at seven, 2 at eight. **That count is mostly
+  mechanical** (any NAND with a new input is a new function), so it is not a result. A world that climbs on a clock to the
+  machine's limit has only moved the wall.
+- **Second rule (EVERY input):** opening is now something a world has to do. Two node seeds, 6,000 ticks: one opened its sixth
+  input at 6,000, the other had not (5-30% of a window's payments used all five). Three 30,000-tick worlds are running.
