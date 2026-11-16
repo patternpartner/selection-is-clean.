@@ -31858,3 +31858,23 @@ grow; a long run with no hand on it).
   the first row after a reload with the LAST row before it, and that row can be newer than the save a reload restores (a row at tick
   1,911, a save at 1,867). It failed 1 run in 2 alone in a world that finds 24 functions in 44 ticks. It now compares with the latest
   row at or before the restored world's tick; the condition is unchanged; 3 of 3. `main` fast-forwarded.
+
+### #439 — NO GRADE IN THE PAY: no. The grade is what makes a world climb (node, 3 of 3; the knob is removed)
+After #438 the grade was the largest thing left that is mine: a pool's cap is the formula-size table times a constant, so a deeper
+function pays more because this project says so. `TASK_FLAT=1` gave every pool the same cap (`TASK_CAP x TASK_ZREF`), so a function
+paid only by how full its pool was: what is rare pays. Decided before: if flat worlds open inputs and find about as much, it goes
+to a field pair and the grade leaves the economy; if they stall, the knob is removed.
+
+| Seed (mind on, 12,000 ticks) | Graded: inputs, functions | Flat: inputs, functions | Flat: mean grade of what is paid |
+|---|---|---|---|
+| 11 | 8, 92,935 | 5, 31,595 | 5.4 |
+| 12 | 8, 162,996 | 5, 18,618 | 7.0 |
+| 13 | 7, 74,397 | 5, 12,638 | 4.5 |
+
+- **No flat world opened a sixth input**, and each found a fifth to a third as much, shallow. Populations were alike (700-1,500), so
+  it is not a starved world. Rarity alone does not climb: a new shallow function is as rare as a new deep one and far easier.
+- Node, three seeds: by #397 a node sweep cannot see less than severalfold. This is severalfold and a difference of kind (opens
+  against does not), so I rule on it and do not spend a field pair.
+- **The grade stays, now as something measured.** It is still a table this project wrote. What would replace it is a reward for
+  depth that the world computes itself; "rare" is not that. `TASK_FLAT` is out of `engine.html` and `harness-env.js` (a comment
+  holds the result); digests unchanged.
