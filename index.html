@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -300,7 +300,12 @@
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }
   var total=n+(wantCollective?1:0);
-  function withMind(h){ if(!MINDTOK)return h; return h ? h+','+MINDTOK : '#'+MINDTOK; }
+  // #447: #collearn - THE COLLECTIVE IS THE ONE UNIVERSE THAT LEARNS. Under TASKS no universe's mind learns (#431: the same rewrite drawn
+  // at random found more). The collective is where what survived in eight worlds is gathered, so with this token its mind, and only
+  // its mind, is the learning one; every other universe keeps the field's setting. Opt-in until a pairs test says otherwise.
+  var COLLEARN = /(^|,)collearn(,|$)/.test(raw||'');
+  function withMind(h,isColl){ var t=MINDTOK; if(COLLEARN&&isColl) t=[(t||'').split(',').filter(function(x){ return x&&x.indexOf('mindmode=')!==0&&x!=='nomind'; }).join(','),'mindmode=learn'].filter(Boolean).join(',');
+    if(!t)return h; return h ? h+','+t : '#'+t; }
 
   // ═══ #162 — HOW MANY WORKERS ═══════════════════════════════════════════════════════════════
   // The field has TWO ceilings and they pull in opposite directions. Memory is per-ISOLATE: nine
@@ -456,7 +461,7 @@
     // general case rather than a special one.
     f.src='universe.html?pool='+POOL_RUN+'x'+(i%pool)
          +'&slot='+(isColl?'collective':('u'+i))+WORLDQ+armQ()+TOURQ
-         +withMind(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''));
+         +withMind(passHash||((clean||prune)?('#'+[clean?'cleanart':'',prune?'prune':''].filter(Boolean).join(',')):''),isColl);
     f.title=isColl?'The collective':('Universe '+(i+1));
     f.setAttribute('allow','autoplay');
     cell.appendChild(f);
@@ -960,7 +965,7 @@
   // localStorage slot, which by then holds some other universe's genome.
   var openCell=null;
   function setFrameHash(cell,h){
-    h=withMind(h); var w=cell.firstChild.contentWindow;
+    h=withMind(h,cell.classList.contains('collective')); var w=cell.firstChild.contentWindow;
     try{ if((w.location.hash||'')!==h) w.location.hash=h; }catch(e){}
   }
   // #154: the controls come WITH the universe. In the grid a cell is a tab and nothing else — the
