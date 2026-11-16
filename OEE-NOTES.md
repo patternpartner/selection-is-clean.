@@ -31878,3 +31878,25 @@ to a field pair and the grade leaves the economy; if they stall, the knob is rem
 - **The grade stays, now as something measured.** It is still a table this project wrote. What would replace it is a reward for
   depth that the world computes itself; "rare" is not that. `TASK_FLAT` is out of `engine.html` and `harness-env.js` (a comment
   holds the result); digests unchanged.
+
+### #440 — THE GRADE CAN BE THE WORLD'S OWN: pay by GENERATION opens inputs without the table (design, node; a field pair running)
+#439 showed a world needs a reward for depth. It does not have to be the formula-size table. `TASK_GEN=1` (open world, default 0,
+byte-identical): an input is generation 0; a word read from a neighbour or the ground carries the generation of the function it
+is; NAND keeps the higher of its two; a function's generation is fixed the first time the universe pays for it, one more than the
+word that computed it carried. A pool's cap is a constant times the function's generation over the running mean generation of what
+is paid. The table is still computed, and is now an OUTSIDE ruler: it has no part in who is paid.
+
+| Seed (mind on, 12,000 ticks) | Table-graded: inputs, functions | Generation-graded: inputs, functions, table grade of what is paid | Ungraded (#439) |
+|---|---|---|---|
+| 11 | 8, 92,935 | 7, 108,605, 20.2 | 5, 31,595, 5.4 |
+| 12 | 8, 162,996 | 6, 111,019, 10.9 | 5, 18,618, 7.0 |
+| 13 | 7, 74,397 | 6, 102,482, 10.4 | 5, 12,638, 4.5 |
+
+- **All three open inputs** (about one behind the table-graded worlds) and find about as much. The ungraded worlds opened none. So
+  what #439 found missing is a reward for building on what was built, and the world can keep that count itself.
+- **The generations run to the thousands** (mean of what is paid 928-2,226 at 12,000 ticks): a function built on the newest function
+  is one generation on, and there are a hundred thousand of them. Only the ratio to the running mean enters the pay.
+- Populations ran high (1,200-1,650, at the same constant as the table's index, 12); the constant for this mode is `TASK_GREF` 6.
+- The first runs were lost with a container restart at about 4,000 ticks and rerun from scratch; these are the reruns.
+- Design only: the generations are not saved, and a `Map` holds them (too heavy for 31 universes; a typed table beside the lifetime
+  set is the engineering if this goes on). One field pair is running: shipped against generation-graded, 25 minutes.
