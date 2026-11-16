@@ -32007,3 +32007,16 @@ functions its universes have been paid for, summed over universes (not the field
 have to compute), and the range of inputs they hold: "4.5k functions found · inputs 5 · 27 minds ..." at 75 seconds
 (`lab/port/shots/field-line.png`); "inputs 5-8" once universes have opened. `stat()` carries `fn` and `nin`. `mind-test` 14/0 (it
 reads that line); no world state is touched.
+
+### #445 — THE GRADE PAST FIVE INPUTS HARDLY DEPENDS ON INPUT ORDER (a measurement; nothing changed)
+The grade past five inputs splits on the TOP input, so the same function with its inputs reordered can grade differently, and I
+had named a fix (try every split order) as the next change to the world. Measured first (`lab/port/probe-grade.js`: seed 12, mind
+on, 10,000 ticks, eight inputs held; every function of more than five inputs the ground holds, 1,512 of them, graded the engine's
+way and by the best order of splitting on the inputs past the fifth):
+- **76% grade exactly alike.** The engine's grade over the best-order grade: median 1.00, 10th-90th percentile 1.00-1.23, largest 3.5;
+  correlation of the logs 0.989; means 33.9 and 32.7.
+- Pay is a pool's grade over the world's running mean grade, so a uniform looseness cancels and only scatter matters. A tenth of
+  functions off by under a quarter is under what a pair of fields resolves (15%), and testing it needs a long pair, since universes
+  barely pass five inputs in 25 minutes. **Not built.** The grade is a loose bound, but it is not an arbitrary one in input order.
+- One world, one moment, the ground's sample (what was recently paid). It does not say how loose the bound is against the true
+  formula size past five inputs; nothing here can (no exact table exists there).
