@@ -10869,13 +10869,8 @@ function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floo
 const TASK_GROUND=TASKS_ON?(__tk('__TASK_GROUND',0)|0):0;
 const tGZ=(TASK_GROUND&&TASK_IN===5)?new Float32Array(FIELD_W*FIELD_H):null;   // #401: for the renderer only
 const tG=(TASK_GROUND&&TASK_IN===5)?new Uint32Array(FIELD_W*FIELD_H):null, tGE=(tG&&TASK_GROUND===2)?new Int32Array(FIELD_W*FIELD_H).fill(-1):null;
-// #437 design knob: TASK_GDIR=1 - THE GROUND HAS DIRECTIONS. Today a READ that finds no live word reads its own cell whatever sector it
-// asked for, so two READs in one program get the same word. With the knob, a miss in sector s reads the ground of the adjacent cell
-// in that direction (one function a cell, the latest paid there, as shipped), and its own cell only when that one is empty or off the
-// world. Default 0: byte-identical. Draws nothing.
-const TASK_GDIR=(__tk('__TASK_GDIR',0)|0)!==0, TASK_GDX=[-1,-1,0,1,1,1,0,-1], TASK_GDY=[0,-1,-1,-1,0,1,1,1];
-function groundCell(i,s){ const c=sunCell(i); if(!TASK_GDIR)return c; const x=(c%FIELD_W)+TASK_GDX[s], y=((c/FIELD_W)|0)+TASK_GDY[s]; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)return c;
-  const n=y*FIELD_W+x; return (tG[n]!==0&&(tGE===null||tGE[n]===tEpoch))?n:c; }
+// #437 (tested, removed): TASK_GDIR, a miss in sector s reading the ADJACENT cell's ground in that direction. Eight pairs of fields in
+// the open world: ahead in 5 of 8, median 1.17x, p 0.125 - neither (PREREG-gdir.md). A read that misses reads its own cell.
 function taskExpr5(F){ const I=tWin; let v=0; for(let q=0;q<32;q++){ const k=(((I[0]>>>q)&1)<<4)|(((I[1]>>>q)&1)<<3)|(((I[2]>>>q)&1)<<2)|(((I[3]>>>q)&1)<<1)|((I[4]>>>q)&1); if((F>>>k)&1)v|=1<<q; } return v>>>0; }   // the inverse of taskTT5
 function taskOp(t,src,dst,i){ if(TASK_OPEN)return taskOpN(t,src,dst,i); const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, D=o+d, S=o+s, e=tEpoch;
   if(t===0){ tW[D]=tWin[tIc[i]]; tIc[i]=(TASK_IN===5)?((tIc[i]+1)%5):((tIc[i]+1)&3); tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); return; }   // T_INPUT
@@ -10885,7 +10880,7 @@ function taskOp(t,src,dst,i){ if(TASK_OPEN)return taskOpN(t,src,dst,i); const d=
     return; }
   if(t===2){ tW[D]=tW[S]; tJ[D]=tJ[S]; tDm[D]=tDm[S]; for(let q=0;q<4;q++)tK[D*4+q]=tK[S*4+q]; return; }   // T_COPY
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e, v=hit?tLast[a]:0; tEv.reads++;
-    if(!hit&&tG!==null){ const c=groundCell(i,Math.abs(src|0)&7), F=(tGE===null||tGE[c]===e)?tG[c]:0; if(F!==0){ const w=taskExpr5(F), k=taskFind5(F); tEv.gReads=(tEv.gReads|0)+1; tW[D]=w; tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); if(k>=0)tK[D*4]=k;
+    if(!hit&&tG!==null){ const c=sunCell(i), F=(tGE===null||tGE[c]===e)?tG[c]:0; if(F!==0){ const w=taskExpr5(F), k=taskFind5(F); tEv.gReads=(tEv.gReads|0)+1; tW[D]=w; tJ[D]=0; tDm[D]=0xFFFFFFFF; tK.fill(-1,D*4,D*4+4); if(k>=0)tK[D*4]=k;
         const q=o+tRdI[i]; tRd[q]=w; tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; } }   // #397: no live word in that sector - read the ground
     if(TASK_FOUNDER&&!hit)return;   // #353: a miss leaves the word alone
     tW[D]=v; if(v)tEv.readHits++;   // T_READ
@@ -10985,7 +10980,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
     return; }
   if(t===2){ for(let x=0;x<WD;x++){ oW[D+x]=oW[S+x]; oJ[D+x]=oJ[S+x]; oD[D+x]=oD[S+x]; } for(let q=0;q<4;q++)tK[kD*4+q]=tK[kS*4+q]; return; }   // T_COPY
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e; tEv.reads++;
-    if(!hit&&tG!==null){ const c=groundCell(i,Math.abs(src|0)&7), key=(tGE===null||tGE[c]===e)?tG[c]:0; if(key!==0){ const R=32*WD, g=c*OWM; tEv.gReads=(tEv.gReads|0)+1;
+    if(!hit&&tG!==null){ const c=sunCell(i), key=(tGE===null||tGE[c]===e)?tG[c]:0; if(key!==0){ const R=32*WD, g=c*OWM; tEv.gReads=(tEv.gReads|0)+1;
         for(let x=0;x<WD;x++){ oW[D+x]=0; oJ[D+x]=0; oD[D+x]=0xFFFFFFFF; } for(let q=0;q<R;q++){ const k=oRow[q]; if((oG[g+(k>>>5)]>>>(k&31))&1)oW[D+(q>>>5)]|=1<<(q&31); }
         const k=taskFind5(key); tK.fill(-1,kD*4,kD*4+4); if(k>=0)tK[kD*4]=k; const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; } }
     if(!hit)return;   // a miss leaves the word alone (#353; the founder package is the open world's)

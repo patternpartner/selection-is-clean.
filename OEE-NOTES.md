@@ -31919,3 +31919,32 @@ is paid. The table is still computed, and is now an OUTSIDE ruler: it has no par
     creatures, half the ticks). A lower `TASK_GREF` was not tried. Not pursued.
 - **What #439 and #440 leave standing:** a world needs a reward for depth (ungraded worlds do not climb), and the formula-size table
   is the best one tried. "The grade is mine" remains true, now with two measured alternatives behind it.
+
+### #437 — VERDICT: NEITHER. The directional ground is removed (5 of 8 pairs ahead, median 1.17, p 0.125)
+`lab/port/PREREG-gdir.md` (amended before pair 2: both arms on the open world of commit 909e672; pair 1, against the old world, is
+reported and not counted). Out `lab/port/out-gdir/`, result `lab/port/gdir-result.txt`.
+
+| Pair | Shipped F | GDIR F | Ratio | 5 / 10 / 15 / 20 min | Size 17+ ratio | Machine |
+|---|---|---|---|---|---|---|
+| 1 (old world, not counted) | 63,170 | 104,551 | 1.66 | 7.85 / 3.30 / 2.19 / 1.81 | 2.76 | node beside |
+| 2 | 101,650 | 116,792 | 1.15 | 0.72 / 0.93 / 0.97 / 1.07 | 0.89 | node beside |
+| 3 | 81,683 | 111,184 | 1.36 | 0.92 / 1.19 / 1.43 / 1.36 | 1.23 | node beside |
+| 4 | 115,317 | 137,308 | 1.19 | 0.76 / 1.04 / 1.14 / 1.11 | 1.61 | node beside |
+| 5 | 81,565 | 130,651 | 1.60 | 0.62 / 1.39 / 1.29 / 1.53 | 1.69 | node beside |
+| 6 | 125,843 | 181,333 | 1.44 | 1.16 / 1.39 / 1.45 / 1.53 | 2.88 | quiet |
+| 7 | 127,831 | 111,192 | 0.87 | 1.17 / 1.01 / 0.81 / 0.85 | 0.62 | quiet |
+| 8 | 129,275 | 108,016 | 0.84 | 0.44 / 0.67 / 0.89 / 0.81 | 0.54 | quiet |
+| 9 | 171,760 | 161,097 | 0.94 | 0.96 / 1.40 / 1.28 / 1.04 | 1.01 | quiet |
+
+- **Floor:** 8 complete pairs, no run failing the switch check. **Primary:** Wilcoxon on the log ratio at 25 minutes, W+ 27 of 36,
+  p(greater) 0.125; ahead in 5 of 8; median 1.17. The depth guard held (5 of 8) and is moot. **Neither: the knob is removed**, as
+  registered. `engine.html`, `harness-env.js` and `sim.worker.js` no longer carry it; digests unchanged (`6a2b51ae`, `cef41a35`, off
+  `f3f1292f`).
+- **My prediction was wrong** (BETTER, 7 of 8, about 1.25). After five counted pairs it stood at 5 of 5; the last three were behind.
+  A set stopped at five would have shipped it.
+- **Reported, not ruled on:** the four pairs with node jobs beside them were all ahead (1.15-1.60); of the four on a quiet machine
+  one was ahead and three behind. The registration said the load is shared within a pair, and it is, but a loaded machine gives a
+  field fewer ticks (74-88 thousand against 93-115 thousand in the shipped arm), and a younger field may be where a directional
+  read helps. Pair 9's arms also differ 1.37x in ticks (114,806 against 83,506). If this is reopened, the horizon is the question,
+  and the pairs run alone.
+- **Design readings overstated it again:** 1.42 seen, 1.66 against the old world, 1.17 ruled and not significant.

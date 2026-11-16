@@ -239,9 +239,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   shipped field; a heritable slot was level. With #397's and #403's selecting variants, four ways of keeping something other than
   the latest payment, none better. Removed. **`lab/port/digest.js` is the world digest** (the notes' `digest-knob.js` was never
   committed). **Never restore the engine with `git checkout main --`: a container's local `main` can be months stale.** Use a hash.
-  **`#437`: the ground has directions (`TASK_GDIR`, default 0, pre-registered, UNDECIDED).** A miss in sector s reads the adjacent
-  cell's ground in that direction. Design pair 1.42x, decision pair 1 of 8 1.66x; `lab/port/gdir-batch.sh` runs the rest against
-  frozen copies of commit 5e43da6 (the world BEFORE #438). If it passes, its interplay with the open world is still untested.
+  **`#437`: the ground has directions (a miss in sector s reads the adjacent cell's ground): NEITHER, removed.** Design pair 1.42x,
+  one pair against the old world 1.66x; eight pairs in the open world: ahead in 5 of 8, median 1.17, p 0.125. It stood at 5 of 5
+  after five pairs and the last three were behind: **do not stop a registered set early.** The four pairs with node jobs beside
+  them were all ahead and three of the four on a quiet machine were behind; run decision pairs alone.
   **`#438`: THE WORLD OPENS ITS OWN INPUTS, SHIPPED (`TASK_OPEN`).** The user asked whether this system has a chance of open-ended
   evolution; my answer was no (a closed 2^32 space widened once by a session, creatures that do not grow, sessions tuning a rate).
   Now a universe starts at five inputs and opens the next itself when half a window's payments are for functions that depend on
