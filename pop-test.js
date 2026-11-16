@@ -44,7 +44,7 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
     ck('the first autosave stored the population beside the genome', !!pop && pop.rows > 50 && pop.genes > 100, pop ? pop.rows + ' creatures, ' + pop.genes + ' numeric genes' : 'none after ' + MAXS + 's');
     ck('it is gzipped where the browser can', !!pop && pop.kind === 'gzip', pop && (pop.kind + ', ' + pop.bytes + ' bytes'));
     ck('the creatures carry their own programs', !!pop && pop.progs > 1, pop && (pop.progs + ' distinct programs'));
-    const before = (await page.evaluate(() => window.__field.history())).filter(r => r[0] !== 'boot').pop();   // #369: the lifetime count before the reload
+    const beforeRows = (await page.evaluate(() => window.__field.history())).filter(r => r[0] !== 'boot'); let before = beforeRows[beforeRows.length - 1];   // #369: the lifetime count before the reload
     await page.reload(); await page.evaluate(() => window.__field.ready());
     const s1 = await stat(), latest = pop;
     console.log('  after reload: pop ' + JSON.stringify(s1 && s1.pop) + ', ' + (s1 && s1.N) + ' alive at tick ' + (s1 && s1.tick));
@@ -54,6 +54,10 @@ const readPop = (rewriteFp) => new Promise((res) => { const r = indexedDB.open('
     ck('the restored world runs', !!s1b && s1b.tick > t1 && s1b.N > 0, t1 + ' -> ' + (s1b && s1b.tick) + ', ' + (s1b && s1b.N) + ' alive');
     const hist = await page.evaluate(() => window.__field.history()), boots = hist.filter(r => r[0] === 'boot');
     const after = hist.slice(hist.lastIndexOf(boots[boots.length - 1])).filter(r => r[0] !== 'boot')[0];
+    // #438b: a reload restores the last SAVE, and the last history row can be newer than it (seen: a row at tick 1,911, a save at 1,867,
+    // 24 functions found in between, and the row failed 1 run in 2). Compare with the last row the save can contain: the latest one at
+    // or before the restored world's tick. The condition is unchanged.
+    if (before && after && after[0] < before[0]) { const at = beforeRows.filter(r => r[0] <= after[0]).pop(); if (at) before = at; }
     ck('functions ever paid carry across the reload instead of restarting', !!before && !!after && after[8] >= before[8], 'before ' + (before && before[8]) + ' (tick ' + (before && before[0]) + '), first row after ' + (after && after[8]) + ' (tick ' + (after && after[0]) + ')');
     ck('the history marks the reload with the creatures it brought back', boots.length === 2 && boots[0][3] === 0 && boots[1][3] === (s1 && s1.pop && s1.pop.restored), JSON.stringify(boots));
     // the negative side: a snapshot that does not belong to the stored genome

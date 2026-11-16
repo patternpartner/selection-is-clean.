@@ -251,9 +251,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   (3 of 3): opening is selected.** One 150-minute pair of fields: 1.27x the functions on 0.94x the ticks, 28 of 31 universes at
   seven inputs or more, reloads exact. `TASK_OPEN=0` restores the world before. **A count across spaces of different size is not
   comparable, and neither is the grade past five inputs** (a top-input Shannon split, looser with each input): read the inputs
-  held (`OPEN.n` in a field sample) and what the new functions depend on (`OPEN.m`). `TASK_NMAX` 10 is the machine's ceiling, not
-  a rule. Still mine: the grade, the opening rule, four word registers a creature. Next named steps: organisms that grow (the
-  word file is fixed at four), and a second long pair.
+  held (`OPEN.n` in a field sample) and what the new functions depend on (`OPEN.m`). `TASK_NMAX` (12 since `#438b`, where the word arrays grow only when an input opens)
+  is the machine's ceiling, not a rule. Still mine: the grade, the opening rule. **Organisms do not grow and need not** (programs sit
+  at about 16 instructions at five inputs and at eight; #389): the complexity is in the words passed between creatures. Not done: a
+  second long pair, anything past 150 minutes, a universe at the ceiling. `lab/port/open-save-test.js` checks the open state's save.
+  **`pop-test`'s reload row compared against a history row newer than the save** (1 failure in 2); fixed in what it compares.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

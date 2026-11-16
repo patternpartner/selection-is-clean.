@@ -31836,3 +31836,25 @@ grow; a long run with no hand on it).
   32 rows there (read by the sound and the display only; digests unchanged), and `sound-test` is 7/0. The other 22 rigs of that
   slice ran before the fix, on a world with the same digest. Digests on seed 3: default TASKS `6a2b51ae` at 2,000 ticks (it has not
   opened by then), `TASK_OPEN=0` `6a2b51ae`, TASKS off `f3f1292f`. `main` fast-forwarded.
+
+### #438b — THE CEILING MOVES TO TWELVE INPUTS, and a young universe pays nothing for it (world-identical)
+- **What a wider world costs** (node, worlds started cold at five, eight and ten inputs, `out-open-node/cost-*`): at about 1,650
+  creatures a ten-input tick cost 15% more than an eight-input one. Population, not word width, is the cost. (Worlds started cold at
+  eight or ten inputs fill the array, 1,600-1,740 alive; the worlds that climbed there held 600-1,500. A cold start is not the world.)
+- **The word arrays now grow when an input opens** (`oWiden`): they are sized to the inputs a universe HOLDS. Before, every universe
+  reserved ten inputs' worth at boot. `TASK_NMAX` is 12 (a 4,096-bit word); at the doubling window a universe needs at least 127,000
+  ticks to get there, about a day of a field universe, where ten was reachable in about seven hours.
+- **Same world:** seed 11 with the mind on through two openings (8,000 ticks) is `cef41a35` on the engine before and after;
+  `TASK_NMAX=5` is still `6a2b51ae`.
+- **`lab/port/open-save-test.js`** (new, in `smoke.sh`, 5/0): a world that has opened inputs saves its open state, is wiped, and loads
+  it back with every ground key, its inputs and its record; and a ground saved 32 words a table (as the first shipped version wrote
+  it) loads at 4. It pins seed 12 and its own tick budget, because the suite's seed 1 and `TICKS=40` open nothing.
+- **Do organisms grow? No, and #389 says they need not** (`out-open-node/len-*`): programs sit at about 16 instructions, the evolving
+  cap, with about 6 task ops, at five inputs and at eight alike. The functions of eight inputs are built across creatures, by reading.
+  This is cumulative culture carried by simple individuals. I had named "organisms that grow" as the second step; on this evidence it
+  is not where this system's complexity lives, and it is dropped as a step rather than built.
+- **Acceptance:** `smoke.sh` slice 2 alone: 22 ok, 2 failing. `collective-test`'s `returnPathIsATrickle` (the documented fragile row)
+  passed alone straight after. **`pop-test` was a real fragility, now fixed:** "functions ever paid carry across the reload" compared
+  the first row after a reload with the LAST row before it, and that row can be newer than the save a reload restores (a row at tick
+  1,911, a save at 1,867). It failed 1 run in 2 alone in a world that finds 24 functions in 44 ticks. It now compares with the latest
+  row at or before the restored world's tick; the condition is unchanged; 3 of 3. `main` fast-forwarded.
