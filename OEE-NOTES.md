@@ -31985,3 +31985,18 @@ pairs behind it; under 0.9 means the default is reviewed.
 megabytes a universe to every two-minute save. Now an open world writes only `world.open`, and a reload rebuilds the set and the
 count from it (a save written before this carries both, and they agree). `open-save-test` gained "reload: the lifetime set"
 (46,272 of 46,272; 6/0); `pop-test` 11/0; digest `cef41a35` unchanged. The record still grows without bound, 6 bytes a function.
+
+### #443 — A WORLD AT ITS CEILING KEEPS FINDING (node, two seeds; nothing changed)
+The shipped world's one unseen state: a universe that has opened every input the machine allows. `TASK_NMAX=7` puts the ceiling
+where a 16,000-tick node world reaches it early (`out-open-node/ceil11`, `ceil12`; mind on). Decided before: a stall or a full array
+at the ceiling is fixed before anything else; otherwise it is recorded.
+
+| Seed | At the ceiling from | Functions at 16,000, ceiling 7 | The same seed, ceiling out of reach (#438) | Alive after reaching it |
+|---|---|---|---|---|
+| 11 | tick 8,000 | 120,780 | 118,054 (eight inputs by then) | 573-768 |
+| 12 | tick 6,000 | 247,961 | 243,155 | 1,104-1,487 |
+
+- Both worlds go on finding at the rate of their unbounded twins for 8,000-10,000 ticks at the ceiling, at ordinary populations;
+  what is new shifts to functions of all seven inputs (48,377 and 145,886 of them). Seven inputs is 2^128 functions, so nothing
+  runs out; a universe at twelve has 2^4096.
+- Two seeds, node, 10,000 ticks at the ceiling. It says the ceiling is not a cliff; it says nothing about days.
