@@ -1,8 +1,9 @@
 // #438 - PREREG-open.md's four rules over one long pair (lab/port/out-long/NAME-base.jsonl and NAME-open.jsonl).
-//   node lab/port/analyse-open.js [NAME=op1]
+//   node lab/port/analyse-open.js [NAME=op1] [closed-tag=base] [open-tag=open]     (op2: node lab/port/analyse-open.js op2 closed base)
 const fs=require('fs'), path=require('path'); const NAME=process.argv[2]||'op1', D=path.join(__dirname,'out-long');
 const load=a=>{ const f=path.join(D,NAME+'-'+a+'.jsonl'); return fs.existsSync(f)?fs.readFileSync(f,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse).filter(r=>r.F!==undefined):[]; };
-const B=load('base'), O=load('open'); const legs=[...new Set(O.map(r=>r.leg))].sort((a,b)=>a-b);
+// a pair run AFTER the ship has the open world as 'base' and the closed one as the arm: pass the two file tags (closed first)
+const B=load(process.argv[3]||'base'), O=load(process.argv[4]||'open'); const legs=[...new Set(O.map(r=>r.leg))].sort((a,b)=>a-b);
 const last=(L,g)=>{ const x=L.filter(r=>r.leg===g); return x[x.length-1]; }, first=(L,g)=>L.find(r=>r.leg===g);
 const hs=h=>h?Object.keys(h).sort().map(k=>k+':'+h[k]).join(' '):'-', tot=h=>h?Object.entries(h).reduce((s,[k,v])=>s+k*v,0):0, cnt=h=>h?Object.values(h).reduce((s,v)=>s+v,0):0;
 let pb=null, po=null, reloadOk=true; const rows=[];
