@@ -10919,14 +10919,20 @@ function taskDrawOp(){ return Math.random()<TASK_DRAWP?TASK_OP0+((Math.random()*
 // same rule on a longer word. A function is its truth table with the inputs it does not reach stripped from the top: a function of
 // the first five inputs keeps today's 32-bit table as its key (same pools, same grade); one that reaches further is keyed by a 32-bit
 // hash of its table. The grade past five inputs is the Shannon split on the top input down to the five-input grade: an UPPER bound,
-// looser with every input. TASK_NMAX (10) is what the machine affords (a 1,024-bit word), not a rule of the world.
-const TASK_OPEN=TASKS_ON&&TASK_IN===5&&(__tk('__TASK_OPEN',0)|0)!==0, TASK_NMAX=TASK_OPEN?Math.max(5,Math.min(10,__tk('__TASK_NMAX',10)|0)):5, OWM=1<<(TASK_NMAX-5);
+// looser with every input. TASK_NMAX (12) is what the machine affords (a 4,096-bit word), not a rule of the world. The word arrays
+// are sized to the inputs a universe HOLDS (OWM words a word) and are rebuilt wider when one opens, so a young universe pays nothing.
+const TASK_OPEN=TASKS_ON&&TASK_IN===5&&(__tk('__TASK_OPEN',0)|0)!==0, TASK_NMAX=TASK_OPEN?Math.max(5,Math.min(12,__tk('__TASK_NMAX',12)|0)):5;
 const TASK_OPENP=__tk('__TASK_OPENP',50)/100, TASK_OPENW=__tk('__TASK_OPENW',1000)|0, TASK_OPENMIN=200;
-let tNin=TASK_OPEN?Math.max(5,Math.min(TASK_NMAX,__tk('__TASK_N0',5)|0)):5, oWD=1<<(tNin-5);
-const oW=TASK_OPEN?new Uint32Array(CAP*4*OWM):null, oJ=TASK_OPEN?new Uint32Array(CAP*4*OWM):null, oD=TASK_OPEN?new Uint32Array(CAP*4*OWM):null;
-const oL=TASK_OPEN?new Uint32Array(CAP*OWM):null, oLJ=TASK_OPEN?new Uint32Array(CAP*OWM):null, oLD=TASK_OPEN?new Uint32Array(CAP*OWM):null;   // the published word
-const oG=TASK_OPEN?new Uint32Array(FIELD_W*FIELD_H*OWM):null;   // the ground's tables, each repeated out to the widest word
-const oIn=TASK_OPEN?new Uint32Array(TASK_NMAX*OWM):null, oRow=TASK_OPEN?new Uint16Array(32*OWM):null, oF=TASK_OPEN?new Uint32Array(OWM):null;
+let tNin=TASK_OPEN?Math.max(5,Math.min(TASK_NMAX,__tk('__TASK_N0',5)|0)):5, oWD=1<<(tNin-5), OWM=oWD;
+let oW=TASK_OPEN?new Uint32Array(CAP*4*OWM):null, oJ=TASK_OPEN?new Uint32Array(CAP*4*OWM):null, oD=TASK_OPEN?new Uint32Array(CAP*4*OWM):null;
+let oL=TASK_OPEN?new Uint32Array(CAP*OWM):null, oLJ=TASK_OPEN?new Uint32Array(CAP*OWM):null, oLD=TASK_OPEN?new Uint32Array(CAP*OWM):null;   // the published word
+let oG=TASK_OPEN?new Uint32Array(FIELD_W*FIELD_H*OWM):null;   // the ground's tables, each repeated out to the widest word held
+let oIn=TASK_OPEN?new Uint32Array(TASK_NMAX*OWM):null, oRow=TASK_OPEN?new Uint16Array(32*OWM):null, oF=TASK_OPEN?new Uint32Array(OWM):null;
+// rebuild every word array at M words a word (M a power of two, at least OWM). A word is repeated into its new upper part: it does
+// not depend on inputs that were not there. The ground's tables are repeated the same way.
+function oWiden(M){ if(M<=OWM)return; const m0=OWM, wide=(a,n)=>{ const b=new Uint32Array(n*M); for(let q=0;q<n;q++) for(let x=0;x<M;x++)b[q*M+x]=a[q*m0+(x&(m0-1))]; return b; };
+  oW=wide(oW,CAP*4); oJ=wide(oJ,CAP*4); oD=wide(oD,CAP*4); oL=wide(oL,CAP); oLJ=wide(oLJ,CAP); oLD=wide(oLD,CAP); oG=wide(oG,FIELD_W*FIELD_H);
+  oIn=new Uint32Array(TASK_NMAX*M); oRow=new Uint16Array(32*M); oF=new Uint32Array(M); OWM=M; }
 const oC=TASK_OPEN?new Uint8Array(TASK_NF):null;   // per pool: how many inputs its function depends on
 const OMASK=[0x55555555,0x33333333,0x0F0F0F0F,0x00FF00FF,0x0000FFFF];
 // how many of its first m inputs the function in oF depends on
@@ -10961,7 +10967,7 @@ function oSlot(key,m){ let h=Math.imul(key,2654435761)>>>15;
 function oHash(arr,off,neg){ let h=2166136261; for(let x=0;x<oWD;x++){ const v=neg?~arr[off+x]:arr[off+x]; h=Math.imul(h^v,16777619); h^=h>>>13; } return h>>>0; }
 function oEpoch(){   // at an epoch boundary: perhaps open an input, then draw the rows, and last epoch's input bits become junk
   if(tick-oWin.at>=(TASK_OPENW<<(tNin-5))){ if(tNin<TASK_NMAX&&oWin.paid>=TASK_OPENMIN&&oWin.top>=TASK_OPENP*oWin.paid){ const w=oWD; tNin++; oWD=w<<1; oOpenAt.push(tick);
-      for(let q=0;q<CAP*4;q++){ const b=q*OWM; for(let x=0;x<w;x++){ oW[b+w+x]=oW[b+x]; oJ[b+w+x]=oJ[b+x]; oD[b+w+x]=oD[b+x]; } } }   // a word does not depend on the new input
+      if(oWD>OWM)oWiden(oWD); else for(let q=0;q<CAP*4;q++){ const b=q*OWM; for(let x=0;x<w;x++){ oW[b+w+x]=oW[b+x]; oJ[b+w+x]=oJ[b+x]; oD[b+w+x]=oD[b+x]; } } }   // a word does not depend on the new input
     oWin.paid=0; oWin.top=0; oWin.at=tick; }
   oDrawInputs(); for(let q=0;q<CAP*4;q++){ const b=q*OWM; for(let x=0;x<oWD;x++){ oJ[b+x]=(oJ[b+x]|oD[b+x])>>>0; oD[b+x]=0; } } }
 function oBirth(i){ const b=i*4*OWM; oW.fill(0,b,b+4*OWM); oJ.fill(0,b,b+4*OWM); oD.fill(0,b,b+4*OWM); }
@@ -10999,8 +11005,10 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
 function oSave(world){ const s=u=>{ let b=''; for(let q=0;q<u.length;q++)b+=String.fromCharCode(u[q]); return btoa(b); };
   world.open={ze:oZE, w:[oWin.paid,oWin.top,tick-oWin.at], n:tNin, at:oOpenAt.slice(), g:s(new Uint8Array(oG.buffer)), k:s(new Uint8Array(oLogK.buffer,0,oLogN*4)), z:s(oLogZ.subarray(0,oLogN)), m:s(oLogM.subarray(0,oLogN))}; }
 function oLoad(O){ try{ if(!O||typeof O!=='object')return; const n=O.n|0; if(n<5||n>TASK_NMAX)return; const ld=(str,u)=>{ const b=atob(str); if(b.length!==u.length)return false; for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q); return true; };
-    tNin=n; oWD=1<<(n-5); if(Number.isFinite(+O.ze))oZE=+O.ze; if(Array.isArray(O.w)){ oWin.paid=O.w[0]|0; oWin.top=O.w[1]|0; oWin.at=tick-(O.w[2]|0); } if(Array.isArray(O.at)){ oOpenAt.length=0; for(const t of O.at)oOpenAt.push(t|0); }
-    if(typeof O.g==='string'&&ld(O.g,new Uint8Array(oG.buffer))){ for(let c=0;c<FIELD_W*FIELD_H;c++){ let nz=0; for(let x=0;x<oWD;x++){ oF[x]=oG[c*OWM+x]; nz|=oF[x]; } if(!nz){ tG[c]=0; tGZ[c]=0; continue; }
+    tNin=n; oWD=1<<(n-5); oWiden(oWD); if(Number.isFinite(+O.ze))oZE=+O.ze; if(Array.isArray(O.w)){ oWin.paid=O.w[0]|0; oWin.top=O.w[1]|0; oWin.at=tick-(O.w[2]|0); } if(Array.isArray(O.at)){ oOpenAt.length=0; for(const t of O.at)oOpenAt.push(t|0); }
+    const gb=(typeof O.g==='string')?atob(O.g):'', gw=gb.length/(FIELD_W*FIELD_H*4);   // a ground saved at any width at least this one: its tables are repeated, so the first OWM words are the table
+    if(gw>=OWM&&Number.isInteger(gw)){ for(let c=0;c<FIELD_W*FIELD_H;c++) for(let x=0;x<OWM;x++){ const q=(c*gw+x)*4; oG[c*OWM+x]=(gb.charCodeAt(q)|(gb.charCodeAt(q+1)<<8)|(gb.charCodeAt(q+2)<<16)|(gb.charCodeAt(q+3)<<24))>>>0; }
+      for(let c=0;c<FIELD_W*FIELD_H;c++){ let nz=0; for(let x=0;x<oWD;x++){ oF[x]=oG[c*OWM+x]; nz|=oF[x]; } if(!nz){ tG[c]=0; tGZ[c]=0; continue; }
         let m=tNin, w=oWD; while(m>5){ const h=w>>1; let eq=true; for(let x=0;x<h;x++) if(oF[x]!==oF[x+h]){ eq=false; break; } if(!eq)break; m--; w=h; } tG[c]=oKey(m); tGZ[c]=m===5?taskSz5(oF[0]):Math.max(1,Math.min(255,oSz(0,m,false))); } }
     if(typeof O.k==='string'&&typeof O.z==='string'&&typeof O.m==='string'){ const bk=atob(O.k), bz=atob(O.z), bm=atob(O.m), L=bz.length; if(bk.length===L*4&&bm.length===L){ oLogN=0;
         for(let q=0;q<L;q++)oLog((bk.charCodeAt(q*4)|(bk.charCodeAt(q*4+1)<<8)|(bk.charCodeAt(q*4+2)<<16)|(bk.charCodeAt(q*4+3)<<24))>>>0,bz.charCodeAt(q),bm.charCodeAt(q)); } }
