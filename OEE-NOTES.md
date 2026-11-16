@@ -31954,3 +31954,27 @@ A universe that had opened its sixth or eighth input looked the same as one that
 top edge for every input it holds past the fifth (hidden under `#cleanart`; a world that has opened nothing draws nothing).
 `lab/port/shots/open-bars.png` is one universe started at eight inputs (`universe.html?knob=TASK_N0:8`): three bars. Digests
 `cef41a35` (seed 11 through two openings) and `f3f1292f` (TASKS off), as before.
+
+### #438c — THE SECOND LONG PAIR AGREES: 1.42x at 150 minutes, 27 of 31 universes at seven inputs or more
+`out-long/op2-*` (`lab/port/op2-leg.sh`; today's `main`, the open world, against the same file with `TASK_OPEN`'s default 0; six legs
+of 25 minutes; `node lab/port/analyse-open.js op2 closed base`). Decided before: at least 0.9 and opening means the default has two
+pairs behind it; under 0.9 means the default is reviewed.
+
+| Leg | Closed F | Open F | Ratio | Ticks, open / closed, this leg | Universes holding 5 / 6 / 7 / 8 / 9 inputs |
+|---|---|---|---|---|---|
+| 1 | 97,357 | 116,994 | 1.20 | 0.94 | 25 / 6 / 0 / 0 / 0 |
+| 2 | 265,960 | 317,090 | 1.19 | 0.74 | 20 / 5 / 6 / 0 / 0 |
+| 3 | 614,180 | 672,873 | 1.10 | 0.84 | 12 / 7 / 12 / 0 / 0 |
+| 4 | 973,038 | 1,160,776 | 1.19 | 0.91 | 6 / 8 / 10 / 7 / 0 |
+| 5 | 1,309,775 | 1,725,478 | 1.32 | 0.98 | 4 / 4 / 10 / 13 / 0 |
+| 6 | see below | | **1.42** | 0.94 | 27 of 31 at seven or more |
+
+- All four of `PREREG-open.md`'s rules hold again: count 1.42 (needs 0.90), 27 of 31 universes at seven inputs or more with 575,788
+  of the last leg's 600,777 new functions depending on six or more, every reload restoring the inputs held with no universe lost,
+  ticks 0.94 in the last leg.
+- **Two long pairs now agree** (1.27 and 1.42 at 150 minutes, 28 and 27 of 31 universes at seven inputs or more). In this pair the
+  lead GREW over the last two legs (1.19, 1.32, 1.42) as the closed field's new functions a leg flattened (348, 359, 337 thousand)
+  and the open field's rose (356, 488, 565 thousand); in the first pair it shrank (1.62 to 1.27). So the two agree on the level and
+  not on the trend, and the count across spaces of different size is still partly mechanical. What both show is that the open
+  world costs a viewer nothing and its universes do widen their own space.
+- Not measured, still: past 150 minutes, a universe at the twelve-input ceiling, a phone.
