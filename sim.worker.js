@@ -249,7 +249,7 @@ const BRIDGE =
   // boundaries; without this the only way to know whether a relayed migrant LANDED was to
   // believe the relay's own bookkeeping, which counts sends, not arrivals. netStats and
   // __liveness are written by the engine on the receive side, so they are arrivals.
-  '__inst.api.stat=function(){try{return {tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,' +
+  '__inst.api.stat=function(){try{return {fn:(typeof tSeenN!=="undefined")?tSeenN:0,nin:(typeof TASK_OPEN!=="undefined"&&TASK_OPEN)?tNin:0,tick:tick,N:N,gen:genome.generation,totalTicks:genome.totalTicks|0,bootT:__inst.bootT,' +
     'peers:(typeof countPeers==="function"?countPeers():-1),' +
     // #253: whether this universe's switchboard is on (#prune), and its settings - read, not drawn.
     'swb:(typeof switchboardOn==="function"&&switchboardOn())?mechState():null,' +

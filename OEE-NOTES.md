@@ -32000,3 +32000,10 @@ at the ceiling is fixed before anything else; otherwise it is recorded.
   what is new shifts to functions of all seven inputs (48,377 and 145,886 of them). Seven inputs is 2^128 functions, so nothing
   runs out; a universe at twelve has 2^4096.
 - Two seeds, node, 10,000 ticks at the ceiling. It says the ceiling is not a cliff; it says nothing about days.
+
+### #444 — THE FIELD SAYS WHAT IT HAS FOUND (display only)
+The artwork's claim had no number on its own page. The field's status line (the one that reported its minds) now opens with the
+functions its universes have been paid for, summed over universes (not the field-wide union the rigs count, which the page would
+have to compute), and the range of inputs they hold: "4.5k functions found · inputs 5 · 27 minds ..." at 75 seconds
+(`lab/port/shots/field-line.png`); "inputs 5-8" once universes have opened. `stat()` carries `fn` and `nin`. `mind-test` 14/0 (it
+reads that line); no world state is touched.

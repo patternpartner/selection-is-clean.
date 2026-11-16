@@ -857,17 +857,19 @@
     var k=function(x){ return x>=1e6?(x/1e6).toFixed(1)+'M':x>=1e4?Math.round(x/1e3)+'k':x>=1e3?(x/1e3).toFixed(1)+'k':String(x); };
     var ask=function(f){ return new Promise(function(r){ var t=setTimeout(function(){ r(null); },4000);
       try{ var a=f&&f.contentWindow&&f.contentWindow.__field; if(!a){ clearTimeout(t); r(null); return; }
-        a.stat().then(function(s){ clearTimeout(t); r(s&&s.mind&&s.mind.mode!=='off'?s.mind:null); },function(){ clearTimeout(t); r(null); }); }catch(e){ clearTimeout(t); r(null); } }); };
+        a.stat().then(function(s){ clearTimeout(t); r(s||null); },function(){ clearTimeout(t); r(null); }); }catch(e){ clearTimeout(t); r(null); } }); };
     var round=async function(){
       var fr=[]; for(var i=0;i<cells.length;i++)fr.push(cells[i].firstChild);
       var bl=document.querySelectorAll('#below .deep, #below .grown'); for(var j=0;j<bl.length;j++)fr.push(bl[j]);
       var ms=await Promise.all(fr.map(ask)), n=0, nl=0, seen=0, wrote=0, b0=0, b1=0, k0=0, k1=0;
-      for(var q=0;q<ms.length;q++){ var m=ms[q]; if(!m)continue; n++; if(m.mode==='learn')nl++; seen+=m.seen|0; wrote+=m.uses|0;
+      var fn=0, lo=99, hi=0;   // #444: what the field has found and the inputs its universes hold
+      for(var q=0;q<ms.length;q++){ var st=ms[q]; if(!st)continue; fn+=st.fn|0; if(st.nin){ if(st.nin<lo)lo=st.nin; if(st.nin>hi)hi=st.nin; } var m=(st.mind&&st.mind.mode!=='off')?st.mind:null; if(!m)continue; n++; if(m.mode==='learn')nl++; seen+=m.seen|0; wrote+=m.uses|0;
         if(m.born){ b0+=m.born[0]|0; b1+=m.born[1]|0; } if(m.kids){ k0+=m.kids[0]|0; k1+=m.kids[1]|0; } }
-      if(!n){ el.style.display='none'; return; }
+      var found=fn?('<b>'+k(fn)+'</b> functions found'+(hi?' · inputs <b>'+(lo===hi?lo:lo+'\u2013'+hi)+'</b>':'')):'';
+      if(!n){ if(found){ el.innerHTML=found; el.style.display='block'; } else el.style.display='none'; return; }
       var sc=(b0>=50&&b1>=20&&k0>0)?(k1/b1)/(k0/b0):null;
       // #431: under TASKS a mind draws its writes and does not learn, and the line says so
-      el.innerHTML='<b>'+n+'</b> mind'+(n===1?'':'s')+(nl===n?' · learned from <b>':(nl?' ('+nl+' learning) · saw <b>':' (not learning) · saw <b>'))+k(seen)+'</b> parents · wrote <b>'+k(wrote)+'</b> children'
+      el.innerHTML=(found?found+' · ':'')+'<b>'+n+'</b> mind'+(n===1?'':'s')+(nl===n?' · learned from <b>':(nl?' ('+nl+' learning) · saw <b>':' (not learning) · saw <b>'))+k(seen)+'</b> parents · wrote <b>'+k(wrote)+'</b> children'
         +(sc===null?'':' · their children have <b>'+sc.toFixed(2)+'x</b> the children of ordinary ones');
       el.style.display='block';
     };
