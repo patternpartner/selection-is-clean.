@@ -12,10 +12,11 @@ m._compile(code+`
   const out=[], ok=(n,c,d)=>out.push((c?'ok    ':'FAIL  ')+n+'   '+d);
   const n0=tNin, keys=Array.from(tG), filled=keys.filter(k=>k!==0).length, logN=oLogN, w={}; oSave(w);
   ok('the world opened an input', n0>5, 'inputs '+n0+', ground cells filled '+filled+', record '+logN);
-  const wipe=()=>{ tG.fill(0); tGZ.fill(0); oG.fill(0); oLogN=0; tNin=5; oWD=1; };
+  const seen0=tSeenN;
+  const wipe=()=>{ tG.fill(0); tGZ.fill(0); oG.fill(0); oLogN=0; tNin=5; oWD=1; tSet5.fill(0); tSet5N=0; tSeenN=0; };
   wipe(); oLoad(JSON.parse(JSON.stringify(w.open)));
   let same=0; for(let c=0;c<keys.length;c++) if(tG[c]===keys[c])same++;
-  ok('reload: inputs', tNin===n0, tNin+' of '+n0); ok('reload: every ground key', same===keys.length, same+' of '+keys.length); ok('reload: the record', oLogN===logN, oLogN+' of '+logN);
+  ok('reload: inputs', tNin===n0, tNin+' of '+n0); ok('reload: every ground key', same===keys.length, same+' of '+keys.length); ok('reload: the record', oLogN===logN, oLogN+' of '+logN); ok('reload: the lifetime set', tSeenN===seen0&&tSeenBoot===seen0, tSeenN+' of '+seen0);
   const cells=FIELD_W*FIELD_H, wide=new Uint32Array(cells*32); for(let c=0;c<cells;c++) for(let x=0;x<32;x++)wide[c*32+x]=oG[c*OWM+(x&(OWM-1))];
   const u=new Uint8Array(wide.buffer); let b=''; for(let q=0;q<u.length;q++)b+=String.fromCharCode(u[q]); const O=JSON.parse(JSON.stringify(w.open)); O.g=btoa(b);
   wipe(); oLoad(O); same=0; for(let c=0;c<keys.length;c++) if(tG[c]===keys[c])same++;

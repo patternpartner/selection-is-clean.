@@ -31978,3 +31978,10 @@ pairs behind it; under 0.9 means the default is reviewed.
   not on the trend, and the count across spaces of different size is still partly mechanical. What both show is that the open
   world costs a viewer nothing and its universes do widen their own space.
 - Not measured, still: past 150 minutes, a universe at the twelve-input ceiling, a phone.
+
+### #442 — AN OPEN WORLD'S RECORD IS SAVED ONCE (a save 4 bytes a function smaller; world-identical)
+#438 saved the lifetime record twice: the set of keys as before (`world.seen5`, 4 bytes a function) and the open world's own log
+(`world.open`: key, grade, inputs, 6 bytes). A field found about 75 thousand functions a universe in 150 minutes, so a night adds
+megabytes a universe to every two-minute save. Now an open world writes only `world.open`, and a reload rebuilds the set and the
+count from it (a save written before this carries both, and they agree). `open-save-test` gained "reload: the lifetime set"
+(46,272 of 46,272; 6/0); `pop-test` 11/0; digest `cef41a35` unchanged. The record still grows without bound, 6 bytes a function.
