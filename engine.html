@@ -1062,7 +1062,6 @@ function validNetworkPayload(type,data){
   // channel) actually changed ITS sim state. Not a request/reply pair (no packet IDs — BroadcastChannel
   // is multicast, there's no single "the other end" to address); just a gossip-style announcement any
   // listener can count. data.kind names which of the 4 effect types fired.
-  if(type==='word')return data&&Number.isInteger(data.m)&&data.m>=5&&data.m<=12&&Array.isArray(data.t)&&data.t.length===(1<<(data.m-5))&&data.t.every(v=>finitePacketNumber(v,0,4294967295));   // #446
   if(type==='applied')return data&&typeof data.kind==='string'&&['migrant','plasmid','motif','inscription'].includes(data.kind);
   return false;
 }
@@ -1092,7 +1091,6 @@ function handleNetworkMessage(raw){
     const _cr=peerTickRatio(msg.tab||'unknown',msg.born|0);
     if(_cr<1&&Math.random()>=_cr){netStats.paced++;return}
   }
-  if(msg.type==='word'){ if(typeof taskWordIn==='function')taskWordIn(msg.data); return; }   // #446: a function for the ground; not paced, not queued, nothing paid
   if(msg.type==='migrant'){fired('network.migrantAccepted');queueNetworkPacket(incomingMigrants,msg.data,NET_QUEUE_LIMITS.migrant,'migrant');}
   else if(msg.type==='plasmid')queueNetworkPacket(incomingPlasmids,msg.data,NET_QUEUE_LIMITS.plasmid,'plasmid');
   else if(msg.type==='motif')queueNetworkPacket(incomingMotifs,msg.data,NET_QUEUE_LIMITS.motif,'motif');
@@ -1701,7 +1699,6 @@ function buildMigrantPacket(){
 }
 function networkBroadcast(){ fired('network.broadcast');
   if(!bc||N===0)return;
-  if(typeof TASK_SHARE!=='undefined'&&TASK_SHARE>0&&Math.random()<TASK_SHARE){ const _w=taskWordOut(); if(_w)networkSend('word',_w); }   // #446
   // Migrant: send a random alive particle as a full packet
   if(Math.random()<genome.netMigrantRate){
     const _mp=buildMigrantPacket();
@@ -11005,16 +11002,9 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let n=0; for(let q=0;q<4;q++) if(tK[kD*4+q]>=0)n++; if(n){ const tx=TASK_TROPH*g/n; for(let q=0;q<4;q++){ const k=tK[kD*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // the open world in a snapshot: the input count, the ground's tables and the lifetime record
-// #446 design knob: TASK_SHAREP=p (open world; default 0, byte-identical and drawing nothing) - THE GROUND TRAVELS. Universes exchange
-// creatures (migrants) but what a universe's ground remembers never leaves it. With the knob, each tick with chance p percent a
-// universe sends the function one random ground cell holds to the field, and a universe that receives one it has the inputs for
-// writes it into a random cell of its own ground, where a READ that misses can find it. Nothing is paid for an arrival.
-const TASK_SHARE=TASK_OPEN?__tk('__TASK_SHAREP',0)/100:0;
-function oReduce(){ let m=tNin, w=oWD; while(m>5){ const h=w>>1; let eq=true; for(let x=0;x<h;x++) if(oF[x]!==oF[x+h]){ eq=false; break; } if(!eq)break; m--; w=h; } return m; }
-function taskWordOut(){ if(tG===null)return null; const c=(Math.random()*FIELD_W*FIELD_H)|0; if(!tG[c])return null; for(let x=0;x<oWD;x++)oF[x]=oG[c*OWM+x]; const m=oReduce(), w=1<<(m-5), t=[]; for(let x=0;x<w;x++)t.push(oF[x]>>>0);
-  tEv.gOut=(tEv.gOut|0)+1; return {m,t}; }
-function taskWordIn(d){ if(!TASK_OPEN||tG===null||!d||d.m>tNin)return; const w=d.t.length; for(let x=0;x<oWD;x++)oF[x]=d.t[x&(w-1)]>>>0; const m=oReduce(); if(m===5&&(oF[0]===0||oF[0]===0xFFFFFFFF))return;
-  const key=oKey(m), c=(Math.random()*FIELD_W*FIELD_H)|0, b=c*OWM; tG[c]=key; tGZ[c]=m===5?taskSz5(oF[0]):Math.max(1,Math.min(255,oSz(0,m,false))); for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(oWD-1)]; if(tGE!==null)tGE[c]=tEpoch; tEv.gIn=(tEv.gIn|0)+1; }
+// #446 (tested, removed): universes sending each other the functions their grounds hold (a random cell's function, written into a
+// random cell of each receiver; 5% of ticks). One pair of fields: 0.86 of the shipped field's functions, 0.76 of the deep ones,
+// fewer universes opening. A place's ground is worth its own newest find; an arrival from elsewhere overwrites it.
 function oSave(world){ const s=u=>{ let b=''; for(let q=0;q<u.length;q++)b+=String.fromCharCode(u[q]); return btoa(b); };
   world.open={ze:oZE, w:[oWin.paid,oWin.top,tick-oWin.at], n:tNin, at:oOpenAt.slice(), g:s(new Uint8Array(oG.buffer)), k:s(new Uint8Array(oLogK.buffer,0,oLogN*4)), z:s(oLogZ.subarray(0,oLogN)), m:s(oLogM.subarray(0,oLogN))}; }
 function oLoad(O){ try{ if(!O||typeof O!=='object')return; const n=O.n|0; if(n<5||n>TASK_NMAX)return; const ld=(str,u)=>{ const b=atob(str); if(b.length!==u.length)return false; for(let q=0;q<u.length;q++)u[q]=b.charCodeAt(q); return true; };

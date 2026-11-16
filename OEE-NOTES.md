@@ -32020,3 +32020,23 @@ way and by the best order of splitting on the inputs past the fifth):
   barely pass five inputs in 25 minutes. **Not built.** The grade is a loose bound, but it is not an arbitrary one in input order.
 - One world, one moment, the ground's sample (what was recently paid). It does not say how loose the bound is against the true
   formula size past five inputs; nothing here can (no exact table exists there).
+
+### #446 — THE GROUND TRAVELS BETWEEN UNIVERSES: no (design, one pair; the knob is removed)
+Universes exchange creatures; what a universe's ground remembers never leaves it. `TASK_SHAREP=5`: each tick with chance 5% a
+universe sent the function one random ground cell holds, and every universe with the inputs for it wrote it into a random cell of
+its own ground. Manipulation check in a field first (100 s): 350 sent, 9,374 arrivals. Decided before: ahead by more than 15% goes
+to a registered set run alone; otherwise removed.
+
+| | Shipped | Sharing | Ratio |
+|---|---|---|---|
+| F at 5 / 10 / 15 / 20 / 25 min | 4,238 / 17,051 / 41,359 / 72,785 / 109,088 | 4,802 / 17,136 / 34,155 / 59,131 / 94,295 | 1.13 / 1.00 / 0.83 / 0.81 / **0.86** |
+| Summed per universe (not de-duplicated) | 165,782 | 148,056 | 0.89 |
+| Size 17+ | 33,271 | 25,131 | 0.76 |
+| Ticks; universes past five inputs | 87,300; 5 | 83,406; 3 | 0.96 |
+
+- Behind from fifteen minutes on and by more on depth. The per-universe sum is lower too, so this is not only universes finding
+  each other's functions twice.
+- With #436 (a cell keeping its last eight: 0.71) and #397's and #403's selecting variants, that is now five ways of putting
+  something other than a place's own newest find into its ground, none better and two clearly worse. **The ground works as a
+  frontier, not as a library.** One pair at one rate; a much lower rate was not tried.
+- Removed: `engine.html`, `harness-env.js` and `sim.worker.js` are #445's (a comment holds the result); digest `cef41a35`.

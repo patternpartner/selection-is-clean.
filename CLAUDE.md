@@ -264,6 +264,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   count of how many functions a function was built through, no table) node worlds opened inputs and found as much, but a FIELD found
   0.33 of the shipped field on half the ticks and opened nothing in 25 minutes. Both knobs removed. The table is still mine; these
   are the two alternatives measured. Node said level where the field said a third: design in a field.
+  **`#445`: the grade past five inputs hardly depends on input order** (76% of an eight-input world's ground functions grade the same
+  under the best split order; log correlation 0.989; `lab/port/probe-grade.js`), so that fix is not built. **`#446`: ground functions
+  travelling between universes found 0.86 of the shipped field (0.76 on depth), removed.** With `#436` that is five ways of putting
+  something other than a place's own newest find into its ground, none better: **the ground is a frontier, not a library.**
+  `#444`: the field's status line shows the functions found (summed over universes) and the inputs held.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
