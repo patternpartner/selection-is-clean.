@@ -26779,6 +26779,11 @@ function renderArt(){
     c2.globalCompositeOperation='copy'; c2.imageSmoothingEnabled=true; c2.drawImage(s.b1,0,0,s.b2.width,s.b2.height);
     X.globalCompositeOperation='lighter'; X.globalAlpha=0.1; X.drawImage(s.b1,0,0,W,H); X.globalAlpha=0.14; X.drawImage(s.b2,0,0,W,H); X.globalAlpha=1; }
   X.globalCompositeOperation='source-over'; X.globalAlpha=1;
+  // #441: SEE THE OPENING. One short bar along the top edge for every input this universe holds past its fifth, so a universe that
+  // has widened its own space looks different from one that has not, at the size of a field cell too. Display only; hidden under
+  // #cleanart with the other readouts. A world that has opened nothing draws nothing.
+  if(typeof TASK_OPEN!=='undefined'&&TASK_OPEN&&tNin>5&&!__cleanArt()){ const bw=W/48, bh=Math.max(2,H/90), gap=bw*0.35; X.fillStyle='rgba(255,214,150,0.6)';
+    for(let k=0;k<tNin-5;k++)X.fillRect(gap+k*(bw+gap),gap,bw,bh); }
   // #316: SEE THE SELECTION. While someone is watching, or once watching has judged any form, a small line at the bottom centre
   // names the world's current form (its draw-program, primitive by primitive) and how many forms the watching has kept and
   // undone. Hidden under #cleanart like every other readout. Selection nobody can see is not part of the artwork.

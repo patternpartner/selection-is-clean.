@@ -31948,3 +31948,9 @@ reported and not counted). Out `lab/port/out-gdir/`, result `lab/port/gdir-resul
   read helps. Pair 9's arms also differ 1.37x in ticks (114,806 against 83,506). If this is reopened, the horizon is the question,
   and the pairs run alone.
 - **Design readings overstated it again:** 1.42 seen, 1.66 against the old world, 1.17 ruled and not significant.
+
+### #441 — THE OPENING IS DRAWN (display only; the world's digest is unchanged)
+A universe that had opened its sixth or eighth input looked the same as one that had not. Now it draws one short bar along the
+top edge for every input it holds past the fifth (hidden under `#cleanart`; a world that has opened nothing draws nothing).
+`lab/port/shots/open-bars.png` is one universe started at eight inputs (`universe.html?knob=TASK_N0:8`): three bars. Digests
+`cef41a35` (seed 11 through two openings) and `f3f1292f` (TASKS off), as before.
