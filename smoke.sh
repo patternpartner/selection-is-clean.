@@ -105,6 +105,7 @@ timeout_for() {
     # the suite. 300s is that measurement plus margin, for this rig only.
     layers-test.js) echo 300 ;;
     lab/port/pophold-test.js) echo 240 ;;
+    lab/port/open-save-test.js) echo 900 ;;   # 6,000 ticks of its own, to pass an opening
     *) echo 180 ;;
   esac
 }

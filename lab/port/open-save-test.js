@@ -1,7 +1,7 @@
 // #438b: an open world's snapshot round trip under node. Runs a world until it has opened inputs, saves the open state (oSave),
 // wipes it, loads it back (oLoad) and checks the input count, every ground key and the record; then loads the same ground written at
 // a WIDER word (as the first shipped version saved it, 32 words a table) and checks the keys again.
-//   SEED=12 TICKS=6000 node lab/port/open-save-test.js
+//   SEED=12 OPEN_TICKS=6000 node lab/port/open-save-test.js   (its own budget: the smoke suite's TICKS=40 opens nothing)
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
 process.env.TASKS='1'; process.env.MIND=process.env.MIND||'20'; process.env.SEED=process.env.SEED||'12';
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis); require(path.join(ROOT,'harness-env.js'))(globalThis);
@@ -21,5 +21,5 @@ m._compile(code+`
   wipe(); oLoad(O); same=0; for(let c=0;c<keys.length;c++) if(tG[c]===keys[c])same++;
   ok('a ground saved 32 words wide loads at '+OWM, same===keys.length&&tNin===n0, same+' of '+keys.length);
   return out; };`, m.filename);
-const out=globalThis.__T(parseInt(process.env.TICKS||'6000',10)); console.log(out.join('\n')); const bad=out.filter(l=>l.startsWith('FAIL')).length;
+const out=globalThis.__T(parseInt(process.env.OPEN_TICKS||'6000',10)); console.log(out.join('\n')); const bad=out.filter(l=>l.startsWith('FAIL')).length;
 console.log(bad?bad+' FAILED':'all '+out.length+' ok'); process.exit(bad?1:0);
