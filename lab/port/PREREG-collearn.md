@@ -35,3 +35,9 @@ worth anything. That would take reading the collective itself, over hours.
 
 ## What this cannot say
 Anything past 25 minutes (the horizon at which a learner looked better in #433); the user's phone (18 universes, not 27-31).
+
+## WITHDRAWN before any pair completed (the user, 16 Nov)
+The user asked for no testing from this side: they run the field themselves, and they wanted the collective set as the learner and
+a switch on every universe so they can change it as a field runs. Pair 1 was stopped part-way and its files removed; no decision
+run exists. The default now follows the user's decision (#448), not this rule. The batch and analysis stay for anyone who wants
+the measurement later; nothing in the notes should cite this registration as evidence.

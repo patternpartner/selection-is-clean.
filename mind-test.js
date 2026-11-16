@@ -41,7 +41,8 @@ const minds = page => page.evaluate(async () => {
   try {
     // the mind is the browser default (#296): a field opened with no token at all must have it; #nomind must not
     // #431: under TASKS (every browser universe's world) the default mind writes drawn instructions and does not learn; learning is asked for
-    for (const [hash, want] of [['#n=2,layers=1', 'draw'], ['#n=2,mindmode=learn', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2,nomind', 'off']]) {
+    // #448: the collective learns by default now (lab/port/mindswitch-test.js covers that); #nocollearn is the field where no mind learns
+    for (const [hash, want] of [['#n=2,layers=1,nocollearn', 'draw'], ['#n=2,mindmode=learn', 'learn'], ['#n=2,mind=40,mindmode=uniform', 'uniform'], ['#n=2,nomind', 'off']]) {
       const ctx = await browser.newContext(), page = await ctx.newPage();
       await page.goto(base + '/index.html' + hash);
       await page.waitForTimeout(WARM * 1000);

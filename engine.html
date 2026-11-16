@@ -11193,6 +11193,9 @@ function mindOn(){ if(__mindLatch===null){ __mindLatch=__mindKnob()||false;
       __mind=(sv&&EngineMind.restore(sv,__mindLatch))||new EngineMind(__mindLatch); } }
   return __mind; }
 // saved at the same moments as the genome (the autosave, and an extinction's rebirth), into this universe's own slot
+// #448: a universe's mind can be switched between learning and drawing WHILE IT RUNS (the shell's button). The model and its record
+// are kept in both modes, so a mind switched back to learning goes on from what it knew. Returns the mode now; null with no mind.
+function mindSetMode(m){ const M=mindOn(); if(!M)return null; if(m==='learn'||m==='draw')M.MODE=m; return M.MODE; }
 function mindPersist(){ if(!__mind)return; try{ __mind.savedAt=genome.totalTicks|0; localStorage.setItem('selection_mind',__mind.serialize()); }catch(_){} }
 function mindSerialize(){ const M=mindOn(); return M?M.serialize():null; }
 // a mind arriving in a universe file (the universe's load button): taken if it fits this engine, and saved at once

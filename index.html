@@ -248,7 +248,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|nocollearn|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -303,8 +303,12 @@
   // #447: #collearn - THE COLLECTIVE IS THE ONE UNIVERSE THAT LEARNS. Under TASKS no universe's mind learns (#431: the same rewrite drawn
   // at random found more). The collective is where what survived in eight worlds is gathered, so with this token its mind, and only
   // its mind, is the learning one; every other universe keeps the field's setting. Opt-in until a pairs test says otherwise.
-  var COLLEARN = /(^|,)collearn(,|$)/.test(raw||'');
-  function withMind(h,isColl){ var t=MINDTOK; if(COLLEARN&&isColl) t=[(t||'').split(',').filter(function(x){ return x&&x.indexOf('mindmode=')!==0&&x!=='nomind'; }).join(','),'mindmode=learn'].filter(Boolean).join(',');
+  // #448 (the user's decision): the collective learns BY DEFAULT; #nocollearn restores a field where no mind learns. Every universe
+  // also has its own switch (universe.html, the mind button in its control row), and a universe's own choice wins over this.
+  var COLLEARN = !/(^|,)nocollearn(,|$)/.test(raw||'');
+  // a field-wide setting the address states (nomind, mindmode=...) wins over the collective's default: mind-test caught the first
+  // version forcing a learner into a #nomind field.
+  function withMind(h,isColl){ var t=MINDTOK; if(COLLEARN&&isColl&&!/(^|,)(nomind|notasks|mindmode=[a-z]+)(,|$)/.test(t||'')) t=[t,'mindmode=learn'].filter(Boolean).join(',');
     if(!t)return h; return h ? h+','+t : '#'+t; }
 
   // ═══ #162 — HOW MANY WORKERS ═══════════════════════════════════════════════════════════════

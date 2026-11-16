@@ -269,6 +269,12 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   travelling between universes found 0.86 of the shipped field (0.76 on depth), removed.** With `#436` that is five ways of putting
   something other than a place's own newest find into its ground, none better: **the ground is a frontier, not a library.**
   `#444`: the field's status line shows the functions found (summed over universes) and the inputs held.
+  **`#448`: THE COLLECTIVE'S MIND LEARNS BY DEFAULT and every universe has its own mind switch — the USER'S decision, untested.**
+  They asked for no testing from the session's side and run the field themselves. The registered not-worse test (`PREREG-collearn.md`)
+  is withdrawn; do not cite it. Each universe's control row has a mind button (learning / not learning), live, kept per slot across
+  reloads; `#nocollearn` is the field where no mind learns, and **a rig that wants the field of #438-#446 must pass
+  `HASH='#nocollearn'`**. `lab/port/mindswitch-test.js` covers the switch. Measured facts are unchanged: all-learning lost at 25
+  minutes (#431) and the long pairs disagree (#433, #434).
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

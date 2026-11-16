@@ -117,6 +117,7 @@ const BRIDGE =
   '__inst.api.tourneySet=function(v){try{if(!v||typeof v!=="object")return null;for(var q=0;q<MECH_DECLARED.length;q++){var nm=MECH_DECLARED[q];if(v[nm]===0||v[nm]===1)mechSet(nm,v[nm]);}return mechState().values;}catch(e){return {err:String(e&&e.message)};}};' +
   // #435: every liveness counter this universe has kept since its boot, read and copied, drawing nothing (field-liveness.js)
   '__inst.api.liveness=function(){try{var o={};if(typeof __liveness!=="undefined")for(var k in __liveness)o[k]=__liveness[k]|0;return {tick:tick,totalTicks:genome.totalTicks|0,c:o};}catch(e){return {err:String(e&&e.message)};}};' +
+  '__inst.api.mindMode=function(m){try{return (typeof mindSetMode==="function")?mindSetMode(m):null;}catch(e){return null;}};' +   // #448
   '__inst.api.seen=function(){try{if(typeof TASKS_ON==="undefined"||!TASKS_ON||!tSeen)return {off:true,tick:tick};' +
     'var al=0;for(var i=0;i<N;i++)if(palive[i])al++;var b="",in5=(typeof TASK_IN!=="undefined"&&TASK_IN===5);' +
     // #392: at five inputs a slot means nothing outside its universe, so the canonical truth tables of seen functions go instead (4 bytes each)
@@ -634,6 +635,11 @@ Universe.prototype.handle = function (d) {
   if (d.type === 'tourneyset') {   // #424
     let r = null; try { r = api() && api().tourneySet ? api().tourneySet(d.values) : null; } catch (e) { r = { err:String(e&&e.message) }; }
     this.post({ type: 'tourney-result', rid: d.rid, tour: r });
+    return;
+  }
+  if (d.type === 'mindmode') {   // #448: read (m null) or set this universe's mind to learn or draw
+    let r = null; try { r = api() && api().mindMode ? api().mindMode(d.m || null) : null; } catch (e) {}
+    this.post({ type: 'mindmode-result', rid: d.rid, mode: r });
     return;
   }
   if (d.type === 'liveness') {   // #435

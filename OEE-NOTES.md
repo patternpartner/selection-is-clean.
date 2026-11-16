@@ -32040,3 +32040,26 @@ to a registered set run alone; otherwise removed.
   something other than a place's own newest find into its ground, none better and two clearly worse. **The ground works as a
   frontier, not as a library.** One pair at one rate; a much lower rate was not tried.
 - Removed: `engine.html`, `harness-env.js` and `sim.worker.js` are #445's (a comment holds the result); digest `cef41a35`.
+
+### #447-#448 — EVERY UNIVERSE HAS ITS OWN MIND SWITCH, and the collective learns by default (the user's decision; not a measured result)
+- **#447:** `#collearn` made the collective the one universe whose mind learns (the user's idea: it already gathers what survived
+  in eight worlds). A not-worse test was registered (`PREREG-collearn.md`) and its first pair started.
+- **#448, the user's instruction:** no testing from this side; set it, they will run it; and give every universe an on/off switch,
+  usable on a phone, so the learning can be staggered and varied as a field runs.
+  - **The test is withdrawn** (the registration says so; pair 1 was stopped and removed). **Nothing here is evidence that a learning
+    collective helps or harms.** What is measured stays as it was: every universe learning lost to every universe drawing at 25
+    minutes (#431), and the two long pairs disagree about a learner late (#433, #434).
+  - **The collective learns by default.** `#nocollearn` gives a field where no mind learns. A field-wide setting in the address
+    (`nomind`, `mindmode=...`) wins over the collective's default: `mind-test` caught my first version forcing a learner into a
+    `#nomind` field.
+  - **The switch.** Each universe's control row (shown when its cell is opened) has a mind button: "learning" or "not learning". A tap
+    switches that universe's mind at once (`mindSetMode` in the engine; the model and its record are kept in both modes, so a mind
+    switched back goes on from what it knew). The choice is kept under the universe's own slot and, at the next boot, replaces
+    whatever the field's address asked for. Universes in the layers behind get their turn when the cube turns them to the front.
+  - **On a phone the row of four buttons ran under the metabolism panel** and the new button could not be reached
+    (`lab/port/shots/mind-button.png` is after the fix: the row wraps upward on a narrow screen).
+  - `lab/port/mindswitch-test.js` (new, in `smoke.sh`, 6/0): collective learns by default; a universe switched on learns at once and
+    its button says so; both choices survive a reload; `#nocollearn` leaves none learning. `mind-test` 14/0 (its default case now
+    asks for `nocollearn`). The world under node is untouched (no mind there by default).
+  - **What this changes for the rigs:** a default field now has one learning universe, so a field measured from here on is not the
+    field of #438-#446 exactly. A rig that needs the old field passes `HASH='#nocollearn'`.

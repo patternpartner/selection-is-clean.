@@ -17,6 +17,9 @@
   #gio button{font:13px monospace;background:#122;color:#8fb;border:1px solid #275;border-radius:7px;
               padding:11px 14px}
   #gio[hidden]{display:none}
+  /* #448: four buttons do not fit beside the metabolism panel on a phone (the row ran under it and the mind button could not be
+     reached). On a narrow screen the row wraps upward and stays on the right half. */
+  @media (max-width:640px){ #gio{flex-wrap:wrap-reverse;justify-content:flex-end;max-width:44vw} #gio button{padding:9px 10px} }
   #gfile{display:none}
   #err{position:fixed;left:8px;right:8px;top:40%;z-index:9;color:#f88;background:#200;border:1px solid #522;
         border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;display:none}
@@ -24,7 +27,7 @@
 </head>
 <body>
 <div id="gen">booting…</div>
-<div id="gio"><button id="gsnd">🔇 sound</button><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
+<div id="gio"><button id="gmind" hidden>mind</button><button id="gsnd">🔇 sound</button><button id="gexp">💾 save</button><button id="gimp">📂 load</button><input type="file" id="gfile" accept=".json"></div>
 <canvas id="c"></canvas>
 <div id="err"></div>
 <script>
@@ -284,7 +287,13 @@
   function tourKind(s){ s = String(s || ''); return /^u\d/.test(s) ? 'u' : /^L1_/.test(s) ? 'L1' : /^L2_/.test(s) ? 'L2' : /^g\d/.test(s) ? 'g' : s; }
   var TPERIOD = (function(){ var m=(location.search||'').match(/[?&]tourp=(\d{1,4})/); return (m ? parseInt(m[1],10) : 300) * 1000; })();
   var tour = { w0:null, others:{}, adopt:0, decide:0, lastR:null, lastN:0, chan:null, log:[] };
-  function tourHash(){ var h = location.hash || ''; if (!/[?&]tourney=1(&|$)/.test(location.search || '')) return h; return (h ? h + ',' : '#') + 'prune,tourney'; }   // called before TOURNEY is assigned
+  // #448: THIS UNIVERSE'S OWN CHOICE OF MIND. The button in its control row switches its mind between learning and drawing while it
+  // runs; the choice is kept under this universe's slot and, at the next boot, replaces whatever mode the field's hash asked for.
+  var MMKEY = 'mindmode_' + (SLOT || 'genome');
+  function mindChoice(){ try { var v = localStorage.getItem(MMKEY); return (v === 'learn' || v === 'draw') ? v : null; } catch(e){ return null; } }
+  function withChoice(h){ var c = mindChoice(); if (!c) return h; var t = (h || '').replace(/^#/, '').split(',').filter(function(x){ return x && x.indexOf('mindmode=') !== 0; }); t.push('mindmode=' + c); return '#' + t.join(','); }
+  function tourHash(){ return withChoice(tourHash0()); }
+  function tourHash0(){ var h = location.hash || ''; if (!/[?&]tourney=1(&|$)/.test(location.search || '')) return h; return (h ? h + ',' : '#') + 'prune,tourney'; }   // called before TOURNEY is assigned
   function tourStat(){ return { v:TOURV, prop:tour.prop | 0, adopt:tour.adopt, decide:tour.decide, R:tour.lastR, n:tour.lastN, peers:Object.keys(tour.others).length }; }
   function tourMutate(v){ var o = {}, k; for (k in v) o[k] = v[k]; if (Math.random() < TOUR_MUT){ var ks = Object.keys(o); if (ks.length){ var q = ks[(Math.random()*ks.length)|0]; o[q] = o[q] ? 0 : 1; } } return o; }
   function tourCycle(){
@@ -351,6 +360,8 @@
     phaseForTest: function(){ return ask('phase', null); },
     livenessForTest: function(){ return ask('liveness', null); },   // #435: this universe's liveness counters since boot   // #396: where this universe's time goes (installs timers on first call)
     // #158: test-only. Lets collective-test.js drive the evolved-silence case directly.
+    // #448: this universe's mind: mindMode() reads it, mindMode('learn'|'draw') sets it now and for the next boots
+    mindMode: function(m){ return mindSet(m); },
     setGeneForTest: function(gene,value){ return ask('setgene', { gene:String(gene), value:+value }); },
     // #154: show this universe's save/load buttons. The field calls this when it opens a cell.
     controls: function(show){ if (gioEl) gioEl.hidden = !show; if (!show && sound) sound.off(); },
@@ -400,6 +411,7 @@
     if (d.type === 'phase-result'){ settle(d.rid, d.phase || null); return; }
     if (d.type === 'liveness-result'){ settle(d.rid, d.liveness || null); return; }   // #435
     if (d.type === 'setgene-result'){ settle(d.rid, !!d.ok); return; }
+    if (d.type === 'mindmode-result'){ settle(d.rid, d.mode || null); return; }   // #448
     if (d.type === 'export'){
       // A field-level save asks for the DATA, not a download. Only a click on this universe's own
       // save button (which carries no rid) should put a file on the device.
@@ -484,6 +496,12 @@
   //   epoch is soft and long, one that computed alone is a short pluck.
   // - UNDER IT, the 3 functions most heard (READ hits): held tones, the world listening to itself.
   // - A dead world, or one where nobody was paid, is silent. A world without TASKS is silent.
+  // #448: the mind button. Hidden until the universe says it has a mind; its label is the mode the mind is in.
+  var mindBtn = document.getElementById('gmind');
+  function mindLabel(m){ if (!mindBtn) return; if (!m){ mindBtn.hidden = true; return; } mindBtn.hidden = false; mindBtn.textContent = (m === 'learn') ? '\ud83e\udde0 learning' : '\ud83e\udde0 not learning'; }
+  function mindSet(m){ if (m === 'learn' || m === 'draw'){ try { localStorage.setItem(MMKEY, m); } catch(e){} } return ask('mindmode', { m: m || null }).then(function(now){ mindLabel(now); return now; }); }
+  if (mindBtn) mindBtn.addEventListener('click', function(){ ask('mindmode', { m:null }).then(function(now){ if (now) mindSet(now === 'learn' ? 'draw' : 'learn'); }); });
+  setTimeout(function(){ try { mindSet(null); } catch(e){} }, 3000); setInterval(function(){ try { if (gioEl && !gioEl.hidden) mindSet(null); } catch(e){} }, 5000);
   var sound = (function(){
     var btn = document.getElementById('gsnd'), ac = null, out = null, timer = 0, on = false;
     var lastEpoch = -1, lastTick = -1, lastAt = 0, bar = 2.4, next = 0, lastPlayed = null;
