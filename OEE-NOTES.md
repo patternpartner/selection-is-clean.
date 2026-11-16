@@ -31967,7 +31967,7 @@ pairs behind it; under 0.9 means the default is reviewed.
 | 3 | 614,180 | 672,873 | 1.10 | 0.84 | 12 / 7 / 12 / 0 / 0 |
 | 4 | 973,038 | 1,160,776 | 1.19 | 0.91 | 6 / 8 / 10 / 7 / 0 |
 | 5 | 1,309,775 | 1,725,478 | 1.32 | 0.98 | 4 / 4 / 10 / 13 / 0 |
-| 6 | see below | | **1.42** | 0.94 | 27 of 31 at seven or more |
+| 6 | 1,643,934 | 2,326,255 | **1.42** | 0.94 | 3 / 1 / 10 / 16 / 1 |
 
 - All four of `PREREG-open.md`'s rules hold again: count 1.42 (needs 0.90), 27 of 31 universes at seven inputs or more with 575,788
   of the last leg's 600,777 new functions depending on six or more, every reload restoring the inputs held with no universe lost,

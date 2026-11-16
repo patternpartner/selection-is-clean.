@@ -254,8 +254,9 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   comparable, and neither is the grade past five inputs** (a top-input Shannon split, looser with each input): read the inputs
   held (`OPEN.n` in a field sample) and what the new functions depend on (`OPEN.m`). `TASK_NMAX` (12 since `#438b`, where the word arrays grow only when an input opens)
   is the machine's ceiling, not a rule. Still mine: the grade, the opening rule. **Organisms do not grow and need not** (programs sit
-  at about 16 instructions at five inputs and at eight; #389): the complexity is in the words passed between creatures. Not done: a
-  second long pair, anything past 150 minutes, a universe at the ceiling. `lab/port/open-save-test.js` checks the open state's save.
+  at about 16 instructions at five inputs and at eight; #389): the complexity is in the words passed between creatures. **A second long pair agrees
+  (`#438c`): 1.42x at 150 minutes, 27 of 31 universes at seven inputs or more**; the two agree on the level, not on the trend. Not
+  done: anything past 150 minutes, a universe at the ceiling. `#441` draws one bar a universe for each input past the fifth. `lab/port/open-save-test.js` checks the open state's save.
   **`pop-test`'s reload row compared against a history row newer than the save** (1 failure in 2); fixed in what it compares.
   **`#439`-`#440`: the grade earns its place, twice.** With every pool the same size (pay for being rare, no grade) no node world
   opened a sixth input in 12,000 ticks (3 of 3) and each found a fifth to a third as much. With pay by GENERATION (the world's own
