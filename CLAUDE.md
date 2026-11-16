@@ -256,6 +256,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   at about 16 instructions at five inputs and at eight; #389): the complexity is in the words passed between creatures. Not done: a
   second long pair, anything past 150 minutes, a universe at the ceiling. `lab/port/open-save-test.js` checks the open state's save.
   **`pop-test`'s reload row compared against a history row newer than the save** (1 failure in 2); fixed in what it compares.
+  **`#439`-`#440`: the grade earns its place, twice.** With every pool the same size (pay for being rare, no grade) no node world
+  opened a sixth input in 12,000 ticks (3 of 3) and each found a fifth to a third as much. With pay by GENERATION (the world's own
+  count of how many functions a function was built through, no table) node worlds opened inputs and found as much, but a FIELD found
+  0.33 of the shipped field on half the ticks and opened nothing in 25 minutes. Both knobs removed. The table is still mine; these
+  are the two alternatives measured. Node said level where the field said a third: design in a field.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

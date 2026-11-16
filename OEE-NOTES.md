@@ -31900,3 +31900,22 @@ is paid. The table is still computed, and is now an OUTSIDE ruler: it has no par
 - The first runs were lost with a container restart at about 4,000 ticks and rerun from scratch; these are the reruns.
 - Design only: the generations are not saved, and a `Map` holds them (too heavy for 31 universes; a typed table beside the lifetime
   set is the engineering if this goes on). One field pair is running: shipped against generation-graded, 25 minutes.
+- **The field pair: NO** (`out-gen-design/a-*`, shipped against `TASK_GEN=1` at `TASK_GREF` 6, together, 1,500 s):
+
+  | | Shipped | Generation-graded | Ratio |
+  |---|---|---|---|
+  | F at 5 / 10 / 15 / 20 / 25 min | 3,068 / 20,368 / 42,547 / 79,646 / 123,877 | 8,438 / 15,145 / 23,011 / 31,751 / 40,366 | 2.75 / 0.74 / 0.54 / 0.40 / **0.33** |
+  | Ticks across the field | 90,803 | 46,440 | 0.51 |
+  | Alive | 30,843 | 36,607 | 1.19 |
+  | Universes past five inputs | 6 | 0 | |
+  | Table grade of what was new, mean; size 17+ | 15.2; 35,870 | 10.1; 2,292 | 0.06 on 17+ |
+
+  - Ahead for five minutes, then a straight line at a third of the shipped field's rate; half the ticks; nothing opened; shallow by
+    the outside ruler. Decided beforehand: clearly behind means the knob is removed, and it is (`engine.html` and `harness-env.js`
+    are #439's; digests `6a2b51ae`, and `cef41a35` on seed 11 through two openings).
+  - **Node said level and the field said a third.** That is #397's warning once more: three node seeds could not see a threefold
+    difference in the direction that mattered. The node table above stands as what node showed, not as a result.
+  - Not separated: how much is the generation count as a reward and how much is the denser, slower world it made (1.19x the
+    creatures, half the ticks). A lower `TASK_GREF` was not tried. Not pursued.
+- **What #439 and #440 leave standing:** a world needs a reward for depth (ungraded worlds do not climb), and the formula-size table
+  is the best one tried. "The grade is mine" remains true, now with two measured alternatives behind it.
