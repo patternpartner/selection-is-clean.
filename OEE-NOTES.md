@@ -32111,3 +32111,29 @@ Node, seeds 11-13, mind on, 12,000 ticks, against the same seeds without light (
 - **The field switch:** `#glow` on the field's address turns it on in every universe (checked in a browser: 9 of 9 report it; 0 of 9
   without). Off by default; the user runs it. Named next version, from the user's own picture of light as "ripples of the grid
   itself": light that TRAVELS, one cell a tick, so distant places see older light.
+
+### #452 — TRAVELLING LIGHT AND TIME THAT RUNS SLOWER WHERE IT IS BUSY (`#light`, `#dilate[=K]`, `#relativity`; opt-in): both behind, and the light drowns in itself
+The user's "spacetime impedance" picture, built as artwork rules (not a test of physics: the rules are written by hand, so nothing
+here can show spacetime mechanics emerging). `TASK_GLOW=2`: each published word is a pulse spreading one grid cell a tick
+(Chebyshev rings) out to `LIGHT_REACH` 6 cells; a look sees the XOR of every pulse passing over the creature's cell now, within the
+current epoch. `TIME_LOAD=K`: a creature's beat (#192's per-lineage clock) is stretched by one tick per K creatures (plus last tick's
+light pulses) in its 3x3 cells, up to one tick in 12; upkeep is divided by the stretched rate; ageing is NOT slowed (#192's reason: a
+crowd would become near-immortal). Default off: `cef41a35`, `f3f1292f`; instant light (#451) unchanged, `fee2f1e7` against 71904c1.
+Node, seeds 11-13, mind on, 10,000 ticks, against the same seeds with neither (`b11`-`b13`) and with instant light (`glow11`-`glow13`):
+
+| Seed | None: F, inputs | Instant light (#451) | Travelling light | Travelling light + dilation | Mean slowdown (ticks added) |
+|---|---|---|---|---|---|
+| 11 | 82,948, 7 | 43,196, 6 | 55,054, 7 (0.66) | 45,633, 7 (0.55) | 3.25 |
+| 12 | 115,473, 8 | 50,643, 8 | 50,931, 8 (0.44) | 61,593, 8 (0.53) | 0.79 |
+| 13 | 54,067, 7 | 70,788, 8 | 23,602, 7 (0.44) | 19,571, 6 (0.36) | 0.53 |
+
+- **Behind on all three seeds in both arms** (0.36-0.66). Three node seeds cannot rule (#397), but six of six on one side is not
+  nothing.
+- **The travelling light drowns in itself.** A look sees on average 59-113 pulses at once (instant light: 3-10), and the XOR of a
+  hundred words is noise: payments built on light fell to 2-9% (instant: 24-45%), new functions built on it to 3-23%. Light that
+  keeps travelling for six cells piles every recent pulse onto every place. With dilation fewer pulses are made (30-36 seen at once)
+  and it is still mostly noise.
+- **Dilation does bite**: the average creature runs 0.5-3.3 ticks slower per beat. Whether creatures gather into or flee slow zones
+  was not measured.
+- Switches stay opt-in. The obvious repair is a shorter reach (1-2 cells: few pulses, light from near and a little older), named and
+  not built.
