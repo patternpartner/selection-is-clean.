@@ -254,7 +254,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|nocollearn|glow|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|nocollearn|glow|light|dilate(?:=\\d+)?|relativity|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -302,7 +302,9 @@
     if(/(?:^|,)nomind(?:,|$)/.test(raw)) MINDTOK='nomind';
     else if(_mi||_mm) MINDTOK=[_mi?_mi[1]:'',_mm?'mindmode='+_mm[1]:''].filter(Boolean).join(',');
     if(/(?:^|,)notasks(?:,|$)/.test(raw)) MINDTOK=[MINDTOK,'notasks'].filter(Boolean).join(',');
-    if(/(?:^|,)glow(?:,|$)/.test(raw)) MINDTOK=[MINDTOK,'glow'].filter(Boolean).join(',');   // #451: creatures carry light, in every universe; rides on the same token   // #351: TASKS is every universe's default world; #notasks rides on the same token
+    if(/(?:^|,)glow(?:,|$)/.test(raw)) MINDTOK=[MINDTOK,'glow'].filter(Boolean).join(',');
+    // #452: travelling light (#light), time that runs slower where it is busy (#dilate, #dilate=K), or both (#relativity), in every universe
+    var _rel=raw.match(/(?:^|,)(light|dilate(?:=\d+)?|relativity)(?=,|$)/g); if(_rel) MINDTOK=[MINDTOK].concat(_rel.map(function(x){ return x.replace(/^,/,''); })).filter(Boolean).join(',');   // #451: creatures carry light, in every universe; rides on the same token   // #351: TASKS is every universe's default world; #notasks rides on the same token
   } else {
     n=1; passHash='#'+raw;                         // a lineage, opened by itself
   }

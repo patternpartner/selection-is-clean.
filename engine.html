@@ -457,10 +457,22 @@ function tickPhaseOf(g,rate){
 }
 // Is this particle on one of its own beats this tick? Reads the CARRIER's genome, not the self's -
 // #191 is one commit old and its whole finding was a per-lineage gene read from the germline.
+// #452: TIME_LOAD=K, or #dilate[=K] (#relativity: K 12) on a universe's hash: TIME RUNS SLOWER WHERE IT IS BUSY. A creature's beat is
+// stretched by one tick for every K creatures (and, with travelling light, light pulses made last tick) in the 3x3 cells around it,
+// up to TICK_RATE_MAX_LOAD. Its upkeep is divided by the same stretched rate (it lives slower, as it acts slower). Default 0: off,
+// byte-identical. Draws nothing.
+const TIME_LOAD=(()=>{ const v=__tkG('__TIME_LOAD',0); if(v>0)return v; try{ const m=((typeof location!=='undefined'&&location.hash)||'').match(/(^|[#,])(dilate(=(\d+))?|relativity)(,|$)/); if(m)return m[4]?Math.max(1,parseInt(m[4],10)):12; }catch(_){} return 0; })();
+const TICK_RATE_MAX_LOAD=12; let __dilCell=null, __dilSum=0, __dilN=0;
+function __tkG(n,d){ try{ const v=(typeof globalThis!=='undefined')?globalThis[n]:undefined; return (v!==undefined&&Number.isFinite(+v))?+v:d; }catch(_){ return d; } }
+function dilTick(){ if(TIME_LOAD<=0||typeof sunCnt==='undefined'||!sunCnt)return; const C=FIELD_W*FIELD_H; if(!__dilCell)__dilCell=new Uint8Array(C);
+  const ls=(typeof TASK_GLOW!=='undefined'&&TASK_GLOW===2&&lE)?(((tick-1)%LIGHT_S)+LIGHT_S)%LIGHT_S:-1;
+  for(let y=0;y<FIELD_H;y++)for(let x=0;x<FIELD_W;x++){ let L=0; for(let dy=-1;dy<=1;dy++){ const yy=y+dy; if(yy<0||yy>=FIELD_H)continue; for(let dx=-1;dx<=1;dx++){ const xx=x+dx; if(xx<0||xx>=FIELD_W)continue; const c=yy*FIELD_W+xx; L+=sunCnt[c]; if(ls>=0){ const x0=ls*C+c; if(lE[x0]===tick-1)L+=lN[x0]; } } }
+    __dilCell[y*FIELD_W+x]=Math.min(255,Math.floor(L/TIME_LOAD)); } }
+function rateAt(i,g){ const r=tickRateOf(g); if(TIME_LOAD<=0||!__dilCell||typeof sunCell!=='function')return r; return Math.min(TICK_RATE_MAX_LOAD,r+__dilCell[sunCell(i)]); }
 function particleActive(i){
   if(!__STIME)return true;
   const g=(typeof pGenome!=='undefined'&&pGenome[i])?pGenome[i]:((typeof genome!=='undefined')?genome:null);
-  const r=tickRateOf(g);
+  const r=rateAt(i,g);
   if(r<=1)return true;
   return (((tick+tickPhaseOf(g,r))%r)===0);
 }
@@ -10645,7 +10657,7 @@ function sunStep(season){
   let dem=0, paid=0, tot=0;
   for(let i=0;i<N;i++){ if(!palive[i])continue; const c=sunCell(i); let e=pE[i]+sunScratch[c]; if(TASKS_ON)tEv.sun+=sunScratch[c];
     if(e>SUN_STORE){ sunField[c]+=e-SUN_STORE; e=SUN_STORE; }   // a full store leaves the rest on the ground
-    const u=attnUpkeep(i)/(__STIME?tickRateOf(pGenome[i]):1); dem+=u;
+    const u=attnUpkeep(i)/(__STIME?rateAt(i,pGenome[i]):1); dem+=u;
     if(e>=u){ e-=u; pAdq[i]=1; paid+=u; } else { pAdq[i]=u>0?e/u:1; paid+=e; e=0; }
     pE[i]=e; }
   energyAdequacy=dem>0?paid/dem:1;
@@ -10927,7 +10939,7 @@ let oIn=TASK_OPEN?new Uint32Array(TASK_NMAX*OWM):null, oRow=TASK_OPEN?new Uint16
 // not depend on inputs that were not there. The ground's tables are repeated the same way.
 function oWiden(M){ if(M<=OWM)return; const m0=OWM, wide=(a,n)=>{ const b=new Uint32Array(n*M); for(let q=0;q<n;q++) for(let x=0;x<M;x++)b[q*M+x]=a[q*m0+(x&(m0-1))]; return b; };
   oW=wide(oW,CAP*4); oJ=wide(oJ,CAP*4); oD=wide(oD,CAP*4); oL=wide(oL,CAP); oLJ=wide(oLJ,CAP); oLD=wide(oLD,CAP); oG=wide(oG,FIELD_W*FIELD_H);
-  oIn=new Uint32Array(TASK_NMAX*M); oRow=new Uint16Array(32*M); oF=new Uint32Array(M); OWM=M; }
+  oIn=new Uint32Array(TASK_NMAX*M); oRow=new Uint16Array(32*M); oF=new Uint32Array(M); OWM=M; if(TASK_GLOW===2)lightAlloc(); }
 const oC=TASK_OPEN?new Uint8Array(TASK_NF):null;   // per pool: how many inputs its function depends on
 const OMASK=[0x55555555,0x33333333,0x0F0F0F0F,0x00FF00FF,0x0000FFFF];
 // how many of its first m inputs the function in oF depends on
@@ -10976,7 +10988,27 @@ function oEpoch(){   // at an epoch boundary: perhaps open an input, then draw t
 // bit: in step cancels, alone shines) of every word published this epoch within the radius, up to GLOW_MAX of them. Junk and
 // input-dependence masks combine as OR, so the clean-word rule applies unchanged; the looked-at word enters the read record, so
 // publishing it unchanged is refused as a copy. oGl marks a word built on light, for the counters only.
-const TASK_GLOW=TASK_OPEN&&((__tk('__TASK_GLOW',0)|0)!==0||(()=>{ try{ return /(^|[#,])glow(,|$)/.test((typeof location!=='undefined'&&location.hash)||''); }catch(_){ return false; } })()), GLOW_MAX=16;
+const __hashTok=(re)=>{ try{ return ((typeof location!=='undefined'&&location.hash)||'').match(re); }catch(_){ return null; } };
+// #452: TASK_GLOW=2, or #light (or #relativity) on a universe's hash: THE LIGHT TRAVELS. Instead of reaching one radius at once, each
+// published word is a pulse that spreads one grid cell a tick (Chebyshev rings) and fades after LIGHT_REACH cells, so a creature that
+// looks sees the interference of every pulse whose ring is passing over its cell NOW: near shiners soon, far ones later, some of them
+// since changed or dead. Light older than the epoch it was made in carries nothing (its inputs have been redrawn).
+const TASK_GLOW=TASK_OPEN?(((__tk('__TASK_GLOW',0)|0)===2||__hashTok(/(^|[#,])(light|relativity)(,|$)/))?2:(((__tk('__TASK_GLOW',0)|0)!==0||__hashTok(/(^|[#,])glow(,|$)/))?1:0)):0, GLOW_MAX=16;
+const LIGHT_REACH=6, LIGHT_S=LIGHT_REACH+1;
+let lW=null, lJ=null, lD=null; const lE=(TASK_GLOW===2)?new Int32Array(LIGHT_S*FIELD_W*FIELD_H).fill(-1):null, lN=(TASK_GLOW===2)?new Uint16Array(LIGHT_S*FIELD_W*FIELD_H):null, lK=(TASK_GLOW===2)?new Int32Array(LIGHT_S*FIELD_W*FIELD_H).fill(-1):null;
+function lightAlloc(){ if(TASK_GLOW!==2)return; const n=LIGHT_S*FIELD_W*FIELD_H*OWM; lW=new Uint32Array(n); lJ=new Uint32Array(n); lD=new Uint32Array(n); lE.fill(-1); lN.fill(0); }
+lightAlloc();
+function lightEmit(i,D,WD,key){ const c=sunCell(i), s=tick%LIGHT_S, x0=s*FIELD_W*FIELD_H+c, b=x0*OWM;
+  if(lE[x0]!==tick){ lE[x0]=tick; lN[x0]=0; lK[x0]=-1; lW.fill(0,b,b+OWM); lJ.fill(0,b,b+OWM); lD.fill(0,b,b+OWM); }
+  for(let q=0;q<WD;q++){ lW[b+q]^=oW[D+q]; lJ[b+q]|=oJ[D+q]; lD[b+q]|=oD[D+q]; } lN[x0]++; if(lK[x0]<0&&key>=0)lK[x0]=key; tEv.lightOut=(tEv.lightOut|0)+1; }
+function taskLight(i,kD,D,e,WD){ const C=FIELD_W*FIELD_H, c=sunCell(i), cx=c%FIELD_W, cy=(c/FIELD_W)|0; let n=0, kn=0;
+  for(let d=0;d<=LIGHT_REACH;d++){ const te=tick-d; if(te<0||Math.floor(te/TASK_EPOCH)!==e)break; const s=((te%LIGHT_S)+LIGHT_S)%LIGHT_S;
+    for(let dy=-d;dy<=d;dy++){ const y=cy+dy; if(y<0||y>=FIELD_H)continue; const edge=(dy===-d||dy===d);
+      for(let dx=-d;dx<=d;dx+=(edge?1:Math.max(1,2*d))){ const x=cx+dx; if(x<0||x>=FIELD_W)continue; const x0=s*C+y*FIELD_W+x; if(lE[x0]!==te||!lN[x0])continue;
+        const b=x0*OWM; if(n===0){ for(let q=0;q<WD;q++){ oW[D+q]=0; oJ[D+q]=0; oD[D+q]=0; } tK.fill(-1,kD*4,kD*4+4); }
+        for(let q=0;q<WD;q++){ oW[D+q]^=lW[b+q]; oJ[D+q]|=lJ[b+q]; oD[D+q]|=lD[b+q]; } n+=lN[x0];
+        if(lK[x0]>=0&&kn<4){ let has=false; for(let r=0;r<kn;r++) if(tK[kD*4+r]===lK[x0])has=true; if(!has)tK[kD*4+(kn++)]=lK[x0]; } } } }
+  tEv.glowReads=(tEv.glowReads|0)+1; if(n>0){ tEv.glowHits=(tEv.glowHits|0)+1; tEv.glowSum=(tEv.glowSum|0)+n; oGl[kD]=1; } return n; }
 const oGl=TASK_GLOW?new Uint8Array(CAP*4):null;
 function taskGlow(i,kD,D,e,WD){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1); let n=0, kn=0;
   for(let dy=-1;dy<=1&&n<GLOW_MAX;dy++)for(let dx=-1;dx<=1&&n<GLOW_MAX;dx++){ const x=cx+dx, y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue;
@@ -10994,7 +11026,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
     if(kS!==kD) for(let q=0;q<4;q++){ const k=tK[kS*4+q]; if(k<0)continue; let has=false, free=-1; for(let r=0;r<4;r++){ if(tK[kD*4+r]===k)has=true; if(tK[kD*4+r]<0&&free<0)free=r; } if(!has&&free>=0)tK[kD*4+free]=k; }
     if(oGl!==null&&oGl[kS])oGl[kD]=1; return; }
   if(t===2){ for(let x=0;x<WD;x++){ oW[D+x]=oW[S+x]; oJ[D+x]=oJ[S+x]; oD[D+x]=oD[S+x]; } for(let q=0;q<4;q++)tK[kD*4+q]=tK[kS*4+q]; if(oGl!==null)oGl[kD]=oGl[kS]; return; }   // T_COPY
-  if(t===3&&TASK_GLOW&&(Math.abs(src|0)&8)){ tEv.reads++; if(taskGlow(i,kD,D,e,WD)>0){ const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; } return; }   // #451: look at the light
+  if(t===3&&TASK_GLOW&&(Math.abs(src|0)&8)){ tEv.reads++; if((TASK_GLOW===2?taskLight(i,kD,D,e,WD):taskGlow(i,kD,D,e,WD))>0){ const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; } return; }   // #451: look at the light
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e; tEv.reads++; if(oGl!==null)oGl[kD]=0;
     if(!hit&&tG!==null){ const c=sunCell(i), key=(tGE===null||tGE[c]===e)?tG[c]:0; if(key!==0){ const R=32*WD, g=c*OWM; tEv.gReads=(tEv.gReads|0)+1;
         for(let x=0;x<WD;x++){ oW[D+x]=0; oJ[D+x]=0; oD[D+x]=0xFFFFFFFF; } for(let q=0;q<R;q++){ const k=oRow[q]; if((oG[g+(k>>>5)]>>>(k&31))&1)oW[D+(q>>>5)]|=1<<(q&31); }
@@ -11005,7 +11037,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
     for(let x=0;x<WD;x++){ oJ[D+x]=nz?oLJ[b+x]:0; oD[D+x]=nz?oLD[b+x]:0; } tK.fill(-1,kD*4,kD*4+4); if(nz&&tLastK[a]>=0)tK[kD*4]=tLastK[a];
     const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; }
   // T_OUTPUT: published first, then judged
-  tEv.outs++; let dirty=0; { const b=i*OWM; for(let x=0;x<WD;x++){ oL[b+x]=oW[D+x]; oLJ[b+x]=oJ[D+x]; oLD[b+x]=oD[D+x]; dirty|=oJ[D+x]; } } tLastE[i]=e; tLast[i]=oW[D];   // the first 32 rows, for the sound and the display only: the open world never reads tLast
+  tEv.outs++; let dirty=0; { const b=i*OWM; for(let x=0;x<WD;x++){ oL[b+x]=oW[D+x]; oLJ[b+x]=oJ[D+x]; oLD[b+x]=oD[D+x]; dirty|=oJ[D+x]; } } tLastE[i]=e; tLast[i]=oW[D]; if(TASK_GLOW===2)lightEmit(i,D,WD,tLastK[i]);   // the first 32 rows, for the sound and the display only: the open world never reads tLast
   let m=0, key=0; if(dirty===0){ m=oCanon(oW,D); key=(m===5&&(oF[0]===0||oF[0]===0xFFFFFFFF))?0:oKey(m); } tLastK[i]=key!==0?taskFind5(key):-1;
   { const hv=oHash(oW,D,false), hn=oHash(oW,D,true); for(let q=o;q<o+4;q++){ if(tRdE[q]!==e)continue; const w=tRd[q]; if(hv===w||hn===w){ tEv.refused++; return; } } }   // a copy or a complement of a word read this epoch
   if(dirty!==0){ tEv.dirty++; return; }
@@ -27775,6 +27807,7 @@ function loop(){
     +  WORLD_SIGNAL_WEIGHT*_wsB); // feast/famine cycle, no longer solvable by learning one period
   if(SUN_ON)sunStep(_season); else   // #272: sunlight on the ground, harvested and spent by each particle - see sunStep
   worldEnergy=Math.min(WORLD_ENERGY_MAX,worldEnergy+WORLD_ENERGY_REGEN*_season); // conserved-budget influx ("sunlight"), now seasonal
+  if(TIME_LOAD>0){ dilTick(); if(__dilCell){ let a=0,n=0; for(let i=0;i<N;i++) if(palive[i]){ a+=__dilCell[sunCell(i)]; n++; } __dilSum+=a; __dilN+=n; } }   // #452
   // #135: upkeep is now charged PER PARTICLE and discounted by the attention on the ground it
   // stands on. With no pointer anywhere, attentionAt() is 0 everywhere and this sums to exactly
   // N*METABOLIC_ENERGY_DRAW — the previous behaviour, unchanged, which is the honest default for
