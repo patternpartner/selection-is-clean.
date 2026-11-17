@@ -32087,3 +32087,27 @@ so a newborn survives. It has no waves, no quanta, no colour, and creatures can 
 - Upkeep is met (adequacy 0.999-1.000) and the ground sits far under its cap (mean 0.002-0.035 against 0.05; often 0 somewhere).
 So light is food for the first thousand ticks and vestigial after. As energy it has nothing left to do. The open opportunity is
 light as INFORMATION: today the inputs every creature computes on are abstract words, the same everywhere in a universe.
+
+### #451 — CREATURES CARRY LIGHT (`TASK_GLOW` / `#glow`, opt-in): used heavily, a third to half of new functions built on it, count mixed
+The user's question after #450: "what if they carry light?" Every creature already publishes a word each epoch; with the knob that
+word also shines on everything within one interaction radius, and a READ whose src has bit 3 set LOOKS AT THE LIGHT where the
+creature stands: the interference (XOR, bit for bit: in step cancels, alone shines) of every word published this epoch within the
+radius, up to 16. Masks combine as OR so the clean rule is unchanged; the looked-at word enters the read record (copying it is
+refused). Default off: `cef41a35`, `f3f1292f`. No new opcode: half of all READ instructions (those with src bit 3) become looks.
+Node, seeds 11-13, mind on, 12,000 ticks, against the same seeds without light (`out-open-node/b11-b13`, the identical world since):
+
+| Seed | Looks at the light | Saw something | Words seen at once (mean) | Payments built on light | NEW functions built on light | Functions found: light / none | Inputs: light / none |
+|---|---|---|---|---|---|---|---|
+| 11 | 2.63 M | 89% | 9.7 | 45,015 of 100,480 (45%) | 31,909 of 58,600 (54%) | 58,600 / 92,935 (0.63) | 7 / 8 |
+| 12 | 4.18 M | 92% | 9.0 | 44,838 of 99,243 (45%) | 34,445 of 66,996 (51%) | 66,996 / 162,996 (0.41) | 8 / 8 |
+| 13 | 2.15 M | 79% | 3.0 | 27,418 of 114,105 (24%) | 23,844 of 90,012 (26%) | 90,012 / 74,397 (1.21) | 8 / 7 |
+
+- **The light is used and pays.** Creatures look at it millions of times, see 3-10 shiners at once, and a quarter to half of all
+  payments, and a quarter to half of all FIRST finds, are built on something seen in it. It is not ignored, as #450's light-as-food is.
+- **What a world finds overall is mixed** (0.63, 0.41, 1.21), and populations run lower (600-840 against 600-1,500). By #397 three
+  node seeds cannot see under severalfold, so this is no direction either way. Not run: the shuffle control (whether light-built finds
+  are selected), and a field.
+- Light turns half the READs that heard ONE neighbour into looks at MANY, so part of any change is lost single reads.
+- **The field switch:** `#glow` on the field's address turns it on in every universe (checked in a browser: 9 of 9 report it; 0 of 9
+  without). Off by default; the user runs it. Named next version, from the user's own picture of light as "ripples of the grid
+  itself": light that TRAVELS, one cell a tick, so distant places see older light.
