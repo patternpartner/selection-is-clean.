@@ -19,7 +19,14 @@
   #gio[hidden]{display:none}
   /* #448: four buttons do not fit beside the metabolism panel on a phone (the row ran under it and the mind button could not be
      reached). On a narrow screen the row wraps upward and stays on the right half. */
-  @media (max-width:640px){ #gio{flex-wrap:wrap-reverse;justify-content:flex-end;max-width:44vw} #gio button{padding:9px 10px} }
+  /* #449: ONE ROW on a phone. #448's wrap stacked four buttons three high over the world. Smaller type and padding fit all four in
+     one row, raised above the metabolism pill in the bottom-left corner. */
+  /* #449: ON A PHONE, A COLUMN OF ICONS ON THE RIGHT EDGE. A row of four labelled buttons ran under the metabolism panel (open, it
+     covers the left half of a phone) and hid the mind and sound buttons. Icons only (the shell shortens the labels, see narrow());
+     the mind button keeps its state in words, "on" or "off". */
+  @media (max-width:640px){ #gio{flex-direction:column;align-items:flex-end;gap:6px;right:6px;bottom:calc(64px + env(safe-area-inset-bottom, 0px))}
+    #gio button{font-size:15px;line-height:1;padding:11px 10px;min-height:40px;min-width:40px;white-space:nowrap}   /* collective-test: 36 px at least, a thumb */
+    #gmind.learn{border-color:#2f6;box-shadow:0 0 6px rgba(40,255,100,.45)} }
   #gfile{display:none}
   #err{position:fixed;left:8px;right:8px;top:40%;z-index:9;color:#f88;background:#200;border:1px solid #522;
         border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap;display:none}
@@ -470,6 +477,10 @@
   });
 
   // ── save / load buttons (the sim's own DOM handlers don't run on this path) ──
+  // #449: on a narrow screen a button shows only its icon (the first word of its label)
+  var NARROW = false; try { NARROW = window.matchMedia('(max-width:640px)').matches; } catch(e){}
+  function narrow(t){ return NARROW ? String(t).split(' ')[0] : t; }
+  ['gexp','gimp','gsnd'].forEach(function(id){ var e = document.getElementById(id); if (e) e.textContent = narrow(e.textContent); });
   document.getElementById('gexp').onclick = function(){ worker.postMessage({ type:'export' }); };
   document.getElementById('gimp').onclick = function(){ document.getElementById('gfile').click(); };
   document.getElementById('gfile').onchange = function(e){
@@ -498,7 +509,7 @@
   // - A dead world, or one where nobody was paid, is silent. A world without TASKS is silent.
   // #448: the mind button. Hidden until the universe says it has a mind; its label is the mode the mind is in.
   var mindBtn = document.getElementById('gmind');
-  function mindLabel(m){ if (!mindBtn) return; if (!m){ mindBtn.hidden = true; return; } mindBtn.hidden = false; mindBtn.textContent = (m === 'learn') ? '\ud83e\udde0 learning' : '\ud83e\udde0 not learning'; }
+  function mindLabel(m){ if (!mindBtn) return; if (!m){ mindBtn.hidden = true; return; } mindBtn.hidden = false; mindBtn.textContent = NARROW ? ((m === 'learn') ? '\ud83e\udde0 on' : '\ud83e\udde0 off') : ((m === 'learn') ? '\ud83e\udde0 learning' : '\ud83e\udde0 off'); mindBtn.classList.toggle('learn', m === 'learn'); mindBtn.title = (m === 'learn') ? 'this universe\'s mind learns: tap to stop' : 'this universe\'s mind does not learn: tap to start'; }
   function mindSet(m){ if (m === 'learn' || m === 'draw'){ try { localStorage.setItem(MMKEY, m); } catch(e){} } return ask('mindmode', { m: m || null }).then(function(now){ mindLabel(now); return now; }); }
   if (mindBtn) mindBtn.addEventListener('click', function(){ ask('mindmode', { m:null }).then(function(now){ if (now) mindSet(now === 'learn' ? 'draw' : 'learn'); }); });
   setTimeout(function(){ try { mindSet(null); } catch(e){} }, 3000); setInterval(function(){ try { if (gioEl && !gioEl.hidden) mindSet(null); } catch(e){} }, 5000);
@@ -507,7 +518,7 @@
     var lastEpoch = -1, lastTick = -1, lastAt = 0, bar = 2.4, next = 0, lastPlayed = null;
     var PENT = [0, 3, 5, 7, 10];
     function hz(sz){ var d = Math.max(0, Math.min(17, (sz|0) - 1)); return 110 * Math.pow(2, (Math.floor(d/5)*12 + PENT[d%5]) / 12); }
-    function label(t){ if (btn) btn.textContent = t; }
+    function label(t){ if (btn) btn.textContent = narrow(t); }
     function note(t, f, g, dur, type, pan){
       var o = ac.createOscillator(), a = ac.createGain(), p = ac.createStereoPanner ? ac.createStereoPanner() : null;
       o.type = type; o.frequency.value = f;

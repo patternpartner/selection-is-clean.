@@ -32063,3 +32063,16 @@ to a registered set run alone; otherwise removed.
     asks for `nocollearn`). The world under node is untouched (no mind there by default).
   - **What this changes for the rigs:** a default field now has one learning universe, so a field measured from here on is not the
     field of #438-#446 exactly. A rig that needs the old field passes `HASH='#nocollearn'`.
+
+### #449 — AN OPENED UNIVERSE ON A PHONE, TIDIED (display only)
+From the user's screenshot of the collective opened on their phone: the universe's first line of text ran under "← field" and the
+collective's badge, and the field's own load/new buttons and status line stayed on screen over the universe's buttons, hiding the
+mind button. Now, inside an opened universe:
+- the field's load, new, status line and grown readout are hidden (harvest already was, #168);
+- the universe starts below a 44 px header strip that holds "← field" and the collective's badge;
+- on a narrow screen the universe's own buttons are a column of icons on the right edge (🧠, sound, save, load), clear of the
+  metabolism panel; the mind button reads "🧠 on" with a green ring when learning, "🧠 off" when not. Buttons are 40 px, because
+  `collective-test`'s thumb-size row (36 px at least) caught my first, smaller column.
+`lab/port/shots/open-tidy.png` is the result on a phone profile. `collective-test` all pass, `lab/port/mindswitch-test.js` 6/0,
+`mind-persist-test` 10/0: its field-line row still expected "(not learning)", stale since #448's learning collective; it now
+accepts "(1 learning)".

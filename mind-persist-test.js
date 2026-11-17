@@ -41,7 +41,7 @@ const first = (page, what) => page.evaluate(async (what) => {
     ck('and small enough for a field of eighteen', keys.every(([, n]) => n < 120000), keys.map(([k, n]) => k + ' ' + Math.round(n / 1000) + 'k').join(' '));
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('mind_u0') || 'null'));
     const fieldLine = await page.evaluate(() => { const e = document.getElementById('minds'); return e && e.style.display !== 'none' ? e.textContent : ''; });
-    ck('the field shows what its minds are doing', /minds? \(not learning\) · saw .* parents · wrote .* children/.test(fieldLine)   /* #431: the TASKS default draws, it does not learn */, fieldLine);
+    ck('the field shows what its minds are doing', /minds? \((not|1) learning\) · saw .* parents · wrote .* children/   /* #448: the collective learns by default */.test(fieldLine)   /* #431: the TASKS default draws, it does not learn */, fieldLine);
     const file = await first(page, 'save'); let fj = null; try { fj = JSON.parse(file); } catch (e) {}
     ck('a universe\'s save file carries its mind', !!(fj && fj.genome && fj.mind && JSON.parse(fj.mind).v === 1), fj ? Object.keys(fj).join(',') : 'no file');
 

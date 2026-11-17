@@ -13,7 +13,7 @@ const out=[], ck=(n,c,d)=>{ out.push((c?'  ok    ':'  FAIL  ')+n+'   '+d); };
   const set=await p.evaluate(async()=>{ const f=[...document.querySelectorAll('#grid iframe')].find(x=>x.title==='Universe 1'); return await f.contentWindow.__field.mindMode('learn'); });
   m=await modes(); ck('a universe switched to learning learns, at once', set==='learn'&&m.find(x=>x[0]==='Universe 1')[1]==='learn'&&m.find(x=>x[0]==='Universe 2')[1]==='draw', 'answer '+set+' '+JSON.stringify(m));
   const lab=await p.evaluate(()=>{ const f=[...document.querySelectorAll('#grid iframe')].find(x=>x.title==='Universe 1'); const bt=f.contentDocument.getElementById('gmind'); return bt?bt.textContent:null; });
-  ck('its button says so', /learning/.test(lab||'')&&!/not learning/.test(lab||''), String(lab));
+  ck('its button says so', /(learning|\bon)$/.test(lab||''), String(lab));   // #449: a phone shows the short label, 'on'
   await p.evaluate(async()=>{ const f=[...document.querySelectorAll('#grid iframe')].find(x=>x.title==='The collective'); return await f.contentWindow.__field.mindMode('draw'); });
   await p.reload(); await p.waitForTimeout(W); m=await modes();
   ck('both choices survive a reload', m.find(x=>x[0]==='Universe 1')[1]==='learn'&&m.find(x=>x[0]==='The collective')[1]==='draw'&&m.find(x=>x[0]==='Universe 2')[1]==='draw', JSON.stringify(m));

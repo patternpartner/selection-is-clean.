@@ -180,11 +180,17 @@
   .cell.collective .badge{position:absolute;left:3px;top:3px;z-index:2;pointer-events:none;
         font:9px/1 ui-monospace,Menlo,monospace;color:#8fb;background:rgba(0,20,12,.7);
         border-radius:4px;padding:3px 5px;letter-spacing:.5px}
-  #grid.open .cell.collective .badge{font-size:11px;left:8px;top:8px}
+  #grid.open .cell.collective .badge{font-size:11px}
   #back{position:fixed;left:8px;top:8px;z-index:9;display:none;
         font:12px/1 ui-monospace,Menlo,monospace;color:#cfe;background:rgba(10,14,16,.82);
         border:1px solid #2a4a44;border-radius:7px;padding:8px 11px}
   #grid.open ~ #back{display:block}
+  /* #449: INSIDE AN OPENED UNIVERSE, ONLY ITS OWN CONTROLS. On a phone the field's load/new and its status line stayed on screen and
+     sat on top of the universe's own row, hiding the mind button; harvest was already hidden here (#168). And the opened universe
+     starts below a header strip, so its first line of text no longer runs under the back button and the collective's badge. */
+  #grid.open ~ #fload,#grid.open ~ #fnew,#grid.open ~ #depth,#grid.open ~ #grown{display:none !important}
+  #grid.open .cell.on{padding-top:44px;box-sizing:border-box;background:#05080a}
+  #grid.open .cell.collective .badge{top:13px;left:104px}
   /* The collective says what it is taking in, on itself. This used to be a fixed panel at the
      bottom-left of the PAGE, where it sat on top of the last cell's own save button. */
   #fmsg{display:none}
