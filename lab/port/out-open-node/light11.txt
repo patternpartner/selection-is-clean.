@@ -1,0 +1,6 @@
+{"t":1000,"alive":470,"sunShare":0.189,"sunPerHead":0.00042,"taskPerHead":0.00178,"ground":{"mean":0.0046,"min":0,"max":0.0126,"cap":0.05},"upkeepAdequacy":1}
+{"t":2000,"alive":1432,"sunShare":0.01,"sunPerHead":0.00006,"taskPerHead":0.00582,"ground":{"mean":0.0062,"min":0,"max":0.0127,"cap":0.05},"upkeepAdequacy":1}
+{"t":3000,"alive":1572,"sunShare":0.007,"sunPerHead":0.00007,"taskPerHead":0.00941,"ground":{"mean":0.0048,"min":0,"max":0.0152,"cap":0.05},"upkeepAdequacy":1}
+{"t":4000,"alive":769,"sunShare":0.014,"sunPerHead":0.00015,"taskPerHead":0.01057,"ground":{"mean":0.0021,"min":0,"max":0.0045,"cap":0.05},"upkeepAdequacy":1}
+{"t":5000,"alive":1328,"sunShare":0.003,"sunPerHead":0.00004,"taskPerHead":0.01208,"ground":{"mean":0.0163,"min":0,"max":0.0262,"cap":0.05},"upkeepAdequacy":0.999}
+{"t":6000,"alive":1467,"sunShare":0.004,"sunPerHead":0.00005,"taskPerHead":0.01228,"ground":{"mean":0.0346,"min":0,"max":0.05,"cap":0.05},"upkeepAdequacy":1}

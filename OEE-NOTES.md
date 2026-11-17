@@ -32076,3 +32076,14 @@ mind button. Now, inside an opened universe:
 `lab/port/shots/open-tidy.png` is the result on a phone profile. `collective-test` all pass, `lab/port/mindswitch-test.js` 6/0,
 `mind-persist-test` 10/0: its field-line row still expected "(not learning)", stale since #448's learning collective; it now
 accepts "(1 learning)".
+
+### #450 — WHAT LIGHT DOES IN TODAY'S WORLD: almost nothing (a measurement; nothing changed)
+The user brought in light (photons, waves, the spectrum, wave-particle duality) and asked to keep digging. First, what the engine's
+light is: `sunStep` keeps an energy field on a 40x40 grid that regrows toward a cap each tick, diffuses to its four neighbours, and
+is split between the creatures standing in a cell; under TASKS it is a quarter of its old strength (`TASK_SUNP` 25, #350), a floor
+so a newborn survives. It has no waves, no quanta, no colour, and creatures can sense only its gradient (ops 147, 148).
+`lab/port/probe-light.js`, seeds 11 and 12, mind on, 6,000 ticks, windows of 1,000:
+- **Share of creatures' income from light: 19% in the first window, then 0.3-1.4%.** Computing pays 40-300 times more per head.
+- Upkeep is met (adequacy 0.999-1.000) and the ground sits far under its cap (mean 0.002-0.035 against 0.05; often 0 somewhere).
+So light is food for the first thousand ticks and vestigial after. As energy it has nothing left to do. The open opportunity is
+light as INFORMATION: today the inputs every creature computes on are abstract words, the same everywhere in a universe.
