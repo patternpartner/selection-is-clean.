@@ -10994,7 +10994,9 @@ const __hashTok=(re)=>{ try{ return ((typeof location!=='undefined'&&location.ha
 // looks sees the interference of every pulse whose ring is passing over its cell NOW: near shiners soon, far ones later, some of them
 // since changed or dead. Light older than the epoch it was made in carries nothing (its inputs have been redrawn).
 const TASK_GLOW=TASK_OPEN?(((__tk('__TASK_GLOW',0)|0)===2||__hashTok(/(^|[#,])(light|relativity)(,|$)/))?2:(((__tk('__TASK_GLOW',0)|0)!==0||__hashTok(/(^|[#,])glow(,|$)/))?1:0)):0, GLOW_MAX=16;
-const LIGHT_REACH=6, LIGHT_S=LIGHT_REACH+1;
+// #453: LIGHT_NEAR (default 1): a look sees only the NEAREST wavefront carrying light, not every ring out to the reach. #452's first
+// version summed all 169 cells and drowned in itself (60-110 pulses at once). LIGHT_NEAR=0 restores #452's light.
+const LIGHT_REACH=6, LIGHT_S=LIGHT_REACH+1, LIGHT_NEAR=(__tk('__LIGHT_NEAR',1)|0)!==0;
 let lW=null, lJ=null, lD=null; const lE=(TASK_GLOW===2)?new Int32Array(LIGHT_S*FIELD_W*FIELD_H).fill(-1):null, lN=(TASK_GLOW===2)?new Uint16Array(LIGHT_S*FIELD_W*FIELD_H):null, lK=(TASK_GLOW===2)?new Int32Array(LIGHT_S*FIELD_W*FIELD_H).fill(-1):null;
 function lightAlloc(){ if(TASK_GLOW!==2)return; const n=LIGHT_S*FIELD_W*FIELD_H*OWM; lW=new Uint32Array(n); lJ=new Uint32Array(n); lD=new Uint32Array(n); lE.fill(-1); lN.fill(0); }
 lightAlloc();
@@ -11007,7 +11009,8 @@ function taskLight(i,kD,D,e,WD){ const C=FIELD_W*FIELD_H, c=sunCell(i), cx=c%FIE
       for(let dx=-d;dx<=d;dx+=(edge?1:Math.max(1,2*d))){ const x=cx+dx; if(x<0||x>=FIELD_W)continue; const x0=s*C+y*FIELD_W+x; if(lE[x0]!==te||!lN[x0])continue;
         const b=x0*OWM; if(n===0){ for(let q=0;q<WD;q++){ oW[D+q]=0; oJ[D+q]=0; oD[D+q]=0; } tK.fill(-1,kD*4,kD*4+4); }
         for(let q=0;q<WD;q++){ oW[D+q]^=lW[b+q]; oJ[D+q]|=lJ[b+q]; oD[D+q]|=lD[b+q]; } n+=lN[x0];
-        if(lK[x0]>=0&&kn<4){ let has=false; for(let r=0;r<kn;r++) if(tK[kD*4+r]===lK[x0])has=true; if(!has)tK[kD*4+(kn++)]=lK[x0]; } } } }
+        if(lK[x0]>=0&&kn<4){ let has=false; for(let r=0;r<kn;r++) if(tK[kD*4+r]===lK[x0])has=true; if(!has)tK[kD*4+(kn++)]=lK[x0]; } } }
+    if(n>0&&LIGHT_NEAR)break; }   // #453: the nearest wavefront only
   tEv.glowReads=(tEv.glowReads|0)+1; if(n>0){ tEv.glowHits=(tEv.glowHits|0)+1; tEv.glowSum=(tEv.glowSum|0)+n; oGl[kD]=1; } return n; }
 const oGl=TASK_GLOW?new Uint8Array(CAP*4):null;
 function taskGlow(i,kD,D,e,WD){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1); let n=0, kn=0;
