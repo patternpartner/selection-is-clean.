@@ -116,7 +116,6 @@ const readField = (page, ms) => page.evaluate(async ms => {
       r.onsuccess = () => { try { const q = r.result.transaction('pop', 'readonly').objectStore('pop').getAll(); q.onsuccess = () => { const z = q.result.map(v0 => { const v = (v0 && v0.b) ? v0.b : v0; return v && v.size !== undefined ? v.size : (typeof v === 'string' ? v.length : 0); }); /* #426: a record may be {g, b} */ res({ n: z.length, total: z.reduce((x, y) => x + y, 0), max: z.reduce((x, y) => Math.max(x, y), 0) }); }; q.onerror = () => res(null); } catch (e) { res(null); } };
       r.onerror = () => res(null); } catch (e) { res(null); } }));
     const rows = await readField(page, final ? 120000 : 60000);
-    let SUBN = 0; const SUB = [0, 0, 0, 0];
     let S = 0, K = 0, A = 0, U = 0, sw = null, off = 0, bad = 0, n5 = 0, M = 0, MA = 0;
     const SWB = {}, TOUR = { adopt: 0, decide: 0, U: 0 }; let SWBN = 0;   // #424: how many universes run each switch, and the tournament's counts
     const slots = [], tally = {}, lost = []; let learnN = 0;
@@ -126,7 +125,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
       U++; K += r.totalTicks | 0; A += r.alive | 0; if (r.in5) n5++; M += r.mig | 0; MA += r.migA | 0;
       const ps = perSlot[s] || (perSlot[s] = { found: 0, ticks: 0 });
       ps.found = Math.max(ps.found, (r.n | 0) - (r.boot | 0)); ps.ticks = r.totalTicks | 0;
-      if (!sw) sw = r.sw; if (r.sw && r.sw.mindMode === 'learn') learnN++; if (r.sw && r.sw.sub) { SUBN++; for (let q = 0; q < 4; q++) SUB[q] += r.sw.sub[q]; }   // #455   // #447: how many universes run a learning mind
+      if (!sw) sw = r.sw; if (r.sw && r.sw.mindMode === 'learn') learnN++;   // #447: how many universes run a learning mind
       if (r.swb) { SWBN++; for (const k in r.swb) SWB[k] = (SWB[k] || 0) + (r.swb[k] ? 1 : 0); }
       if (r.tour) { TOUR.U++; TOUR.adopt += r.tour.adopt | 0; TOUR.decide += r.tour.decide | 0; TOUR.prop = (TOUR.prop | 0) + (r.tour.prop | 0); }
       // #407: a field built with #arms tells each universe's arm; each arm keeps its own union (what ITS universes found) and depth
@@ -144,7 +143,7 @@ const readField = (page, ms) => page.evaluate(async ms => {
     const arms = {}; for (const key in tally) { const a = armSets[key], z = a.sz.slice().sort((x, y) => x - y); a.sz = [];
       arms[key] = { F: a.set.size, new: z.length, mean: z.length ? +(z.reduce((x, y) => x + y, 0) / z.length).toFixed(2) : null, ge17: z.filter(v => v >= 17).length, U: tally[key].U, K: tally[key].K, A: tally[key].A, ground: tally[key].ground, chk: tally[key].chk }; }
     const OPEN = Object.keys(openN).length ? { n: openN, m: spans() } : undefined; openN = {};
-    emit({ t: T_OFF + at, leg: LEG, J: J0, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), OPEN, learn: learnN, SUB: SUBN ? SUB : undefined, arms: Object.keys(arms).length ? arms : undefined, SWB: SWBN ? SWB : undefined, SWBN: SWBN || undefined, TOUR: TOUR.U ? TOUR : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
+    emit({ t: T_OFF + at, leg: LEG, J: J0, read: Math.round((Date.now() - t0) / 1000) - at, F, D: depth(), OPEN, learn: learnN, arms: Object.keys(arms).length ? arms : undefined, SWB: SWBN ? SWB : undefined, SWBN: SWBN || undefined, TOUR: TOUR.U ? TOUR : undefined, lost: lost.length ? lost : undefined, S, K, A, U, n5, M, MA, off, bad, sw, slots, errs: errs.length, final: !!final });
   };
   // samples are scheduled at EVERY, 2 EVERY, ... SECS from page load; t is the scheduled time, read is how long the reads took
   let reloaded = false;

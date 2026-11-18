@@ -32223,3 +32223,16 @@ the first design version broke a third of COPYs and found 0.29 by tick 2,000). S
   field pairs, judged on new functions per real hour with a depth guard. If it is not better there, both modes are removed.
 - `sim.worker.js` reports a universe's capture counters (`sw.sub`) and `field-rate.js` sums them (`SUB`: calls, payments built by
   a call, payments, first finds built by a call); read-only.
+
+### #455b — CORRECTION: the "growth" was the rule, and the switch is removed
+`#455` said `TASK_SUB=2` grew organisms' circuits, "the first in-run growth of an organism's circuit here". False as a finding.
+That mode refused every capture that would not lengthen the subroutine held, so length could only rise: a ratchet I wrote, read
+back as an outcome. It was also one design seed. And "26% of the field's first finds were built by a call" was read as a promising
+sign, but the field found fewer functions overall (0.90), which fits calls replacing the ordinary route to a new function as well
+as adding to it. By the precedent of `#400` (0.85) and `#446` (0.86) the field pair is no case for a registered set, and nothing
+else holds the switch up, so it is removed: `engine.html`, `harness-env.js`, `digest.js`, `sim.worker.js` and `field-rate.js` are
+back to `53ec8b9`, with a comment above `oBirth` holding the result (digest `9e88d2f9` unchanged).
+**The pattern across `#454`-`#455`, for the next session:** both mechanisms were recommended from general ideas about open-ended
+systems, not from anything this repo had measured, and the repo had measured against both (`#439`, `#440`, `#400`; `#389`). Both
+times the cheap early check said no and was overridden. Both times the null was followed by a positive-looking readout and a new
+variant. Before proposing a mechanism, name the measured result here that predicts it will help.

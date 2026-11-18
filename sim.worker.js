@@ -132,9 +132,7 @@ const BRIDGE =
       'sw:{glow:(typeof TASK_GLOW!=="undefined")?+TASK_GLOW:null,dilate:(typeof TIME_LOAD!=="undefined")?TIME_LOAD:null,storeDeath:(typeof STORE_DEATH!=="undefined")?+STORE_DEATH:null,crowdK:(typeof REPL_CROWD_K!=="undefined")?REPL_CROWD_K:null,' +
         'provBirth:(typeof provBirthOn==="function")?+provBirthOn():null,aim:(typeof aimOn==="function")?+aimOn():null,' +
         // #431: which mind this universe runs (learn, frozen, uniform; null before its first birth or with none), read from the object, never by calling the latch
-        'mindMode:(typeof __mind!=="undefined"&&__mind)?__mind.MODE:null,' +
-        // #455: a universe's capture counters (calls, payments built by a call, all payments, first finds built by a call); read-only
-        'sub:(typeof TASK_SUB!=="undefined"&&TASK_SUB)?[tEv.subCall|0,tEv.subPaid|0,tEv.paid|0,tEv.subNew|0]:null}};' +
+        'mindMode:(typeof __mind!=="undefined"&&__mind)?__mind.MODE:null}};' +
   '}catch(e){return {err:String(e&&e.message)};}};' +
   // #396 - WHERE A FIELD UNIVERSE'S TIME GOES. Nothing is installed until a rig first asks; from then on loop and its largest
   // phases are timed with performance.now(), and the wall time between one loop ending and the next starting (the wait for this
