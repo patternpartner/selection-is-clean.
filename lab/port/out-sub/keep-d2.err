@@ -1,0 +1,5 @@
+
+{"t":1000,"alive":470,"len":15.8,"maxLen":16,"cap":15.9,"taskOps":6,"seen":655,"paid":7349,"subPaid":0,"subCall":0,"subLen":0.39,"n":5,"hist":[133,0,0,0,0,0,0,0],"win":[367,48],"ze":3.91,"ms":9077}
+{"t":2000,"alive":1422,"len":15.9,"maxLen":17,"cap":16.1,"taskOps":6.6,"seen":8007,"paid":23931,"subPaid":55,"subCall":3624,"subLen":3.31,"n":5,"hist":[5321,0,0,0,0,0,0,0],"win":[390,140],"ze":7.59,"ms":48269}
+{"t":3000,"alive":1619,"len":15.9,"maxLen":17,"cap":16.3,"taskOps":6.7,"seen":22073,"paid":52856,"subPaid":405,"subCall":37355,"subLen":9.06,"n":5,"hist":[16797,0,0,0,0,0,0,0],"win":[395,134],"ze":6.9,"ms":143110}
+{"t":4000,"alive":602,"len":16,"maxLen":18,"cap":17,"taskOps":7,"seen":28158,"paid":68851,"subPaid":830,"subCall":74273,"subLen":13.37,"n":5,"hist":[21669,0,0,0,0,0,0,0],"win":[210,71],"ze":7.37,"ms":185485}

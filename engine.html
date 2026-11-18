@@ -11034,13 +11034,16 @@ function taskGlow(i,kD,D,e,WD){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.f
 // copying. The subroutine is inherited at birth. So a lineage can hold a circuit that grows by capture, an operator applied to its
 // own intermediate words, where a read is only a value. Not saved with the population (design only).
 const TASK_SUB=TASK_OPEN&&(__tk('__TASK_SUB',0)|0)!==0, SUB_MAX=32;
+// TASK_SUB=2: a capture that would not LENGTHEN the subroutine held is refused, so a lineage keeps what it has and can only grow.
+const SUB_KEEP=TASK_SUB&&(__tk('__TASK_SUB',0)|0)===2;
 const sOp=TASK_SUB?new Uint8Array(CAP*SUB_MAX):null, sSrc=TASK_SUB?new Uint8Array(CAP*SUB_MAX):null, sDst=TASK_SUB?new Uint8Array(CAP*SUB_MAX):null;
 const sLen=TASK_SUB?new Uint8Array(CAP):null, sGen=TASK_SUB?new Uint16Array(CAP):null, oSb=TASK_SUB?new Uint8Array(CAP*4):null;
-function subCapture(i,a){ const b=i*SUB_MAX, c=a*SUB_MAX, P=pProg[a]||[]; let L=0, g=0;
+function subCapture(i,a){ if(SUB_KEEP&&subLenOf(a)<=sLen[i]){ tEv.subKeep=(tEv.subKeep|0)+1; return; } const b=i*SUB_MAX, c=a*SUB_MAX, P=pProg[a]||[]; let L=0, g=0;
   for(let q=0;q<P.length&&L<SUB_MAX;q++){ const ins=P[q]; if(!ins)continue; const op=ins[0]; if(op<TASK_OP0||op>=TASK_OP0+5)continue; const t=op-TASK_OP0, sr=Math.abs(ins[1]|0), ds=Math.abs(ins[2]|0);
     if(t===2&&(sr&4)){ const M=sLen[a]; for(let r=0;r<M&&L<SUB_MAX;r++){ sOp[b+L]=sOp[c+r]; sSrc[b+L]=sSrc[c+r]; sDst[b+L]=sDst[c+r]; L++; } if(M&&sGen[a]>g)g=sGen[a]; continue; }   // its own call, inlined
     if(t>2)continue; sOp[b+L]=t; sSrc[b+L]=sr&3; sDst[b+L]=ds&3; L++; }
   sLen[i]=L; sGen[i]=g+1; tEv.subCap=(tEv.subCap|0)+1; }
+function subLenOf(a){ const P=pProg[a]||[]; let L=0; for(let q=0;q<P.length;q++){ const ins=P[q]; if(!ins)continue; const op=ins[0]; if(op<TASK_OP0||op>=TASK_OP0+5)continue; const t=op-TASK_OP0; if(t===2&&(Math.abs(ins[1]|0)&4))L+=sLen[a]; else if(t<=2)L++; } return Math.min(L,SUB_MAX); }
 function subCall(i){ const L=sLen[i]; if(!L)return; tEv.subCall=(tEv.subCall|0)+1; const b=i*SUB_MAX;
   for(let q=0;q<L;q++)taskOpN(sOp[b+q],sSrc[b+q],sDst[b+q],i);   // ops 0-2 with src under 4: never a call, so no recursion
   for(let q=0;q<L;q++)oSb[i*4+sDst[b+q]]=1; }

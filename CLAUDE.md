@@ -281,6 +281,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   making what everyone builds on pays and that is shallow. With the grade kept, purchases in place of the drain were 0.16-0.43 of
   the shipped world: the drain is doing work. Rarity, generation and use have now all failed as the grade's replacement; each
   rewards something cheap to make. The named next market is SCARCITY (a purchase split among that epoch's producers).
+  **`#455`: capturing an operator (`TASK_SUB`, DORMANT).** A READ can copy a neighbour's task program into an inherited
+  subroutine that a COPY can call on the creature's own words (an operator, where a read is a value). Node inconclusive (0.82-1.15,
+  0.3-1.6% of payments built by a call); one field pair 0.90, but there calls built 26% of the field's first finds. Plain capture
+  overwrites, so nothing grows; `TASK_SUB=2` (a capture must lengthen what is held) grew subroutines to 13 instructions on average
+  by 4,000 ticks (one design seed): the first in-run growth of an organism's circuit here. Its registered test is the follow-up.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

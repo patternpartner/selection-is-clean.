@@ -32191,3 +32191,35 @@ Node, seeds 11-13, `TASKS=1 MIND=20`, 12,000 ticks (`lab/port/out-market/`):
   that function this epoch, so a word that is used and that few can make is worth most. That is a reward for difficulty the world
   computes itself. Whether it is anything but the grade measured another way is the question it would have to answer.
 - Nothing in the universe moved. The session added one mechanism and removed it.
+
+### #455 — A CREATURE CAN CAPTURE AN OPERATOR (`TASK_SUB`, opt-in): inconclusive in node, 0.90 in one field pair, used for a quarter of the field's first finds; organisms GROW only when a capture may not shorten what is held
+Step 2 of the OEE answer (organisms do not grow). `#389` had already shown that room alone does not help (a cap of 32 was shallower
+and dearer), so this is not room: it is a different capability. A READ gives a VALUE (a neighbour's word). With `TASK_SUB=1` a READ
+whose src has bit 3 set also CAPTURES the neighbour's running task program into the reader's subroutine (its READs and OUTPUT
+dropped, so a READ's slot becomes an argument; its own subroutine inlined; at most 32 instructions), and a COPY whose src has bit 2
+set CALLS it on the caller's own words (an empty subroutine: an ordinary COPY, so the switch costs nothing until a lineage captures;
+the first design version broke a third of COPYs and found 0.29 by tick 2,000). Subroutines are inherited. Default off, `9e88d2f9`.
+`lab/port/PREREG-sub.md`, committed before the decision runs. Node, seeds 12-14 (11 designed it), mind on, 12,000 ticks (`out-sub/`):
+
+| Seed | Shipped | Capture | Ratio | Payments built by a call | Subroutine: mean, longest, deepest capture |
+|---|---|---|---|---|---|
+| 12 | 162,996, 8 inputs | 187,333, 8 | 1.15 | 0.26% | 0.7, 12, 3 |
+| 13 | 74,397, 7 | 65,667, 8 | 0.88 | 1.3% | 2.1, 11, 5 |
+| 14 | 78,676, 7 (run alongside) | 64,462, 7 | 0.82 | 1.6% | 0.3, 4, 1 |
+
+- 3 of 3 counted. Not used (none at 5% of payments), not decoration (one under 1%), not growing (mean under 4 on all three):
+  **INCONCLUSIVE in node**, which by the registration sends it to one design field pair.
+- **The field pair** (`out-sub-field/`, 25 minutes, run alone): 110,887 against 122,756, **0.90**, behind at every five minutes
+  (0.69, 0.92, 0.84, 0.79, 0.90), level per tick (it ran 0.92 the ticks: calls cost CPU). **In the field the capability is used,
+  as it was not in node:** 5.9% of payments, and **26% of the field's first finds** (29,297 of 110,887), were built by a call. Depth
+  mixed (size 17+ new functions 3,736 against 3,124 at 25 minutes; behind at 5 and 15). The registration did not write a field
+  threshold; I read 0.90 as no case for a registered set (`#400` at 0.85 and `#446` at 0.86 were removed).
+- **Why organisms did not grow:** a third of READs capture and every capture overwrites, so a lineage never keeps a subroutine long
+  enough to build on it. **`TASK_SUB=2` refuses a capture that would not lengthen what is held** (design, seed 11, 4,000 ticks):
+  mean subroutine 0.4, 3.3, 9.1, **13.4** instructions at 1,000-4,000 (plain capture 4.6), and 28,158 functions against plain
+  capture's 25,587 and the shipped 25,391. One seed: that is a direction to test, not a result. It is the first time in this
+  project that an organism's own circuit has grown during a run.
+- **Kept DORMANT** (default off, byte-identical) for one named follow-up: `TASK_SUB=2` pre-registered on unseen node seeds and in
+  field pairs, judged on new functions per real hour with a depth guard. If it is not better there, both modes are removed.
+- `sim.worker.js` reports a universe's capture counters (`sw.sub`) and `field-rate.js` sums them (`SUB`: calls, payments built by
+  a call, payments, first finds built by a call); read-only.
