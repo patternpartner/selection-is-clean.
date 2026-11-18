@@ -10854,7 +10854,8 @@ function taskFn(v){ if(TASK_IN===5)return taskSlot5(taskTT5(v)); const I=tWin; l
 function taskTick(){   // once per tick, before the solo programs run: the epoch, then every pool regrows toward its cap
   const e=Math.floor(tick/TASK_EPOCH);
   if(e!==tEpoch){ tEpoch=e; if(TASK_IN===5&&tSlotN>=TASK_NF*0.85)taskRebuild5(); if(TASK_OPEN)oEpoch(); else { taskDrawInputs(); for(let q=0;q<CAP*4;q++){ tJ[q]=(tJ[q]|tDm[q])>>>0; tDm[q]=0; } } tK.fill(-1); }   // last epoch's input bits are junk now; read keys do not outlive it
-  if(TASK_IN===5){ for(let n=0;n<tSlotN;n++){ const T=tSlots[n]; tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); } return; }
+  if(TASK_IN===5){ if(MKT_BUY){ for(let n=0;n<tSlotN;n++){ const T=tSlots[n], d=tCap[T]-tRes[T]; if(d>0)tRes[T]+=TASK_RATE*d; } return; }   // #454: a purchase's excess is kept
+    for(let n=0;n<tSlotN;n++){ const T=tSlots[n]; tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); } return; }
   for(let T=0;T<TASK_NF;T++)tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); }
 function taskBirth(i){ const o=i*4; tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
   tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; tRE[i]=-1; if(TASK_OPEN)oBirth(i); }
@@ -10953,6 +10954,17 @@ let oLogK=TASK_OPEN?new Uint32Array(1<<14):null, oLogZ=TASK_OPEN?new Uint8Array(
 // - PAY IS INDEXED to the world's own mean grade: a pool's cap is scaled by TASK_ZREF over the running mean grade of what is paid
 //   (never above 1), so a deeper function than the world's average still pays more, and income a head does not grow with the grade.
 const TASK_ZREF=__tk('__TASK_ZREF',12); let oZE=0;
+// #454 design knob TASK_MKT (open world; default 0, byte-identical, draws nothing) - THE INTERNAL MARKET. Until now what a function
+// is worth is the formula-size table's word for it (#439: take the grade out and nothing climbs). With the market, the world's
+// income is only a SEED, the same for every function (each pool's cap is TASK_CAP x TASK_ZREF, #439's flat pool), and the rest of
+// a function's worth is set by the creatures that USE it: a creature paid for a word gives TASK_MKTR (50%) of its payment to the
+// pools of the functions its word was built on (its read keys, equal shares), where whoever next publishes them collects it. This
+// replaces the drain (#350's trophic rule), which took the same share OUT of those pools: building on a function now pays for it
+// instead of starving it. A pool a purchase fills past its cap keeps the excess (regrowth only raises a pool below its cap), so
+// demand waits for a seller instead of evaporating. Modes: 1 the market (flat seed + purchases); 2 flat seed alone with the drain
+// (#439 rebuilt, the control); 3 the table's grade kept and purchases in place of the drain.
+const TASK_MKT=TASK_OPEN?(__tk('__TASK_MKT',0)|0):0, TASK_MKTR=__tk('__TASK_MKTR',50)/100;
+const MKT_FLAT=TASK_MKT===1||TASK_MKT===2, MKT_BUY=TASK_MKT===1||TASK_MKT===3;
 // #439 (tested, removed): with every pool the same cap - no grade in the pay - no node world opened a sixth input in 12,000 ticks
 // (3 of 3; graded, the same seeds held seven or eight) and found a fifth as much. Paying deeper more is what makes a world climb.
 // #440 (tested, removed): pay by GENERATION (one more than the highest generation among the words a function was built from, the
@@ -10975,7 +10987,7 @@ function oSz(off,m,neg){ if(m===5){ let x=oF[off]; if(neg)x=~x; x>>>=0; return x
   if(a===-1)return b+4; if(b===-1)return a+5; if(a===-2)return 1+oSz(off+h,m-1,!neg); if(b===-2)return 2+oSz(off,m-1,!neg); return a+b+4; }
 function oSlot(key,m){ let h=Math.imul(key,2654435761)>>>15;
   for(let n=0;n<TASK_NF;n++,h=(h+1)&(TASK_NF-1)){ const k=tKey[h]; if(k===key)return h; if(k===0){ if(tSlotN>=TASK_NF*0.9){ tEv.full=(tEv.full|0)+1; return -1; }
-      const z=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); tKey[h]=key; TASK_SZ[h]=z; oM[h]=m; oC[h]=oDeps(m); tCap[h]=TASK_CAP*z*(oZE>TASK_ZREF?TASK_ZREF/oZE:1); tRes[h]=tCap[h]; tSlots[tSlotN++]=h; return h; } } return -1; }
+      const z=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); tKey[h]=key; TASK_SZ[h]=z; oM[h]=m; oC[h]=oDeps(m); tCap[h]=MKT_FLAT?TASK_CAP*TASK_ZREF:TASK_CAP*z*(oZE>TASK_ZREF?TASK_ZREF/oZE:1); tRes[h]=tCap[h]; tSlots[tSlotN++]=h; return h; } } return -1; }
 function oHash(arr,off,neg){ let h=2166136261; for(let x=0;x<oWD;x++){ const v=neg?~arr[off+x]:arr[off+x]; h=Math.imul(h^v,16777619); h^=h>>>13; } return h>>>0; }
 function oEpoch(){   // at an epoch boundary: perhaps open an input, then draw the rows, and last epoch's input bits become junk
   if(tick-oWin.at>=(TASK_OPENW<<(tNin-5))){ if(tNin<TASK_NMAX&&oWin.paid>=TASK_OPENMIN&&oWin.top>=TASK_OPENP*oWin.paid){ const w=oWD; tNin++; oWD=w<<1; oOpenAt.push(tick);
@@ -11050,8 +11062,10 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   tPE[i]=e; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); if(_gl)tEv.glowNew=(tEv.glowNew|0)+1; } tEv.paid++; if(_gl)tEv.glowPaid=(tEv.glowPaid|0)+1;
   if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
-  if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
-  if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let n=0; for(let q=0;q<4;q++) if(tK[kD*4+q]>=0)n++; if(n){ const tx=TASK_TROPH*g/n; for(let q=0;q<4;q++){ const k=tK[kD*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
+  let gk=g; if(MKT_BUY){ let n=0; for(let q=0;q<4;q++) if(tK[kD*4+q]>=0)n++; if(n){ const by=TASK_MKTR*g, tx=by/n; gk=g-by; tEv.mkt=(tEv.mkt||0)+by; tEv.mktN=(tEv.mktN|0)+1;   // #454: the purchase
+      for(let q=0;q<4;q++){ const k=tK[kD*4+q]; if(k<0)continue; tRes[k]+=tx; tEv.mktZ=(tEv.mktZ||0)+tx*TASK_SZ[k]; } } }
+  if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=gk; tEv.incZ=(tEv.incZ||0)+g*TASK_SZ[T]; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+gk; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+  if(!MKT_BUY&&TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let n=0; for(let q=0;q<4;q++) if(tK[kD*4+q]>=0)n++; if(n){ const tx=TASK_TROPH*g/n; for(let q=0;q<4;q++){ const k=tK[kD*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // the open world in a snapshot: the input count, the ground's tables and the lifetime record
 // #446 (tested, removed): universes sending each other the functions their grounds hold (a random cell's function, written into a
 // random cell of each receiver; 5% of ticks). One pair of fields: 0.86 of the shipped field's functions, 0.76 of the deep ones,
