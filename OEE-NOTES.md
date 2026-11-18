@@ -32155,3 +32155,39 @@ world is unchanged (`cef41a35`). Node, seeds 11-13, mind on, 10,000 ticks:
   population fell to 250-284 after tick 6,000. Node seeds cannot rule; nothing here argues for a default.
 - Light that travels now behaves like light that does not, in what it does for a world. Whether a field shows anything different
   is for the user's runs (`#light`, `#relativity`). Not measured: whether creatures use OLD light differently from fresh.
+
+### #454 — THE INTERNAL MARKET: no. Value flows down the build chain, to what everyone builds on (node, 3 of 3; the knob is removed)
+The user asked what holds this system back from open-ended evolution; my first answer was that what pays comes from outside (the
+formula-size table, and #439-#440 showed novelty goes when it is taken out), and they said to go after it with an internal market.
+`TASK_MKT` (`lab/port/PREREG-market.md`, committed before the decision runs): every pool a flat seed (#439's `TASK_CAP x TASK_ZREF`),
+and a paid creature gives half its payment to the pools of the functions its word was built on (its read keys), in place of the
+drain, which took the same share OUT of them. A pool filled past its cap by purchases keeps the excess. So a function is worth the
+seed plus what the creatures that use it pay. Why not "a reader pays the publisher when it reads": a READ picks a neighbour by
+sector and cannot see the word, so a price at the read could select on nothing but position.
+Node, seeds 11-13, `TASKS=1 MIND=20`, 12,000 ticks (`lab/port/out-market/`):
+
+| Seed | Shipped (graded) | Flat seed alone (#439; seed 11 rebuilt exactly) | **Market** (flat + purchases) | Graded + purchases |
+|---|---|---|---|---|
+| 11 | 92,935, 8 inputs | 31,595, 5 | **6,156, 5** | 39,677, 7 (0.43) |
+| 12 | 162,996, 8 | 18,618, 5 | **1,967, 5** | 40,437, 7 (0.25) |
+| 13 | 74,397, 7 | 12,638, 5 | **3,677, 5** | 11,780, 5 (0.16) |
+
+- **Executed on every seed** (73-96 thousand purchases). **No market world opened an input, and each found a fifth to a tenth of
+  flat pay alone.** Not starvation: populations 400-1,000, and about as many payments as the shipped world (112-125 thousand
+  against 153-210 thousand). They were paid again and again for the same shallow functions (mean grade of what was paid 3.3-3.6).
+- **Why, as far as the readouts show:** a purchase passes half a payment to what it was built on, and that function's producer
+  passes half of ITS payment further down, so value collects at the bottom of the build chain. Making what everyone builds on is
+  the best business, and what everyone builds on is shallow. The market values use, and the most-used words are the simplest.
+  Purchases bought functions of about the same grade as what was paid (`mktZ` 3.3 against `incZ` 3.4); with the grade kept they
+  bought SHALLOWER than what was paid (30-33 against 35-39), and a third of their value sat unspent in pools no one was producing.
+- **The graded world with purchases in place of the drain** was behind on all three seeds (0.16-0.43): the drain is doing work.
+  Building on a function draws down its pool, which pushes builders off what is already being built on.
+- **Ruled by the pre-registration:** the market does not replace the table (no input opened, 3 of 3; below flat, 3 of 3). The
+  graded variant harms (at most 0.67x, 3 of 3). Both are removed; `engine.html`, `harness-env.js` and `digest.js` are back to the
+  commit before the knob, with a comment holding the result (digest `9e88d2f9` on seed 11, 2,000 ticks, unchanged).
+- **What this adds to #439-#440:** three replacements for the grade now fail (rarity, generation in a field, use). The two that
+  keep a world shallow reward something that is cheap to make (being new; being used), and the grade pays what is EXPENSIVE to
+  make. The next market, named and not built: value set by SCARCITY, a purchase's payment divided among the creatures that produced
+  that function this epoch, so a word that is used and that few can make is worth most. That is a reward for difficulty the world
+  computes itself. Whether it is anything but the grade measured another way is the question it would have to answer.
+- Nothing in the universe moved. The session added one mechanism and removed it.

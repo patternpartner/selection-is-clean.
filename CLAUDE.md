@@ -275,6 +275,12 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   reloads; `#nocollearn` is the field where no mind learns, and **a rig that wants the field of #438-#446 must pass
   `HASH='#nocollearn'`**. `lab/port/mindswitch-test.js` covers the switch. Measured facts are unchanged: all-learning lost at 25
   minutes (#431) and the long pairs disagree (#433, #434).
+  **`#454`: an internal market in place of the grade: no, removed.** A flat seed per pool, and a paid creature buys (half its
+  payment) the functions its word was built on, in place of the drain. No node world opened an input and each found a fifth to a
+  tenth of flat pay alone (3 of 3), on as many payments as the shipped world: value collects at the bottom of the build chain, so
+  making what everyone builds on pays and that is shallow. With the grade kept, purchases in place of the drain were 0.16-0.43 of
+  the shipped world: the drain is doing work. Rarity, generation and use have now all failed as the grade's replacement; each
+  rewards something cheap to make. The named next market is SCARCITY (a purchase split among that epoch's producers).
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
