@@ -32137,3 +32137,21 @@ Node, seeds 11-13, mind on, 10,000 ticks, against the same seeds with neither (`
   was not measured.
 - Switches stay opt-in. The obvious repair is a shorter reach (1-2 cells: few pulses, light from near and a little older), named and
   not built.
+
+### #453 — NEAREST-WAVEFRONT LIGHT: the noise is gone and the light is used again; the world finds no more for it
+From the user's diagnosis of #452 (a look summed all 169 cells out to six rings): `LIGHT_NEAR` 1, now what `#light` does, stops a
+look at the first ring that carries any light. `LIGHT_NEAR=0` is #452's light exactly (`9b5c76a8` on both engines); the default
+world is unchanged (`cef41a35`). Node, seeds 11-13, mind on, 10,000 ticks:
+
+| Seed | None | Instant (#451) | Travelling, all rings (#452) | Travelling, nearest wavefront | Pulses seen at once | Payments / new functions built on light |
+|---|---|---|---|---|---|---|
+| 11 | 82,948 | 43,196 | 55,054 | 53,505 (0.65) | 3.1 | 40% / 51% |
+| 12 | 115,473 | 50,643 | 50,931 | 38,410 (0.33) | 3.5 | 17% / 28% |
+| 13 | 54,067 | 70,788 | 23,602 | 60,961 (1.13) | 3.8 | 19% / 28% |
+
+- **The repair works as a repair:** 3-4 pulses seen at once (from 59-113), and light carries signal again: 17-40% of payments and
+  28-51% of first finds are built on it, about what instant light gave.
+- **The world does not find more for it**: behind on two seeds, ahead on one, the same shape as instant light (#451). Seed 12's
+  population fell to 250-284 after tick 6,000. Node seeds cannot rule; nothing here argues for a default.
+- Light that travels now behaves like light that does not, in what it does for a world. Whether a field shows anything different
+  is for the user's runs (`#light`, `#relativity`). Not measured: whether creatures use OLD light differently from fresh.
