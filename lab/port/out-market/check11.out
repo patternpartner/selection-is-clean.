@@ -1,0 +1,6 @@
+
+{"t":2000,"alive":1432,"len":15.9,"maxLen":18,"cap":16,"taskOps":6.5,"seen":8281,"paid":23854,"n":5,"hist":[5549,0,0,0,0,0,0,0],"win":[382,140],"ze":7.82,"ms":49763}{"digest":"9e88d2f9","alive":1432,"seen":8281,"ev":{"paid":23854,"gReads":388617,"gWrites":23854,"refused":96277,"dirty":193240,"trivial":127553,"glow":0,"glowHits":0,"glowMean":0,"glowPaid":0,"glowNew":0,"lightOut":0,"dilMean":0},"open":{"n":5,"at":[],"hist":[0,5,66,532,2129,5549,0,0,0,0,0,0,0],"win":[382,140],"meanZ":9.78},"errs":0}
+
+real	0m50.225s
+user	1m2.719s
+sys	0m1.156s
