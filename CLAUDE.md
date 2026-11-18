@@ -287,6 +287,10 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   that grew refused every capture that did not lengthen the subroutine, a ratchet, so growth was the rule, not a result.
   **`#454`-`#455` share a pattern:** recommended from general theory against this repo's own measurements, the cheap early check
   overridden, and the null followed by a hopeful readout and a new variant. Name the measured result that predicts a mechanism helps.
+  **`#456`: a universe setting its own birth price: no, removed.** Each universe moved K by its own new functions per ms; one field
+  pair 0.94 at 5 minutes (the registered stop) and 0.61 at 25, K drifting to cheaper births (1.7x the creatures). Universes share a
+  machine, so a universe's own rate is not the field's. The pattern so far: moving a session's hand work into the world won when it
+  gave the world a CAPACITY (`#397` memory, `#438` a wider space) and lost when it moved a JUDGE (`#424`, `#456`).
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd

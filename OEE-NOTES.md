@@ -32236,3 +32236,25 @@ back to `53ec8b9`, with a comment above `oBirth` holding the result (digest `9e8
 systems, not from anything this repo had measured, and the repo had measured against both (`#439`, `#440`, `#400`; `#389`). Both
 times the cheap early check said no and was overridden. Both times the null was followed by a positive-looking readout and a new
 variant. Before proposing a mechanism, name the measured result here that predicts it will help.
+
+### #456 — A UNIVERSE SETS ITS OWN BIRTH PRICE: stopped at the registered gate (0.94 at 5 minutes, 0.61 at 25), removed
+From the pattern in #455b's follow-up: the two field wins that came from moving a session's hand work into the world (#397, the
+ground; #438, opening inputs). Sessions set the crowd price by hand from field pairs (#382, #416), and the best price changes with a
+field's age (#416, #419), so `AUTOK` let each universe move its own K (x1.25 every 60 s of its clock, the way its own new functions
+per ms improved). `lab/port/PREREG-autok.md` set the stop before the run: not ahead at 5 minutes, or K not moving.
+One design pair, 25 minutes, alone (`out-autok/`):
+
+| Minutes | 5 | 10 | 15 | 20 | 25 |
+|---|---|---|---|---|---|
+| Shipped | 7,601 | 28,657 | 55,669 | 88,401 | 128,753 |
+| Self-set K | 7,170 (0.94) | 17,509 (0.61) | 36,568 (0.66) | 57,739 (0.65) | 78,599 (0.61) |
+| Median K (min-max) | 156 (100-244) | 195 (51-477) | 244 (64-596) | 305 (51-745) | 244 (64-931) |
+
+- **Stopped by the registered rule** (behind at 5 minutes), and behind at every mark. Removed; engine, worker, `field-rate.js` and
+  `harness-env.js` back to `cb2bba3`, digest `9e88d2f9`.
+- **K moved, the wrong way**: cheaper births, 1.7x the creatures (41,663 against 24,275 summed), 0.72 the ticks.
+- **A plausible reading, not tested:** the universes share one machine. A universe that grows takes CPU from the others, so its own
+  rate per ms can rise while the field's falls. The sessions judged K on the WHOLE field; each universe here judged on itself. What
+  the session did by hand had a judge at the level of the field, and the internalised version moved the judge down a level. #424's
+  tournament also judged universes against each other and also lost. Two of the three internalisations that lost (#424, #456) changed
+  the level the judging happens at; the two that won (#397, #438) did not judge at all, they gave the world a capacity.

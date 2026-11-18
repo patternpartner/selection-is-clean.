@@ -10783,22 +10783,11 @@ const STORE_DEATH=REPL_ON&&(__tk('__STORE_DEATH',0)|0)!==0;
 // return and the refuges keep the base price. Unset: birthPrice() is BIRTH_ENERGY_COST itself, byte-identical.
 const REPL_CROWD_K=REPL_ON?(__tk('__REPL_CROWD_K',0)|0):0; let __crowd=1;
 function birthPrice(){ return REPL_CROWD_K>0?BIRTH_ENERGY_COST*__crowd:BIRTH_ENERGY_COST; }
-// #456 design knob AUTOK (TASKS, REPL_CROWD_K set; default 0, byte-identical; #autok on a universe's hash): A UNIVERSE SETS ITS OWN
-// BIRTH PRICE. Sessions set K by hand from field pairs (#382 450, #416 100) and found the best K changes with a field's age: 100 is
-// behind for the first 15 minutes and ahead after (#416), its lead grows over 150 minutes (#419), and below 100 is worse (#420).
-// This is the #392 -> #438 pattern: what a session did by hand, done by the world from its own evidence. Every AUTOK_W ms of the
-// universe's own clock it compares its rate of new functions per ms with the last window's, keeps moving K the same way (x1.25) if
-// the rate held or rose and turns back if it fell, inside 25-1,600. The first step is toward a cheaper birth (450 led early). Judged on
-// the clock, not the tick, because that is what the field is judged on: per creature-tick the two K worlds find about the same (#419),
-// so a per-tick judge would push K the wrong way. Under node the clock is a fixed 5 ms a tick (harness-env), so node cannot test it.
-// The universe's K is not saved: a reload starts at REPL_CROWD_K.
-const AUTOK=(()=>{ if(!TASKS_ON||REPL_CROWD_K<=0)return false; if((__tk('__AUTOK',0)|0)!==0)return true; try{ return /(^|[#,])autok(,|$)/.test((typeof location!=='undefined'&&location.hash)||''); }catch(_){ return false; } })();
-const AUTOK_W=__tk('__AUTOK_W',60000), AUTOK_F=1.25, AUTOK_MIN=25, AUTOK_MAX=1600;
-let __autoK=REPL_CROWD_K, __akT0=-1, __akS0=0, __akPrev=-1, __akDir=1, __akN=0;
-function autoKTick(){ const t=performance.now(); if(__akT0<0){ __akT0=t; __akS0=tSeenN; return; } if(t-__akT0<AUTOK_W)return;
-  const r=(tSeenN-__akS0)/(t-__akT0); if(__akPrev>=0&&r<__akPrev)__akDir=-__akDir; __akPrev=r;
-  __autoK=Math.max(AUTOK_MIN,Math.min(AUTOK_MAX,__autoK*Math.pow(AUTOK_F,__akDir))); __akT0=t; __akS0=tSeenN; __akN++; }
-function crowdTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; if(AUTOK){ autoKTick(); __crowd=n/__autoK; } else __crowd=n/REPL_CROWD_K; }
+// #456 (tested, removed; lab/port/PREREG-autok.md): A UNIVERSE SET ITS OWN BIRTH PRICE, every 60 s moving K x1.25 the way its own new
+// functions per ms improved. One field pair: behind at 5 minutes (0.94, the registered stop) and 0.61 at 25. K climbed (median 100 to
+// about 250): 1.7x the creatures, 0.72 the ticks. Universes share one machine, so one that grows can raise its own rate per ms while
+// the field's falls (a plausible reading, not tested).
+function crowdTick(){ let n=0; for(let i=0;i<N;i++) if(palive[i])n++; __crowd=n/REPL_CROWD_K; }
 const TASK_SHUFFLE=(__tk('__TASK_SHUFFLE',0)|0)!==0;   // #376: see taskShuffleTo. A control, default 0.
 const TASK_MUT=(__tk('__TASK_MUT',1)|0)!==0, TASK_LEAN=(__tk('__TASK_LEAN',0)|0)!==0;   // #354: TASK_MUT default ON; TASK_MUT=0 restores the nested redraws
 const TASK_HEAD=TASK_FOUNDER?[[TASK_OP0,0,0,0],[TASK_OP0+2,0,1,0],[TASK_OP0,0,0,0],[TASK_OP0+3,0,1,0],[TASK_OP0+1,1,0,0],[TASK_OP0+4,0,0,0]]
