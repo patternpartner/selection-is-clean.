@@ -32359,3 +32359,18 @@ The user asked how novel the computing core is; I answered from memory, then sea
 - **The method (moving what the development process has into the world): not found.** Nearest: ASAL and ASAL++ (foundation models
   search simulation parameters), the Darwin Godel Machine (an agent rewriting its own code with an archive), ELM, OMNI-EPIC, CORAL.
   None uses the development process as the source of capacities for the simulated world.
+
+### #461 — A KINDS MEASURE (built while #459's pairs run; its long runs wait for the set to finish)
+Limit 5 of the OEE answer: a count of distinct functions cannot tell open-endedness from searching a huge space. Two kinds, both exact
+for functions of at most five inputs, both read through the engine's read-only payment hook (the world is unchanged: seed 11, 600
+ticks, 743 functions on the probe and on `digest.js`):
+- **Kinds of function** (`lab/port/kinds.js`): a function's NPN class, the functions reachable by permuting inputs, negating any of
+  them and negating the output; one circuit under other labels. Exact by orbit minimum over 3,840 relabellings and the output
+  negation, about 0.03 ms a function. Self-test: all 256 three-input functions fall into 14 classes and all 65,536 four-input functions
+  into 222 (the known counts). There are 616,126 five-input classes, so this space of kinds is FINITE; kinds past five inputs are not
+  measured.
+- **Kinds of building step** (`lab/port/probe-kinds.js`): for each paid word built on a read function, the pair (kind read -> kind
+  made); the number of distinct pairs is a count of ways of building on another's work.
+- **First reading (one seed, 600 ticks, design only):** 743 functions, 21 kinds (35 functions a kind), 70 building steps.
+- **Next:** seeds 11-13 to 12,000 ticks after #459's set (node jobs beside decision pairs biased #437), then into `field-rate.js`
+  so a field reports kinds beside its count.
