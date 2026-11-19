@@ -10857,7 +10857,7 @@ function taskFn(v){ if(TASK_IN===5)return taskSlot5(taskTT5(v)); const I=tWin; l
   for(let q=0;q<32;q++){ const k=(((I[0]>>>q)&1)<<3)|(((I[1]>>>q)&1)<<2)|(((I[2]>>>q)&1)<<1)|((I[3]>>>q)&1), o=(v>>>q)&1; if(set&(1<<k)){ if(((T>>k)&1)!==o)return -1; } else { set|=1<<k; if(o)T|=1<<k; } } return T; }
 function taskTick(){   // once per tick, before the solo programs run: the epoch, then every pool regrows toward its cap
   const e=Math.floor(tick/TASK_EPOCH);
-  if(e!==tEpoch){ tEpoch=e; if(TASK_IN===5&&tSlotN>=TASK_NF*0.85)taskRebuild5(); if(TASK_OPEN)oEpoch(); else { taskDrawInputs(); for(let q=0;q<CAP*4;q++){ tJ[q]=(tJ[q]|tDm[q])>>>0; tDm[q]=0; } } tK.fill(-1); }   // last epoch's input bits are junk now; read keys do not outlive it
+  if(e!==tEpoch){ if(TASK_LAST&&tEpoch>=0)lastPay(tEpoch); tEpoch=e; if(TASK_IN===5&&tSlotN>=TASK_NF*0.85)taskRebuild5(); if(TASK_OPEN)oEpoch(); else { taskDrawInputs(); for(let q=0;q<CAP*4;q++){ tJ[q]=(tJ[q]|tDm[q])>>>0; tDm[q]=0; } } tK.fill(-1); }   // last epoch's input bits are junk now; read keys do not outlive it
   if(TASK_IN===5){ for(let n=0;n<tSlotN;n++){ const T=tSlots[n]; tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); } return; }
   for(let T=0;T<TASK_NF;T++)tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); }
 function taskBirth(i){ const o=i*4; tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
@@ -11037,8 +11037,30 @@ function taskGlow(i,kD,D,e,WD){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.f
 // once an epoch, and 5-13 new functions go unrecorded for each one recorded (lab/port/probe-lost.js). Writing those into the ground:
 // one field pair 1.06x by 25 minutes against a registered 1.10 (0.72, 0.78, 0.93, 1.01, 1.06 at five-minute marks), with size 17+
 // new functions 1.36x, more inputs opened (9 universes at six against 6), on 0.87 the ticks. Re-testing it is a new experiment.
-function oBirth(i){ if(oGl!==null)oGl.fill(0,i*4,i*4+4); const b=i*4*OWM; oW.fill(0,b,b+4*OWM); oJ.fill(0,b,b+4*OWM); oD.fill(0,b,b+4*OWM); }
-function oMove(w,r){ if(oGl!==null)for(let q=0;q<4;q++)oGl[w*4+q]=oGl[r*4+q]; const a=w*4*OWM, b=r*4*OWM; for(let x=0;x<4*OWM;x++){ oW[a+x]=oW[b+x]; oJ[a+x]=oJ[b+x]; oD[a+x]=oD[b+x]; } const c=w*OWM, d=r*OWM; for(let x=0;x<OWM;x++){ oL[c+x]=oL[d+x]; oLJ[c+x]=oLJ[d+x]; oLD[c+x]=oLD[d+x]; } }
+// #458 design knob TASK_LAST (open world; default 0, byte-identical): A CREATURE IS PAID FOR ITS LAST WORD OF AN EPOCH, NOT ITS FIRST.
+// A program runs every tick and publishes about fifty words an epoch; since #350 the first clean word paid and the rest went nowhere
+// (#457). So selection has seen what a creature can make QUICKLY. lab/port/probe-last.js (world-identical, seeds 11-13, 6,000 ticks):
+// a creature's last clean word is new to the universe more often than its first (58/66/33% against 50/61/23%) and deeper more often
+// than shallower (46-48% against 35-40%). With the knob every clean word a creature publishes replaces its held candidate (the same
+// checks: clean, not trivial, not a copy of a read), and at the epoch boundary each living creature with a candidate is paid for it,
+// in a random order (array order would let low slots drain the pools first, #219). Nothing prefers depth or novelty: only WHEN the
+// world looks changes. A creature that dies before the boundary is not paid.
+const TASK_LAST=TASK_OPEN&&(__tk('__TASK_LAST',0)|0)!==0;
+const cE=TASK_LAST?new Int32Array(CAP).fill(-1):null, cKey=TASK_LAST?new Uint32Array(CAP):null, cM=TASK_LAST?new Uint8Array(CAP):null, cK=TASK_LAST?new Int32Array(CAP*4):null;
+let cF=TASK_LAST?new Uint32Array(CAP*OWM):null, cFW=OWM;
+function lastHold(i,key,m,kD){ if(cFW!==OWM){ cF=new Uint32Array(CAP*OWM); cFW=OWM; } cE[i]=tEpoch; cKey[i]=key; cM[i]=m; const b=i*OWM; for(let x=0;x<OWM;x++)cF[b+x]=oF[x]; for(let q=0;q<4;q++)cK[i*4+q]=tK[kD*4+q]; tEv.held=(tEv.held|0)+1; }
+function lastPay(e){ const L=[]; for(let i=0;i<N;i++) if(palive[i]&&cE[i]===e)L.push(i);
+  for(let q=L.length-1;q>0;q--){ const j=(Math.random()*(q+1))|0, t=L[q]; L[q]=L[j]; L[j]=t; }
+  const WD=oWD;
+  for(const i of L){ cE[i]=-1; const key=cKey[i], m=cM[i], b=i*OWM; for(let x=0;x<OWM;x++)oF[x]=cF[b+x];
+    const T=oSlot(key,m); if(T<0)continue;
+    tPE[i]=e; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
+    const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); } tEv.paid++;
+    if(tG!==null){ const c=sunCell(i), gb=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[gb+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
+    tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
+    if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let n=0; for(let q=0;q<4;q++) if(cK[i*4+q]>=0)n++; if(n){ const tx=TASK_TROPH*g/n; for(let q=0;q<4;q++){ const k=cK[i*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } } }
+function oBirth(i){ if(TASK_LAST)cE[i]=-1; if(oGl!==null)oGl.fill(0,i*4,i*4+4); const b=i*4*OWM; oW.fill(0,b,b+4*OWM); oJ.fill(0,b,b+4*OWM); oD.fill(0,b,b+4*OWM); }
+function oMove(w,r){ if(TASK_LAST){ cE[w]=cE[r]; cKey[w]=cKey[r]; cM[w]=cM[r]; for(let q=0;q<4;q++)cK[w*4+q]=cK[r*4+q]; const a=w*cFW, b=r*cFW; for(let x=0;x<cFW;x++)cF[a+x]=cF[b+x]; cE[r]=-1; } if(oGl!==null)for(let q=0;q<4;q++)oGl[w*4+q]=oGl[r*4+q]; const a=w*4*OWM, b=r*4*OWM; for(let x=0;x<4*OWM;x++){ oW[a+x]=oW[b+x]; oJ[a+x]=oJ[b+x]; oD[a+x]=oD[b+x]; } const c=w*OWM, d=r*OWM; for(let x=0;x<OWM;x++){ oL[c+x]=oL[d+x]; oLJ[c+x]=oLJ[d+x]; oLD[c+x]=oLD[d+x]; } }
 function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, kD=o+d, kS=o+s, D=kD*OWM, S=kS*OWM, e=tEpoch, WD=oWD;
   if(t===0){ if(tIc[i]>=tNin)tIc[i]=0; const b=tIc[i]*OWM; for(let x=0;x<WD;x++){ oW[D+x]=oIn[b+x]; oJ[D+x]=0; oD[D+x]=0xFFFFFFFF; } tIc[i]=(tIc[i]+1)%tNin; tK.fill(-1,kD*4,kD*4+4); if(oGl!==null)oGl[kD]=0; return; }   // T_INPUT
   if(t===1){ for(let x=0;x<WD;x++){ const a0=oW[D+x], s0=oW[S+x], ja=oJ[D+x], js=oJ[S+x], da=oD[D+x], ds=oD[S+x], fa=~a0&~ja, fs=~s0&~js, both=fa&fs, none=~(fa|fs);   // T_NAND, word by word
@@ -11063,6 +11085,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(dirty!==0){ tEv.dirty++; return; }
   if(key===0||(m===5&&TASK_TRIV5.indexOf(key)>=0)){ tEv.trivial++; return; }
   if(m>5){ const h=1<<(m-6); let lo=0, hi=0xFFFFFFFF; for(let x=0;x<h;x++){ lo|=oF[x]; hi&=oF[h+x]; } if(lo===0&&hi===0xFFFFFFFF){ tEv.trivial++; return; } }   // a bare input past the fifth
+  if(TASK_LAST){ lastHold(i,key,m,kD); return; }   // #458: held; the last clean word of the epoch is paid at its end
   if(tPE[i]===e)return; const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
   tPE[i]=e; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); if(_gl)tEv.glowNew=(tEv.glowNew|0)+1; } tEv.paid++; if(_gl)tEv.glowPaid=(tEv.glowPaid|0)+1;

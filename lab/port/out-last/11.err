@@ -1,0 +1,3 @@
+{"t":2000,"inputs":5,"seen":8281,"epochs":21900,"firstNewPct":35.66,"lastNewPct":54.14,"sameWordPct":1.8,"lastDeeperPct":49,"lastShallowerPct":35.3,"firstZ":5.73,"lastZ":6.27}
+{"t":4000,"inputs":5,"seen":25391,"epochs":60741,"firstNewPct":39.53,"lastNewPct":49.3,"sameWordPct":3.1,"lastDeeperPct":47.1,"lastShallowerPct":37.8,"firstZ":6.82,"lastZ":7.34}
+{"t":6000,"inputs":6,"seen":51071,"epochs":97264,"firstNewPct":50.02,"lastNewPct":58,"sameWordPct":4.9,"lastDeeperPct":48,"lastShallowerPct":37.6,"firstZ":9.46,"lastZ":10.48}
