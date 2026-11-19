@@ -32310,3 +32310,29 @@ the slowest shipped seed, and beating it says little.
 **The session so far, said plainly:** five mechanisms built (#454-#458) and five removed; two measurements kept (#457's unrecorded
 discoveries, #458's first-against-last). The universe is unchanged. The one positive-leaning result (#457: 1.06x, deeper at every
 mark) goes to a registered set, `PREREG-gnew-set.md`, written before its first pair and predicting its own likely failure.
+
+### #457b — VERDICT: SHIP. The ground keeps the discoveries the world did not record: ahead in 8 of 8 fields, median 1.81x, deeper 3.15x
+`lab/port/PREREG-gnew-set.md`, written before pair 1 as a NEW experiment after #457's design pair (1.06x), and predicting its own
+likely failure. 8 pairs, 25 minutes, each alone on the machine, none stopped early (`lab/port/out-gnew-set/`, `analyse-gnew-set.js`):
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Shipped | 91,008 | 86,003 | 96,893 | 117,984 | 96,413 | 133,786 | 74,704 | 109,330 |
+| Ground keeps them | 171,670 | 168,847 | 140,210 | 208,701 | 178,943 | 188,937 | 187,369 | 133,631 |
+| Ratio | 1.89 | 1.96 | 1.45 | 1.77 | 1.86 | 1.41 | 2.51 | 1.22 |
+| Size 17+ ratio | 7.00 | 1.53 | 4.03 | 3.46 | 5.84 | 1.29 | 2.85 | 1.80 |
+
+- **Ahead in 8 of 8, median 1.81x, size-17+ median 3.15x: SHIP** by the rule. `TASK_GNEW` is 1 in the TASKS default fill;
+  `TASK_GNEW=0` restores the world before (`9e88d2f9`, seed 11, `MIND=20`, 2,000 ticks; the new default is `6895e8d7`; the
+  non-TASKS world is unchanged, `887fb151` on seed 3 against the engine before).
+- **My prediction was wrong, the other way from #454-#456.** The design pair's 1.06 was the outlier: its shipped field (154,081)
+  was the strongest of the day. Across the nine pairs the ratio falls as the shipped field gets stronger (1.22-1.41 against 109k-134k,
+  1.06 against 154k), while the switch's fields sit in a narrower band (134k-209k). A reading, not tested: keeping these discoveries
+  raises the floor of a field more than it multiplies a good one. One design pair can sit anywhere in that spread: **a single design
+  pair is not a direction in either sense**, and I would have removed this for good on #457's bar had the set not been run.
+- **What moved in the universe, and against which number:** a field finds 1.81x the distinct functions by 25 minutes and 3.15x the
+  deep ones, because the world now keeps, in its ground, discoveries it used to drop (5-13 for each one it records, #457). It came
+  from measuring the world before building, and from the one pattern this session found in the record: the wins that move a
+  session's hand work into the world give it a CAPACITY (memory, #397; space, #438; now memory of what it found and did not pay).
+- **Not measured:** the shuffle control in a field (is the gain selected?), anything past 25 minutes, a phone. The unpaid writes are
+  not payments, so they are not counted; the count still reads only paid functions.

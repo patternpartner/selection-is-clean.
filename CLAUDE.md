@@ -292,9 +292,13 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   machine, so a universe's own rate is not the field's. The pattern so far: moving a session's hand work into the world won when it
   gave the world a CAPACITY (`#397` memory, `#438` a wider space) and lost when it moved a JUDGE (`#424`, `#456`).
   **`#457`: THE WORLD RECORDS ONE IN 5-13 OF ITS DISCOVERIES (`lab/port/probe-lost.js`, world-identical).** A creature is paid once
-  an epoch but publishes about fifty words; words new to the universe after its payment go nowhere (978,721 against 92,935 recorded
-  on seed 11 by 12,000 ticks; 2-6% ever paid later). Keeping them in the ground (`TASK_GNEW`): one field pair 1.06x at 25 minutes
-  against a registered 1.10, removed; it gained at every mark and was deeper at every mark (size 17+ 1.36x). A re-test is a new experiment.
+  an epoch but publishes about fifty words; words new to the universe after its payment went nowhere (978,721 against 92,935 recorded
+  on seed 11 by 12,000 ticks; 2-6% ever paid later). **`#457b`: KEEPING THEM IN THE GROUND, SHIPPED (`TASK_GNEW`).** Unpaid and
+  uncounted, written into the cell's ground as a payment writes it: ahead in 8 of 8 field pairs by 25 minutes (median 1.81x,
+  size 17+ 3.15x). `TASK_GNEW=0` restores. Its one design pair said 1.06 against the day's strongest shipped field and I nearly removed
+  it for good: **one design pair is not a direction either way.** `#458`: paying the LAST word of an epoch instead lost (0.51).
+  **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
+  catches it and the world changes; check a probe's counts against the baselines before reading it.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
   the next 2,000 ticks; the same seed under another draw order found 3.5x less by tick 4,000. A two- or three-seed design sweep in
   node cannot see an effect under severalfold, and every "design only, no direction" entry (`#385`, `#389`-`#391`, `#394`'s crowd
