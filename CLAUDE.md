@@ -296,7 +296,7 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   on seed 11 by 12,000 ticks; 2-6% ever paid later). **`#457b`: KEEPING THEM IN THE GROUND, SHIPPED (`TASK_GNEW`).** Unpaid and
   uncounted, written into the cell's ground as a payment writes it: ahead in 8 of 8 field pairs by 25 minutes (median 1.81x,
   size 17+ 3.15x). `TASK_GNEW=0` restores. Its one design pair said 1.06 against the day's strongest shipped field and I nearly removed
-  it for good: **one design pair is not a direction either way.** `#458`: paying the LAST word of an epoch instead lost (0.51).
+  it for good: **one design pair is not a direction either way.** `#457c`: with payments shuffled the field found 0.067 of its twin: selected. `#458`: paying the LAST word of an epoch instead lost (0.51).
   **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
   catches it and the world changes; check a probe's counts against the baselines before reading it.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over

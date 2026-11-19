@@ -32336,3 +32336,9 @@ likely failure. 8 pairs, 25 minutes, each alone on the machine, none stopped ear
   session's hand work into the world give it a CAPACITY (memory, #397; space, #438; now memory of what it found and did not pay).
 - **Not measured:** the shuffle control in a field (is the gain selected?), anything past 25 minutes, a phone. The unpaid writes are
   not payments, so they are not counted; the count still reads only paid functions.
+
+### #457c — the shuffle control in a field: SELECTED (0.067 of its twin)
+`PREREG-gnew-set.md`'s addendum, outcomes written before the run. One pair, 25 minutes, alone (`out-gnew-shuffle/`): the shipped
+world (ground keeps unrecorded discoveries) against the same world with `TASK_SHUFFLE=1`. Shuffled: **10,388 against 155,313
+(0.067)**, size 17+ 16 against 4,307, on 1.55x the ticks. Under the registered 0.2: what the world now finds depends on paying the
+creature that computed. #397's ground under the same control: 0.086. The default did not move on this pair, and was not going to.
