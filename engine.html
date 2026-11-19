@@ -11033,16 +11033,10 @@ function taskGlow(i,kD,D,e,WD){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.f
 // inherited subroutine that a COPY could call on the caller's own words. Node, seeds 12-14: 0.82-1.15 of shipped, 0.3-1.6% of
 // payments built by a call (inconclusive); one field pair 0.90, behind at every five minutes. A variant refusing any capture that did
 // not lengthen the subroutine grew subroutines, but that growth is the rule itself (a ratchet), not a finding (#455b).
-// #457 design knob TASK_GNEW (open world, ground on; default 0, byte-identical): THE GROUND KEEPS UNRECORDED DISCOVERIES. A creature is
-// paid once an epoch, and its program publishes about fifty words an epoch, so most of what it publishes after its payment goes
-// nowhere: lab/port/probe-lost.js counted 5-13 new functions never recorded for every one recorded (seeds 11-13, 12,000 ticks, 2-6%
-// of them ever paid later), and deeper than what is recorded. With the knob such a word, if its function is new to the universe, is
-// written into the ground of the creature's cell, as a payment writes it, so a neighbour's READ can build on it. It is not paid and
-// not entered in the lifetime record: what is counted is unchanged in kind. The risk said before the test: writes come about ten
-// times as often, so each cell is overwritten faster, and #398 found the ground's value grows with persistence.
-const TASK_GNEW=TASK_OPEN&&(__tk('__TASK_GNEW',0)|0)!==0;
-function seen5Has(F){ const M=tSet5.length-1; let h=(Math.imul(F,2654435761)>>>0)&M; while(true){ const k=tSet5[h]; if(k===F)return true; if(k===0)return false; h=(h+1)&M; } }
-function groundNew(i,key,m,WD,e){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gNew=(tEv.gNew|0)+1; }
+// #457 (tested, removed by its registered rule; lab/port/PREREG-gnew.md): THE GROUND KEPT UNRECORDED DISCOVERIES. A creature is paid
+// once an epoch, and 5-13 new functions go unrecorded for each one recorded (lab/port/probe-lost.js). Writing those into the ground:
+// one field pair 1.06x by 25 minutes against a registered 1.10 (0.72, 0.78, 0.93, 1.01, 1.06 at five-minute marks), with size 17+
+// new functions 1.36x, more inputs opened (9 universes at six against 6), on 0.87 the ticks. Re-testing it is a new experiment.
 function oBirth(i){ if(oGl!==null)oGl.fill(0,i*4,i*4+4); const b=i*4*OWM; oW.fill(0,b,b+4*OWM); oJ.fill(0,b,b+4*OWM); oD.fill(0,b,b+4*OWM); }
 function oMove(w,r){ if(oGl!==null)for(let q=0;q<4;q++)oGl[w*4+q]=oGl[r*4+q]; const a=w*4*OWM, b=r*4*OWM; for(let x=0;x<4*OWM;x++){ oW[a+x]=oW[b+x]; oJ[a+x]=oJ[b+x]; oD[a+x]=oD[b+x]; } const c=w*OWM, d=r*OWM; for(let x=0;x<OWM;x++){ oL[c+x]=oL[d+x]; oLJ[c+x]=oLJ[d+x]; oLD[c+x]=oLD[d+x]; } }
 function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, kD=o+d, kS=o+s, D=kD*OWM, S=kS*OWM, e=tEpoch, WD=oWD;
@@ -11069,7 +11063,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(dirty!==0){ tEv.dirty++; return; }
   if(key===0||(m===5&&TASK_TRIV5.indexOf(key)>=0)){ tEv.trivial++; return; }
   if(m>5){ const h=1<<(m-6); let lo=0, hi=0xFFFFFFFF; for(let x=0;x<h;x++){ lo|=oF[x]; hi&=oF[h+x]; } if(lo===0&&hi===0xFFFFFFFF){ tEv.trivial++; return; } }   // a bare input past the fifth
-  if(tPE[i]===e){ if(TASK_GNEW&&tG!==null&&!seen5Has(key))groundNew(i,key,m,WD,e); return; } const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
+  if(tPE[i]===e)return; const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
   tPE[i]=e; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); if(_gl)tEv.glowNew=(tEv.glowNew|0)+1; } tEv.paid++; if(_gl)tEv.glowPaid=(tEv.glowPaid|0)+1;
   if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }

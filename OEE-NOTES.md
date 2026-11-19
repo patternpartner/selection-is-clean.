@@ -32258,3 +32258,40 @@ One design pair, 25 minutes, alone (`out-autok/`):
   the session did by hand had a judge at the level of the field, and the internalised version moved the judge down a level. #424's
   tournament also judged universes against each other and also lost. Two of the three internalisations that lost (#424, #456) changed
   the level the judging happens at; the two that won (#397, #438) did not judge at all, they gave the world a capacity.
+
+### #457 — THE WORLD RECORDS ONE IN 5-13 OF ITS DISCOVERIES (a measurement), and keeping the rest in the ground: 1.06x in one field pair, removed by its registered rule
+Measurement first, as #455b asked. `lab/port/probe-lost.js` patches a counter into its own copy of the engine (world-identical: it
+reproduces the shipped counts exactly) and counts outputs that are clean, not trivial, not a copy, and NEW to the universe, but go
+unpaid because their creature was already paid this epoch. Nothing records them: the lifetime set, the ground and the pools are
+written only at payment. Seeds 11-13, `MIND=20`, 12,000 ticks (`out-lost/`):
+
+| Seed | Recorded | New but unrecorded | Ratio | Of those ever paid later |
+|---|---|---|---|---|
+| 11 | 92,935 | 978,721 | 10.5 | 2.6% |
+| 12 | 162,996 | 1,328,555 | 8.2 | 1.9% |
+| 13 | 74,397 | 398,657 | 5.4 | 6.0% |
+
+The ratio holds 5-13 at every 2,000-tick mark on all three. Why: a program runs every tick and publishes about fifty words an epoch,
+and only its first paid word counts; later words are built on more reads. Their mean grade (26.7, 38.6, 37.9 at 12,000) is above
+the mean over payments (18.7, 31.5, 26.3); against DISTINCT recorded functions (9.8 for seed 11 at 2,000, against 12.3) the gap is
+smaller. **This is a fact about the world, whatever the mechanism below did:** most of what it finds, it does not keep.
+
+**The mechanism (`TASK_GNEW`, `PREREG-gnew.md`):** such a word, if new to the universe, is written into the ground of its cell, as
+a payment writes it. Not paid, not counted. The risk named before: writes about ten times as often shorten each cell's memory
+(#398). Node at 4,000 ticks: 0.45, 0.61, 1.24 (the registered stop needed all three under 0.67). One field pair, 25 minutes, alone
+(`out-gnew/`; a first run was lost to a container restart and voided):
+
+| Minutes | 5 | 10 | 15 | 20 | 25 |
+|---|---|---|---|---|---|
+| Shipped | 12,971 | 32,777 | 62,121 | 106,796 | 154,081 |
+| Ground keeps them | 9,312 (0.72) | 25,506 (0.78) | 57,736 (0.93) | 107,621 (1.01) | 163,739 (1.06) |
+| Size 17+, ratio | 1.14 | 1.26 | 1.71 | 1.26 | 1.36 |
+
+- **Removed by its rule:** 1.06 against a registered 1.10. Engine and `harness-env.js` back to `f96df64`, digest `9e88d2f9`;
+  the probe stays (it is the measurement).
+- **What the rule did not weigh, recorded so it is not lost:** it gained on the shipped field at every mark, was deeper at every
+  mark (mean depth 22.5 against 18.5 at 25), opened more (9 universes at six inputs against 6), on 0.87 the ticks. One pair.
+- **A re-test would be a new experiment chosen after seeing numbers**, and it would be the pattern #455b named (a null, then a
+  hopeful readout). What separates it, if anything: the readouts are on the dependent variable's own depth ruler and agree at every
+  mark, rather than one side-count. The fair form is a long pair or a registered set ruled on count WITH the depth guard, written
+  before it runs.
