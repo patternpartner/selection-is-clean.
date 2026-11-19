@@ -32295,3 +32295,18 @@ a payment writes it. Not paid, not counted. The risk named before: writes about 
   hopeful readout). What separates it, if anything: the readouts are on the dependent variable's own depth ruler and agree at every
   mark, rather than one side-count. The fair form is a long pair or a registered set ruled on count WITH the depth guard, written
   before it runs.
+
+### #458 — PAY THE LAST WORD OF AN EPOCH, NOT THE FIRST: 0.51 in a field pair, removed
+From #457: a creature is paid for its FIRST clean word of an epoch, so selection has seen what a program can make quickly.
+`lab/port/probe-last.js` (world-identical; its first version was not, because a hook called before the probe defined it threw inside
+the VM steps the engine's top level runs at load, and the engine caught it and took another path: define a probe's hooks before the
+engine loads, and check its counts against the baselines before reading anything) found a creature's last clean word new to the
+universe 6-10 points more often than its first and deeper more often than shallower (seeds 11-13, 6,000 ticks). `TASK_LAST` paid
+each creature's last clean word at the epoch boundary instead, in a random order (`PREREG-last.md`). Node at 4,000: 0.30, 0.18, 1.34
+(the stop needed all three under 0.67). One field pair (`out-lastpay/`): 0.41, 0.37, 0.43, 0.46, **0.51** at five-minute marks, on
+the same ticks. Removed. A reading, not tested: paying at the boundary delays every income by up to an epoch, so the first-word rule
+is also what keeps income fast. Seed 13 came out ahead in node under both #457's and #458's switches and both lost in a field: it is
+the slowest shipped seed, and beating it says little.
+**The session so far, said plainly:** five mechanisms built (#454-#458) and five removed; two measurements kept (#457's unrecorded
+discoveries, #458's first-against-last). The universe is unchanged. The one positive-leaning result (#457: 1.06x, deeper at every
+mark) goes to a registered set, `PREREG-gnew-set.md`, written before its first pair and predicting its own likely failure.
