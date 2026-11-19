@@ -32342,3 +32342,20 @@ likely failure. 8 pairs, 25 minutes, each alone on the machine, none stopped ear
 world (ground keeps unrecorded discoveries) against the same world with `TASK_SHUFFLE=1`. Shuffled: **10,388 against 155,313
 (0.067)**, size 17+ 16 against 4,307, on 1.55x the ticks. Under the registered 0.2: what the world now finds depends on paying the
 creature that computed. #397's ground under the same control: 0.086. The default did not move on this pair, and was not going to.
+
+### #460 — PRIOR ART for the computing core (a literature search; nothing in the engine changed)
+The user asked how novel the computing core is; I answered from memory, then searched. "Not found" is a few searches, not a proof.
+- **Paying for logic functions built from NAND, graded by how many NANDs they need, each with a depletable pool:** Avida (#290 took
+  it from there on purpose). Avida's Logic-77 environment already rewards EVERY unique three-input function (9 + 68), and per-task
+  depletable resources give frequency-dependent selection. Here: the same idea at 2^32 functions at five inputs and beyond. Larger,
+  not different in kind.
+- **Creatures building on each other's outputs: prior art, my first answer was wrong to call it new.** Goldsby, Dornhaus, Kerr and
+  Ofria (PNAS 2012): Avida organisms pass results of simpler tasks to neighbours, who use them for harder ones (division of labour).
+  Differences here (open task set, copy refusal, the drain) are details.
+- **The world widening its own input space (#438): not found.** POET/ATEP generate environments against a fixed objective, from
+  outside; Genelife's rule space grows by symmetry breaking; TerraLingua (2026) is an LLM ecology without objectives.
+- **The ground (#397) and kept discoveries (#457b): the idea (niche construction, Taylor 2004) is old; a world that writes
+  COMPUTATIONS into place for later creatures to build on was not found.**
+- **The method (moving what the development process has into the world): not found.** Nearest: ASAL and ASAL++ (foundation models
+  search simulation parameters), the Darwin Godel Machine (an agent rewriting its own code with an archive), ELM, OMNI-EPIC, CORAL.
+  None uses the development process as the source of capacities for the simulated world.
