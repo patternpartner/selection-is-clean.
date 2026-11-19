@@ -254,7 +254,7 @@
       try{ sessionStorage.setItem('fieldLoadedMsg','loaded '+_put+' universes'); }catch(_x){}
     }
   }catch(_x){}
-  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|nocollearn|glow|light|dilate(?:=\\d+)?|relativity|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
+  var OPT = '(n=\\d+|pool=\\d+|nopool|bgpace=\\d+|layers=\\d+|deeppace=\\d+|turn=\\d+|foundcap=\\d+|world=\\d+|arms=[A-Z_0-9:/|]+|armoff=\\d+|nofound|clean|cleanart|hud|solo|reset|prune|collearn|nocollearn|glow|light|dilate(?:=\\d+)?|relativity|tourney|tourp=\\d+|tourv=\\d|factorial=\\d+|core|mind|nomind|mind=\\d+|mindmode=learn|mindmode=frozen|mindmode=uniform|mindmode=draw|notasks)';
   var isOptions = raw==='' || new RegExp('^'+OPT+'(,'+OPT+')*$').test(raw);
   if(isOptions && /(^|,)reset(,|$)/.test(raw)){
     // #170: every universe has its own slot now, so a reset that only cleared two keys would leave
@@ -384,7 +384,11 @@
     'MIND','MOTIF_SELECT','FOUND','REPL_PREY','TASK_TROPHP'];
   var FACT = (function(){ var m=raw.match(/(?:^|,)factorial=(\d+)/); var p=m?parseInt(m[1],10):0; return p>0?Math.min(100,p)/100:0; })();
   function factQ(){ var off=FACT_LIST.filter(function(){ return Math.random() < FACT; }); return off.length ? '&knob='+off.map(function(n){ return n+':0'; }).join(',') : ''; }
-  function armQ(){ if(FACT) return factQ(); if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
+  // #459: #core - THE COMPUTING CORE ALONE (PREREG-core.md). Every universe gets every older layer switched OFF through its own knobs:
+  // #430's list less the three parts of the core with a measured effect (MIND #431, REPL_PREY #366, TASK_TROPHP #454), plus the cosmos.
+  var CORE = /(?:^|,)core(?:,|$)/.test(raw);
+  var CORE_OFF = FACT_LIST.filter(function(n){ return n!=='MIND'&&n!=='REPL_PREY'&&n!=='TASK_TROPHP'; }).concat(['COSMOS','COSMOS_LAW']);
+  function armQ(){ if(CORE) return '&knob='+CORE_OFF.map(function(n){ return n+':0'; }).join(','); if(FACT) return factQ(); if(!ARMS) return ''; return '&knob='+ARMS.list[ARMS.n++ % ARMS.list.length]; }
   // #424: #tourney gives every universe (surface, layers, grown) the tournament (universe.html); #tourp=N sets its period in seconds.
   var TOURQ = (function(){ if(!/(?:^|,)tourney(?:,|$)/.test(raw)) return ''; var m=raw.match(/(?:^|,)tourp=(\d+)/), v=raw.match(/(?:^|,)tourv=(\d)/); return '&tourney=1'+(m?('&tourp='+m[1]):'')+(v?('&tourv='+v[1]):''); })();
   var BGPACE = (function(){ var m=raw.match(/(?:^|,)bgpace=(\d+)/); var v=m?parseInt(m[1],10):1000;
