@@ -11,3 +11,11 @@ Said before it runs: a 1.06x effect is small beside the ~15% that fields of one 
   ratio of size-17+ new functions is at least 0.90. Then `TASK_GNEW` defaults to 1 wherever the ground runs.
 - **Otherwise REMOVED** for good, and the depth readout is reported beside the count, not used to rescue it.
 - Analysis: `lab/port/analyse-gnew-set.js` (written now, before any pair).
+
+## Addendum, after SHIP and before its run: the shuffle control in a field
+One pair (`out-gnew-shuffle/`): the shipped world (ground keeps unrecorded discoveries) against the same world with
+`TASK_SHUFFLE=1` (every payment to a random living creature). #397's ground under shuffle found 0.086 of its twin.
+- Shuffled under 0.2 of its twin: the new world's finds are selected; the entry says so.
+- Shuffled 0.5 or more: much of what the kept discoveries yield comes without selection; the #457b entry says its gain is partly
+  mechanical. Between: reported as it is.
+The default does not move on this pair either way (one pair; it rules on what the claim says, not on the ship).
