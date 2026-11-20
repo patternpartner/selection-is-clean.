@@ -299,7 +299,8 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   it for good: **one design pair is not a direction either way.** `#457c`: with payments shuffled the field found 0.067 of its twin: selected. `#458`: paying the LAST word of an epoch instead lost (0.51).
   **`#459`: THE COMPUTING CORE ALONE IS ENOUGH.** With 43 older layers off in every universe (`index.html#core`; kept: TASKS, the
   drain, the drawn mind, predation), 8 field pairs: median 1.17x, size 17+ 1.14x, ahead in 5 of 8 (not worse, not shown better).
-  The older layers are to be removed in steps, each byte-identical against the `#core` world. `FOUND` is one of them and grows the
+  **SHIPPED as the default under TASKS (`TASK_CORE` 1; `TASK_CORE=0` restores the full engine, `6895e8d7`; the new default `3738d7ff`
+  is the `#core` world exactly).** The code is still in the engine; removing it comes in steps, each byte-identical against this world. `FOUND` is one of them and grows the
   field's four `g` universes. `#461`: a kinds measure (NPN classes, `lab/port/kinds.js`; building steps, `probe-kinds.js`).
   **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
   catches it and the world changes; check a probe's counts against the baselines before reading it.

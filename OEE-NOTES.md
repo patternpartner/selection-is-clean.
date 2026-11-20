@@ -32398,3 +32398,7 @@ COSMOS and COSMOS_LAW. Kept: TASKS and all it ships, the drain, the drawn mind, 
 - **What it licenses (written before):** the older layers are removed from the engine in steps, each checked byte-identical against
   the `#core` world, and the shipped world becomes the core. What it does not show: anything past 25 minutes, or that the core is
   more open-ended.
+- **SHIPPED (`TASK_CORE`, 1 under TASKS):** the 43 default off before the LIVE table; `TASK_CORE=0` restores the full engine
+  (`6895e8d7`, seed 11, `MIND=20`, 2,000 ticks); the new default `3738d7ff` equals the previous engine with the 43 set to 0 before
+  boot; non-TASKS `887fb151` unchanged. `substrate-test` 264/0 at 40, 900 and `FOUND=0`; pop-test 11/11, open-save-test 6/6,
+  slot-test 15/0. The code is still in the engine.
