@@ -32429,3 +32429,13 @@ the phone's GPU is not represented.
   climbing, on a phone whose browser gets well under its 6 GB.
 - **On a constrained machine fewer universes find more**: 18 universes split two cores so thinly that each barely moved.
 - **`#long`** (index.html) expands to that light field. One run, crude emulation; the phone is the test.
+- **#461c-d, kinds at any width: the count is not relabellings, and that is all kinds can say here.** The signature
+  (`lab/port/kinds.js` `walshSig`: sorted |W_S| by |S| plus per-input profiles of the Walsh spectrum) never splits a class, separates
+  218 of 222 four-input kinds and about 92% at five, and is width-free. (A first version, sorted magnitudes alone, gave 15 of 222; a
+  bit-count bug in the rebuild split classes; the calibration caught both.) Seeds 11-13, `MIND=20`, 12,000 ticks, core world, the
+  totals equal to #461b's (`out-kinds2/`): 100,693 / 123,035 / 124,067 kinds for 117,496 / 136,825 / 144,273 functions, 1.11-1.17
+  functions a kind, new kinds every 2,000 ticks flat or rising (28,576-32,233 in the last window), building steps the same. At five
+  inputs early on it was 3-6 functions a kind. **Reading:** at eight inputs two different functions are almost never one circuit
+  relabelled, so nearly any new function is a new kind whatever is happening; kinds rule out relabelling inflation but cannot tell
+  open-endedness from search in a huge space. The measure that could: how many building steps deep each new function sits (built on
+  functions that were themselves built on found ones), and whether that depth keeps rising. The probe's step records are its raw material.
