@@ -210,6 +210,11 @@
 (function(){
   'use strict';
   var raw=(location.hash||'').replace(/^#/,'');
+  // #462: #long - A FIELD FOR A PHONE AND FOR LONG RUNS. On a Note 8-like setup (2 cores, 4 GB reported) the default field's 18 universes
+  // took the browser from 1.8 to 3.3 GB in ten minutes, still rising, and each universe ran about 1,800 ticks; this field (2 universes and
+  // the collective, no layer underneath, no learning in the collective's mind, every universe capped at 8 inputs) held 1.2-1.5 GB, ran
+  // about 10,500 ticks a universe and found 3.6x the functions. A single token, expanded here, so the rest of the page reads it as usual.
+  if(/(^|,)long(,|$)/.test(raw)) raw=raw.replace(/(^|,)long(?=,|$)/,'$1n=2,layers=0,nocollearn,arms=TASK_NMAX:8');
   // A saved lineage is a long opaque blob. Anything that is not one of our own options is treated as
   // a genome and gets a single universe, so every link anyone has ever saved still opens its world.
   // ═══ #160 — THE FIELD NEEDS A WAY OUT ═══════════════════════════════════════════════════════

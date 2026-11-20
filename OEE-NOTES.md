@@ -32409,3 +32409,23 @@ COSMOS and COSMOS_LAW. Kept: TASKS and all it ships, the drain, the drawn mind, 
   more, which these kinds do not see. **Not a plateau in the world; a plateau in the ruler.** Next: an NPN-invariant signature for
   any width (each input's sorted cofactor weights and the output weight, invariant under every relabelling), calibrated at five
   inputs against the exact classes so its merging is known.
+
+### #462 — WHY THE PHONE FREEZES, MEASURED ROUGHLY, AND `#long`
+The user runs the field on a Samsung Note 8 (2017, 6 GB, 8 cores) from the GitHub Pages link, and it is slow and freezes; once they
+ran 2 million ticks. A Note 8 reports 4 GB (`navigator.deviceMemory` rounds down), so the default field builds one layer: 8 universes,
+the collective and a copy of each underneath, 18 in all, on at most 4 worker threads. `lab/port/phone-run.sh`: the browser pinned to 2
+of this machine's 4 cores, `DEVMEM=4` (field-rate.js now makes the page report it), a phone viewport, the freeze probe, the browser's
+total memory every 30 s; ten minutes each, one after the other (`out-phone/`). Crude: two desktop cores are faster than a Note 8's and
+the phone's GPU is not represented.
+
+| Ten minutes | Default link (18 universes) | `#n=2,layers=0,nocollearn,arms=TASK_NMAX:8` (3) |
+|---|---|---|
+| Browser memory | 1.8 GB rising to 3.3 GB, still rising | 1.2-1.5 GB, flat |
+| Ticks a universe | about 1,800 | about 10,500 |
+| Functions found | 89,811 | 322,588 |
+| Long tasks / gaps over 1 s | none / none | none / none |
+
+- **The page's main thread did not freeze in either.** The likely freeze on the phone is MEMORY: past 3 GB in ten minutes and
+  climbing, on a phone whose browser gets well under its 6 GB.
+- **On a constrained machine fewer universes find more**: 18 universes split two cores so thinly that each barely moved.
+- **`#long`** (index.html) expands to that light field. One run, crude emulation; the phone is the test.
