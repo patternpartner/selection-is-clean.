@@ -32455,3 +32455,11 @@ minute, alive, births, kills, income, light, paid, functions so far, new since t
   every universe from the first half of the run to the second. 13 minutes: the record is the point, not this reading.
 - The mind's line on screen: the children it rewrites have 0.71x the children of ordinary ones (measured by the field; fits #431).
 - Wanted: a harvest every few hours, read the same way (rate per tick and per minute, held against the hours).
+- **#463b, the second harvest (20:45, about 11 hours on the wall clock; `long-20261120-2045.json`):** 1.03 million functions summed
+  (screen: 1.0M), 8 inputs (the `#long` cap), no errors. **About 1.5 hours actually ran:** the rows jump over long gaps (minutes
+  34-306, 310-512), Android pausing the page with the screen off or the tab behind. **Four reloads, each restoring the population**
+  (surface/0: 1,287 then 1,453 creatures; the others 869-1,228). Per universe: surface/0 16,035 ticks, 319,045 functions; surface/1
+  24,526 ticks, 394,012; collective 25,382 ticks, 322,303. **New functions per tick held or rose to the end** (about 22, 20 and 13
+  late, against 10-22, 15 and 14 early), at 16,000-25,000 ticks a universe: past every node world here (12,000-16,000) and every
+  field universe (a few thousand each), with the inputs capped since about tick 8,000, so the rate is the creatures', not a growing
+  space. One field of three universes.
