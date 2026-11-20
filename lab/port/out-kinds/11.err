@@ -1,0 +1,6 @@
+{"t":2000,"alive":753,"inputs":6,"seen":4493,"found5":4492,"found5Win":4492,"kinds":1488,"kindsWin":1488,"fnPerKind":3.02,"steps":2511,"stepsWin":2511,"built":11419}
+{"t":4000,"alive":659,"inputs":7,"seen":16604,"found5":5846,"found5Win":1354,"kinds":2051,"kindsWin":563,"fnPerKind":2.85,"steps":3612,"stepsWin":1101,"built":12963}
+{"t":6000,"alive":670,"inputs":7,"seen":33761,"found5":5861,"found5Win":15,"kinds":2051,"kindsWin":0,"fnPerKind":2.86,"steps":3614,"stepsWin":2,"built":12991}
+{"t":8000,"alive":772,"inputs":8,"seen":54266,"found5":5865,"found5Win":4,"kinds":2051,"kindsWin":0,"fnPerKind":2.86,"steps":3614,"stepsWin":0,"built":13004}
+{"t":10000,"alive":1738,"inputs":8,"seen":81667,"found5":5866,"found5Win":1,"kinds":2051,"kindsWin":0,"fnPerKind":2.86,"steps":3616,"stepsWin":2,"built":13011}
+{"t":12000,"alive":1637,"inputs":8,"seen":117496,"found5":5871,"found5Win":5,"kinds":2051,"kindsWin":0,"fnPerKind":2.86,"steps":3616,"stepsWin":0,"built":13075}

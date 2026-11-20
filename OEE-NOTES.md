@@ -32402,3 +32402,10 @@ COSMOS and COSMOS_LAW. Kept: TASKS and all it ships, the drain, the drawn mind, 
   (`6895e8d7`, seed 11, `MIND=20`, 2,000 ticks); the new default `3738d7ff` equals the previous engine with the 43 set to 0 before
   boot; non-TASKS `887fb151` unchanged. `substrate-test` 264/0 at 40, 900 and `FOUND=0`; pop-test 11/11, open-save-test 6/6,
   slot-test 15/0. The code is still in the engine.
+- **#461b, the first long reading: the measure is blind where the world now lives** (seeds 11-13, `MIND=20`, 12,000 ticks, the
+  shipped core world, `out-kinds/`). Functions of at most five inputs: 5,871, 1,853, 10,082, in 2,051, 317, 3,606 kinds (2.8-5.8
+  functions a kind), and almost none new after tick 4,000 (0, 1, 0 kinds). But the world opened its sixth input by 2,000 and its
+  eighth by about 8,000 on every seed, and its total kept rising (117,496, 136,825, 144,273): what is new depends on six inputs or
+  more, which these kinds do not see. **Not a plateau in the world; a plateau in the ruler.** Next: an NPN-invariant signature for
+  any width (each input's sorted cofactor weights and the output weight, invariant under every relabelling), calibrated at five
+  inputs against the exact classes so its merging is known.
