@@ -1,0 +1,6 @@
+{"t":2000,"alive":494,"predators":445,"predPct":90.1,"readers":401,"readPct":81.2,"births":2967,"takes":296265,"paid":18643,"takesPerPay":15.9,"seen":1654,"inputs":6}
+{"t":4000,"alive":762,"predators":654,"predPct":85.8,"readers":622,"readPct":81.6,"births":6983,"takes":1120155,"paid":25249,"takesPerPay":44.4,"seen":22096,"inputs":7}
+{"t":6000,"alive":807,"predators":669,"predPct":82.9,"readers":742,"readPct":91.9,"births":6618,"takes":1299549,"paid":33422,"takesPerPay":38.9,"seen":50057,"inputs":7}
+{"t":8000,"alive":884,"predators":546,"predPct":61.8,"readers":733,"readPct":82.9,"births":6723,"takes":1402473,"paid":32880,"takesPerPay":42.7,"seen":76413,"inputs":8}
+{"t":10000,"alive":1018,"predators":504,"predPct":49.5,"readers":737,"readPct":72.4,"births":6766,"takes":1640744,"paid":36928,"takesPerPay":44.4,"seen":105104,"inputs":8}
+{"t":12000,"alive":1013,"predators":677,"predPct":66.8,"readers":699,"readPct":69,"births":6796,"takes":1447982,"paid":38427,"takesPerPay":37.7,"seen":136825,"inputs":8}
