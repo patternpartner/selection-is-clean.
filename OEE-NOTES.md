@@ -32439,3 +32439,19 @@ the phone's GPU is not represented.
   relabelled, so nearly any new function is a new kind whatever is happening; kinds rule out relabelling inflation but cannot tell
   open-endedness from search in a huge space. The measure that could: how many building steps deep each new function sits (built on
   functions that were themselves built on found ones), and whether that depth keeps rising. The probe's step records are its raw material.
+
+### #463 — THE USER'S PHONE RUNS `#long`: the first long-run record starts (`lab/port/out-phone-user/`)
+A Samsung Note 8, the GitHub Pages link with `#long` (2 universes and the collective, no layer, no learning, inputs capped at 8), the
+core world. First harvest at 13 minutes (`long-20261120-1001.json`, with the screen: 253k functions, inputs 7). History rows (ticks,
+minute, alive, births, kills, income, light, paid, functions so far, new since the last row, ...):
+
+| Universe | Ticks | Ticks a minute | Functions | New per tick, first half / second half |
+|---|---|---|---|---|
+| surface/0 | 4,561 | 351 | 70,154 | 10.5 / 21.6 |
+| surface/1 | 6,858 | 528 | 90,282 | 6.9 / 20.0 |
+| collective | 7,544 | 580 | 85,444 | 8.3 / 14.2 |
+
+- No errors, steady speed (about half #462's emulation, as a 2017 phone should be), and the rate of new functions per tick ROSE in
+  every universe from the first half of the run to the second. 13 minutes: the record is the point, not this reading.
+- The mind's line on screen: the children it rewrites have 0.71x the children of ordinary ones (measured by the field; fits #431).
+- Wanted: a harvest every few hours, read the same way (rate per tick and per minute, held against the hours).
