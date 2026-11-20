@@ -90,6 +90,8 @@ const readField = (page, ms) => page.evaluate(async ms => {
   // was blocked. Installed before any frame loads, top window only: every long task (>50 ms, with the frame it came from), every gap
   // over 150 ms in a 50 ms timer, every animation-frame gap over 250 ms. Read-only. In this mode the samples between the first and the
   // last read only small stats, because the union reads themselves post every universe's lifetime record to this same thread.
+  // #462: DEVMEM=k makes every page report navigator.deviceMemory k (a Note 8 reports 4), so the field builds what that phone's field builds
+  if (process.env.DEVMEM) await ctx.addInitScript((k) => { try { Object.defineProperty(navigator, 'deviceMemory', { get: () => k }); } catch (_) {} }, +process.env.DEVMEM);
   const JANK = !!process.env.JANK;
   if (JANK) await ctx.addInitScript(() => { if (window.top !== window) return; const J = window.__jank = { lt: [], gaps: [], raf: [] };
     try { new PerformanceObserver(l => { for (const e of l.getEntries()) { const a = e.attribution && e.attribution[0]; J.lt.push([Math.round(e.startTime), Math.round(e.duration), (a && (a.containerSrc || a.containerName)) || '']); } }).observe({ type: 'longtask', buffered: true }); } catch (e) { J.noLT = String(e); }
