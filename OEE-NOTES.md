@@ -32463,3 +32463,21 @@ minute, alive, births, kills, income, light, paid, functions so far, new since t
   late, against 10-22, 15 and 14 early), at 16,000-25,000 ticks a universe: past every node world here (12,000-16,000) and every
   field universe (a few thousand each), with the inputs capped since about tick 8,000, so the rate is the creatures', not a growing
   space. One field of three universes.
+
+### #464 — THE PHONE'S ECOLOGY IS THE COMPUTING WORLD'S, NOT THE CORE'S (predators and input readers, core against full engine)
+#463b's harvest showed predators (op 155 in the running program) at 75-100% of the living and creatures that read the world's inputs
+(INPUT) falling to about 10%. `lab/port/probe-ecology.js` counts both as the field's history rows do, plus takes (repl.prey) per payment,
+drawing nothing (the core runs reproduce #461's totals exactly). Seeds 11-13, `MIND=20`, 12,000 ticks (`out-eco/`):
+
+| At 12,000 | Predators core / full | Input readers core / full | Takes per payment core / full | Functions core / full |
+|---|---|---|---|---|
+| 11 | 95% / 45% | 74% / 25% | 137 / 41 | 117,496 / 79,330 |
+| 12 | 67% / 94% | 69% / 52% | 38 / 104 | 136,825 / 106,905 |
+| 13 | 49% / 3.5% | 9% / 5% | 29 / 18 | 144,273 / 106,812 |
+
+- **Both worlds:** predation reaches half to nearly all of the living with tens of takes a payment, and swings (full engine seed 13:
+  90%, 42%, 3.5% at 8,000, 10,000, 12,000: a boom and bust). Input readers often fall to a minority, most builders working from
+  words read off neighbours and the ground. **The core did not cause it**; the full engine has fewer readers on all three seeds.
+- The core found more than the full engine on 3 of 3 here too (node; #397's caveat on node counts applies).
+- **Open, undesigned:** a split into a few producers that read the inputs and many builders. Whether it helps discovery is not
+  measured (seed 13, fewest readers, found most in the core world: one seed).
