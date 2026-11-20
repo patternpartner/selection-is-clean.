@@ -32374,3 +32374,27 @@ ticks, 743 functions on the probe and on `digest.js`):
 - **First reading (one seed, 600 ticks, design only):** 743 functions, 21 kinds (35 functions a kind), 70 building steps.
 - **Next:** seeds 11-13 to 12,000 ticks after #459's set (node jobs beside decision pairs biased #437), then into `field-rate.js`
   so a field reports kinds beside its count.
+
+### #459 — VERDICT: THE CORE IS ENOUGH. 43 older layers off in every universe, 8 field pairs: median 1.17x, size 17+ 1.14x
+`lab/port/PREREG-core.md`, committed before pair 1; `index.html#core`; 8 pairs of 25 minutes, each alone, none stopped
+(`lab/port/out-core/`, `analyse-core.js`). Off: the 41 layers of #430's list other than MIND, REPL_PREY and TASK_TROPHP, plus
+COSMOS and COSMOS_LAW. Kept: TASKS and all it ships, the drain, the drawn mind, predation.
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Full engine | 150,766 | 157,646 | 160,317 | 148,957 | 160,764 | 276,487 | 186,838 | 212,297 |
+| Core alone | 141,401 | 140,664 | 207,686 | 214,493 | 231,469 | 181,963 | 216,438 | 250,932 |
+| Ratio | 0.94 | 0.89 | 1.30 | 1.44 | 1.44 | 0.66 | 1.16 | 1.18 |
+| Size 17+ ratio | 0.98 | 0.68 | 0.85 | 1.30 | 1.72 | 0.60 | 1.32 | 1.66 |
+
+- **Median 1.17x, size-17+ median 1.14x, ahead in 5 of 8: CORE IS ENOUGH** by the rule. Read it as NOT WORSE: 5 of 8 is not a
+  direction, and pairs swing 0.66-1.44, so an effect of 10-20% either way cannot be seen in 8 pairs. My prediction before the set
+  (the old layers work, or inconclusive) was wrong.
+- **The core field has 27 universes, not 31**: `FOUND` (the founding drive) is what grows a field's four `g` universes, and it is one
+  of the 43. That is part of what was tested, and the core found more with fewer universes.
+- **A field's total rides on how many of its universes take off** (pair 2's core: one universe found 38,838 and the median 3,378;
+  pair 5's: the median 9,645). Both arms swing (the full engine's 149-161k for five pairs, then 276k).
+- **The 5-minute check's 79,739 was a field ALONE on the machine**, not the core being fast; inside a pair the core had 12,651 at 5.
+- **What it licenses (written before):** the older layers are removed from the engine in steps, each checked byte-identical against
+  the `#core` world, and the shipped world becomes the core. What it does not show: anything past 25 minutes, or that the core is
+  more open-ended.
