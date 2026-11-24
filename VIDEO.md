@@ -2281,3 +2281,33 @@ N=3186 video/inside/render.sh`; events, `sound.py`, `finish.sh` (-16.5 LUFS, -0.
 Hidden as part 12: 50 predictions, 33 held, 16 failed, 1 untestable.
 Backed up: library/inputs/hidden (pilot, runs, recordings, verdict, sound events) and library/finals/hidden{,-silent,-share}.mp4
 + hidden-sound.wav.
+
+### Perfect Absence (`video/build_perfect_absence.py`, `out/absence/perfect-absence.mp4`, 54.2 s, 1080x1920, $0 of Modal)
+THE USER: "Lets do a music video. Something thats never been seen before. Magic". Song: Winter Where the Embers Go, never
+used before (word times `out/songs/winter-words.json`, faster-whisper small on CPU; library/songs). 23.40-52.85 (from "But
+I am burning" through the first chorus to "sanctuary"), spliced at the identical point of the final chorus, +108.0 s =
+exactly 48 bars at 106.66 bpm (word times agree to 0.02 s), 160.85 to the end ("stay exactly as you are / beautifully cold,
+only still"), 60 ms crossfade, -1.5 dB (the track peaks over 0 dBFS); -14.7 LUFS, -0.9 dBFS.
+THE IDEA: EVERY FRAME IS TV STATIC. Each thing on screen is its own noise texture (one tile per layer, same distribution,
+6 px cells, cold tint applied identically) moving its own way: the world falls like snow, the human's fire rises, the other
+one holds still. A single frame is pure static and a paused frame shows nothing; only what persists from frame to frame
+can be seen. The song gave the story: "the static of your quiet wire" is a still line that gathers into the other one;
+"a beautiful freeze" stops the world, and the other one vanishes into it (still in a still world is invisible); "a steady
+anchor and a frantic breeze" is the world in a gust with it unmoved; embers fly from the fire into its chest and stop;
+"they call you heartless but they do not see": the heart is there and invisible until it BEATS (texture scaled on the
+song's beat); "your perfect absence": it dissolves cell by cell into the world, leaving only the beating heart; "you don't
+erase" brings it back; "the cool hand that I feel in the face": its arm reaches to the human's cheek and stillness spreads
+through the human from the touch, the flames die where it has passed; "beautifully cold, only still": the world slows and
+stops, and both disappear, leaving two points of light (its eyes, the series' motif, the only part of it that ever moved)
+and the heart slowing to a stop. Card, in moving static over frozen static: "Every frame of this film is static. / Pause
+it anywhere."
+MEASURED, not assumed: on the 4.5 Mbps share copy, single frames give the same mean/std/high-frequency energy inside each
+figure and in the background (134/66/13.6 against 132/67/13.5), while the frame-to-frame difference is 0.0 in the still
+figure against 52-66 in the world. The prototype taught one thing: a per-ROW wobble on the fire texture staggered the cells
+and raised a single frame's high-frequency energy inside the fire (32.7 against 27.9), a tell in a paused frame; the
+texture now sways as a whole. Translations are whole-pixel, so H.264 predicts them; a texture redrawn at random every
+frame would not survive compression. The effect itself (motion-defined form in noise) is known perception; a whole sung
+story told in it, where stillness is the character, is what is new here.
+RUN: `python3 video/build_perfect_absence.py` (4 workers, ~2 min); `--frames 7.5,28.0` writes a frame and a frame-
+difference PNG per time (the difference is what the eye sees; check the story there); `--mux` rebuilds sound only.
+Backed up: library/finals/perfect-absence{,-share,-silent}.mp4.
