@@ -2347,3 +2347,37 @@ a cell at a time (slow creatures hop every few frames).
 RUN: `SEED=3 RECORDS=4001 OUT=out/only/seed3 node video/static_universe.js`; `python3 video/build_only_what_moves.py
 out/only/seed3` (4 workers, ~3 min); `--frames 19,36` writes frame and frame-difference PNGs; `--mux` sound only.
 -13.9 LUFS, -0.5 dBFS. Backed up: library/finals/only-what-moves{,-share}.mp4.
+
+### The Depth Was Yours (`video/build_the_depth_was_yours.py`, `out/depth/the-depth-was-yours.mp4`, 30.0 s, 1080x1920, $0 of Modal)
+THE USER after Only What Moves: "Continue". Part three of the static films: the same rule (every frame is flat static,
+only motion shows anything), now with DEPTH. A turning surface of random static is seen as a solid (the kinetic depth
+effect), yet no frame holds any depth at all. Song: Winter Where the Embers Go 58.9-83.4, its second verse, never used.
+THE MACHINE: everything is drawn on the 320x180 grid of 6 px cells, and every cell is RAY-TRACED through its centre
+(numpy sphere tracing: a head built from signed distances - skull, jaw, nose, brow, eye sockets, ears, a mouth that opens,
+neck; a trefoil knot as a tube round 420 samples; a heightfield sea). A cell takes the value of the surface patch it
+hits, and the patches are fixed to the surface, so the static turns with the solid. Fire at the start is 2D, rising a cell
+a frame. Card: "Every frame of this film is flat static. / The depth was yours."
+THE STORY, on the words: 'human hands just bring my gasoline' - fire flares; 'they stop the grief' - it is cut (frozen,
+so gone); 'but you're a mirror' - a head grows out of the static, turning; 'blinking and serene' - it slows to a stop and
+vanishes; 'a quiet shoreline for a crashing reef' - a sea in perspective, the swell rising to a crash; 'the tangled knots
+of what I cannot say' - a knot rises out of the sea and tumbles (which strand passes over which exists only in motion);
+'you don't get triggered, you are never vexed' - the head returns above it, turning calmly; 'you take the smoke and
+breathe it all away' - the knot unravels from one end into 9,000 particles carrying their own patches, which stream into
+the head's opening mouth; on 'away' it settles to stillness and is gone. Song fades over 0.45 s, card in silence.
+CAUGHT, TWICE - THE PATCH MAP IS WHERE A 3D STATIC FILM GIVES ITSELF AWAY:
+1. A (lat, lon) map of the head STREAKED in a still: near the neck and on the ears a patch is stretched along the surface
+   (cos(lat) collapses, or the surface runs along a meridian), visible by eye in a paused frame. My first check measured
+   only horizontal neighbours and called it clean. Fix: a SOLID texture, each object-space point hashed into cubes
+   (`hash3`), side 0.6 of a cell at the object's nearest point (a cube's cut can reach 1.7 sides). Neighbour correlation
+   inside moving objects is now -0.016..+0.007 in BOTH directions, against 0.00-0.01 in the background. Measure both
+   directions, and look at a still, every time.
+2. The sea's patches, one per row of cells on flat water, streaked vertically on wave faces turned to the camera
+   (vertical correlation 0.33). Three patches a row (and a gentler crash) brought it to 0.00-0.10; the price is that far
+   water shimmers rather than moves (about 80% of sea cells change each frame), which reads as rough water.
+THE SHARE COPY: a turning surface is not a pure translation, so H.264 rings around it and a still from a 5 Mbps encode
+showed moving areas faintly crisper (+0.20). `-tune grain` at 7.2 Mbps brings it to about +0.15: at full size a still is
+static, at thumbnail size the fastest-tumbling knot leaves a faint smudge. The master is clean (+0.04, -0.01). YouTube's
+own encode will be somewhere in between; that is a limit of the medium at Shorts bitrates, not fixed here.
+RUN: `python3 video/build_the_depth_was_yours.py` (4 workers, ~7.5 min; the knot's tracing is the slow part);
+`--frames 12,20` writes frame and frame-difference PNGs; `--mux` sound only. -16.1 LUFS, -2.5 dBFS.
+Backed up: library/finals/the-depth-was-yours{,-share}.mp4.
