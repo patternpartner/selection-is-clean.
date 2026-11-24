@@ -1,0 +1,12 @@
+{"t":1000,"alive":579,"inputs":5,"seen":954,"found":954,"newWin":954,"meanNew":0.85,"p10":0,"p50":1,"p90":2,"maxNew":5,"maxEver":5,"rootedWin":0.412,"unpaidParents":1,"pays":11781}
+{"t":2000,"alive":494,"inputs":6,"seen":1654,"found":1654,"newWin":700,"meanNew":1.69,"p10":0,"p50":1,"p90":4,"maxNew":13,"maxEver":13,"rootedWin":0.376,"unpaidParents":1,"pays":18342}
+{"t":3000,"alive":663,"inputs":6,"seen":11975,"found":11975,"newWin":10321,"meanNew":2.45,"p10":0,"p50":1,"p90":7,"maxNew":27,"maxEver":27,"rootedWin":0.358,"unpaidParents":1,"pays":31028}
+{"t":4000,"alive":762,"inputs":7,"seen":22096,"found":22096,"newWin":10121,"meanNew":1.22,"p10":0,"p50":0,"p90":3,"maxNew":21,"maxEver":27,"rootedWin":0.508,"unpaidParents":1,"pays":43591}
+{"t":5000,"alive":883,"inputs":7,"seen":35214,"found":35214,"newWin":13118,"meanNew":0.96,"p10":0,"p50":0,"p90":3,"maxNew":19,"maxEver":27,"rootedWin":0.532,"unpaidParents":1,"pays":59263}
+{"t":6000,"alive":807,"inputs":7,"seen":50057,"found":50057,"newWin":14843,"meanNew":0.96,"p10":0,"p50":0,"p90":3,"maxNew":14,"maxEver":27,"rootedWin":0.531,"unpaidParents":1,"pays":77013}
+{"t":7000,"alive":869,"inputs":7,"seen":63239,"found":63239,"newWin":13182,"meanNew":1,"p10":0,"p50":0,"p90":3,"maxNew":12,"maxEver":27,"rootedWin":0.523,"unpaidParents":1,"pays":93338}
+{"t":8000,"alive":884,"inputs":8,"seen":76413,"found":76413,"newWin":13174,"meanNew":1.24,"p10":0,"p50":1,"p90":3,"maxNew":20,"maxEver":27,"rootedWin":0.497,"unpaidParents":1,"pays":109893}
+{"t":9000,"alive":951,"inputs":8,"seen":90318,"found":90318,"newWin":13905,"meanNew":1.42,"p10":0,"p50":1,"p90":4,"maxNew":22,"maxEver":27,"rootedWin":0.475,"unpaidParents":1,"pays":127759}
+{"t":10000,"alive":1018,"inputs":8,"seen":105104,"found":105104,"newWin":14786,"meanNew":1.35,"p10":0,"p50":1,"p90":4,"maxNew":21,"maxEver":27,"rootedWin":0.468,"unpaidParents":1,"pays":146821}
+{"t":11000,"alive":1315,"inputs":8,"seen":120522,"found":120522,"newWin":15418,"meanNew":1.62,"p10":0,"p50":1,"p90":5,"maxNew":17,"maxEver":27,"rootedWin":0.448,"unpaidParents":1,"pays":165968}
+{"t":12000,"alive":1013,"inputs":8,"seen":136825,"found":136825,"newWin":16303,"meanNew":1.41,"p10":0,"p50":1,"p90":4,"maxNew":16,"maxEver":27,"rootedWin":0.475,"unpaidParents":1,"pays":185248}
