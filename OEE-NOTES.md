@@ -32533,3 +32533,18 @@ read, else 1 + the deepest function in its lineage (`tK`, the slots the drain pa
   candidate this project already has, and #404 saw it rise from 11.0 to 17.75 over 150 minutes in one field.
 - **The universe did not move this session.** One measurement (flat recorded depth), one ruler shown to be mechanical (word
   generations), one mechanism with a measured reason built, registered, run in 8 field pairs and removed.
+
+### #466 — ONE ENCOUNTER A TICK (`INTERACTION_CAP` 10 -> 1): the pair loop is half a field's tick and computes nothing paid
+**Where a field universe's time goes** (`field-phase.js`, the default field, 27 universes, 240 s warm, 120 s timed): `processGrid` 48.8%
+of the loop, the solo VM 14.6%, `applyEntropy` 8.9%, `updateParticles` 2.7%, everything else under 1% each; `render` 0 (dark universes).
+`processGrid` is the pair loop: for every pair within reach (at most `INTERACTION_CAP`, 10, encounters a creature a tick) it runs
+entrainment, BOTH creatures' programs in pair mode (`executeVM`, `executeClusterVM`), two neighbour models, trait bleed and magnetism.
+**Task ops run only in the solo VM** (`if(__vmMode===VM_SOLO)taskOp(...)`), so half the field's time computes nothing the world pays
+for; the pair VM carries predation (op 155 needs a partner, `pE[j]`), movement and amplitude effects. (A node profile is not the
+field's: there `render` is 9% and `processGrid` 12% self.)
+- `lab/port/probe-pairs.js` (read-only): encounters a creature a tick, shipped cap 10, seed 11: 5.9 at tick 1,000 falling to 4.6 at
+  3,000; 23-35% at the cap, and by 6,000 ticks 1.75-2.75 a creature (seeds 12-13).
+- Node, cap 1 against 10 (seen seeds, design): 24,769 / 10,742 functions (seed 11, 3,000 ticks), 71,828 / 50,057 and 108,878 / 59,551
+  (seeds 12-13, 6,000 ticks); populations larger (1,132-1,614 against 776-1,015), ms a tick about level. Fewer encounters means less
+  predation and more creatures, so the tick does not get cheaper in node; whether the field's does is what the set reads.
+- Registered set of 8 field pairs, `PREREG-cap.md`, running.
