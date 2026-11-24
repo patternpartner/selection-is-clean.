@@ -302,6 +302,13 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **SHIPPED as the default under TASKS (`TASK_CORE` 1; `TASK_CORE=0` restores the full engine, `6895e8d7`; the new default `3738d7ff`
   is the `#core` world exactly).** The code is still in the engine; removing it comes in steps, each byte-identical against this world. `FOUND` is one of them and grows the
   field's four `g` universes. `#461`: a kinds measure (NPN classes, `lab/port/kinds.js`; building steps, `probe-kinds.js`).
+  **`#465`: what is new sits 1-2 recorded build steps deep, at every window to 12,000 ticks (3 seeds, `lab/port/probe-depth.js`):
+  the count rises at a fixed depth.** That ruler is the engine's lineage (`tK`), which is CUT at every unpaid word (a function never
+  paid has no slot to carry), so 42-55% of new functions read as built on nothing. A shadow lineage through every word rises without
+  limit, about 1.5 a tick, and is word generations, not building. **Depth by lineage cannot tell open-ended building from search**
+  either way; the formula size (`#402`'s `D`) is the remaining candidate. The cut meant the drain charged half of all payments
+  nothing; `TASK_KLIN` (lineage through unpaid words, drain 25% -> 45% of income) was REMOVED after 8 field pairs (median 1.05, ahead
+  6 of 8, size 17+ 0.94): the drain's coverage is not what its field dose-response is about.
   **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
   catches it and the world changes; check a probe's counts against the baselines before reading it.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over

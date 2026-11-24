@@ -32512,4 +32512,24 @@ read, else 1 + the deepest function in its lineage (`tK`, the slots the drain pa
   with a dose-response measured in whole fields (off 0.67 #410, 10% 0.81 #422, 50% 1.00).
 - **#465c, `TASK_KLIN` (opt-in; 0 byte-identical, digests `4f01f2d0` seed 3, `3738d7ff` seed 11):** a published word with no slot hands
   its own lineage (up to four slots) to whoever reads it, from a neighbour or the ground. Node seed 11: words with no recorded parent
-  42-46% -> 0.2-4%, drain 24-26% -> 43-46% of income. Registered set of 8 field pairs, `PREREG-klin.md`, running.
+  42-46% -> 0.2-4%, drain 24-26% -> 43-46% of income. Registered set of 8 field pairs, `PREREG-klin.md` (`out-klin-set/`, `analyse-klin.js`).
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Shipped | 293,595 | 242,881 | 320,140 | 475,840 | 318,968 | 322,851 | 292,283 | 295,276 |
+| `TASK_KLIN` | 318,267 | 259,119 | 323,678 | 351,683 | 327,836 | 344,337 | 290,462 | 323,479 |
+| Ratio | 1.08 | 1.07 | 1.01 | 0.74 | 1.03 | 1.07 | 0.99 | 1.10 |
+| Size 17+ ratio | 0.95 | 1.38 | 0.70 | 0.61 | 0.93 | 1.37 | 0.71 | 1.35 |
+
+- **REMOVED by the rule:** median 1.047, ahead 6 of 8 (SHIP needed 7; sign test p 0.145), size-17+ median 0.94. The engine is restored
+  from `86785a7~1` (digest `3738d7ff` again). Read it as no effect this set can see: a few percent either way, where one shipped field
+  alone ranged 243-476 thousand. Decided after pair 7 (two behind) and run to 8 as registered.
+- **So the drain at half coverage is as good as the drain at full coverage.** #410 and #422's dose-response is about how hard it pulls,
+  not on how many payments; doubling the payments it touches moved nothing measurable. Whatever the drain does, it does not need to
+  reach every builder's ancestors.
+- **What stands from #465:** at the engine's own ruler, new functions sit 1-2 recorded steps deep at every window to 12,000 ticks;
+  the count rises at a fixed depth. A ruler that could separate open-ended building from search would have to measure depth by
+  something other than lineage (which grows with time) or recorded lineage (which is cut). The formula size (#402's `D`) is the one
+  candidate this project already has, and #404 saw it rise from 11.0 to 17.75 over 150 minutes in one field.
+- **The universe did not move this session.** One measurement (flat recorded depth), one ruler shown to be mechanical (word
+  generations), one mechanism with a measured reason built, registered, run in 8 field pairs and removed.

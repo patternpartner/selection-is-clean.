@@ -17,3 +17,6 @@ be within what eight pairs can see, a smaller one would not.
 - **Otherwise REMOVED.** The engine's lineage depth (`probe-depth.js` meanNew) is changed by the knob by definition and is not a reading
   of either arm.
 - Analysis: `lab/port/analyse-klin.js` (written now).
+
+## Result
+REMOVED: median 1.047, ahead 6 of 8, size-17+ median 0.94 (`analyse-klin.js`). Engine restored from `86785a7~1`, digest `3738d7ff`.

@@ -10853,7 +10853,7 @@ function taskRebuild5(){ const keep=[]; for(let n=0;n<tSlotN;n++){ const T=tSlot
   const K=keep.map(T=>[tKey[T],TASK_SZ[T],tCap[T],tRes[T],tE[T],tN[T],tSeen[T],tLastPaid[T],TASK_OPEN?oM[T]:0,TASK_OPEN?oC[T]:0]);
   tKey.fill(0); TASK_SZ.fill(0); tCap.fill(0); tRes.fill(0); tE.fill(0); tN.fill(0); tSeen.fill(0); tLastPaid.fill(0); tSlotN=0; if(TASK_OPEN){ oM.fill(0); oC.fill(0); }
   for(const r of K){ let h=Math.imul(r[0],2654435761)>>>15; while(tKey[h]!==0)h=(h+1)&(TASK_NF-1); tKey[h]=r[0]; TASK_SZ[h]=r[1]; tCap[h]=r[2]; tRes[h]=r[3]; tE[h]=r[4]; tN[h]=r[5]; tSeen[h]=r[6]; tLastPaid[h]=r[7]; if(TASK_OPEN){ oM[h]=r[8]; oC[h]=r[9]; } tSlots[tSlotN++]=h; }
-  tLastK.fill(-1); tRT.fill(-1); if(tLKs!==null){ tLKs.fill(-1); tGKs.fill(-1); } tEv.rebuilds=(tEv.rebuilds|0)+1; }
+  tLastK.fill(-1); tRT.fill(-1); tEv.rebuilds=(tEv.rebuilds|0)+1; }
 function taskFind5(F){ if(F===0||F===0xFFFFFFFF)return -1; let h=Math.imul(F,2654435761)>>>15; for(let n=0;n<TASK_NF;n++,h=(h+1)&(TASK_NF-1)){ const k=tKey[h]; if(k===F)return h; if(k===0)return -1; } return -1; }
 function taskDrawInputs(){ if(TASK_IN===5)return taskDrawInputs5(); const rows=new Uint8Array(32); for(let q=0;q<32;q++)rows[q]=q&15;
   for(const h of [0,16]) for(let q=15;q>0;q--){ const j=(Math.random()*(q+1))|0, t=rows[h+q]; rows[h+q]=rows[h+j]; rows[h+j]=t; }
@@ -10867,9 +10867,9 @@ function taskTick(){   // once per tick, before the solo programs run: the epoch
   if(TASK_IN===5){ for(let n=0;n<tSlotN;n++){ const T=tSlots[n]; tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); } return; }
   for(let T=0;T<TASK_NF;T++)tRes[T]+=TASK_RATE*(tCap[T]-tRes[T]); }
 function taskBirth(i){ const o=i*4; tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
-  tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; tRE[i]=-1; if(TASK_OPEN)oBirth(i); if(tLKs!==null)tLKs.fill(-1,o,o+4); }
+  tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; tRE[i]=-1; if(TASK_OPEN)oBirth(i); }
 function taskMove(w,r){ const a=w*4, b=r*4; for(let q=0;q<4;q++){ tW[a+q]=tW[b+q]; tJ[a+q]=tJ[b+q]; tDm[a+q]=tDm[b+q]; tRd[a+q]=tRd[b+q]; tRdE[a+q]=tRdE[b+q]; } for(let q=0;q<16;q++)tK[a*4+q]=tK[b*4+q];
-  tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tRdI[w]=tRdI[r]; tRx[w]=tRx[r]; tRy[w]=tRy[r]; tRE[w]=tRE[r]; tRT[w]=tRT[r]; if(TASK_OPEN)oMove(w,r); if(tLKs!==null)for(let q=0;q<4;q++)tLKs[w*4+q]=tLKs[r*4+q]; }
+  tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tRdI[w]=tRdI[r]; tRx[w]=tRx[r]; tRy[w]=tRy[r]; tRE[w]=tRE[r]; tRT[w]=tRT[r]; if(TASK_OPEN)oMove(w,r); }
 // the nearest living particle in sector s (of 8, world axes) within one interaction radius, from the cells sunStep listed this tick
 function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1); let best=-1, bd=CELL*CELL;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx, y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue;
@@ -11051,14 +11051,8 @@ function taskGlow(i,kD,D,e,WD){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.f
 // a word new to the universe, published after its creature's payment this epoch, is written into the ground of its cell, not paid
 // and not counted. #457: 5-13 such words for each recorded one; one design pair 1.06x, deeper at every mark.
 const TASK_GNEW=TASK_OPEN&&(__tk('__TASK_GNEW',0)|0)!==0;
-// #465c - TASK_KLIN (0 is byte-identical): LINEAGE PASSES THROUGH UNPAID WORDS. A read word carries the slot of its function, and a word
-// whose function was never paid has no slot, so a word built on it starts with no lineage: #465 found 45-55% of new functions recorded as
-// built on nothing, where #391 found 91-97% built on read words. The drain (TASK_TROPHP) pays down a payment's lineage, so it charged
-// nothing for half of all payments. With the knob a published word with no slot hands on its own lineage (up to four slots) to whoever
-// reads it, from a neighbour or from the ground.
-const TASK_KLIN=TASK_OPEN&&(__tk('__TASK_KLIN',0)|0)!==0, tLKs=TASK_KLIN?new Int32Array(CAP*4).fill(-1):null, tGKs=TASK_KLIN?new Int32Array(FIELD_W*FIELD_H*4).fill(-1):null;
 function seen5Has(F){ const M=tSet5.length-1; let h=(Math.imul(F,2654435761)>>>0)&M; while(true){ const k=tSet5[h]; if(k===F)return true; if(k===0)return false; h=(h+1)&M; } }
-function groundNew(i,key,m,WD,e){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; if(tGKs!==null)for(let q=0;q<4;q++)tGKs[c*4+q]=tLKs[i*4+q]; tEv.gNew=(tEv.gNew|0)+1; }
+function groundNew(i,key,m,WD,e){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gNew=(tEv.gNew|0)+1; }
 function oBirth(i){ if(oGl!==null)oGl.fill(0,i*4,i*4+4); const b=i*4*OWM; oW.fill(0,b,b+4*OWM); oJ.fill(0,b,b+4*OWM); oD.fill(0,b,b+4*OWM); }
 function oMove(w,r){ if(oGl!==null)for(let q=0;q<4;q++)oGl[w*4+q]=oGl[r*4+q]; const a=w*4*OWM, b=r*4*OWM; for(let x=0;x<4*OWM;x++){ oW[a+x]=oW[b+x]; oJ[a+x]=oJ[b+x]; oD[a+x]=oD[b+x]; } const c=w*OWM, d=r*OWM; for(let x=0;x<OWM;x++){ oL[c+x]=oL[d+x]; oLJ[c+x]=oLJ[d+x]; oLD[c+x]=oLD[d+x]; } }
 function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o=i*4, kD=o+d, kS=o+s, D=kD*OWM, S=kS*OWM, e=tEpoch, WD=oWD;
@@ -11072,14 +11066,14 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(t===3){ const a=taskNeighbour(i,Math.abs(src|0)&7), hit=a>=0&&tLastE[a]===e; tEv.reads++; if(oGl!==null)oGl[kD]=0;
     if(!hit&&tG!==null){ const c=sunCell(i), key=(tGE===null||tGE[c]===e)?tG[c]:0; if(key!==0){ const R=32*WD, g=c*OWM; tEv.gReads=(tEv.gReads|0)+1;
         for(let x=0;x<WD;x++){ oW[D+x]=0; oJ[D+x]=0; oD[D+x]=0xFFFFFFFF; } for(let q=0;q<R;q++){ const k=oRow[q]; if((oG[g+(k>>>5)]>>>(k&31))&1)oW[D+(q>>>5)]|=1<<(q&31); }
-        const k=taskFind5(key); tK.fill(-1,kD*4,kD*4+4); if(k>=0)tK[kD*4]=k; else if(tGKs!==null)for(let q=0;q<4;q++)tK[kD*4+q]=tGKs[c*4+q]; const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; } }
+        const k=taskFind5(key); tK.fill(-1,kD*4,kD*4+4); if(k>=0)tK[kD*4]=k; const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; } }
     if(!hit)return;   // a miss leaves the word alone (#353; the founder package is the open world's)
     const b=a*OWM; let nz=0; for(let x=0;x<WD;x++){ oW[D+x]=oL[b+x]; nz|=oL[b+x]; } if(nz)tEv.readHits++;
     tRx[i]=px[a]; tRy[i]=py[a]; tRE[i]=e; tRT[i]=tLastK[a];
-    for(let x=0;x<WD;x++){ oJ[D+x]=nz?oLJ[b+x]:0; oD[D+x]=nz?oLD[b+x]:0; } tK.fill(-1,kD*4,kD*4+4); if(nz&&tLastK[a]>=0)tK[kD*4]=tLastK[a]; else if(nz&&tLKs!==null)for(let q=0;q<4;q++)tK[kD*4+q]=tLKs[a*4+q];
+    for(let x=0;x<WD;x++){ oJ[D+x]=nz?oLJ[b+x]:0; oD[D+x]=nz?oLD[b+x]:0; } tK.fill(-1,kD*4,kD*4+4); if(nz&&tLastK[a]>=0)tK[kD*4]=tLastK[a];
     const q=o+tRdI[i]; tRd[q]=oHash(oW,D,false); tRdE[q]=e; tRdI[i]=(tRdI[i]+1)&3; return; }
   // T_OUTPUT: published first, then judged
-  tEv.outs++; if(tLKs!==null)for(let q=0;q<4;q++)tLKs[i*4+q]=tK[kD*4+q]; let dirty=0; { const b=i*OWM; for(let x=0;x<WD;x++){ oL[b+x]=oW[D+x]; oLJ[b+x]=oJ[D+x]; oLD[b+x]=oD[D+x]; dirty|=oJ[D+x]; } } tLastE[i]=e; tLast[i]=oW[D]; if(TASK_GLOW===2)lightEmit(i,D,WD,tLastK[i]);   // the first 32 rows, for the sound and the display only: the open world never reads tLast
+  tEv.outs++; let dirty=0; { const b=i*OWM; for(let x=0;x<WD;x++){ oL[b+x]=oW[D+x]; oLJ[b+x]=oJ[D+x]; oLD[b+x]=oD[D+x]; dirty|=oJ[D+x]; } } tLastE[i]=e; tLast[i]=oW[D]; if(TASK_GLOW===2)lightEmit(i,D,WD,tLastK[i]);   // the first 32 rows, for the sound and the display only: the open world never reads tLast
   let m=0, key=0; if(dirty===0){ m=oCanon(oW,D); key=(m===5&&(oF[0]===0||oF[0]===0xFFFFFFFF))?0:oKey(m); } tLastK[i]=key!==0?taskFind5(key):-1;
   { const hv=oHash(oW,D,false), hn=oHash(oW,D,true); for(let q=o;q<o+4;q++){ if(tRdE[q]!==e)continue; const w=tRd[q]; if(hv===w||hn===w){ tEv.refused++; return; } } }   // a copy or a complement of a word read this epoch
   if(dirty!==0){ tEv.dirty++; return; }
@@ -11088,7 +11082,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(tPE[i]===e){ if(TASK_GNEW&&tG!==null&&!seen5Has(key))groundNew(i,key,m,WD,e); return; } const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
   tPE[i]=e; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); if(_gl)tEv.glowNew=(tEv.glowNew|0)+1; } tEv.paid++; if(_gl)tEv.glowPaid=(tEv.glowPaid|0)+1;
-  if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; if(tGKs!==null)tGKs.fill(-1,c*4,c*4+4); for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
+  if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
   if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
   if(TASK_TROPH>0&&!__mechOff.TASK_DRAIN){ let n=0; for(let q=0;q<4;q++) if(tK[kD*4+q]>=0)n++; if(n){ const tx=TASK_TROPH*g/n; for(let q=0;q<4;q++){ const k=tK[kD*4+q]; if(k<0)continue; const y=Math.min(tRes[k],tx); tRes[k]-=y; tEv.troph+=y; } } } }
 // the open world in a snapshot: the input count, the ground's tables and the lifetime record
