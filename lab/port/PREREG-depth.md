@@ -23,3 +23,16 @@ payment) keep rising, and is that selected?
 - FLAT: the world builds at a fixed depth and the count is breadth. The next engine change is aimed at depth, with this measure as its
   dependent variable (the count as a guard).
 - RISING but not SELECTED: depth is mechanical; it is reported, the count stays the variable.
+
+## Result v1 (engine lineage), read by the rule above
+Base FLAT (LATE/EARLY 0.94, 0.83, 1.25); shuffle LATE below base 3 of 3, rise smaller 2 of 3: SELECTED. `out-depth465/v1/`.
+**But the measure is the engine's lineage, which passes only through PAID functions** (a read word carries the slot of its function,
+and an unpaid word has none). 45-55% of new functions read as built on nothing, where #391 found 91-97% built on read words.
+
+## #465b, registered before its runs: the SHADOW depth (`probe-depth.js` tMean)
+A function's depth fixed at its first PUBLICATION (paid or not), 1 + the depth of the deepest function read into the register, through
+neighbour and ground reads, NAND and COPY; a known function keeps its depth. Seen before writing: seed 11 to 600 ticks only (tMean 6.88,
+7.98, 8.96). Same runs, same windows, same RISING / FLAT / SELECTED rules, applied to `tMean`. Decisions:
+- shadow RISING and SELECTED: the world builds ever deeper on its own builds, and the engine's lineage (which the drain pays down) sees
+  about a tenth of it. Next: whether the drain paying the true lineage changes anything (a design question, not decided here).
+- shadow FLAT: both rulers agree, and the next engine change is aimed at depth.

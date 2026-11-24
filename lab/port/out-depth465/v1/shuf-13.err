@@ -1,0 +1,12 @@
+{"t":1000,"alive":606,"inputs":5,"seen":871,"found":871,"newWin":871,"meanNew":0.73,"p10":0,"p50":1,"p90":2,"maxNew":4,"maxEver":4,"rootedWin":0.464,"unpaidParents":2,"pays":9604}
+{"t":2000,"alive":256,"inputs":5,"seen":1025,"found":1025,"newWin":154,"meanNew":1.1,"p10":0,"p50":1,"p90":3,"maxNew":5,"maxEver":5,"rootedWin":0.344,"unpaidParents":2,"pays":14683}
+{"t":3000,"alive":117,"inputs":5,"seen":1027,"found":1027,"newWin":2,"meanNew":2.5,"p10":1,"p50":4,"p90":4,"maxNew":4,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14792}
+{"t":4000,"alive":99,"inputs":5,"seen":1027,"found":1027,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14796}
+{"t":5000,"alive":102,"inputs":5,"seen":1028,"found":1028,"newWin":1,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":1,"unpaidParents":2,"pays":14827}
+{"t":6000,"alive":149,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14827}
+{"t":7000,"alive":97,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14827}
+{"t":8000,"alive":140,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14886}
+{"t":9000,"alive":124,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14897}
+{"t":10000,"alive":121,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14898}
+{"t":11000,"alive":150,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14898}
+{"t":12000,"alive":125,"inputs":5,"seen":1028,"found":1028,"newWin":0,"meanNew":0,"p10":0,"p50":0,"p90":0,"maxNew":0,"maxEver":5,"rootedWin":0,"unpaidParents":2,"pays":14904}
