@@ -56,7 +56,7 @@ m._compile(code + `
       const w = win.slice().sort((a, b) => a - b), n = w.length, q = p => n ? w[Math.min(n - 1, Math.floor(p * n))] : 0;
       let sum = 0; for (const x of w) sum += x;
       const row = { t, alive: al, inputs: TASK_OPEN ? tNin : 5, seen: tSeenN, found: dep.size, newWin: n, meanNew: +(n ? sum / n : 0).toFixed(2),
-        p10: q(0.1), p50: q(0.5), p90: q(0.9), maxNew: n ? w[n - 1] : 0, maxEver: maxD, rootedWin: n ? +(w.filter(x => x === 0).length / n).toFixed(3) : 0, unpaidParents, pays };
+        p10: q(0.1), p50: q(0.5), p90: q(0.9), maxNew: n ? w[n - 1] : 0, maxEver: maxD, rootedWin: n ? +(w.filter(x => x === 0).length / n).toFixed(3) : 0, unpaidParents, pays, troph: Math.round(tEv.troph || 0), income: Math.round(tEv.income || 0) };
       { const w2 = twin.slice().sort((a, b) => a - b), n2 = w2.length, q2 = p => n2 ? w2[Math.min(n2 - 1, Math.floor(p * n2))] : 0; let s2 = 0; for (const x of w2) s2 += x;
         let s3 = 0; for (const x of pubWin) s3 += x;
         Object.assign(row, { tNew: n2, tMean: +(n2 ? s2 / n2 : 0).toFixed(2), tP50: q2(0.5), tP90: q2(0.9), tMaxNew: n2 ? w2[n2 - 1] : 0, tMaxEver: tmax,

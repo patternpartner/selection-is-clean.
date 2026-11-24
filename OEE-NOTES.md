@@ -32481,3 +32481,35 @@ drawing nothing (the core runs reproduce #461's totals exactly). Seeds 11-13, `M
 - The core found more than the full engine on 3 of 3 here too (node; #397's caveat on node counts applies).
 - **Open, undesigned:** a split into a few producers that read the inputs and many builders. Whether it helps discovery is not
   measured (seed 13, fewest readers, found most in the core world: one seed).
+
+### #465 — HOW DEEP DOES WHAT IS NEW SIT? Flat by the engine's lineage, and the lineage is cut at every unpaid word
+#461d's next measure. `lab/port/probe-depth.js` (read-only; totals equal #461's: 117,496 / 136,825 / 144,273), `PREREG-depth.md`
+written before the windows that rule, seeds 11-13, `MIND=20`, 12,000 ticks, the shipped core world, with `TASK_SHUFFLE=1` as control
+(`out-depth465/`, `analyse-depth465.js`). A function's BUILD DEPTH, fixed at its first payment: 0 if the paid word was built on nothing
+read, else 1 + the deepest function in its lineage (`tK`, the slots the drain pays down).
+
+| Seed | Mean depth of new, by 1,000 ticks | EARLY (3-4k) | LATE (11-12k) | Shuffle LATE | Shuffle found |
+|---|---|---|---|---|---|
+| 11 | 0.85 1.26 1.45 1.19 0.98 0.91 1.02 1.46 1.36 1.06 1.12 1.35 | 1.32 | 1.24 | 0.92 | 6,172 |
+| 12 | 0.85 1.69 2.45 1.22 0.96 0.96 1.00 1.24 1.42 1.35 1.62 1.41 | 1.83 | 1.52 | 0.25 | 1,358 |
+| 13 | 0.88 1.27 0.83 0.77 1.35 0.94 0.89 1.08 0.95 0.79 0.93 1.07 | 0.80 | 1.00 | 0.00 | 1,028 |
+
+- **FLAT by the rule** (LATE/EARLY 0.94, 0.83, 1.25), and below it under shuffle on 3 of 3 (SELECTED by the rule, but two of the
+  three shuffled worlds were dying, 87-125 alive and nothing new after 3,000, so read it as weak). The tail is geometric: each level
+  holds about 0.55 of the one below, at every window. By this ruler the world builds 1-2 recorded steps deep, at the same depth at
+  tick 12,000 as at 2,000; the count rises at a fixed depth.
+- **But 42-55% of new functions read as built on nothing**, where #391 found 91-97% built on read words. The cause is in the engine: a
+  read word carries the slot of its function (`tLastK`), and a function never paid has no slot, so a word built on an unpaid word (one
+  made after a creature's one payment an epoch, or one of the ground's kept discoveries, #457b) starts with no lineage.
+- **A shadow lineage that follows every word** (per-register depth through READ, NAND and COPY, a function's depth fixed at its first
+  publication, paid or not; wraps the engine's functions, totals unchanged) RISES by the rule, to a mean of 8,600-19,000 by tick
+  12,000, about 1.5 a tick. **That is word generations, not building**: at eight inputs nearly every published word is a function never
+  published before (1.4-2.0 million of them), so two creatures modifying each other's words add a level at almost every exchange. A
+  first version of the shadow counted hops and read 65-350 at 600 ticks; keying depth to the function fixed that and not this.
+  **Neither ruler tells open-endedness from search**: the engine's is cut, the shadow's grows with time whatever the world does.
+- **What it points at: the drain charged nothing for half of all payments.** `TASK_TROPHP` (50) takes half of a payment from its
+  lineage's pools; with no lineage it takes nothing, so the drain took 24-26% of income (node, seed 11). The drain is the one mechanism
+  with a dose-response measured in whole fields (off 0.67 #410, 10% 0.81 #422, 50% 1.00).
+- **#465c, `TASK_KLIN` (opt-in; 0 byte-identical, digests `4f01f2d0` seed 3, `3738d7ff` seed 11):** a published word with no slot hands
+  its own lineage (up to four slots) to whoever reads it, from a neighbour or the ground. Node seed 11: words with no recorded parent
+  42-46% -> 0.2-4%, drain 24-26% -> 43-46% of income. Registered set of 8 field pairs, `PREREG-klin.md`, running.
