@@ -32681,3 +32681,18 @@ field pairs for two payments, `PREREG-pays.md` (`out-pays-set/`, `analyse-pays.j
 Node, seeds 11-13, 6,000 ticks, against the shipped two payments (110,673 / 126,180 / 167,359): four 1.02 / 2.73 / 0.95, eight 3.91 /
 1.37 / 0.93, **255 2.41 / 1.97 / 2.18** (266,297 / 248,149 / 364,982) on about 25x the payments, populations alike (`out-pays/`). The
 middle doses are noise at this resolution; no limit is a direction. `PREREG-pays255.md`, running.
+
+| Pair | 1 | 2 | 3 |
+|---|---|---|---|
+| Two payments (shipped) | 560,904 | 604,672 | 504,107 |
+| No limit | 1,152,006 | 822,027 | 1,004,476 |
+| Ratio at 20 min | 2.05 | 1.36 | 1.99 |
+| Size 17+ ratio | 0.69 | 0.58 | 0.55 |
+
+- **Not shipped: the count doubles and the deep functions halve, three of three.** The size guard (median at least 0.90) could pass
+  only if all five remaining pairs came out at about 1.0 or more against three readings of 0.55-0.69. **Stopped after three pairs as a
+  judgement, not by the rule**, recorded as a deviation; a stop of this kind can only keep the default, and two payments stay.
+- **The finding is a trade.** Paid once an epoch (the old world), a creature's extra new words went to the ground; paid twice (#472),
+  count and depth both rose (1.93x, 1.55x); paid for every new word, count rises as much again but the world spends itself on cheap
+  functions and finds about half the deep ones. **The payment limit is a price on breadth**, and two is on the right side of it. Where
+  between two and unlimited depth turns over is not measured (node four and eight were noise).

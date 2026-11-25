@@ -8,3 +8,6 @@ Seen seeds design; a field decides. Cost to watch: every payment does table work
   a pair cut short is void and rerun. Stops when SHIP is unreachable; futility stop: pairs 1 and 2 both below 0.75.
 - **SHIP** if the median F ratio at 20 minutes is above 1.00 AND at least 7 of 8 ahead AND the median size-17+ ratio at least 0.90:
   the default becomes 255 (the once-an-epoch rule goes). **Otherwise** 2 stays. Analysis: `analyse-pays255.js`.
+
+## Result
+Stopped after 3 pairs (count 2.05, 1.36, 1.99; size 17+ 0.69, 0.58, 0.55) as a recorded judgement: the size guard could pass only if all five remaining pairs reversed. Not shipped; 2 stays.
