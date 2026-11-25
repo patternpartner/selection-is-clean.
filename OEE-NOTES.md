@@ -32674,3 +32674,5 @@ field pairs for two payments, `PREREG-pays.md` (`out-pays-set/`, `analyse-pays.j
 - Not measured: the shuffle control at two payments, past 20 minutes, three or more payments in a field (node had four ahead too).
 - **Shuffle control at two payments, written before it runs** (`out-pays-shuffle/`, one pair): under 0.2 of its twin, selected; 0.5 or
   more, much of the gain comes without selection and this entry says so. The default does not move on this pair.
+- **Result: SELECTED.** Shuffled, the two-payment field found **0.027** of its twin (15,643 against 570,567; size 17+ 0.002) on 1.71x
+  the ticks with 0.52x the creatures.
