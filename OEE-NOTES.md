@@ -32634,3 +32634,9 @@ the field reading follows.
   0.97x the ticks and found **0.84x** (260,264 against 309,495; size 17+ 0.72) with an identical engine. So one pair of fields swings
   by about a sixth on nothing: #470's 0.82 is inside that, and nothing can be said about its field speed from one pair. #466's eight
   pairs (1.45-2.35, all ahead) are well outside it. **A single field pair cannot carry an effect under about 1.2x either way.**
+
+### #471 — THE EPOCH'S LENGTH (`TASK_EPOCHN`, 50, never varied before): design only, 50 stays
+A creature is paid at most once an epoch and a published word can be read only within it. Node, seeds 11-13, 6,000 ticks
+(`out-epoch/`): epoch 125 found 18,099 / 17,371 / 19,100 against 50's 93,938 / 71,828 / 108,878 (4-6x less, 3 of 3); epoch 20 found
+66,254 / 172,238 / 106,908 (0.70, 2.40, 0.98) on 2.7x the payments and larger populations. **A long epoch is far worse; a short one
+has no direction a node sweep can see** (#397). The default stays 50 and the knob is kept (byte-identical at 50) for a field test.
