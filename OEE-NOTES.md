@@ -32604,3 +32604,8 @@ cap 0 against the shipped cap 1, F 248,300 / 237,104 (1.05), 261,648 / 267,689 (
   is 1.28-1.70x (median about 1.5) against finds of 1.75x, so most of the gain is more creature-ticks (#419: finds per creature-tick
   are about constant), with a residue of about 1.15x. I wrote the wrong version from the tick ratio alone. What stays open is why
   #467, which also cut a sixth of the tick, bought nothing.
+- **Answered at once from the samples: both cuts DID buy creature-ticks, and finds per creature-tick fell.** #467's arm ran 1.09-1.15x the
+  creature-ticks of its twin and found 0.90-1.30x; cap 0 ran 1.06-1.29x and found 0.97-1.05x. So the amplitude scan, and one
+  encounter's pair VM with its predation, each earn about what they cost: removing either makes a creature-tick cheaper and less
+  productive by about the same factor. #466 is different in kind: going from ten encounters to one bought 1.5x the creature-ticks at
+  no loss per creature-tick. **The lever this leaves is a speed-up that removes nothing**, since then a creature-tick cannot get worse.
