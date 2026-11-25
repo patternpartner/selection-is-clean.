@@ -32647,3 +32647,10 @@ has no direction a node sweep can see** (#397). The default stays 50 and the kno
 - **Result: SELECTED.** The shuffled field found **0.037** of its twin at 20 minutes (9,330 against 255,529), and none of size 17+,
   on 1.76x the ticks with 0.34x the creatures. What the cap-1 world finds is selected, more sharply than #397's ground (0.086) or
   #457c's kept discoveries (0.067).
+
+### #472 — TWO PAYMENTS AN EPOCH (`TASK_PAYS`): node 6 of 6 ahead, a registered field set
+A creature is paid at most once an epoch, and about 70% of payments are for functions never paid before, so that rule bounds the
+count; #471's short epoch raised payments but also shortened how long a word can be read. `TASK_PAYS` (1, byte-identical `5875f42a`)
+lets a creature take up to n payments an epoch with the epoch kept at 50. Node, seeds 11-13, 6,000 ticks (`out-pays/`): two payments
+110,673 / 126,180 / 167,359 against 93,938 / 71,828 / 108,878 (1.18, 1.76, 1.54); four 113,136 / 344,469 / 158,910. Registered set of 8
+field pairs for two payments, `PREREG-pays.md`, running.
