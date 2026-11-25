@@ -32609,3 +32609,10 @@ cap 0 against the shipped cap 1, F 248,300 / 237,104 (1.05), 261,648 / 267,689 (
   encounter's pair VM with its predation, each earn about what they cost: removing either makes a creature-tick cheaper and less
   productive by about the same factor. #466 is different in kind: going from ten encounters to one bought 1.5x the creature-ticks at
   no loss per creature-tick. **The lever this leaves is a speed-up that removes nothing**, since then a creature-tick cannot get worse.
+
+### #469 — an early exit in the hottest line: slower, reverted
+The trait-distance sum in `applyEntropy`'s neighbour scan is 14.6% of a node tick's samples (line-level `--cpu-prof`). It feeds only
+two comparisons, so it can stop once they are decided (a sum of squares only grows): byte-identical on five worlds (seeds 11-13 with
+TASKS, 3 and 5 without, 3,000 ticks). But it ran 4-5% SLOWER (seed 12, 4,000 ticks: 88.9 and 90.5 s against 85.4 and 85.7 s): with
+five trait dimensions the branch in the loop costs more than the terms it skips. Reverted. The scan is hot because of how many pairs
+it visits, not how long each takes; a cheaper tick here means fewer pairs, and #467 showed that changes the world.
