@@ -32672,3 +32672,5 @@ field pairs for two payments, `PREREG-pays.md` (`out-pays-set/`, `analyse-pays.j
   a creature that had been paid sent its next new words to the ground unpaid (#457), and now the second one is paid.
 - substrate 264/0 at 40, 900, default and `FOUND=0`; slot-test 15/0, pop-test 11/11, open-save-test 6/6.
 - Not measured: the shuffle control at two payments, past 20 minutes, three or more payments in a field (node had four ahead too).
+- **Shuffle control at two payments, written before it runs** (`out-pays-shuffle/`, one pair): under 0.2 of its twin, selected; 0.5 or
+  more, much of the gain comes without selection and this entry says so. The default does not move on this pair.
