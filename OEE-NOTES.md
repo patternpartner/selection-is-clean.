@@ -32717,3 +32717,21 @@ middle doses are noise at this resolution; no limit is a direction. `PREREG-pays
   but depth 0.55-0.69 (#473). Somewhere past four the price on breadth stops paying for depth. Not measured: 6 or 8 in a field.
 - Chained, 1 -> 2 -> 4 is about 2.8x the distinct functions a field finds in 20 minutes; with #466 about 4.9x the field this session
   started from. Not measured directly.
+
+### #475 — EIGHT PAYMENTS AN EPOCH (`TASK_PAYS` 4 -> 8): SHIPPED, and the dose search ends here
+`PREREG-pays8.md`; prediction written before pair 1: count about 1.2x, size 17+ near 0.9, may fail the guard. **The depth half was
+wrong.** 20-minute pairs (`out-pays8-set/`):
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Four payments (shipped) | 752,593 | 951,301 | 735,941 | 783,037 | 796,540 | 807,062 | 774,173 | 833,229 |
+| Eight payments | 798,552 | 1,048,527 | 1,217,404 | 1,038,532 | 965,171 | 1,124,049 | 827,837 | 895,672 |
+| Ratio at 20 min | 1.06 | 1.10 | 1.65 | 1.33 | 1.21 | 1.39 | 1.07 | 1.07 |
+| Size 17+ ratio | 0.69 | 0.95 | 1.66 | 1.34 | 1.35 | 1.43 | 0.90 | 1.11 |
+
+- **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.16x, size 17+ 1.22x**, at about the same ticks and creatures (0.94-1.14 / 0.99-1.03).
+  `TASK_PAYS` is 8; 4, 2 or 1 restore the earlier worlds.
+- **The dose curve, each step against the last: 1.93x, 1.46x, 1.16x.** The next doubling would most likely sit inside one field pair's
+  noise (an A/A pair read 0.84), and no limit lost the depth (#473, against two). The search stops at eight: a set that can only
+  read inside its own noise floor is not worth three hours. Chained 1 -> 8: about 3.3x; with #466 about 5.7x the field this session
+  started from (not measured directly).
