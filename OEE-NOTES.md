@@ -32630,3 +32630,7 @@ the field reading follows.
   speed-ups that did not show in a field. Kept (it changes no world). **But it raises a question about the instrument**: in every
   pair the base browser launches first and the copy second, and the copy ran more ticks in #466 (1.10-1.25x), #467 (1.09-1.15x) and
   here (1.07x). An A/A pair (the copy differs by a comment) asks whether the second field is favoured.
+- **The A/A pair (`out-aa/`, the copy differs by a comment): no launch-order bias, and a noise floor.** The second-launched field ran
+  0.97x the ticks and found **0.84x** (260,264 against 309,495; size 17+ 0.72) with an identical engine. So one pair of fields swings
+  by about a sixth on nothing: #470's 0.82 is inside that, and nothing can be said about its field speed from one pair. #466's eight
+  pairs (1.45-2.35, all ahead) are well outside it. **A single field pair cannot carry an effect under about 1.2x either way.**
