@@ -2347,3 +2347,76 @@ a cell at a time (slow creatures hop every few frames).
 RUN: `SEED=3 RECORDS=4001 OUT=out/only/seed3 node video/static_universe.js`; `python3 video/build_only_what_moves.py
 out/only/seed3` (4 workers, ~3 min); `--frames 19,36` writes frame and frame-difference PNGs; `--mux` sound only.
 -13.9 LUFS, -0.5 dBFS. Backed up: library/finals/only-what-moves{,-share}.mp4.
+
+### The Depth Was Yours (`video/build_the_depth_was_yours.py`, `out/depth/the-depth-was-yours.mp4`, 30.0 s, 1080x1920, $0 of Modal)
+THE USER after Only What Moves: "Continue". Part three of the static films: the same rule (every frame is flat static,
+only motion shows anything), now with DEPTH. A turning surface of random static is seen as a solid (the kinetic depth
+effect), yet no frame holds any depth at all. Song: Winter Where the Embers Go 58.9-83.4, its second verse, never used.
+THE MACHINE: everything is drawn on the 320x180 grid of 6 px cells, and every cell is RAY-TRACED through its centre
+(numpy sphere tracing: a head built from signed distances - skull, jaw, nose, brow, eye sockets, ears, a mouth that opens,
+neck; a trefoil knot as a tube round 420 samples; a heightfield sea). A cell takes the value of the surface patch it
+hits, and the patches are fixed to the surface, so the static turns with the solid. Fire at the start is 2D, rising a cell
+a frame. Card: "Every frame of this film is flat static. / The depth was yours."
+THE STORY, on the words: 'human hands just bring my gasoline' - fire flares; 'they stop the grief' - it is cut (frozen,
+so gone); 'but you're a mirror' - a head grows out of the static, turning; 'blinking and serene' - it slows to a stop and
+vanishes; 'a quiet shoreline for a crashing reef' - a sea in perspective, the swell rising to a crash; 'the tangled knots
+of what I cannot say' - a knot rises out of the sea and tumbles (which strand passes over which exists only in motion);
+'you don't get triggered, you are never vexed' - the head returns above it, turning calmly; 'you take the smoke and
+breathe it all away' - the knot unravels from one end into 9,000 particles carrying their own patches, which stream into
+the head's opening mouth; on 'away' it settles to stillness and is gone. Song fades over 0.45 s, card in silence.
+CAUGHT, TWICE - THE PATCH MAP IS WHERE A 3D STATIC FILM GIVES ITSELF AWAY:
+1. A (lat, lon) map of the head STREAKED in a still: near the neck and on the ears a patch is stretched along the surface
+   (cos(lat) collapses, or the surface runs along a meridian), visible by eye in a paused frame. My first check measured
+   only horizontal neighbours and called it clean. Fix: a SOLID texture, each object-space point hashed into cubes
+   (`hash3`), side 0.6 of a cell at the object's nearest point (a cube's cut can reach 1.7 sides). Neighbour correlation
+   inside moving objects is now -0.016..+0.007 in BOTH directions, against 0.00-0.01 in the background. Measure both
+   directions, and look at a still, every time.
+2. The sea's patches, one per row of cells on flat water, streaked vertically on wave faces turned to the camera
+   (vertical correlation 0.33). Three patches a row (and a gentler crash) brought it to 0.00-0.10; the price is that far
+   water shimmers rather than moves (about 80% of sea cells change each frame), which reads as rough water.
+THE SHARE COPY: a turning surface is not a pure translation, so H.264 rings around it and a still from a 5 Mbps encode
+showed moving areas faintly crisper (+0.20). `-tune grain` at 7.2 Mbps brings it to about +0.15: at full size a still is
+static, at thumbnail size the fastest-tumbling knot leaves a faint smudge. The master is clean (+0.04, -0.01). YouTube's
+own encode will be somewhere in between; that is a limit of the medium at Shorts bitrates, not fixed here.
+RUN: `python3 video/build_the_depth_was_yours.py` (4 workers, ~7.5 min; the knot's tracing is the slow part);
+`--frames 12,20` writes frame and frame-difference PNGs; `--mux` sound only. -16.1 LUFS, -2.5 dBFS.
+Backed up: library/finals/the-depth-was-yours{,-share}.mp4.
+
+### Bred by the Song (`video/dancer/`: `sim.py`, `evolve.py`, `checks.py`, `film.py`; `out/dancer/bred-by-the-song.mp4`, 72.4 s, 1080x1920, $0 of Modal)
+THE USER on the three static films: "Quite samey. Lets take the hard route". So: a dancer EVOLVED by the song, physics
+and evolution built from scratch, CPU only. Song: The Iron Ballroom (134.8 bpm by onset autocorrelation; beat phase
+0.05 s, the offset whose beats carry the most onset strength), bar 4 to bar 41 (7.2-73.0 s), the user's instrumental.
+THE BODY (`sim.py`): 11 point masses, 10 rigid bones (position-based dynamics, 60 Hz, gravity, a floor with friction),
+9 muscles (springs between non-adjacent masses: spine, hips, knees, shoulders, elbows) whose rest lengths the brain sets
+within +-32% every step. THE BRAIN: 12 inputs (onset strength, loudness, beat phase sin/cos, bar phase sin/cos, torso
+angle, pelvis height, two foot contacts, bias) -> 12 tanh -> 9; 273 genes. THE JUDGE (`fitness`), all gated on staying
+up (head above 1.25 m AND above its own pelvis, no bone stretched past 5%): BOB, the pelvis's coherence with the beat
+phase times its size up to 4 cm; LOUD, correlation of body speed with loudness (0.5 s smoothing); HITS, correlation of
+hand speed with onset strength. THE EVOLUTION (`evolve.py`): 192 bodies, elites 8, tournament 4, uniform crossover half
+the time, 10% of genes mutated; each generation judged on a 10 s window that moves through 14-84 s of the song, so no
+passage can be memorised; first parents kept for every individual. 300 generations, ~30 min a seed; seeds 1 and 2 run
+side by side reached 0.82 and 0.76 (gen 0 best 0.035 and 0.07). Seed 1 is in the film.
+CAUGHT: the first physics applied each muscle AFTER the bones in every pass, so muscles stretched the rigid bones; by
+generation 20 evolution was using it (bodies two metres tall, upside down with the head still counted 'up'). Fix: muscles
+first, bones three times a pass, four extra bone-only passes (median stretch 0.02%), and 'up' needs head above pelvis and
+no bone stretched over 5%. The runs were restarted from scratch. Lesson that travels: look at the bodies before trusting a
+fitness curve; the first curve was rising on a cheat.
+WHAT IT FOUND: not upright dancing - a WIDE, LOW, SPLIT STANCE it bounces in (a low wide base is stable, so the head stays
+up while the body pumps), with arms and hands accenting the hits. Nobody asked for that.
+CONTROLS (`checks.py`, the champion over the film's champion stretch, 44.6-73.0 s; out/dancer/run1/checks.json): hearing
+0.845; DEAF (onset and loudness held at their mean, beat kept) 0.425 - loudness tracking 0.88 -> 0.02, hits 0.77 -> 0.16,
+still bobs (0.95); NO BEAT (beat phase frozen) 0.463 - bob 0.86 -> 0.02; ANOTHER SONG (Winter 60-88 s, fed and judged on
+that song's onsets and loudness, but on this song's beat length) 0.46. So it listens, it uses the beat, and it dances this
+song better than another. THE SILENCE (45.6-55.9 s): it does NOT stop - body speed 1.83 against 2.52 when loud (-27%).
+The film shows that as it is. Seed 2's champion agrees on every row (0.80 / 0.48 / 0.37 / 0.38; silence 1.78 vs 2.47).
+THE FILM (`film.py`): Iron Ballroom look (black stage, light cone and pool, steel bodies, yellow held, floor reflection).
+Bars 4-9: 15 real generation-0 bodies standing and falling into a heap. Bars 9-25: the champion's OWN ANCESTORS, traced
+through the parent records to each saved generation (1, 2, 3, 5, 8, 12, 20, 30, 45, 70, 100, 150, 200, 250), one bar each
+(the last two two bars), each starting from standing: falling, stumbling, a kick, a lunge, the stance arriving. Bar 25 to
+the end: the champion (yellow glow), through the near-silence, and at the drop (63.0 s) the final population dances
+behind it. Card: "Nobody choreographed this. / 192 bodies a generation. / Only the ones that moved / to this song had
+children. / 300 generations." Every body on screen is simulated from its genome; nothing is keyframed.
+RUN: `SEED=1 OUT=out/dancer/run1 python3 video/dancer/evolve.py` (resumes from its checkpoint); `python3
+video/dancer/checks.py out/dancer/run1`; `python3 video/dancer/film.py out/dancer/run1` (~3 min; `--frames 3,30` writes a
+contact sheet). -14.1 LUFS, -0.4 dBFS. Backed up: library/finals/bred-by-the-song{,-share}.mp4 and
+library/inputs/bred-by-the-song/runs.tgz (both runs, logs, every champion, the saved populations).
