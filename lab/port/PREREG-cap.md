@@ -13,3 +13,9 @@ node counts are mostly draw order).
 - **SHIP** if the median F ratio is above 1.00 AND at least 7 of 8 are ahead AND the median size-17+ ratio is at least 0.90: the cap
   becomes 1 (everywhere: it is a constant, not a TASKS knob, and the non-TASKS world changes with it; said here, as the template asks).
 - **Otherwise REMOVED** (the constant stays 10). Analysis: `lab/port/analyse-cap.js`, written now.
+
+## Amendment (after pair 2, before pair 3 counted): the horizon is 20 minutes
+The container restarted three times in 90 minutes (about 00:30, 01:04, 01:28 UTC), each killing the running pair; one died 22 minutes in.
+A 25-minute pair does not fit between restarts. From pair 3 on, pairs run `SECS=1200`, and EVERY pair (1 and 2 included) is ruled on
+F at its sample nearest t = 1200 s, not its last. Pairs 1 and 2 at 20 minutes: 1.68 and 2.35 (at 25: 1.77 and 2.16), so the change
+does not move what has been seen. Everything else in the rule stands.
