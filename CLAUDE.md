@@ -318,6 +318,9 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   The shuffle control in a field: 0.037 of its twin (selected). **Most of the doubling is creature-ticks** (1.28-1.70x more); `#467`
   and `#468` (the amplitude scan off, no encounters) bought creature-ticks too and lost as much per creature-tick, so what is left is
   a speed-up that removes nothing. **One field pair swings by a sixth on nothing** (an A/A pair: 0.84): one pair cannot carry under 1.2x.
+  **`#474`: FOUR PAYMENTS, SHIPPED (`TASK_PAYS` 4)**: against two, 8 of 8 ahead, median 1.46x, size 17+ 1.28x. **`#473`: no limit
+  doubled the count again and HALVED size 17+** (0.55-0.69, three pairs; not shipped): the limit is a price on breadth, and the size
+  guard is what caught it. The shuffle control at two payments: 0.027 (selected).
   **`#472`: TWO PAYMENTS AN EPOCH, SHIPPED (`TASK_PAYS` 2, was 1).** A creature was paid once an epoch and its next new words went
   to the ground unpaid. Allowing two: 8 of 8 field pairs ahead, median 1.93x at 20 minutes, size 17+ 1.55x, on 0.67-0.77x the ticks,
   so about 2.2x the finds PER CREATURE-TICK (not speed, unlike `#466`). `TASK_PAYS=1` restores. Node design said the same (6 of 6).

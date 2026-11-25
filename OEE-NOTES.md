@@ -32696,3 +32696,22 @@ middle doses are noise at this resolution; no limit is a direction. `PREREG-pays
   count and depth both rose (1.93x, 1.55x); paid for every new word, count rises as much again but the world spends itself on cheap
   functions and finds about half the deep ones. **The payment limit is a price on breadth**, and two is on the right side of it. Where
   between two and unlimited depth turns over is not measured (node four and eight were noise).
+
+### #474 — FOUR PAYMENTS AN EPOCH (`TASK_PAYS` 2 -> 4): SHIPPED
+`PREREG-pays4.md` (prediction written before pair 1: count ahead, size 17+ near 1.0); 20-minute pairs (`out-pays4-set/`):
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Two payments (shipped) | 544,865 | 460,391 | 574,709 | 570,974 | 557,843 | 492,877 | 519,332 | 640,327 |
+| Four payments | 782,067 | 683,385 | 769,740 | 856,605 | 769,671 | 851,659 | 1,019,405 | 847,948 |
+| Ratio at 20 min | 1.44 | 1.48 | 1.34 | 1.50 | 1.38 | 1.73 | 1.96 | 1.32 |
+| Size 17+ ratio | 1.06 | 0.95 | 1.31 | 1.34 | 1.24 | 1.48 | 2.02 | 0.92 |
+| Ratio at 5 min | 2.10 | 2.82 | 1.36 | 1.98 | 1.43 | 1.91 | 2.79 | 1.90 |
+| Ticks / creatures | 0.80 / 1.04 | 0.73 / 1.06 | 0.78 / 1.03 | 0.79 / 1.01 | 0.81 / 1.02 | 0.71 / 1.03 | 0.87 / 1.03 | 0.79 / 1.08 |
+
+- **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.46x, size 17+ 1.28x, ahead at five minutes in all eight.** On 0.71-0.87x the ticks:
+  about 1.8x the new functions per creature-tick. `TASK_PAYS` is 4; 2 restores #472's world, 1 the world before.
+- **The dose curve, each step against the last:** 1 -> 2: 1.93x (depth 1.55x); 2 -> 4: 1.46x (depth 1.28x); 2 -> no limit: 1.36-2.05x
+  but depth 0.55-0.69 (#473). Somewhere past four the price on breadth stops paying for depth. Not measured: 6 or 8 in a field.
+- Chained, 1 -> 2 -> 4 is about 2.8x the distinct functions a field finds in 20 minutes; with #466 about 4.9x the field this session
+  started from. Not measured directly.
