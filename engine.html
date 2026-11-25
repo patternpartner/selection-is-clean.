@@ -10742,7 +10742,8 @@ const __tk=(n,d)=>{ const v=(typeof globalThis!=='undefined')?globalThis[n]:unde
 // inputs gets its exact four-input formula size (so it pays what it pays at four inputs); a function of all five gets the best
 // Shannon split, sz4(lo)+sz4(hi)+4, an UPPER bound. Default 4: today's world, byte-identical.
 const TASK_IN=(TASKS_ON&&(__tk('__TASK_IN',4)|0)===5)?5:4;
-const TASK_EPOCH=50, TASK_F=0.2, TASK_NF=(TASK_IN===5)?131072:65536, TASK_OP0=CORE_OPCODES+MAX_BOUND_OPCODES-5;
+const TASK_EPOCH=Math.max(5,__tk('__TASK_EPOCHN',50)|0), TASK_F=0.2,   // #471: TASK_EPOCHN, the epoch in ticks (50, never varied before)
+  TASK_NF=(TASK_IN===5)?131072:65536, TASK_OP0=CORE_OPCODES+MAX_BOUND_OPCODES-5;
 const TASK_CAP=__tk('__TASK_CAPM',400)/1000, TASK_RATE=__tk('__TASK_RATEM',20)/1000, TASK_TROPH=__tk('__TASK_TROPHP',50)/100;
 const TASK_SUN=__tk('__TASK_SUNP',25)/100, TASK_DRAWP=__tk('__TASK_DRAWP',25)/100;
 // #353 - TASK_FOUNDER=1 (the package under test, PREREG-founder.md): READ that MISSES (no neighbour in the sector published this epoch)
