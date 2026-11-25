@@ -7,3 +7,6 @@ where depth may turn over. **Prediction, written now:** count ahead by about 1.2
   short is void and rerun. Stops when SHIP is unreachable (two behind on count, or the size-17+ guard cannot pass).
 - **SHIP** if the median F ratio at 20 minutes is above 1.00 AND at least 7 of 8 ahead AND the median size-17+ ratio at least 0.90.
   **Otherwise** 4 stays. Analysis: `analyse-pays8.js`.
+
+## Result
+SHIP: 8 of 8 ahead, median 1.157, size-17+ median 1.223. `TASK_PAYS` defaults to 8. The depth half of the prediction was wrong.

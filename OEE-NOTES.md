@@ -32730,7 +32730,8 @@ wrong.** 20-minute pairs (`out-pays8-set/`):
 | Size 17+ ratio | 0.69 | 0.95 | 1.66 | 1.34 | 1.35 | 1.43 | 0.90 | 1.11 |
 
 - **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.16x, size 17+ 1.22x**, at about the same ticks and creatures (0.94-1.14 / 0.99-1.03).
-  `TASK_PAYS` is 8; 4, 2 or 1 restore the earlier worlds.
+  `TASK_PAYS` is 8; 4, 2 or 1 restore the earlier worlds. Digest `1b574e9a` (`TASK_PAYS=4`: `31a40077`). substrate 264/0 at 40, 900,
+  default, `FOUND=0`; slot-test 15/0, pop-test 11/11, open-save-test 6/6.
 - **The dose curve, each step against the last: 1.93x, 1.46x, 1.16x.** The next doubling would most likely sit inside one field pair's
   noise (an A/A pair read 0.84), and no limit lost the depth (#473, against two). The search stops at eight: a set that can only
   read inside its own noise floor is not worth three hours. Chained 1 -> 8: about 3.3x; with #466 about 5.7x the field this session
