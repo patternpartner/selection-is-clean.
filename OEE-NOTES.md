@@ -32547,4 +32547,25 @@ field's: there `render` is 9% and `processGrid` 12% self.)
 - Node, cap 1 against 10 (seen seeds, design): 24,769 / 10,742 functions (seed 11, 3,000 ticks), 71,828 / 50,057 and 108,878 / 59,551
   (seeds 12-13, 6,000 ticks); populations larger (1,132-1,614 against 776-1,015), ms a tick about level. Fewer encounters means less
   predation and more creatures, so the tick does not get cheaper in node; whether the field's does is what the set reads.
-- Registered set of 8 field pairs, `PREREG-cap.md`, running.
+- Registered set of 8 field pairs, `PREREG-cap.md` (`out-cap-set/`, `analyse-cap.js`). **Amended after pair 2, before pair 3 counted:**
+  the container restarted three times in 90 minutes and killed three pairs (one 22 minutes in), so every pair is ruled at 20 minutes
+  (pairs 1-2 read 1.68 and 2.35 at 20, 1.77 and 2.16 at 25; the amendment moved nothing seen).
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Shipped (cap 10) | 235,822 | 149,387 | 210,517 | 178,141 | 163,730 | 164,885 | 180,353 | 192,073 |
+| Cap 1 | 395,397 | 350,341 | 305,225 | 374,793 | 359,139 | 300,034 | 287,742 | 317,830 |
+| Ratio at 20 min | 1.68 | 2.35 | 1.45 | 2.10 | 2.19 | 1.82 | 1.60 | 1.66 |
+| Size 17+ ratio | 1.81 | 1.97 | 1.17 | 1.81 | 1.56 | 2.49 | 1.53 | 1.48 |
+| Ratio at 5 min | 1.42 | 2.52 | 1.79 | 2.26 | 3.23 | 2.46 | 2.01 | 1.72 |
+| Ticks / creatures | 1.18 / 1.28 | 1.24 / 1.03 | 1.17 / 1.38 | 1.12 / 1.36 | 1.10 / 1.34 | 1.25 / 1.30 | 1.18 / 1.44 | 1.16 / 1.28 |
+
+- **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.75x, size 17+ 1.68x, ahead from the first five minutes.** `INTERACTION_CAP` is 1; 10
+  restores the world before (digest `3738d7ff` again with the constant set back). New default digest `5875f42a` (seed 11, `MIND=20`,
+  2,000 ticks); the world without TASKS changes too (seed 3: `887fb151` -> `19a9b957`), as registered. substrate 264/0 at 40, 900,
+  default and `FOUND=0`; slot-test 15/0, pop-test 11/11, open-save-test 6/6.
+- **In a field the cap makes the tick cheaper AND the world bigger** (1.10-1.25x the ticks with 1.03-1.44x the creatures), where node
+  said the tick did not get cheaper: #395b's lesson the other way round. Why it finds more is not separated: fewer pair-VM runs (cheaper
+  ticks), less predation (more creatures), or both. Neither is the computing; half the field's time was spent on work no payment reads.
+- **What moved, against which number:** distinct functions found in a running field by 20 minutes, 1.75x. Not measured: past 20
+  minutes, a phone, the shuffle control in a field, caps of 2-5.

@@ -309,6 +309,12 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   either way; the formula size (`#402`'s `D`) is the remaining candidate. The cut meant the drain charged half of all payments
   nothing; `TASK_KLIN` (lineage through unpaid words, drain 25% -> 45% of income) was REMOVED after 8 field pairs (median 1.05, ahead
   6 of 8, size 17+ 0.94): the drain's coverage is not what its field dose-response is about.
+  **`#466`: ONE ENCOUNTER A TICK, SHIPPED (`INTERACTION_CAP` 10 -> 1).** The pair loop (`processGrid`: entrainment, the pair VM, the cluster
+  VM) was 49% of a field universe's tick and runs no task op. With one encounter a creature a tick a field ran 1.10-1.25x the ticks
+  with more creatures and found more in 8 of 8 pairs (median 1.75x at 20 minutes, size 17+ 1.68x, ahead at 5). A constant: the world
+  without TASKS changed too. **Profile the field, not node** (`lab/port/field-phase.js`): node put `processGrid` at 12% self and
+  said the cap made no tick cheaper. **Container restarts came every 23-34 minutes that day**: a 25-minute pair did not fit, so
+  that set is ruled at 20 (amended before pair 3 counted).
   **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
   catches it and the world changes; check a probe's counts against the baselines before reading it.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over

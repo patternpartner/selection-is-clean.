@@ -19,3 +19,6 @@ The container restarted three times in 90 minutes (about 00:30, 01:04, 01:28 UTC
 A 25-minute pair does not fit between restarts. From pair 3 on, pairs run `SECS=1200`, and EVERY pair (1 and 2 included) is ruled on
 F at its sample nearest t = 1200 s, not its last. Pairs 1 and 2 at 20 minutes: 1.68 and 2.35 (at 25: 1.77 and 2.16), so the change
 does not move what has been seen. Everything else in the rule stands.
+
+## Result
+SHIP: 8 of 8 ahead, median 1.748, size-17+ median 1.682 (`analyse-cap.js`). `INTERACTION_CAP` is 1.

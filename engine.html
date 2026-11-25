@@ -12703,7 +12703,11 @@ const pNeighborCount=new Int16Array(CAP);
 // number of partners — not the radius — relieves both at once. A substrate ceiling, not
 // a taste: raise it toward Infinity to recover exact pre-cap dynamics. Sampling which
 // neighbours get the budget stays unbiased (the existing random interaction-driver coin).
-const INTERACTION_CAP=10;
+// #466 SHIPPED (lab/port/PREREG-cap.md): ONE ENCOUNTER A TICK, was 10. The pair loop was half a field universe's tick and runs no task op
+// (task ops run only in the solo VM); with one encounter a creature a tick a field ran 1.10-1.25x the ticks with 1.03-1.44x the
+// creatures and found more distinct functions in 8 of 8 pairs (median 1.75x at 20 minutes, size 17+ 1.68x). A constant, so the
+// world without TASKS changes too. 10 restores the world before.
+const INTERACTION_CAP=1;
 const pIntCount=new Int16Array(CAP); // interactions particle engaged this tick (reset in processGrid)
 // Pe37: honest loop-closure metric. Pe36's util was avgEmit * signalInfluence — emission
 // weighted by a genome knob, not a measurement of whether anything LISTENS. This counts
