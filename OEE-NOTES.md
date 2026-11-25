@@ -32644,3 +32644,6 @@ has no direction a node sweep can see** (#397). The default stays 50 and the kno
   `TASK_SHUFFLE=1` (`out-cap-shuffle/`). Shuffled under 0.2 of its twin: what the cap-1 world finds is selected, as #397 (0.086) and
   #457c (0.067) were. 0.5 or more: much of #466's gain comes without selection, and the entry says so. The default does not move on
   this pair either way.
+- **Result: SELECTED.** The shuffled field found **0.037** of its twin at 20 minutes (9,330 against 255,529), and none of size 17+,
+  on 1.76x the ticks with 0.34x the creatures. What the cap-1 world finds is selected, more sharply than #397's ground (0.086) or
+  #457c's kept discoveries (0.067).

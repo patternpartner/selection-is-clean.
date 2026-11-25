@@ -315,6 +315,9 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   without TASKS changed too. **Profile the field, not node** (`lab/port/field-phase.js`): node put `processGrid` at 12% self and
   said the cap made no tick cheaper. **Container restarts came every 23-34 minutes that day**: a 25-minute pair did not fit, so
   that set is ruled at 20 (amended before pair 3 counted).
+  The shuffle control in a field: 0.037 of its twin (selected). **Most of the doubling is creature-ticks** (1.28-1.70x more); `#467`
+  and `#468` (the amplitude scan off, no encounters) bought creature-ticks too and lost as much per creature-tick, so what is left is
+  a speed-up that removes nothing. **One field pair swings by a sixth on nothing** (an A/A pair: 0.84): one pair cannot carry under 1.2x.
   **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
   catches it and the world changes; check a probe's counts against the baselines before reading it.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over
