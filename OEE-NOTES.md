@@ -32640,3 +32640,7 @@ A creature is paid at most once an epoch and a published word can be read only w
 (`out-epoch/`): epoch 125 found 18,099 / 17,371 / 19,100 against 50's 93,938 / 71,828 / 108,878 (4-6x less, 3 of 3); epoch 20 found
 66,254 / 172,238 / 106,908 (0.70, 2.40, 0.98) on 2.7x the payments and larger populations. **A long epoch is far worse; a short one
 has no direction a node sweep can see** (#397). The default stays 50 and the knob is kept (byte-identical at 50) for a field test.
+- **#466's shuffle control in a field, written before it runs:** one pair, the shipped cap-1 world against the same with
+  `TASK_SHUFFLE=1` (`out-cap-shuffle/`). Shuffled under 0.2 of its twin: what the cap-1 world finds is selected, as #397 (0.086) and
+  #457c (0.067) were. 0.5 or more: much of #466's gain comes without selection, and the entry says so. The default does not move on
+  this pair either way.
