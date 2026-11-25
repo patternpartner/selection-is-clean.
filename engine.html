@@ -10808,6 +10808,8 @@ const tW=TASKS_ON?new Uint32Array(CAP*4):null, tJ=TASKS_ON?new Uint32Array(CAP*4
 const tK=TASKS_ON?new Int32Array(CAP*16).fill(-1):null;   // per word, the keys of up to 4 clean read functions that fed it
 const tLast=TASKS_ON?new Uint32Array(CAP):null, tLastE=TASKS_ON?new Int32Array(CAP).fill(-1):null, tLastJ=TASKS_ON?new Uint32Array(CAP):null, tLastDm=TASKS_ON?new Uint32Array(CAP):null, tLastK=TASKS_ON?new Int32Array(CAP).fill(-1):null;
 const tIc=TASKS_ON?new Uint8Array(CAP):null, tPE=TASKS_ON?new Int32Array(CAP).fill(-1):null;
+// #472: TASK_PAYS, payments a creature may take an epoch (1). tPN counts them; it is read only when TASK_PAYS>1.
+const TASK_PAYS=Math.max(1,__tk('__TASK_PAYS',1)|0), tPN=TASKS_ON?new Uint8Array(CAP):null;
 const tRd=TASKS_ON?new Uint32Array(CAP*4):null, tRdE=TASKS_ON?new Int32Array(CAP*4).fill(-1):null, tRdI=TASKS_ON?new Uint8Array(CAP):null;
 const tCap=TASKS_ON?new Float64Array(TASK_NF):null, tRes=TASKS_ON?new Float64Array(TASK_NF):null;
 const tE=TASKS_ON?new Float64Array(TASK_NF):null, tN=TASKS_ON?new Uint32Array(TASK_NF):null;   // income and payments per function, cumulative
@@ -10870,7 +10872,7 @@ function taskTick(){   // once per tick, before the solo programs run: the epoch
 function taskBirth(i){ const o=i*4; tW.fill(0,o,o+4); tJ.fill(0,o,o+4); tDm.fill(0,o,o+4); tK.fill(-1,o*4,o*4+16); tLast[i]=0; tLastE[i]=-1; tLastJ[i]=0xFFFFFFFF; tLastDm[i]=0; tLastK[i]=-1;
   tIc[i]=0; tPE[i]=-1; tRdE.fill(-1,o,o+4); tRdI[i]=0; tRE[i]=-1; if(TASK_OPEN)oBirth(i); }
 function taskMove(w,r){ const a=w*4, b=r*4; for(let q=0;q<4;q++){ tW[a+q]=tW[b+q]; tJ[a+q]=tJ[b+q]; tDm[a+q]=tDm[b+q]; tRd[a+q]=tRd[b+q]; tRdE[a+q]=tRdE[b+q]; } for(let q=0;q<16;q++)tK[a*4+q]=tK[b*4+q];
-  tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tRdI[w]=tRdI[r]; tRx[w]=tRx[r]; tRy[w]=tRy[r]; tRE[w]=tRE[r]; tRT[w]=tRT[r]; if(TASK_OPEN)oMove(w,r); }
+  tLast[w]=tLast[r]; tLastE[w]=tLastE[r]; tLastJ[w]=tLastJ[r]; tLastDm[w]=tLastDm[r]; tLastK[w]=tLastK[r]; tIc[w]=tIc[r]; tPE[w]=tPE[r]; tPN[w]=tPN[r]; tRdI[w]=tRdI[r]; tRx[w]=tRx[r]; tRy[w]=tRy[r]; tRE[w]=tRE[r]; tRT[w]=tRT[r]; if(TASK_OPEN)oMove(w,r); }
 // the nearest living particle in sector s (of 8, world axes) within one interaction radius, from the cells sunStep listed this tick
 function taskNeighbour(i,s){ const fw=W/FIELD_W, fh=H/FIELD_H, cx=__cl(Math.floor(px[i]/fw),0,FIELD_W-1), cy=__cl(Math.floor(py[i]/fh),0,FIELD_H-1); let best=-1, bd=CELL*CELL;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ const x=cx+dx, y=cy+dy; if(x<0||y<0||x>=FIELD_W||y>=FIELD_H)continue;
@@ -11080,8 +11082,8 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(dirty!==0){ tEv.dirty++; return; }
   if(key===0||(m===5&&TASK_TRIV5.indexOf(key)>=0)){ tEv.trivial++; return; }
   if(m>5){ const h=1<<(m-6); let lo=0, hi=0xFFFFFFFF; for(let x=0;x<h;x++){ lo|=oF[x]; hi&=oF[h+x]; } if(lo===0&&hi===0xFFFFFFFF){ tEv.trivial++; return; } }   // a bare input past the fifth
-  if(tPE[i]===e){ if(TASK_GNEW&&tG!==null&&!seen5Has(key))groundNew(i,key,m,WD,e); return; } const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
-  tPE[i]=e; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
+  if(tPE[i]===e&&(TASK_PAYS===1||tPN[i]>=TASK_PAYS)){ if(TASK_GNEW&&tG!==null&&!seen5Has(key))groundNew(i,key,m,WD,e); return; } const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
+  if(tPE[i]!==e){ tPE[i]=e; tPN[i]=1; } else tPN[i]++; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); if(_gl)tEv.glowNew=(tEv.glowNew|0)+1; } tEv.paid++; if(_gl)tEv.glowPaid=(tEv.glowPaid|0)+1;
   if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
   if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
