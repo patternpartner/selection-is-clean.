@@ -32711,6 +32711,8 @@ middle doses are noise at this resolution; no limit is a direction. `PREREG-pays
 
 - **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.46x, size 17+ 1.28x, ahead at five minutes in all eight.** On 0.71-0.87x the ticks:
   about 1.8x the new functions per creature-tick. `TASK_PAYS` is 4; 2 restores #472's world, 1 the world before.
+  Digest `31a40077` (seed 11, `MIND=20`, 2,000 ticks); `TASK_PAYS=2` gives `c783cbbd`; without TASKS `19a9b957` (untouched). substrate
+  264/0 at 40, 900, default, `FOUND=0`; slot-test 15/0, pop-test 11/11, open-save-test 6/6.
 - **The dose curve, each step against the last:** 1 -> 2: 1.93x (depth 1.55x); 2 -> 4: 1.46x (depth 1.28x); 2 -> no limit: 1.36-2.05x
   but depth 0.55-0.69 (#473). Somewhere past four the price on breadth stops paying for depth. Not measured: 6 or 8 in a field.
 - Chained, 1 -> 2 -> 4 is about 2.8x the distinct functions a field finds in 20 minutes; with #466 about 4.9x the field this session
