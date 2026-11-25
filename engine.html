@@ -26370,9 +26370,12 @@ function processGrid(){
     // means it neither initiates nor is offered as a candidate, which is what makes the isolation
     // symmetric - an inactive particle is absent, not merely passive.
     if(__STIME&&!particleActive(i)){ __tickSkips++; continue; }
+    // #470: under REPL interferenceCreate returns at once, so once i has its INTERACTION_CAP encounters nothing more in its sweep
+    // can act (every encounter needs pIntCount[i]<cap, and the count only rises): the sweep stops there. Byte-identical.
+    if(REPL_ON&&pIntCount[i]>=_capK)continue;
     // #191: this particle's OWN reach, from its OWN genome, and a sweep wide enough to honour it.
     const _rI=reachOf(i), _rings=__REACH?reachRings(_rI):1;
-    for(let dy=-_rings;dy<=_rings;dy++)for(let dx=-_rings;dx<=_rings;dx++){
+    _pgSweep: for(let dy=-_rings;dy<=_rings;dy++)for(let dx=-_rings;dx<=_rings;dx++){
       const nnx=gx+dx,nny=gy+dy;
       if(nnx<0||nny<0||nnx>=gW||nny>=gH)continue;
       let j=grid[nny*gW+nnx];
@@ -26473,6 +26476,7 @@ function processGrid(){
             if(mg>genome.magneticThresh&&d>minD*2){const f=mg*0.0003/d;vx[i]-=ddx*f;vy[i]-=ddy*f;vx[j]+=ddx*f;vy[j]+=ddy*f}
           }
           if(d<minD*1.3&&d>0)interferenceCreate(i,j);
+          if(REPL_ON&&pIntCount[i]>=_capK)break _pgSweep;   // #470
         }
         j=pnext[j];
       }

@@ -32616,3 +32616,12 @@ two comparisons, so it can stop once they are decided (a sum of squares only gro
 TASKS, 3 and 5 without, 3,000 ticks). But it ran 4-5% SLOWER (seed 12, 4,000 ticks: 88.9 and 90.5 s against 85.4 and 85.7 s): with
 five trait dimensions the branch in the loop costs more than the terms it skips. Reverted. The scan is hot because of how many pairs
 it visits, not how long each takes; a cheaper tick here means fewer pairs, and #467 showed that changes the world.
+
+### #470 — THE PAIR SWEEP STOPS AT THE CAP (byte-identical, 13% faster in node)
+After #466 a creature has at most one encounter a tick, but `processGrid` still swept every neighbour of every creature, a square root
+each, to reach `interferenceCreate`, which under REPL returns at once. Every encounter needs `pIntCount[i] < cap` and the count only
+rises, so once a creature has its encounter nothing more in its sweep can act. Under REPL the sweep now stops there (or is skipped
+when the creature was already met as someone's partner). Byte-identical on five worlds at 3,000 ticks (seeds 11, 12 with TASKS and
+`MIND=20`, 13 with TASKS, 14 with the full engine `TASK_CORE=0`, 3 without TASKS); substrate 264/0 at 40, 900, default, `FOUND=0`.
+Node, seed 12, 4,000 ticks, alternated: 69.0 and 69.4 s against 78.9 and 80.8 s. **A node speed-up is not a field speed-up (#395b)**:
+the field reading follows.
