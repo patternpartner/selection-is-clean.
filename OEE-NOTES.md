@@ -32676,3 +32676,8 @@ field pairs for two payments, `PREREG-pays.md` (`out-pays-set/`, `analyse-pays.j
   more, much of the gain comes without selection and this entry says so. The default does not move on this pair.
 - **Result: SELECTED.** Shuffled, the two-payment field found **0.027** of its twin (15,643 against 570,567; size 17+ 0.002) on 1.71x
   the ticks with 0.52x the creatures.
+
+### #473 — NO PAYMENT LIMIT AN EPOCH (`TASK_PAYS` 255): node 3 of 3 ahead of two payments, a registered field set
+Node, seeds 11-13, 6,000 ticks, against the shipped two payments (110,673 / 126,180 / 167,359): four 1.02 / 2.73 / 0.95, eight 3.91 /
+1.37 / 0.93, **255 2.41 / 1.97 / 2.18** (266,297 / 248,149 / 364,982) on about 25x the payments, populations alike (`out-pays/`). The
+middle doses are noise at this resolution; no limit is a direction. `PREREG-pays255.md`, running.
