@@ -3,7 +3,7 @@
 // a WIDER word (as the first shipped version saved it, 32 words a table) and checks the keys again.
 //   SEED=12 OPEN_TICKS=6000 node lab/port/open-save-test.js   (its own budget: the smoke suite's TICKS=40 opens nothing)
 const fs=require('fs'), path=require('path'); const ROOT=path.join(__dirname,'..','..');
-process.env.TASKS='1'; process.env.MIND='20'; process.env.SEED='12';   // pinned: seed 12 with the mind on holds seven inputs by tick 6,000; a world that has not opened tests nothing
+process.env.TASKS='1'; process.env.MIND='20'; process.env.SEED='11';   // pinned: a world that has not opened tests nothing. Seed 12 held seven inputs by 6,000 until #475's eight payments, which delay opening (seed 12 held five); seed 11 opens by 6,000 under it
 require(path.join(ROOT,'harness-env.js')).applyKnobs(globalThis); require(path.join(ROOT,'harness-env.js'))(globalThis);
 const code=fs.readFileSync(path.join(ROOT,'engine.html'),'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 const Module=require('module'); const m=new Module('/tmp/open-save.js'); m.filename='/tmp/open-save.js'; m.paths=Module._nodeModulePaths('/tmp');

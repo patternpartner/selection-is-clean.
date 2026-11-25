@@ -32731,7 +32731,17 @@ wrong.** 20-minute pairs (`out-pays8-set/`):
 
 - **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.16x, size 17+ 1.22x**, at about the same ticks and creatures (0.94-1.14 / 0.99-1.03).
   `TASK_PAYS` is 8; 4, 2 or 1 restore the earlier worlds. Digest `1b574e9a` (`TASK_PAYS=4`: `31a40077`). substrate 264/0 at 40, 900,
-  default, `FOUND=0`; slot-test 15/0, pop-test 11/11, open-save-test 6/6.
+  default, `FOUND=0`; slot-test 15/0, pop-test 11/11, ~~open-save-test 6/6~~ **CORRECTED: open-save-test went 5/1 and I wrote 6/6
+  in the ship commit before reading it.** The failing row was its precondition: seed 12, pinned because it had opened by 6,000 ticks,
+  held five inputs under eight payments, so the five round-trip rows passed on a world that had not opened and tested nothing. The
+  test is re-pinned to seed 11 (opens to seven inputs by 6,000 under the new default): 6/6, on a world that opened.
+- **And that is a real cost the registered rule did not measure: eight payments DELAY OPENING.** At 20 minutes, universes at six
+  inputs: four-payment fields 18, 21, 20, 20 against eight-payment 8, 15, 14, 11 (pairs 1-4). Four against two showed no delay
+  (15/17, 9/13, 15/15, 14/19). More payments for functions that do not use every input keep the share that opens an input (half a
+  window's payments) down. The ship stands by its rule; #443 found a world held at a low input ceiling keeps finding at its unbounded
+  twin's rate (node, two seeds), which is the reason it may not matter. **Named follow-up: the long horizon** (a chained pair of 8
+  against 4 over 150 minutes, reading `OPEN.n` beside the count), and it decides only whether the opening rule should count payments
+  per creature instead of per payment.
 - **The dose curve, each step against the last: 1.93x, 1.46x, 1.16x.** The next doubling would most likely sit inside one field pair's
   noise (an A/A pair read 0.84), and no limit lost the depth (#473, against two). The search stops at eight: a set that can only
   read inside its own noise floor is not worth three hours. Chained 1 -> 8: about 3.3x; with #466 about 5.7x the field this session
