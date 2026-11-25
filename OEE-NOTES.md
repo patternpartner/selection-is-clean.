@@ -32653,4 +32653,22 @@ A creature is paid at most once an epoch, and about 70% of payments are for func
 count; #471's short epoch raised payments but also shortened how long a word can be read. `TASK_PAYS` (1, byte-identical `5875f42a`)
 lets a creature take up to n payments an epoch with the epoch kept at 50. Node, seeds 11-13, 6,000 ticks (`out-pays/`): two payments
 110,673 / 126,180 / 167,359 against 93,938 / 71,828 / 108,878 (1.18, 1.76, 1.54); four 113,136 / 344,469 / 158,910. Registered set of 8
-field pairs for two payments, `PREREG-pays.md`, running.
+field pairs for two payments, `PREREG-pays.md` (`out-pays-set/`, `analyse-pays.js`):
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Shipped (one payment) | 393,939 | 208,406 | 292,755 | 212,801 | 279,406 | 300,270 | 231,398 | 341,510 |
+| Two payments | 579,928 | 530,696 | 471,377 | 428,653 | 639,176 | 555,780 | 570,703 | 614,896 |
+| Ratio at 20 min | 1.47 | 2.55 | 1.61 | 2.01 | 2.29 | 1.85 | 2.47 | 1.80 |
+| Size 17+ ratio | 1.17 | 2.34 | 0.92 | 1.67 | 1.84 | 1.24 | 2.12 | 1.43 |
+| Ratio at 5 min | 1.67 | 6.05 | 3.15 | 6.49 | 2.06 | 2.39 | 5.69 | 2.33 |
+| Ticks / creatures | 0.69 / 1.17 | 0.69 / 1.11 | 0.70 / 1.21 | 0.69 / 1.15 | 0.69 / 1.08 | 0.73 / 1.32 | 0.67 / 1.22 | 0.77 / 1.10 |
+
+- **SHIPPED: 8 of 8 ahead (p 0.0039), median 1.93x, size 17+ 1.55x, ahead from five minutes.** `TASK_PAYS` is 2 in the open world;
+  `TASK_PAYS=1` restores the world before (digest `5875f42a`). New default `c783cbbd` (seed 11, `MIND=20`, 2,000 ticks); the world
+  without TASKS is untouched (`19a9b957`).
+- **Unlike #466 this is not speed.** The two-payment field ran 0.67-0.77x the ticks with 1.08-1.32x the creatures, about 0.8-0.9x the
+  creature-ticks, and found twice as much: **about 2.2x the new functions per creature-tick**. The once-an-epoch rule was the bound:
+  a creature that had been paid sent its next new words to the ground unpaid (#457), and now the second one is paid.
+- substrate 264/0 at 40, 900, default and `FOUND=0`; slot-test 15/0, pop-test 11/11, open-save-test 6/6.
+- Not measured: the shuffle control at two payments, past 20 minutes, three or more payments in a field (node had four ahead too).

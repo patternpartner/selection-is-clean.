@@ -9,3 +9,6 @@ kept at 50, node, seeds 11-13, 6,000 ticks (`out-pays/`, seen seeds, design): 1.
   (`lab/port/pays-set.sh`); a pair cut short is void and rerun. Stops when SHIP is unreachable (two behind); futility stop as before.
 - **SHIP** if the median F ratio at 20 minutes is above 1.00 AND at least 7 of 8 are ahead AND the median size-17+ ratio is at least
   0.90: the default becomes 2 wherever the open world runs. **Otherwise** it stays 1 and the knob goes. Analysis: `analyse-pays.js`.
+
+## Result
+SHIP: 8 of 8 ahead, median 1.933, size-17+ median 1.548. `TASK_PAYS` defaults to 2; 1 restores.
