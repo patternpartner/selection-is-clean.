@@ -32600,4 +32600,7 @@ cap 0 against the shipped cap 1, F 248,300 / 237,104 (1.05), 261,648 / 267,689 (
   visible in three pairs. Not shown NOT WORSE either (three pairs); the shipped value stays 1.
 - With #467: two cuts of the old physics that cost a tenth to a fifth of a tick each changed nothing measurable, where cutting ten
   encounters to one doubled the finds. What #466 removed was nine pair-VM runs a creature a tick, and the tick itself only got 1.1-1.25x
-  cheaper; **the doubling is not a speed effect**, and what it is remains open.
+  cheaper; ~~the doubling is not a speed effect~~ **CORRECTED, same entry: it mostly IS.** Ticks times creatures in #466's pairs
+  is 1.28-1.70x (median about 1.5) against finds of 1.75x, so most of the gain is more creature-ticks (#419: finds per creature-tick
+  are about constant), with a residue of about 1.15x. I wrote the wrong version from the tick ratio alone. What stays open is why
+  #467, which also cut a sixth of the tick, bought nothing.
