@@ -32569,3 +32569,23 @@ field's: there `render` is 9% and `processGrid` 12% self.)
   ticks), less predation (more creatures), or both. Neither is the computing; half the field's time was spent on work no payment reads.
 - **What moved, against which number:** distinct functions found in a running field by 20 minutes, 1.75x. Not measured: past 20
   minutes, a phone, the shuffle control in a field, caps of 2-5.
+
+### #467 — THE AMPLITUDE ECONOMY'S NEIGHBOUR SCAN OFF (`ENTROPY_PAIRS`): no, removed
+After #466 a field universe's tick is `processGrid` 22.6%, the solo VM 21.0%, `applyEntropy` 16.6%, `updateParticles` 3.9%
+(`field-phase.js`, 27 universes, 120 s). `applyEntropy`'s first block scans every creature's neighbours, compares trait vectors and
+moves only `amp` (similarity crowding, a trait-distance predation of amplitude); under `STORE_DEATH` amplitude no longer kills. Knob on
+was byte-identical (`5875f42a`); off changed the world, so amplitude still reaches something (the program reads it as register 3).
+`PREREG-entropy.md`, 20-minute pairs (`out-entropy-set/`, `analyse-entropy.js`):
+
+| Pair | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| Shipped | 260,369 | 324,648 | 273,535 | 333,563 |
+| Scan off | 339,711 | 295,712 | 300,085 | 299,214 |
+| Ratio | 1.31 | 0.91 | 1.10 | 0.90 |
+| Size 17+ ratio | 1.81 | 0.94 | 0.74 | 1.16 |
+
+- **REMOVED: two of four behind, so SHIP (7 of 8) could no longer be reached.** The set was stopped at four. That deviates from the
+  registration's "no stopping early", and is recorded as a deviation: the rule guards against a favourable early look ending a set, and
+  here every remaining outcome led to the same decision (CLAUDE.md: do not run what cannot change a decision). Median of the four 1.00.
+- Read beside #466: cutting the pair VM's runs doubled a field's finds; cutting a scan of the same size that moves only amplitude did
+  nothing visible. **What the pair loop costs was not the only thing #466 changed**, and its gain is not explained by tick cost alone.

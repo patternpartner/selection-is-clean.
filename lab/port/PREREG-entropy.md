@@ -12,3 +12,7 @@ byte-identical (`5875f42a`); off changes the world (seed 11, 2,000 ticks: 6,549 
 - **SHIP** if the median F ratio at 20 minutes is above 1.00 AND at least 7 of 8 are ahead AND the median size-17+ ratio is at least
   0.90: the default becomes 0 wherever STORE_DEATH runs (the world without TASKS keeps the scan, since there amplitude kills).
 - **Otherwise REMOVED** (the knob goes; the scan stays). Analysis: `lab/port/analyse-entropy.js`, written now.
+
+## Result
+REMOVED after 4 pairs (1.31, 0.91, 1.10, 0.90): two behind, SHIP unreachable; stopped there as a recorded deviation from "no stopping
+early". Engine restored from `94e0c56~1` (digest `5875f42a`).
