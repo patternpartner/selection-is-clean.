@@ -32625,3 +32625,8 @@ when the creature was already met as someone's partner). Byte-identical on five 
 `MIND=20`, 13 with TASKS, 14 with the full engine `TASK_CORE=0`, 3 without TASKS); substrate 264/0 at 40, 900, default, `FOUND=0`.
 Node, seed 12, 4,000 ticks, alternated: 69.0 and 69.4 s against 78.9 and 80.8 s. **A node speed-up is not a field speed-up (#395b)**:
 the field reading follows.
+- **One field pair, the #470 engine against the old sweep (`out-sweep/`):** the new engine ran 0.94x the ticks with 0.92x the creatures
+  and found 0.82x (size 17+ 0.66). With #395b (a 16% node speed-up that ran fewer field ticks in 4 of 4) that is two byte-identical
+  speed-ups that did not show in a field. Kept (it changes no world). **But it raises a question about the instrument**: in every
+  pair the base browser launches first and the copy second, and the copy ran more ticks in #466 (1.10-1.25x), #467 (1.09-1.15x) and
+  here (1.07x). An A/A pair (the copy differs by a comment) asks whether the second field is favoured.
