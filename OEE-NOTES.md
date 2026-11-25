@@ -32589,3 +32589,15 @@ was byte-identical (`5875f42a`); off changed the world, so amplitude still reach
   here every remaining outcome led to the same decision (CLAUDE.md: do not run what cannot change a decision). Median of the four 1.00.
 - Read beside #466: cutting the pair VM's runs doubled a field's finds; cutting a scan of the same size that moves only amplitude did
   nothing visible. **What the pair loop costs was not the only thing #466 changed**, and its gain is not explained by tick cost alone.
+
+### #468 — NO ENCOUNTERS AT ALL (`INTERACTION_CAP` 1 -> 0): level, the cap stays 1
+`PREREG-cap0.md` (written before pair 1, with the stop at "SHIP unreachable" registered this time); 20-minute pairs (`out-cap0-set/`):
+cap 0 against the shipped cap 1, F 248,300 / 237,104 (1.05), 261,648 / 267,689 (0.98), 315,448 / 325,518 (0.97); size 17+ 0.84, 0.97,
+1.08. Two of three behind: stopped by the rule. At cap 0 the field holds more creatures (1.15x in pair 1) on fewer ticks (0.92x).
+- **So the step that mattered was 10 -> 1, and 1 -> 0 is flat.** With no encounters there is no pair VM and no predation (op 155 needs
+  a partner), and a field finds about what it finds with one encounter a tick. #410's "predation is missed" (0.61) was measured in the
+  ten-encounter world and does not carry: here one encounter's worth of predation, entrainment and neighbour modelling buys nothing
+  visible in three pairs. Not shown NOT WORSE either (three pairs); the shipped value stays 1.
+- With #467: two cuts of the old physics that cost a tenth to a fifth of a tick each changed nothing measurable, where cutting ten
+  encounters to one doubled the finds. What #466 removed was nine pair-VM runs a creature a tick, and the tick itself only got 1.1-1.25x
+  cheaper; **the doubling is not a speed effect**, and what it is remains open.
