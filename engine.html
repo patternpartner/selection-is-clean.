@@ -22346,6 +22346,7 @@ function addBits(x,y,count,r,g,b,energy){for(let k=0;k<count;k++){if(bN>=MAX_BIT
 // ═══════════════════════════════════════
 // THE THREE FORCES
 // ═══════════════════════════════════════
+const ENTROPY_PAIRS=(__tk('__ENTROPY_PAIRS',1)|0)!==0;
 function applyEntropy(){
   const deaths=[];
   deathsThisWindow+=deathsThisTick;   // #97: carry the tick's deaths into the 60-tick window before clearing
@@ -22357,7 +22358,8 @@ function applyEntropy(){
   //       what lets unlike ones coexist, and densityCost (a global N term) could never express it.
   //   14: lineages far apart in trait space EAT each other. The Red Queen was built against a population
   //       that could not die, so it never bit. Dominance now makes you the most abundant prey.
-  {
+  // #467: ENTROPY_PAIRS=0 skips this neighbour scan (it moves only amp, which under STORE_DEATH no longer kills). Default 1.
+  if(ENTROPY_PAIRS){
     for(let i=0;i<N;i++){
       if(!palive[i])continue;
       const gx=(px[i]/CELL)|0, gy=(py[i]/CELL)|0;
