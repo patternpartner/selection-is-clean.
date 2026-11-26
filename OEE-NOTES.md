@@ -32772,3 +32772,10 @@ six inputs or more are not higher with the knob, it is removed; if they are, a r
   field can see, which agrees with #443 (a world held at a low ceiling keeps finding at its unbounded twin's rate). The design pair's
   1.21x was the noise floor (#470's A/A: 0.84). Engine restored from `4f8298b~1` (`1b574e9a`). Whether opening pays over hours under
   eight payments remains the open long-horizon question, and only a set of long pairs could rule on it.
+
+### #477 — TODAY'S WORLD AGAINST THE SESSION-START WORLD OVER HOURS (one chained long pair), registered before leg 1
+#466, #472, #474 and #475 are 20-minute verdicts; the artwork runs for hours. `lab/port/long-pair.sh` (now with an optional second
+change), `NAME=lp477`: the shipped engine against a copy with `INTERACTION_CAP` 10 and `TASK_PAYS` 1 (the world this session started
+from, apart from #470's byte-identical sweep), legs of 20 minutes, seven legs. **What each outcome decides, written now:** if today's
+world finds fewer new functions than the start world in each of the last two legs, the payment ships are reopened by a registered set
+of long pairs; otherwise nothing changes. One long pair cannot carry a long-horizon claim (#433-#434); it can only open that question.
