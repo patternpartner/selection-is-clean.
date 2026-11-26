@@ -309,6 +309,28 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   either way; the formula size (`#402`'s `D`) is the remaining candidate. The cut meant the drain charged half of all payments
   nothing; `TASK_KLIN` (lineage through unpaid words, drain 25% -> 45% of income) was REMOVED after 8 field pairs (median 1.05, ahead
   6 of 8, size 17+ 0.94): the drain's coverage is not what its field dose-response is about.
+  **`#466`: ONE ENCOUNTER A TICK, SHIPPED (`INTERACTION_CAP` 10 -> 1).** The pair loop (`processGrid`: entrainment, the pair VM, the cluster
+  VM) was 49% of a field universe's tick and runs no task op. With one encounter a creature a tick a field ran 1.10-1.25x the ticks
+  with more creatures and found more in 8 of 8 pairs (median 1.75x at 20 minutes, size 17+ 1.68x, ahead at 5). A constant: the world
+  without TASKS changed too. **Profile the field, not node** (`lab/port/field-phase.js`): node put `processGrid` at 12% self and
+  said the cap made no tick cheaper. **Container restarts came every 23-34 minutes that day**: a 25-minute pair did not fit, so
+  that set is ruled at 20 (amended before pair 3 counted).
+  The shuffle control in a field: 0.037 of its twin (selected). **Most of the doubling is creature-ticks** (1.28-1.70x more); `#467`
+  and `#468` (the amplitude scan off, no encounters) bought creature-ticks too and lost as much per creature-tick, so what is left is
+  a speed-up that removes nothing. **One field pair swings by a sixth on nothing** (an A/A pair: 0.84): one pair cannot carry under 1.2x.
+  **`#475`: EIGHT PAYMENTS, SHIPPED (`TASK_PAYS` 8)**: against four, 8 of 8, median 1.16x, size 17+ 1.22x. The dose curve (1.93,
+  1.46, 1.16 per doubling) has flattened into one pair's noise; the search stopped there.
+  **But eight payments DELAY OPENING** (universes at six inputs at 20 minutes: 8-15 of 27 against 18-21 at four), which no registered
+  guard read: **a rule that guards count and depth can still pass a change that slows the world's own capacity.** Read `OPEN.n` beside
+  any change to payments. And read a rig's last line before writing its count into a commit: `#475`'s said 6/6 over a 5/1.
+  **`#474`: FOUR PAYMENTS, SHIPPED (`TASK_PAYS` 4)**: against two, 8 of 8 ahead, median 1.46x, size 17+ 1.28x. **`#473`: no limit
+  doubled the count again and HALVED size 17+** (0.55-0.69, three pairs; not shipped): the limit is a price on breadth, and the size
+  guard is what caught it. The shuffle control at two payments: 0.027 (selected).
+  **`#472`: TWO PAYMENTS AN EPOCH, SHIPPED (`TASK_PAYS` 2, was 1).** A creature was paid once an epoch and its next new words went
+  to the ground unpaid. Allowing two: 8 of 8 field pairs ahead, median 1.93x at 20 minutes, size 17+ 1.55x, on 0.67-0.77x the ticks,
+  so about 2.2x the finds PER CREATURE-TICK (not speed, unlike `#466`). `TASK_PAYS=1` restores. Node design said the same (6 of 6).
+  `#471`: an epoch of 125 is 4-6x worse in node; 50 stays. `#469`/`#470`: two byte-identical speed-ups, one slower, one 13% faster in
+  node and unshown in a field.
   **Define a probe's hooks before the engine loads** (`#458`): its top level runs VM steps, a missing hook throws there, the engine
   catches it and the world changes; check a probe's counts against the baselines before reading it.
   **A NODE WORLD'S COUNT IS MOSTLY DRAW ORDER (`#397`).** Four continuations of one world state found 517-1,052 new functions over

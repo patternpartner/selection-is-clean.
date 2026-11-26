@@ -1,0 +1,3 @@
+{"t":2000,"alive":465,"meanInt":4.81,"atCap":0.139,"zero":0.143,"msPerTick":11.7,"seen":1654}
+{"t":4000,"alive":689,"meanInt":2.85,"atCap":0.074,"zero":0.367,"msPerTick":14.5,"seen":22096}
+{"t":6000,"alive":885,"meanInt":1.75,"atCap":0.017,"zero":0.558,"msPerTick":15.9,"seen":50057}
