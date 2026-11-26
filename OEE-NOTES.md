@@ -32755,3 +32755,5 @@ byte-identical (`1b574e9a`). Node, seeds 11-13, 8,000 ticks (`out-openfirst/`): 
 (2,000 / 6,000 / 5,000 against 3,000 / 7,000 / 6,000); seed 11's second opened later (8,000 against 5,000); counts 0.55 / 1.12 / 1.00
 (draw order). **One design pair in a field asks only whether opening is restored there** (`out-openfirst-design/`): if universes at
 six inputs or more are not higher with the knob, it is removed; if they are, a registered set follows.
+- **Design pair: opening restored and more.** 23 of 27 universes at six inputs against 13; F 1.21x (1,243,613 against 1,026,353), size
+  17+ 1.47x, ticks 1.15x. One pair: a registered set follows (`PREREG-openfirst.md`).
