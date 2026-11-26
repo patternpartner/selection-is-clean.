@@ -32757,3 +32757,18 @@ byte-identical (`1b574e9a`). Node, seeds 11-13, 8,000 ticks (`out-openfirst/`): 
 six inputs or more are not higher with the knob, it is removed; if they are, a registered set follows.
 - **Design pair: opening restored and more.** 23 of 27 universes at six inputs against 13; F 1.21x (1,243,613 against 1,026,353), size
   17+ 1.47x, ticks 1.15x. One pair: a registered set follows (`PREREG-openfirst.md`).
+- **REMOVED by its rule after two pairs (both behind; SHIP unreachable):**
+
+| Pair | 1 | 2 |
+|---|---|---|
+| Shipped | 1,095,857 | 1,214,859 |
+| First payment opens | 1,026,854 | 1,167,047 |
+| Ratio at 20 min | 0.94 | 0.96 |
+| Size 17+ ratio | 0.86 | 1.04 |
+| Universes at six inputs or more, shipped / knob | 14 / 18 | 11 / 25 |
+
+  **Opening is restored, and at 20 minutes it buys nothing in the count.** Across the design pair and the set, universes at six inputs
+  rose in 3 of 3 (13->23, 14->18, 11->25) while the count read 1.21, 0.94, 0.96. So #475's delay of opening costs nothing a 20-minute
+  field can see, which agrees with #443 (a world held at a low ceiling keeps finding at its unbounded twin's rate). The design pair's
+  1.21x was the noise floor (#470's A/A: 0.84). Engine restored from `4f8298b~1` (`1b574e9a`). Whether opening pays over hours under
+  eight payments remains the open long-horizon question, and only a set of long pairs could rule on it.

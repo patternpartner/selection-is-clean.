@@ -323,6 +323,8 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **But eight payments DELAY OPENING** (universes at six inputs at 20 minutes: 8-15 of 27 against 18-21 at four), which no registered
   guard read: **a rule that guards count and depth can still pass a change that slows the world's own capacity.** Read `OPEN.n` beside
   any change to payments. And read a rig's last line before writing its count into a commit: `#475`'s said 6/6 over a 5/1.
+  `#476`: counting only each creature's first payment toward opening restored it (six-input universes 13->23, 14->18, 11->25) and
+  bought no count at 20 minutes (1.21 design, 0.94, 0.96): removed. The delay costs nothing a 20-minute field sees.
   **`#474`: FOUR PAYMENTS, SHIPPED (`TASK_PAYS` 4)**: against two, 8 of 8 ahead, median 1.46x, size 17+ 1.28x. **`#473`: no limit
   doubled the count again and HALVED size 17+** (0.55-0.69, three pairs; not shipped): the limit is a price on breadth, and the size
   guard is what caught it. The shuffle control at two payments: 0.027 (selected).

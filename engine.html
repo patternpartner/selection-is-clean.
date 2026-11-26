@@ -10979,9 +10979,6 @@ const TASK_ZREF=__tk('__TASK_ZREF',12); let oZE=0;
 // #440 (tested, removed): pay by GENERATION (one more than the highest generation among the words a function was built from, the
 // world's own count, no table). Node worlds opened inputs and found as much as table-graded ones; a FIELD found 0.33 of the shipped
 // field's functions on half the ticks, opened nothing in 25 minutes and was shallower by the table's ruler. The table pays better.
-// #476: TASK_OPENFIRST=1 - the opening window counts only each creature's FIRST payment of an epoch, the signal opening had at one
-// payment an epoch (#438); #475's eight payments diluted it with cheaper later payments and delayed opening. Default 0.
-const TASK_OPENFIRST=(__tk('__TASK_OPENFIRST',0)|0)!==0;
 const oWin={paid:0,top:0,at:0}, oOpenAt=[];   // the opening window; the tick each input opened at (a readout)
 function oLog(k,z,m){ if(oLogN>=oLogK.length){ const a=new Uint32Array(oLogN*2), b=new Uint8Array(oLogN*2), c=new Uint8Array(oLogN*2); a.set(oLogK); b.set(oLogZ); c.set(oLogM); oLogK=a; oLogZ=b; oLogM=c; } oLogK[oLogN]=k; oLogZ[oLogN]=z; oLogM[oLogN]=m; oLogN++; }
 function oDrawInputs(){ const R=32*oWD; for(let q=0;q<R;q++)oRow[q]=q; for(let q=R-1;q>0;q--){ const j=(Math.random()*(q+1))|0, t=oRow[q]; oRow[q]=oRow[j]; oRow[j]=t; }
@@ -11089,7 +11086,7 @@ function taskOpN(t,src,dst,i){ const d=Math.abs(dst|0)&3, s=Math.abs(src|0)&3, o
   if(key===0||(m===5&&TASK_TRIV5.indexOf(key)>=0)){ tEv.trivial++; return; }
   if(m>5){ const h=1<<(m-6); let lo=0, hi=0xFFFFFFFF; for(let x=0;x<h;x++){ lo|=oF[x]; hi&=oF[h+x]; } if(lo===0&&hi===0xFFFFFFFF){ tEv.trivial++; return; } }   // a bare input past the fifth
   if(tPE[i]===e&&(TASK_PAYS===1||tPN[i]>=TASK_PAYS)){ if(TASK_GNEW&&tG!==null&&!seen5Has(key))groundNew(i,key,m,WD,e); return; } const T=oSlot(key,m); if(T<0)return; const _gl=oGl!==null&&oGl[kD]===1;
-  if(tPE[i]!==e){ tPE[i]=e; tPN[i]=1; } else tPN[i]++; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; if(!TASK_OPENFIRST||tPN[i]===1){ oWin.paid++; if(oC[T]===tNin)oWin.top++; }   // #476
+  if(tPE[i]!==e){ tPE[i]=e; tPN[i]=1; } else tPN[i]++; tLastK[i]=T; oZE+=(TASK_SZ[T]-oZE)/500; oWin.paid++; if(oC[T]===tNin)oWin.top++;
   const g=tRes[T]*TASK_F; tRes[T]-=g; tE[T]+=g; tN[T]++; tLastPaid[T]=tick; tSeen[T]=1; if(seen5Add(key)){ tSeenN++; oLog(key,TASK_SZ[T],oC[T]); if(_gl)tEv.glowNew=(tEv.glowNew|0)+1; } tEv.paid++; if(_gl)tEv.glowPaid=(tEv.glowPaid|0)+1;
   if(tG!==null){ const c=sunCell(i), b=c*OWM; tG[c]=key; tGZ[c]=TASK_SZ[T]; for(let x=0;x<OWM;x++)oG[b+x]=oF[x&(WD-1)]; if(tGE!==null)tGE[c]=e; tEv.gWrites=(tEv.gWrites|0)+1; }
   if(__taskOnPay!==null)__taskOnPay(i,T,kD); tEv.income+=g; const P=TASK_SHUFFLE?taskShuffleTo(i):i; const x=pE[P]+g; if(x>SUN_STORE){ tEv.overflow+=x-SUN_STORE; pE[P]=SUN_STORE; } else pE[P]=x;
