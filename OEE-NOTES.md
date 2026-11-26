@@ -32746,3 +32746,12 @@ wrong.** 20-minute pairs (`out-pays8-set/`):
   noise (an A/A pair read 0.84), and no limit lost the depth (#473, against two). The search stops at eight: a set that can only
   read inside its own noise floor is not worth three hours. Chained 1 -> 8: about 3.3x; with #466 about 5.7x the field this session
   started from (not measured directly).
+
+### #476 — OPENING COUNTS EACH CREATURE'S FIRST PAYMENT (`TASK_OPENFIRST`): the follow-up #475 named
+#475's eight payments delayed opening in a field (universes at six inputs at 20 minutes: 8-15 of 27 against 18-21). The opening window
+counts every payment, and later payments in an epoch are for cheaper functions, so they dilute the share that opens an input. With
+the knob the window counts only each creature's first payment of an epoch, the signal opening had when it shipped (#438). Off is
+byte-identical (`1b574e9a`). Node, seeds 11-13, 8,000 ticks (`out-openfirst/`): the first input opened one window earlier on 3 of 3
+(2,000 / 6,000 / 5,000 against 3,000 / 7,000 / 6,000); seed 11's second opened later (8,000 against 5,000); counts 0.55 / 1.12 / 1.00
+(draw order). **One design pair in a field asks only whether opening is restored there** (`out-openfirst-design/`): if universes at
+six inputs or more are not higher with the knob, it is removed; if they are, a registered set follows.
