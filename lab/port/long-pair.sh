@@ -4,7 +4,8 @@
 #   PDIR=dir NAME=lp1 ARM=noground FROM="globalThis.__TASK_GROUND=1;" TO="globalThis.__TASK_GROUND=0;" lab/port/long-pair.sh
 cd "$(dirname "$0")/../.."; NAME=${NAME:?}; ARM=${ARM:?}; OUT=lab/port/out-long; mkdir -p $OUT; P=${PDIR:?}; E=$P/engine-$NAME-$ARM.html
 [ "$(grep -cF "$FROM" engine.html)" = 1 ] || { echo "pattern count for: $FROM"; exit 1; }
-node -e 'const fs=require("fs");const [,f,t,o]=process.argv;fs.writeFileSync(o,fs.readFileSync("engine.html","utf8").split(f).join(t));' "$FROM" "$TO" "$E"
+[ -z "$FROM2" ] || [ "$(grep -cF "$FROM2" engine.html)" = 1 ] || { echo "pattern count for: $FROM2"; exit 1; }   # #477: an optional second change
+node -e 'const fs=require("fs");const [,f,t,o,f2,t2]=process.argv;let s=fs.readFileSync("engine.html","utf8").split(f).join(t);if(f2)s=s.split(f2).join(t2);fs.writeFileSync(o,s);' "$FROM" "$TO" "$E" "$FROM2" "$TO2"
 cmp -s engine.html $E && { echo "copy is identical"; exit 1; }
 PORT=${PORT:-8941} PROFILE=$P/profile-$NAME-base CHAIN=$OUT/$NAME-base.chain.json SECS=${SECS:-1500} EVERY=60 OUT=$OUT/$NAME-base.jsonl node lab/port/field-rate.js > $OUT/$NAME-base.log 2>&1 & a=$!
 PORT=$(( ${PORT:-8941} + 1 )) PROFILE=$P/profile-$NAME-$ARM CHAIN=$OUT/$NAME-$ARM.chain.json ENGINE=$E SECS=${SECS:-1500} EVERY=60 OUT=$OUT/$NAME-$ARM.jsonl node lab/port/field-rate.js > $OUT/$NAME-$ARM.log 2>&1 & b=$!

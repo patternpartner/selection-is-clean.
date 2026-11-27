@@ -89,3 +89,6 @@ lab/port/out-onespeed/*.part
 lab/port/out-cap-design/*.part
 lab/port/out-crowd/*.pid
 lab/port/out-crowd/*.part
+
+# #477: a long field chain file holds every function the field found (54 MB at 2 hours); the jsonl samples are the record
+lab/port/out-long/lp477-*.chain.json
