@@ -32800,3 +32800,12 @@ base 432,942 / 172,351 / 155,855. Ratios: `REPL_CROWD_K` 200 0.17 / 0.36 / 0.42;
 twice as fast) 0.35 / 1.55 / 1.24; `TASK_CAPM` 800 (pools twice as big) 0.35 / 1.13 / 2.36; `MIND=40` 0.69 / 1.74 / 1.18;
 `TASK_EPOCHN` 25 0.17 / 3.05 / 1.10. **A denser world is worse on 3 of 3; nothing else has a direction** (seed 11's base is an outlier
 and every arm trails it; draw order, #397). No field set follows from this screen.
+
+### #479 — THE DEEP LAYERS' PACE (`#deeppace`, 400 ms a layer): does a field find more when its dark universes run?
+The default field (27 universes) paces its layers: 400 ms after every tick one layer down, 800 two down. In `field-phase.js`'s 120 s
+(#466's profile) layer 2's nine universes ran 122-132 ticks (about one a second), layer 1's 598-1,217, the lit surface 364-601. A dark
+universe draws nothing and ticks about 1.68x cheaper (index.html's own measurement), and finds track creature-ticks (#466, #468), so
+CPU given to dark universes may buy more than CPU given to lit ones. Never measured against what a field finds. Hash only, no engine
+change (`lab/port/hash-pair.sh`). **One design pair, `#deeppace=50` (the floor) against the default, gates a set:** a set follows if
+F is ahead by 1.2x or more (the one-pair noise floor). A viewer guard travels with it: the lit surface's own ticks (`u0`-`u7` and the
+collective) must not fall below 0.8x, because those are the universes anyone sees.
