@@ -32779,3 +32779,17 @@ change), `NAME=lp477`: the shipped engine against a copy with `INTERACTION_CAP` 
 from, apart from #470's byte-identical sweep), legs of 20 minutes, seven legs. **What each outcome decides, written now:** if today's
 world finds fewer new functions than the start world in each of the last two legs, the payment ships are reopened by a registered set
 of long pairs; otherwise nothing changes. One long pair cannot carry a long-horizon claim (#433-#434); it can only open that question.
+- **Result (`out-long/lp477-*.jsonl`; the chain files are not committed):**
+
+| Leg (20 min) | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| Today's world, new in the leg | 1,401,176 | 1,431,830 | 1,551,032 | 1,770,686 | 2,199,750 | 2,258,211 | 2,242,564 |
+| Session-start world | 216,474 | 581,539 | 625,078 | 737,284 | 693,900 | 657,064 | 702,690 |
+| Ratio | 6.47 | 2.46 | 2.48 | 2.40 | 3.17 | 3.44 | 3.19 |
+
+  **140 minutes: 12,855,249 against 4,214,029 (3.05x).** The start world closes from 6.5x to about 2.5x in its first 40 minutes
+  (it starts slow, as #416 noted), then the lead holds and widens; today's world finds more in each leg than in the last to leg 6 and
+  is flat in leg 7. The reopening condition (behind in each of the last two legs) did not occur: nothing changes. One pair.
+- **And it opens LESS and finds more.** At 140 minutes the start world holds 25 of 27 universes at eight or nine inputs; today's holds
+  15 at six, 7 at seven, 4 at eight. Three times the functions in a space a quarter to a sixteenth the size: #443 (a world held at
+  a low ceiling keeps finding at its unbounded twin's rate) seen in a field, and #475's opening delay costs nothing through 140 minutes.
