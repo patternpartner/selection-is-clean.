@@ -32746,3 +32746,50 @@ wrong.** 20-minute pairs (`out-pays8-set/`):
   noise (an A/A pair read 0.84), and no limit lost the depth (#473, against two). The search stops at eight: a set that can only
   read inside its own noise floor is not worth three hours. Chained 1 -> 8: about 3.3x; with #466 about 5.7x the field this session
   started from (not measured directly).
+
+### #476 — OPENING COUNTS EACH CREATURE'S FIRST PAYMENT (`TASK_OPENFIRST`): the follow-up #475 named
+#475's eight payments delayed opening in a field (universes at six inputs at 20 minutes: 8-15 of 27 against 18-21). The opening window
+counts every payment, and later payments in an epoch are for cheaper functions, so they dilute the share that opens an input. With
+the knob the window counts only each creature's first payment of an epoch, the signal opening had when it shipped (#438). Off is
+byte-identical (`1b574e9a`). Node, seeds 11-13, 8,000 ticks (`out-openfirst/`): the first input opened one window earlier on 3 of 3
+(2,000 / 6,000 / 5,000 against 3,000 / 7,000 / 6,000); seed 11's second opened later (8,000 against 5,000); counts 0.55 / 1.12 / 1.00
+(draw order). **One design pair in a field asks only whether opening is restored there** (`out-openfirst-design/`): if universes at
+six inputs or more are not higher with the knob, it is removed; if they are, a registered set follows.
+- **Design pair: opening restored and more.** 23 of 27 universes at six inputs against 13; F 1.21x (1,243,613 against 1,026,353), size
+  17+ 1.47x, ticks 1.15x. One pair: a registered set follows (`PREREG-openfirst.md`).
+- **REMOVED by its rule after two pairs (both behind; SHIP unreachable):**
+
+| Pair | 1 | 2 |
+|---|---|---|
+| Shipped | 1,095,857 | 1,214,859 |
+| First payment opens | 1,026,854 | 1,167,047 |
+| Ratio at 20 min | 0.94 | 0.96 |
+| Size 17+ ratio | 0.86 | 1.04 |
+| Universes at six inputs or more, shipped / knob | 14 / 18 | 11 / 25 |
+
+  **Opening is restored, and at 20 minutes it buys nothing in the count.** Across the design pair and the set, universes at six inputs
+  rose in 3 of 3 (13->23, 14->18, 11->25) while the count read 1.21, 0.94, 0.96. So #475's delay of opening costs nothing a 20-minute
+  field can see, which agrees with #443 (a world held at a low ceiling keeps finding at its unbounded twin's rate). The design pair's
+  1.21x was the noise floor (#470's A/A: 0.84). Engine restored from `4f8298b~1` (`1b574e9a`). Whether opening pays over hours under
+  eight payments remains the open long-horizon question, and only a set of long pairs could rule on it.
+
+### #477 — TODAY'S WORLD AGAINST THE SESSION-START WORLD OVER HOURS (one chained long pair), registered before leg 1
+#466, #472, #474 and #475 are 20-minute verdicts; the artwork runs for hours. `lab/port/long-pair.sh` (now with an optional second
+change), `NAME=lp477`: the shipped engine against a copy with `INTERACTION_CAP` 10 and `TASK_PAYS` 1 (the world this session started
+from, apart from #470's byte-identical sweep), legs of 20 minutes, seven legs. **What each outcome decides, written now:** if today's
+world finds fewer new functions than the start world in each of the last two legs, the payment ships are reopened by a registered set
+of long pairs; otherwise nothing changes. One long pair cannot carry a long-horizon claim (#433-#434); it can only open that question.
+- **Result (`out-long/lp477-*.jsonl`; the chain files are not committed):**
+
+| Leg (20 min) | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| Today's world, new in the leg | 1,401,176 | 1,431,830 | 1,551,032 | 1,770,686 | 2,199,750 | 2,258,211 | 2,242,564 |
+| Session-start world | 216,474 | 581,539 | 625,078 | 737,284 | 693,900 | 657,064 | 702,690 |
+| Ratio | 6.47 | 2.46 | 2.48 | 2.40 | 3.17 | 3.44 | 3.19 |
+
+  **140 minutes: 12,855,249 against 4,214,029 (3.05x).** The start world closes from 6.5x to about 2.5x in its first 40 minutes
+  (it starts slow, as #416 noted), then the lead holds and widens; today's world finds more in each leg than in the last to leg 6 and
+  is flat in leg 7. The reopening condition (behind in each of the last two legs) did not occur: nothing changes. One pair.
+- **And it opens LESS and finds more.** At 140 minutes the start world holds 25 of 27 universes at eight or nine inputs; today's holds
+  15 at six, 7 at seven, 4 at eight. Three times the functions in a space a quarter to a sixteenth the size: #443 (a world held at
+  a low ceiling keeps finding at its unbounded twin's rate) seen in a field, and #475's opening delay costs nothing through 140 minutes.
