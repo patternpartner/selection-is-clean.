@@ -32820,3 +32820,18 @@ Migrants arrive as new creatures (`addParticle`) at the rate of the receiving wo
 computers adapted to their own universe (#479's reading), a field whose universes receive nothing finds more. One pair, the engine
 against a copy with `const rec=0;`. **A set follows if F is ahead by 1.2x or more.** Said now: the network is part of the artwork
 (#153's collective lives on it), so a win here would be judged as a field change, and broadcast keeps running either way.
+- **Result: 0.93 (size 17+ 0.67), behind; the gate fails, no set, nothing changes.** Every layer found about as much per tick or less
+  without receiving (surface 41.1 against 35.5). So inflow is not what #479 saw. **And #479's 0.75 is most likely the noise floor:**
+  this pair's base field found 1,247,964 where #479's base, the same engine, found 1,581,819, a spread of a quarter between two
+  fields that should be alike. One design pair of fields can only gate a set; it cannot explain one.
+
+### #481 — A FINER GROUND (`GROUND_RES`): the ground's memory span fell tenfold under eight payments
+**Measured first (node, seed 12, 3,000 ticks):** ground writes 617,687 at eight payments against 57,174 at one, so each of the 1,600
+cells is overwritten every ~8 ticks where it was every ~85. #398 showed the ground's value is PERSISTENCE (a ground that forgets each
+epoch found 0.81 of one that remembers, and the remembering one gains all the way). So #475 shortened the ground's memory by an order of
+magnitude. `GROUND_RES` gives the ground its own grid, R x R cells to each field cell: at 2, 6,400 cells, each overwritten about a
+quarter as often. Byte-identical at 1 on three world types (`1b574e9a` open, `23953a6a` five-input without opening, `19a9b957` no
+TASKS); the renderer draws each field cell by the deepest of its ground cells; the open state saves its resolution (`gr`) and a ground
+saved at another resolution is refused on reload (a reload of a world saved at 1 starts its ground empty, as #399's did before it was
+saved). `open-save-test` now sizes its synthetic ground from the ground (6/6 at 1 and at 2). **One design pair, `GROUND_RES` 2 against
+1, gates a set at 1.2x.**
