@@ -32793,3 +32793,10 @@ of long pairs; otherwise nothing changes. One long pair cannot carry a long-hori
 - **And it opens LESS and finds more.** At 140 minutes the start world holds 25 of 27 universes at eight or nine inputs; today's holds
   15 at six, 7 at seven, 4 at eight. Three times the functions in a space a quarter to a sixteenth the size: #443 (a world held at
   a low ceiling keeps finding at its unbounded twin's rate) seen in a field, and #475's opening delay costs nothing through 140 minutes.
+
+### #478 — A NODE SCREEN OF SIX ECONOMY KNOBS IN TODAY'S WORLD: one direction, and it is down
+Seeds 11-13, `MIND=20`, 6,000 ticks, against today's default (cap 1, eight payments; `out-screen/`, `screen-batch.sh`). Functions:
+base 432,942 / 172,351 / 155,855. Ratios: `REPL_CROWD_K` 200 0.17 / 0.36 / 0.42; K 50 0.11 / 1.22 / 1.38; `TASK_RATEM` 40 (pools regrow
+twice as fast) 0.35 / 1.55 / 1.24; `TASK_CAPM` 800 (pools twice as big) 0.35 / 1.13 / 2.36; `MIND=40` 0.69 / 1.74 / 1.18;
+`TASK_EPOCHN` 25 0.17 / 3.05 / 1.10. **A denser world is worse on 3 of 3; nothing else has a direction** (seed 11's base is an outlier
+and every arm trails it; draw order, #397). No field set follows from this screen.
