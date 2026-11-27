@@ -32809,3 +32809,14 @@ CPU given to dark universes may buy more than CPU given to lit ones. Never measu
 change (`lab/port/hash-pair.sh`). **One design pair, `#deeppace=50` (the floor) against the default, gates a set:** a set follows if
 F is ahead by 1.2x or more (the one-pair noise floor). A viewer guard travels with it: the lit surface's own ticks (`u0`-`u7` and the
 collective) must not fall below 0.8x, because those are the universes anyone sees.
+- **Design pair result: 0.75 (gate failed, and backwards).** `#deeppace=50` ran 1.21x the ticks (surface 1.03, layer 1 1.19, layer 2
+  1.51) and found 0.75x (1,187,967 against 1,581,819; size 17+ 0.76). **Every layer found about a third less per tick, the lit surface
+  included** (46.3 against 30.8 functions a tick there) on unchanged ticks and population. Speeding the deep layers made the universes
+  above them worse at finding. The layers broadcast upward (index.html: "SOURCES ... still audible upward"), and a faster layer sends
+  more. No set; the default pace stays. It points at inflow between universes, tested next.
+
+### #480 — NO RECEIVING (`networkReceive` with receptivity 0): a design pair, registered before it runs
+Migrants arrive as new creatures (`addParticle`) at the rate of the receiving world's `netReceptivity` gene. If inflow disrupts
+computers adapted to their own universe (#479's reading), a field whose universes receive nothing finds more. One pair, the engine
+against a copy with `const rec=0;`. **A set follows if F is ahead by 1.2x or more.** Said now: the network is part of the artwork
+(#153's collective lives on it), so a win here would be judged as a field change, and broadcast keeps running either way.
