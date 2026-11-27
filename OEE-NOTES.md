@@ -32835,3 +32835,5 @@ TASKS); the renderer draws each field cell by the deepest of its ground cells; t
 saved at another resolution is refused on reload (a reload of a world saved at 1 starts its ground empty, as #399's did before it was
 saved). `open-save-test` now sizes its synthetic ground from the ground (6/6 at 1 and at 2). **One design pair, `GROUND_RES` 2 against
 1, gates a set at 1.2x.**
+- **Design pair: 1.29x, size 17+ 1.99x** (1,241,903 against 963,163) on 0.99x the ticks, ahead at 5 (1.25) and 10 (1.18). The gate
+  passes; registered set `PREREG-gres.md`.
