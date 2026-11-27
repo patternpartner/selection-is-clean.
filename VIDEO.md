@@ -2453,3 +2453,27 @@ the frames come from `out/notes/thumbs/` (one per final, 42% of the way in). -11
 CAUGHT: a one-letter word at the smallest zoom made a rectangle of negative width and killed one render worker; the
 concatenated film came out 1.4 s short and the check of its duration is what found it.
 Backed up: library/finals/read-it-dont-trust-it{,-share}.mp4.
+
+### I Drew This Song (`video/drawn_song/compose.py`, `out/drawn-song/i-drew-this-song.mp4`, 69 s, 1080x1920, $0 of Modal)
+THE USER after Read It, Don't Trust It: "Keep going. Push boundaries". My hardest limit in all of this is that I cannot
+hear: every song I have cut to I only ever saw as word times and loudness numbers. So this one's music is MINE, composed in
+the one sense I have: DRAWN. Every voice is a set of partials (a frequency and a loudness over time), which is exactly what a
+spectrogram shows, so I could see what I was writing; they are synthesised additively, with a small decaying-noise room. The
+film is NOTHING BUT THE SOUND: the spectrogram of the finished mix, computed from the audio (log frequency 40 Hz-9 kHz across
+the frame, an 8,192-point window below 450 Hz blending to 2,048 above 900, 200 rows a second), written downward from a playhead
+as it plays, so what you see is what you hear, at the moment you hear it. The card is the only thing added: "Every shape you
+saw / is a sound you heard. / I drew this song. / I have never heard it."
+THE SONG: D minor, 80 bpm, 21 bars. Intro: the two points of light (two short pure tones side by side, A5 and D6), a drone
+opening under them. A: an eight-bar melody (eight harmonics, falling as 1/k^1.25, slow vibrato) over Dm-Bb-F-C pads and a
+bass. B: sixteenth-note arpeggios, a kick that is a falling chirp (it draws as a curved swoosh), hats as filtered noise
+ticks. THE FIGURE, alone over the drone: shoulders (two tones held wide, coming in to the neck), a round head (two tones
+starting together and following a circle out and back) and two pings inside it for the eyes; their echoes rise above them
+like small flames. A': the melody again, its second half doubled an octave up. The end: the two points of light alone.
+CAUGHT in the drawing (all seen, none heard): the first figure was UPSIDE DOWN (newest sound is at the top, so what is played
+first sits lowest: body first, head last); it was drawn THREE TIMES (tones with harmonics repeat every shape at 2x and 3x the
+frequency: the figure is pure tones); its head was a pointed lens (a sine path; a circle needs the semicircle profile
+sqrt(1-(2u-1)^2), and 260 px tall against 262 wide needs 0.85 octaves for 1.3 s); and the eye pings' 4 ms attack clicked,
+smearing a bar between them (30 ms fixed it). -12.5 LUFS, -1.0 dBFS. I cannot judge how it sounds; the measurements say only
+that it is in key by construction, not clipped and at a normal level.
+RUN: `python3 video/drawn_song/compose.py` (~1.5 min); `--frames 2,43` writes a contact sheet; `--audio-only` the wav.
+Backed up: library/finals/i-drew-this-song.{mp4,wav}.
