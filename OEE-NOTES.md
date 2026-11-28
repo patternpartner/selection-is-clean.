@@ -32853,3 +32853,17 @@ saved). `open-save-test` now sizes its synthetic ground from the ground (6/6 at 
   pairs. Changing #481's rule after these numbers would be the move the template forbids; a new experiment is not.
 
 ### #482 — THE FINER GROUND JUDGED ON DEPTH: a new registered set (`PREREG-gres-depth.md`), fresh pairs
+- **#482 result: REMOVED by its rule after five fresh pairs** (two behind on depth; `out-gres2-set/`, `analyse-gres2.js`):
+
+| Pair | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Size 17+ shipped / finer | 41,228 / 30,443 | 33,899 / 36,211 | 37,351 / 48,281 | 34,274 / 46,740 | 32,600 / 28,984 |
+| Size 17+ ratio | 0.74 | 1.07 | 1.29 | 1.36 | 0.89 |
+| Count ratio | 0.85 | 0.98 | 0.98 | 1.05 | 1.01 |
+
+  **A lean, not a direction.** Across both sets depth read 1.69, 0.84, 3.68, 1.52, 1.16, 1.12, 0.74, 1.07, 1.29, 1.36, 0.89: ahead in 8 of
+  11, median 1.16; the count is level (median about 1.0). Eight pairs cannot resolve a 15% effect against a one-pair floor of a sixth
+  (#470's A/A), so neither rule could ship it and neither rule was wrong to stop. The engine is restored from `5e30e355~1`
+  (`1b574e9a`); `open-save-test` keeps sizing its synthetic ground from the ground. **What stands:** the ground's overwrite rate rose
+  tenfold under eight payments (#481's measurement); a finer ground buys at most a small gain in depth and none in count. The ground's
+  shortened memory is not where today's world is limited.

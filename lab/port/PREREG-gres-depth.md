@@ -10,3 +10,6 @@ second ruler is the size of what is new; this set asks it directly. #481's pairs
   0.95 (a guard: not worse on count). Then `GROUND_RES` defaults to 2 (a reload of a world saved at 1 starts its ground empty).
   **Otherwise** the knob is removed.
 - Analysis: `analyse-gres2.js`.
+
+## Result
+REMOVED after 5 pairs (size 17+ 0.74, 1.07, 1.29, 1.36, 0.89: two behind). Engine restored from `5e30e355~1` (`1b574e9a`).
