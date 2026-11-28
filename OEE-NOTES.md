@@ -32793,3 +32793,77 @@ of long pairs; otherwise nothing changes. One long pair cannot carry a long-hori
 - **And it opens LESS and finds more.** At 140 minutes the start world holds 25 of 27 universes at eight or nine inputs; today's holds
   15 at six, 7 at seven, 4 at eight. Three times the functions in a space a quarter to a sixteenth the size: #443 (a world held at
   a low ceiling keeps finding at its unbounded twin's rate) seen in a field, and #475's opening delay costs nothing through 140 minutes.
+
+### #478 — A NODE SCREEN OF SIX ECONOMY KNOBS IN TODAY'S WORLD: one direction, and it is down
+Seeds 11-13, `MIND=20`, 6,000 ticks, against today's default (cap 1, eight payments; `out-screen/`, `screen-batch.sh`). Functions:
+base 432,942 / 172,351 / 155,855. Ratios: `REPL_CROWD_K` 200 0.17 / 0.36 / 0.42; K 50 0.11 / 1.22 / 1.38; `TASK_RATEM` 40 (pools regrow
+twice as fast) 0.35 / 1.55 / 1.24; `TASK_CAPM` 800 (pools twice as big) 0.35 / 1.13 / 2.36; `MIND=40` 0.69 / 1.74 / 1.18;
+`TASK_EPOCHN` 25 0.17 / 3.05 / 1.10. **A denser world is worse on 3 of 3; nothing else has a direction** (seed 11's base is an outlier
+and every arm trails it; draw order, #397). No field set follows from this screen.
+
+### #479 — THE DEEP LAYERS' PACE (`#deeppace`, 400 ms a layer): does a field find more when its dark universes run?
+The default field (27 universes) paces its layers: 400 ms after every tick one layer down, 800 two down. In `field-phase.js`'s 120 s
+(#466's profile) layer 2's nine universes ran 122-132 ticks (about one a second), layer 1's 598-1,217, the lit surface 364-601. A dark
+universe draws nothing and ticks about 1.68x cheaper (index.html's own measurement), and finds track creature-ticks (#466, #468), so
+CPU given to dark universes may buy more than CPU given to lit ones. Never measured against what a field finds. Hash only, no engine
+change (`lab/port/hash-pair.sh`). **One design pair, `#deeppace=50` (the floor) against the default, gates a set:** a set follows if
+F is ahead by 1.2x or more (the one-pair noise floor). A viewer guard travels with it: the lit surface's own ticks (`u0`-`u7` and the
+collective) must not fall below 0.8x, because those are the universes anyone sees.
+- **Design pair result: 0.75 (gate failed, and backwards).** `#deeppace=50` ran 1.21x the ticks (surface 1.03, layer 1 1.19, layer 2
+  1.51) and found 0.75x (1,187,967 against 1,581,819; size 17+ 0.76). **Every layer found about a third less per tick, the lit surface
+  included** (46.3 against 30.8 functions a tick there) on unchanged ticks and population. Speeding the deep layers made the universes
+  above them worse at finding. The layers broadcast upward (index.html: "SOURCES ... still audible upward"), and a faster layer sends
+  more. No set; the default pace stays. It points at inflow between universes, tested next.
+
+### #480 — NO RECEIVING (`networkReceive` with receptivity 0): a design pair, registered before it runs
+Migrants arrive as new creatures (`addParticle`) at the rate of the receiving world's `netReceptivity` gene. If inflow disrupts
+computers adapted to their own universe (#479's reading), a field whose universes receive nothing finds more. One pair, the engine
+against a copy with `const rec=0;`. **A set follows if F is ahead by 1.2x or more.** Said now: the network is part of the artwork
+(#153's collective lives on it), so a win here would be judged as a field change, and broadcast keeps running either way.
+- **Result: 0.93 (size 17+ 0.67), behind; the gate fails, no set, nothing changes.** Every layer found about as much per tick or less
+  without receiving (surface 41.1 against 35.5). So inflow is not what #479 saw. **And #479's 0.75 is most likely the noise floor:**
+  this pair's base field found 1,247,964 where #479's base, the same engine, found 1,581,819, a spread of a quarter between two
+  fields that should be alike. One design pair of fields can only gate a set; it cannot explain one.
+
+### #481 — A FINER GROUND (`GROUND_RES`): the ground's memory span fell tenfold under eight payments
+**Measured first (node, seed 12, 3,000 ticks):** ground writes 617,687 at eight payments against 57,174 at one, so each of the 1,600
+cells is overwritten every ~8 ticks where it was every ~85. #398 showed the ground's value is PERSISTENCE (a ground that forgets each
+epoch found 0.81 of one that remembers, and the remembering one gains all the way). So #475 shortened the ground's memory by an order of
+magnitude. `GROUND_RES` gives the ground its own grid, R x R cells to each field cell: at 2, 6,400 cells, each overwritten about a
+quarter as often. Byte-identical at 1 on three world types (`1b574e9a` open, `23953a6a` five-input without opening, `19a9b957` no
+TASKS); the renderer draws each field cell by the deepest of its ground cells; the open state saves its resolution (`gr`) and a ground
+saved at another resolution is refused on reload (a reload of a world saved at 1 starts its ground empty, as #399's did before it was
+saved). `open-save-test` now sizes its synthetic ground from the ground (6/6 at 1 and at 2). **One design pair, `GROUND_RES` 2 against
+1, gates a set at 1.2x.**
+- **Design pair: 1.29x, size 17+ 1.99x** (1,241,903 against 963,163) on 0.99x the ticks, ahead at 5 (1.25) and 10 (1.18). The gate
+  passes; registered set `PREREG-gres.md`.
+- **Set result: NOT SHIPPED by its rule after six pairs** (two behind on count; `out-gres-set/`). The pair cut by a container restart
+  was rerun as registered.
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| Shipped (one ground cell a field cell) | 1,191,735 | 1,558,982 | 1,042,712 | 1,108,948 | 789,074 | 932,403 |
+| Finer ground (2 x 2) | 1,518,729 | 1,202,198 | 1,693,682 | 1,184,347 | 840,718 | 924,574 |
+| Count ratio | 1.27 | 0.77 | 1.62 | 1.07 | 1.07 | 0.99 |
+| Size 17+ ratio | 1.69 | 0.84 | 3.68 | 1.52 | 1.16 | 1.12 |
+
+  **A split the count-primary rule could not ship: depth up in 5 of 6 (median 1.34), count barely (median 1.07).** A memory that
+  lasts longer pays in what gets built on it more than in how many things are found, which is what #398 would predict. **DORMANT,
+  not removed**: `GROUND_RES` stays at 1 (byte-identical) for #482, a new registered set with depth as its primary measure on fresh
+  pairs. Changing #481's rule after these numbers would be the move the template forbids; a new experiment is not.
+
+### #482 — THE FINER GROUND JUDGED ON DEPTH: a new registered set (`PREREG-gres-depth.md`), fresh pairs
+- **#482 result: REMOVED by its rule after five fresh pairs** (two behind on depth; `out-gres2-set/`, `analyse-gres2.js`):
+
+| Pair | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Size 17+ shipped / finer | 41,228 / 30,443 | 33,899 / 36,211 | 37,351 / 48,281 | 34,274 / 46,740 | 32,600 / 28,984 |
+| Size 17+ ratio | 0.74 | 1.07 | 1.29 | 1.36 | 0.89 |
+| Count ratio | 0.85 | 0.98 | 0.98 | 1.05 | 1.01 |
+
+  **A lean, not a direction.** Across both sets depth read 1.69, 0.84, 3.68, 1.52, 1.16, 1.12, 0.74, 1.07, 1.29, 1.36, 0.89: ahead in 8 of
+  11, median 1.16; the count is level (median about 1.0). Eight pairs cannot resolve a 15% effect against a one-pair floor of a sixth
+  (#470's A/A), so neither rule could ship it and neither rule was wrong to stop. The engine is restored from `5e30e355~1`
+  (`1b574e9a`); `open-save-test` keeps sizing its synthetic ground from the ground. **What stands:** the ground's overwrite rate rose
+  tenfold under eight payments (#481's measurement); a finer ground buys at most a small gain in depth and none in count. The ground's
+  shortened memory is not where today's world is limited.

@@ -1,10 +1,10 @@
 #!/bin/bash
-# #369b: how often does a TASKS world grow an imitator lineage (op 225 copiers)? One uninterrupted run per seed, today's world,
-# TICKS (default 6,000), rows with copies and desync. These seeds are LOOKED AT for prevalence and decide nothing.
-cd "$(dirname "$0")/../.."; OUT=lab/port/out-screen; mkdir -p $OUT
-SEEDS=${SEEDS:-"10301 10302 10303 10304 10305 10306 10307 10308"}; MAXNEW=${MAXNEW:-6}; started=0
-busy(){ [ -e $OUT/$1.pid ] && kill -0 "$(cat $OUT/$1.pid)" 2>/dev/null; }
-for s in $SEEDS; do tag=${s}; [ -e $OUT/$tag.done ] && continue; busy $tag && continue; [ $started -ge $MAXNEW ] && break; started=$((started+1))
-  ( env SEED=$s TASKS=1 TICKS=${TICKS:-6000} WIN=500 node lab/port/probe-reload.js > $OUT/$tag.jsonl 2> $OUT/$tag.err && touch $OUT/$tag.done ) &
-  echo $! > $OUT/$tag.pid
-done; echo "started $started"; wait
+# #478: a node screen of economy knobs against today's default (cap 1, eight payments), seeds 11-13, 6,000 ticks. Skips finished runs
+# (.done), starts at most MAXPAR at once, exits when all are done.   lab/port/screen-batch.sh
+cd "$(dirname "$0")/../.."; OUT=lab/port/out-screen; mkdir -p $OUT; MAXPAR=${MAXPAR:-5}
+ARMS="base: k200:REPL_CROWD_K=200 k50:REPL_CROWD_K=50 rate2:TASK_RATEM=40 cap2:TASK_CAPM=800 mind40:MIND=40 ep25:TASK_EPOCHN=25"
+jobs=(); for a in $ARMS; do n=${a%%:*}; kv=${a#*:}; for s in 11 12 13; do f=$OUT/$n-$s; [ -f $f.done ] && continue; jobs+=("$n|$kv|$s"); done; done
+i=0; for j in "${jobs[@]}"; do IFS='|' read n kv s <<< "$j"; f=$OUT/$n-$s
+  ( env SEED=$s TICKS=6000 TASKS=1 MIND=20 $kv node lab/port/digest.js > $f.json 2>&1 && touch $f.done ) &
+  i=$((i+1)); if [ $((i % MAXPAR)) = 0 ]; then wait; fi; done; wait
+for a in $ARMS; do n=${a%%:*}; printf "%-7s" $n; for s in 11 12 13; do f=$OUT/$n-$s.json; [ -f $f ] && printf " %8s" $(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.seen))}catch(e){process.stdout.write("-")}' $f); done; echo; done

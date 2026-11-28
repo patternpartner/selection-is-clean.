@@ -328,6 +328,11 @@ headline number in your entry is a pass count, you are reporting on the wrong ar
   **`#477`: today's world against this session's start world over 140 minutes (one chained pair): 3.05x** (12.9M against 4.2M); per
   leg 6.5, then 2.4-3.4 and holding. The start world opened to eight or nine inputs, today's mostly to six or seven. **A long chain
   file holds the whole union (54 MB at two hours): do not commit `*.chain.json` from today's world** (`.gitignore` has `lp477`'s).
+  **`#478`-`#482`, nothing shipped:** a node screen of six economy knobs had one direction (a denser world, K 200, worse 3 of 3); the
+  deep layers' pace (`#479`, 0.75) and no receiving (`#480`, 0.93) were single design pairs inside the field-to-field spread (two
+  base fields of one engine read 1.58M and 1.25M); a finer ground (`#481`/`#482`, `GROUND_RES`) leaned deeper (size 17+ ahead in
+  8 of 11 pairs, median 1.16) with count level, and neither its count rule nor its depth rule could ship it. **Eight pairs resolve
+  about 1.3x; a 15% effect needs another design** (more pairs, or a quieter measure).
   **`#474`: FOUR PAYMENTS, SHIPPED (`TASK_PAYS` 4)**: against two, 8 of 8 ahead, median 1.46x, size 17+ 1.28x. **`#473`: no limit
   doubled the count again and HALVED size 17+** (0.55-0.69, three pairs; not shipped): the limit is a price on breadth, and the size
   guard is what caught it. The shuffle control at two payments: 0.027 (selected).

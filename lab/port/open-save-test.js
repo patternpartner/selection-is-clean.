@@ -17,7 +17,7 @@ m._compile(code+`
   wipe(); oLoad(JSON.parse(JSON.stringify(w.open)));
   let same=0; for(let c=0;c<keys.length;c++) if(tG[c]===keys[c])same++;
   ok('reload: inputs', tNin===n0, tNin+' of '+n0); ok('reload: every ground key', same===keys.length, same+' of '+keys.length); ok('reload: the record', oLogN===logN, oLogN+' of '+logN); ok('reload: the lifetime set', tSeenN===seen0&&tSeenBoot===seen0, tSeenN+' of '+seen0);
-  const cells=FIELD_W*FIELD_H, wide=new Uint32Array(cells*32); for(let c=0;c<cells;c++) for(let x=0;x<32;x++)wide[c*32+x]=oG[c*OWM+(x&(OWM-1))];
+  const cells=tG.length, wide=new Uint32Array(cells*32); for(let c=0;c<cells;c++) for(let x=0;x<32;x++)wide[c*32+x]=oG[c*OWM+(x&(OWM-1))];
   const u=new Uint8Array(wide.buffer); let b=''; for(let q=0;q<u.length;q++)b+=String.fromCharCode(u[q]); const O=JSON.parse(JSON.stringify(w.open)); O.g=btoa(b);
   wipe(); oLoad(O); same=0; for(let c=0;c<keys.length;c++) if(tG[c]===keys[c])same++;
   ok('a ground saved 32 words wide loads at '+OWM, same===keys.length&&tNin===n0, same+' of '+keys.length);
