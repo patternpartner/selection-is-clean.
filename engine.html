@@ -10969,8 +10969,6 @@ let oLogK=TASK_OPEN?new Uint32Array(1<<14):null, oLogZ=TASK_OPEN?new Uint8Array(
 // - PAY IS INDEXED to the world's own mean grade: a pool's cap is scaled by TASK_ZREF over the running mean grade of what is paid
 //   (never above 1), so a deeper function than the world's average still pays more, and income a head does not grow with the grade.
 const TASK_ZREF=__tk('__TASK_ZREF',12); let oZE=0;
-// #483: TASK_ZEXP (percent, 100): a pool's cap goes as grade^(ZEXP/100) about the running mean grade; 100 is the linear cap above, exactly.
-const TASK_ZEXP=(__tk('__TASK_ZEXP',100)|0)/100;
 // #454 (tested, removed; lab/port/PREREG-market.md): AN INTERNAL MARKET in place of the grade. Every pool a flat seed (#439's), and a
 // paid creature gave half its payment to the pools of the functions its word was built on, in place of the drain. Node, 12,000 ticks,
 // seeds 11-13: no input opened, 6,156 / 1,967 / 3,677 functions (flat alone 31,595 / 18,618 / 12,638; graded 92,935 / 162,996 / 74,397),
@@ -10998,7 +10996,7 @@ function oSz(off,m,neg){ if(m===5){ let x=oF[off]; if(neg)x=~x; x>>>=0; return x
   if(a===-1)return b+4; if(b===-1)return a+5; if(a===-2)return 1+oSz(off+h,m-1,!neg); if(b===-2)return 2+oSz(off,m-1,!neg); return a+b+4; }
 function oSlot(key,m){ let h=Math.imul(key,2654435761)>>>15;
   for(let n=0;n<TASK_NF;n++,h=(h+1)&(TASK_NF-1)){ const k=tKey[h]; if(k===key)return h; if(k===0){ if(tSlotN>=TASK_NF*0.9){ tEv.full=(tEv.full|0)+1; return -1; }
-      const z=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); tKey[h]=key; TASK_SZ[h]=z; oM[h]=m; oC[h]=oDeps(m); tCap[h]=TASK_CAP*z*(oZE>TASK_ZREF?TASK_ZREF/oZE:1); if(TASK_ZEXP!==1)tCap[h]*=Math.pow(z/Math.max(1,oZE),TASK_ZEXP-1); tRes[h]=tCap[h]; tSlots[tSlotN++]=h; return h; } } return -1; }
+      const z=m===5?taskSz5(key):Math.max(1,Math.min(255,oSz(0,m,false))); tKey[h]=key; TASK_SZ[h]=z; oM[h]=m; oC[h]=oDeps(m); tCap[h]=TASK_CAP*z*(oZE>TASK_ZREF?TASK_ZREF/oZE:1); tRes[h]=tCap[h]; tSlots[tSlotN++]=h; return h; } } return -1; }
 function oHash(arr,off,neg){ let h=2166136261; for(let x=0;x<oWD;x++){ const v=neg?~arr[off+x]:arr[off+x]; h=Math.imul(h^v,16777619); h^=h>>>13; } return h>>>0; }
 function oEpoch(){   // at an epoch boundary: perhaps open an input, then draw the rows, and last epoch's input bits become junk
   if(tick-oWin.at>=(TASK_OPENW<<(tNin-5))){ if(tNin<TASK_NMAX&&oWin.paid>=TASK_OPENMIN&&oWin.top>=TASK_OPENP*oWin.paid){ const w=oWD; tNin++; oWD=w<<1; oOpenAt.push(tick);

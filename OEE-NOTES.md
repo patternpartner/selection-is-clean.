@@ -32867,3 +32867,13 @@ saved). `open-save-test` now sizes its synthetic ground from the ground (6/6 at 
   (`1b574e9a`); `open-save-test` keeps sizing its synthetic ground from the ground. **What stands:** the ground's overwrite rate rose
   tenfold under eight payments (#481's measurement); a finer ground buys at most a small gain in depth and none in count. The ground's
   shortened memory is not where today's world is limited.
+
+### #483 — A STEEPER PREMIUM ON DEPTH (`TASK_ZEXP`, a pool's cap as grade^alpha about the mean): no direction, removed
+#454 found every replacement for the grade failed by rewarding something cheap to make; this asked the converse. Node screen, seeds
+11-13, 6,000 ticks (`out-screen/z*`): count ratios against today's default alpha 0.5 0.30 / 1.32 / 1.64, alpha 1.5 0.66 / 1.11 / 0.94,
+alpha 2 0.79 / 1.29 / 0.94. The running mean grade was higher at alpha 2 on two seeds (40.3 against 27.8, 16.4 against 12.25) and level
+on the third: a hint, not a direction. No field set; the knob is removed (engine `1b574e9a`).
+**Where #478-#483 leave the work:** six economy knobs, the field's pacing, migration, the ground's resolution and the grade's curve
+have each been tried in today's world and none moves it by the 1.3x eight field pairs can resolve. The finer ground is the one real
+lean (depth ahead in 8 of 11, median 1.16). The next gain this project can see needs either a capacity of a new kind (as #397, #438,
+#466 and #472 were) or a 16-pair instrument for the 15% effects that remain.
