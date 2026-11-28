@@ -32837,3 +32837,19 @@ saved). `open-save-test` now sizes its synthetic ground from the ground (6/6 at 
 1, gates a set at 1.2x.**
 - **Design pair: 1.29x, size 17+ 1.99x** (1,241,903 against 963,163) on 0.99x the ticks, ahead at 5 (1.25) and 10 (1.18). The gate
   passes; registered set `PREREG-gres.md`.
+- **Set result: NOT SHIPPED by its rule after six pairs** (two behind on count; `out-gres-set/`). The pair cut by a container restart
+  was rerun as registered.
+
+| Pair | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| Shipped (one ground cell a field cell) | 1,191,735 | 1,558,982 | 1,042,712 | 1,108,948 | 789,074 | 932,403 |
+| Finer ground (2 x 2) | 1,518,729 | 1,202,198 | 1,693,682 | 1,184,347 | 840,718 | 924,574 |
+| Count ratio | 1.27 | 0.77 | 1.62 | 1.07 | 1.07 | 0.99 |
+| Size 17+ ratio | 1.69 | 0.84 | 3.68 | 1.52 | 1.16 | 1.12 |
+
+  **A split the count-primary rule could not ship: depth up in 5 of 6 (median 1.34), count barely (median 1.07).** A memory that
+  lasts longer pays in what gets built on it more than in how many things are found, which is what #398 would predict. **DORMANT,
+  not removed**: `GROUND_RES` stays at 1 (byte-identical) for #482, a new registered set with depth as its primary measure on fresh
+  pairs. Changing #481's rule after these numbers would be the move the template forbids; a new experiment is not.
+
+### #482 — THE FINER GROUND JUDGED ON DEPTH: a new registered set (`PREREG-gres-depth.md`), fresh pairs

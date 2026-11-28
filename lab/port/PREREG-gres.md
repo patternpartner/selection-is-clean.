@@ -10,3 +10,6 @@ at 5 and 10 minutes.
   `GROUND_RES` defaults to 2. Said now, as the template asks: a reload of a world saved at resolution 1 then starts its ground empty
   (the population and record come back); `GROUND_RES=1` restores the world before. **Otherwise** it is removed.
 - Analysis: `analyse-gres.js`.
+
+## Result
+NOT SHIPPED after 6 pairs (count 1.27, 0.77, 1.62, 1.07, 1.07, 0.99: two behind). Size 17+ up in 5 of 6 (median 1.34). DORMANT for #482 (PREREG-gres-depth.md).
