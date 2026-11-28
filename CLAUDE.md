@@ -426,6 +426,10 @@ it there — fast-forward `main` and push it as part of finishing the work. Do n
 git checkout main && git merge --ff-only <branch> && git push -u origin main
 ```
 
+**Except from `ccr-76b4b7a2-gbbb1l`:** its history holds about 140 MB of `#477`'s chain files (committed per leg before they were
+ignored; a rewrite was refused). `main` has never taken them. Update `main` from that branch with one commit of the tip's tree on top
+of `main` (`git commit-tree <tip>^{tree} -p origin/main`, push it to `main`, merge `main` back), never a fast-forward.
+
 ## Before you push
 
 - `node substrate-test.js` — the acceptance rig. **Green means green AT THE BUDGET, ON THE
